@@ -1,0 +1,207 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #050810;
+  color: #c9d4e0;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Scrollbar oscuro científico */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #080d1a; }
+::-webkit-scrollbar-thumb { background: #1e3352; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #00e676; }
+
+/* Selección de texto con verde neon */
+::selection { background: rgba(0,230,118,0.25); color: #fff; }
+
+/* ── ESTILOS DE IMPRESIÓN ──────────────────────────── */
+@media print {
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-family: 'Times New Roman', Georgia, serif !important;
+    font-size: 11pt !important;
+  }
+
+  /* Ocultar todo lo que no sea el área de impresión */
+  #root > div > aside,
+  .no-print {
+    display: none !important;
+  }
+
+  /* El contenido principal ocupa todo */
+  #root > div > main {
+    width: 100% !important;
+  }
+
+  /* Área de reporte para impresión */
+  .print-area {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .print-header {
+    text-align: center;
+    margin-bottom: 20pt;
+    padding-bottom: 10pt;
+    border-bottom: 2px solid #000;
+  }
+
+  .print-header h1 {
+    font-size: 18pt;
+    font-weight: bold;
+    margin: 0 0 4pt;
+    color: #000;
+  }
+
+  .print-header p {
+    font-size: 10pt;
+    color: #444;
+    margin: 0;
+  }
+
+  .print-section {
+    margin-bottom: 16pt;
+    page-break-inside: avoid;
+  }
+
+  .print-section h2 {
+    font-size: 13pt;
+    font-weight: bold;
+    margin: 0 0 6pt;
+    padding-bottom: 3pt;
+    border-bottom: 1px solid #333;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #000;
+  }
+
+  .print-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9pt;
+    margin-bottom: 8pt;
+  }
+
+  .print-table th {
+    background: #f0f0f0 !important;
+    border: 1px solid #999;
+    padding: 4pt 6pt;
+    text-align: left;
+    font-weight: bold;
+    font-size: 8.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #000;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-table td {
+    border: 1px solid #ccc;
+    padding: 3pt 6pt;
+    vertical-align: top;
+    color: #000;
+  }
+
+  .print-table tr:nth-child(even) td {
+    background: #fafafa !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8pt;
+    margin-bottom: 12pt;
+  }
+
+  .print-stat-box {
+    border: 1px solid #ccc;
+    padding: 6pt;
+    text-align: center;
+  }
+
+  .print-stat-box .val {
+    font-size: 18pt;
+    font-weight: bold;
+    color: #000;
+  }
+
+  .print-stat-box .lbl {
+    font-size: 8pt;
+    color: #666;
+    text-transform: uppercase;
+  }
+
+  .print-footer {
+    margin-top: 20pt;
+    padding-top: 8pt;
+    border-top: 1px solid #ccc;
+    font-size: 8pt;
+    color: #666;
+    text-align: center;
+  }
+
+  @page {
+    margin: 15mm 12mm;
+    size: A4 portrait;
+  }
+}
+
+/* Fuente mono para números y códigos */
+.font-data {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Glow verde para elementos activos */
+.glow-green {
+  box-shadow: 0 0 12px rgba(0,230,118,0.3), 0 0 24px rgba(0,230,118,0.1);
+}
+
+/* Grid de puntos científico para fondos */
+.bg-dots {
+  background-image: radial-gradient(circle, rgba(30,51,82,0.8) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Línea de escaneo animada (decorativa) */
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+/* Parpadeo suave para alertas */
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+.pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
+
+/* Borde neon verde */
+.border-neon {
+  border-color: rgba(0, 230, 118, 0.4);
+  box-shadow: inset 0 0 8px rgba(0,230,118,0.05);
+}
+
+/* Tabla científica */
+.table-lab thead tr {
+  background: rgba(0, 230, 118, 0.04);
+  border-bottom: 1px solid rgba(0,230,118,0.15);
+}
+
+/* Input oscuro */
+input[type=text], input[type=date], input[type=number], select, textarea {
+  color-scheme: dark;
+}
