@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { BiotheriumProvider } from './context/BiotheriumContext'
@@ -80,10 +81,77 @@ function AppLayout() {
   )
 }
 
+// ── Pantalla para crear contraseña (invitación) ─────────────────────────────
+function PantallaCrearPassword() {
+  const { actualizarPassword } = useAuth()
+  const [pass, setPass]         = useState('')
+  const [error, setError]       = useState('')
+  const [listo, setListo]       = useState(false)
+  const [cargando, setCargando] = useState(false)
+
+  async function guardar(e) {
+    e.preventDefault()
+    if (pass.length < 6) { setError('Mínimo 6 caracteres.'); return }
+    setCargando(true)
+    try {
+      await actualizarPassword(pass)
+      setListo(true)
+    } catch {
+      setError('No se pudo guardar. Intentá de nuevo.')
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#050810' }}>
+      <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.95)', border: '1px solid rgba(0,230,118,0.2)', boxShadow: '0 0 60px rgba(0,230,118,0.06)' }}>
+        <div className="px-8 py-7 text-center" style={{ borderBottom: '1px solid rgba(0,230,118,0.1)', background: 'rgba(0,230,118,0.03)' }}>
+          <div className="text-3xl mb-3">🔑</div>
+          <h1 className="text-xl font-bold text-white">Crear contraseña</h1>
+          <p className="text-xs mt-1" style={{ color: '#4a5f7a' }}>Elegí una contraseña para tu cuenta</p>
+        </div>
+        {listo ? (
+          <div className="px-8 py-10 text-center space-y-3">
+            <div className="text-4xl">✅</div>
+            <div className="font-bold text-white">¡Contraseña creada!</div>
+            <div className="text-sm" style={{ color: '#4a5f7a' }}>Ya podés usar el sistema normalmente.</div>
+          </div>
+        ) : (
+          <form onSubmit={guardar} className="px-8 py-7 space-y-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>Nueva contraseña</label>
+              <input
+                type="password"
+                value={pass}
+                onChange={(e) => { setPass(e.target.value); setError('') }}
+                placeholder="Mínimo 6 caracteres"
+                required
+                style={{ width: '100%', background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', borderRadius: '12px', padding: '12px 16px', fontSize: '14px', outline: 'none' }}
+              />
+            </div>
+            {error && (
+              <div className="rounded-xl px-4 py-3 text-sm" style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.25)', color: '#ff6b80' }}>
+                ⚠️ {error}
+              </div>
+            )}
+            <button type="submit" disabled={cargando} className="w-full py-3 rounded-xl text-sm font-bold"
+              style={{ background: 'rgba(0,230,118,0.15)', border: '1.5px solid rgba(0,230,118,0.4)', color: '#00e676', cursor: cargando ? 'not-allowed' : 'pointer' }}>
+              {cargando ? 'Guardando...' : 'Guardar contraseña'}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Root del router con manejo de auth ──────────────────────────────────────
 function RutaRaiz() {
-  const { sesion, cargando } = useAuth()
+  const { sesion, cargando, necesitaPassword } = useAuth()
   if (cargando) return <PantallaCarga />
+  // Si viene de invitación y ya tiene sesión → mostrar pantalla de crear contraseña
+  if (necesitaPassword && sesion) return <PantallaCrearPassword />
   return (
     <Routes>
       <Route

@@ -4,19 +4,27 @@ import { supabase } from '../lib/supabase'
 const AuthCtx = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [sesion, setSesion]     = useState(null)   // objeto de sesión de Supabase
-  const [cargando, setCargando] = useState(true)   // true mientras verifica si hay sesión activa
+  const [sesion, setSesion]                   = useState(null)
+  const [cargando, setCargando]               = useState(true)
+  const [necesitaPassword, setNecesitaPassword] = useState(false)
 
   useEffect(() => {
-    // Verificar si ya hay una sesión guardada en el navegador
+    // Detectar link de invitación ANTES de que Supabase lo procese
+    const hash = window.location.hash
+    if (hash.includes('type=invite') || hash.includes('type=signup')) {
+      setNecesitaPassword(true)
+    }
+
     supabase.auth.getSession().then(({ data }) => {
       setSesion(data.session)
       setCargando(false)
     })
 
-    // Escuchar cambios de sesión (login / logout)
-    const { data: listener } = supabase.auth.onAuthStateChange((_evento, nuevaSesion) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((evento, nuevaSesion) => {
       setSesion(nuevaSesion)
+      if (evento === 'SIGNED_IN' && (window.location.hash.includes('type=invite') || window.location.hash.includes('type=signup'))) {
+        setNecesitaPassword(true)
+      }
     })
 
     return () => listener.subscription.unsubscribe()
@@ -35,10 +43,12 @@ export function AuthProvider({ children }) {
   async function actualizarPassword(nuevaPassword) {
     const { error } = await supabase.auth.updateUser({ password: nuevaPassword })
     if (error) throw error
+    setNecesitaPassword(false)
+    window.history.replaceState(null, '', window.location.pathname)
   }
 
   return (
-    <AuthCtx.Provider value={{ sesion, cargando, iniciarSesion, cerrarSesion, actualizarPassword }}>
+    <AuthCtx.Provider value={{ sesion, cargando, iniciarSesion, cerrarSesion, actualizarPassword, necesitaPassword }}>
       {children}
     </AuthCtx.Provider>
   )
