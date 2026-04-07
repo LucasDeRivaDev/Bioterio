@@ -32,8 +32,13 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut()
   }
 
+  async function actualizarPassword(nuevaPassword) {
+    const { error } = await supabase.auth.updateUser({ password: nuevaPassword })
+    if (error) throw error
+  }
+
   return (
-    <AuthCtx.Provider value={{ sesion, cargando, iniciarSesion, cerrarSesion }}>
+    <AuthCtx.Provider value={{ sesion, cargando, iniciarSesion, cerrarSesion, actualizarPassword }}>
       {children}
     </AuthCtx.Provider>
   )

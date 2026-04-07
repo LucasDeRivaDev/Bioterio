@@ -1,13 +1,24 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 
 export default function Login() {
-  const { iniciarSesion } = useAuth()
+  const { iniciarSesion, actualizarPassword, sesion } = useAuth()
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [error, setError]       = useState('')
   const [cargando, setCargando] = useState(false)
   const [verPass, setVerPass]   = useState(false)
+  const [esInvitado, setEsInvitado] = useState(false)
+  const [passNuevo, setPassNuevo]   = useState('')
+  const [passOk, setPassOk]         = useState(false)
+
+  // Detectar si viene de un link de invitación
+  useEffect(() => {
+    const hash = window.location.hash
+    if (hash.includes('type=invite') || hash.includes('type=signup')) {
+      setEsInvitado(true)
+    }
+  }, [])
 
   async function manejarLogin(e) {
     e.preventDefault()
@@ -17,6 +28,26 @@ export default function Login() {
       await iniciarSesion(email.trim(), password)
     } catch (err) {
       setError('Email o contraseña incorrectos. Intentá de nuevo.')
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  async function manejarCrearPassword(e) {
+    e.preventDefault()
+    if (passNuevo.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres.')
+      return
+    }
+    setError('')
+    setCargando(true)
+    try {
+      await actualizarPassword(passNuevo)
+      setPassOk(true)
+      // Limpiar el hash de la URL
+      window.history.replaceState(null, '', window.location.pathname)
+    } catch (err) {
+      setError('No se pudo guardar la contraseña. Intentá de nuevo.')
     } finally {
       setCargando(false)
     }
@@ -32,6 +63,51 @@ export default function Login() {
     fontSize: '14px',
     outline: 'none',
     fontFamily: 'Inter, sans-serif',
+  }
+
+  // Si viene de invitación y ya tiene sesión activa → mostrar formulario de crear contraseña
+  if (esInvitado && sesion) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(0,230,118,0.04) 0%, #050810 60%)' }}>
+        <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.95)', border: '1px solid rgba(0,230,118,0.2)', boxShadow: '0 0 60px rgba(0,230,118,0.06)' }}>
+          <div className="px-8 py-7 text-center" style={{ borderBottom: '1px solid rgba(0,230,118,0.1)', background: 'rgba(0,230,118,0.03)' }}>
+            <div className="text-3xl mb-3">🔑</div>
+            <h1 className="text-xl font-bold text-white">Crear contraseña</h1>
+            <p className="text-xs mt-1" style={{ color: '#4a5f7a' }}>Elegí una contraseña para tu cuenta</p>
+          </div>
+          {passOk ? (
+            <div className="px-8 py-10 text-center space-y-3">
+              <div className="text-4xl">✅</div>
+              <div className="font-bold text-white">¡Contraseña creada!</div>
+              <div className="text-sm" style={{ color: '#4a5f7a' }}>Ya podés usar el sistema normalmente.</div>
+            </div>
+          ) : (
+            <form onSubmit={manejarCrearPassword} className="px-8 py-7 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>Nueva contraseña</label>
+                <input
+                  type={verPass ? 'text' : 'password'}
+                  value={passNuevo}
+                  onChange={(e) => { setPassNuevo(e.target.value); setError('') }}
+                  placeholder="Mínimo 6 caracteres"
+                  required
+                  style={{ width: '100%', background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', borderRadius: '12px', padding: '12px 16px', fontSize: '14px', outline: 'none' }}
+                />
+              </div>
+              {error && (
+                <div className="rounded-xl px-4 py-3 text-sm flex items-center gap-2" style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.25)', color: '#ff6b80' }}>
+                  <span>⚠️</span> {error}
+                </div>
+              )}
+              <button type="submit" disabled={cargando} className="w-full py-3 rounded-xl text-sm font-bold"
+                style={{ background: 'rgba(0,230,118,0.15)', border: '1.5px solid rgba(0,230,118,0.4)', color: '#00e676', cursor: cargando ? 'not-allowed' : 'pointer' }}>
+                {cargando ? 'Guardando...' : 'Guardar contraseña'}
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    )
   }
 
   return (
