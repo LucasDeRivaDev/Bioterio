@@ -9,6 +9,8 @@ const links = [
   { to: '/camadas', label: 'Camadas', icon: '🪺' },
   { to: '/calendario', label: 'Calendario', icon: '📅' },
   { to: '/rendimiento', label: 'Rendimiento', icon: '📊' },
+  { to: '/stock', label: 'Stock', icon: '📦' },
+  { to: '/sacrificios', label: 'Sacrificios', icon: '🗡️' },
   { to: '/reportes', label: 'Reportes e impresión', icon: '🖨️' },
 ]
 

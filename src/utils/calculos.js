@@ -123,7 +123,24 @@ export function interpretarLatencia(dias) {
 // ─── MÉTRICAS DE RENDIMIENTO MACHO ───────────────────────────────────────────
 
 /**
+ * Asigna un score discreto a una latencia de fertilización.
+ * Reglas:
+ *   1–5 días  → 10 (1er ciclo, muy bueno)
+ *   6–10 días → 7  (2do ciclo, aceptable)
+ *  11–15 días → 5  (3er ciclo, lento)
+ *  fuera de rango → null
+ */
+export function scorePorLatencia(latencia) {
+  if (latencia === null || latencia === undefined) return null
+  if (latencia >= 1 && latencia <= 5)  return 10
+  if (latencia >= 6 && latencia <= 10) return 7
+  if (latencia >= 11 && latencia <= 15) return 5
+  return null
+}
+
+/**
  * Calcula métricas de rendimiento para un macho dado todas las camadas.
+ * El score_promedio es el indicador principal: promedio de scores discretos por apareamiento.
  */
 export function calcularRendimientoMacho(machoId, camadas) {
   const camadasMacho = camadas.filter(
@@ -135,9 +152,11 @@ export function calcularRendimientoMacho(machoId, camadas) {
       machoId,
       total_camadas: 0,
       latencias: [],
+      scores_individuales: [],
       promedio_latencia: null,
       min_latencia: null,
       max_latencia: null,
+      score_promedio: null,
       score: null,
     }
   }
@@ -146,20 +165,28 @@ export function calcularRendimientoMacho(machoId, camadas) {
     .map((c) => calcularLatencia(c))
     .filter((l) => l !== null)
 
+  const scores_individuales = latencias.map((l) => scorePorLatencia(l)).filter((s) => s !== null)
+
   const promedio_latencia =
     latencias.length > 0
       ? Math.round(latencias.reduce((a, b) => a + b, 0) / latencias.length * 10) / 10
+      : null
+
+  const score_promedio =
+    scores_individuales.length > 0
+      ? Math.round(scores_individuales.reduce((a, b) => a + b, 0) / scores_individuales.length * 10) / 10
       : null
 
   return {
     machoId,
     total_camadas: camadasMacho.length,
     latencias,
+    scores_individuales,
     promedio_latencia,
     min_latencia: latencias.length > 0 ? Math.min(...latencias) : null,
     max_latencia: latencias.length > 0 ? Math.max(...latencias) : null,
-    // Score: menor latencia promedio = mejor score (invertido, base 10)
-    score: promedio_latencia !== null ? Math.max(0, 10 - promedio_latencia) : null,
+    score_promedio,
+    score: score_promedio, // alias para compatibilidad
   }
 }
 

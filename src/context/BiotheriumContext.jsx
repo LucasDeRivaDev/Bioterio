@@ -9,6 +9,8 @@ function reducer(estado, accion) {
       return { ...estado, animales: accion.payload }
     case 'SET_CAMADAS':
       return { ...estado, camadas: accion.payload }
+    case 'SET_SACRIFICIOS':
+      return { ...estado, sacrificios: accion.payload }
 
     case 'AGREGAR_ANIMAL':
       return { ...estado, animales: [...estado.animales, accion.payload] }
@@ -24,6 +26,11 @@ function reducer(estado, accion) {
     case 'ELIMINAR_CAMADA':
       return { ...estado, camadas: estado.camadas.filter((c) => c.id !== accion.payload) }
 
+    case 'AGREGAR_SACRIFICIO':
+      return { ...estado, sacrificios: [...estado.sacrificios, accion.payload] }
+    case 'ELIMINAR_SACRIFICIO':
+      return { ...estado, sacrificios: estado.sacrificios.filter((s) => s.id !== accion.payload) }
+
     default:
       return estado
   }
@@ -32,7 +39,7 @@ function reducer(estado, accion) {
 const BiotheriumCtx = createContext(null)
 
 export function BiotheriumProvider({ children }) {
-  const [estado, dispatch] = useReducer(reducer, { animales: [], camadas: [] })
+  const [estado, dispatch] = useReducer(reducer, { animales: [], camadas: [], sacrificios: [] })
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
 
@@ -42,14 +49,17 @@ export function BiotheriumProvider({ children }) {
       setCargando(true)
       setError(null)
       try {
-        const [{ data: animales, error: errA }, { data: camadas, error: errC }] = await Promise.all([
+        const [{ data: animales, error: errA }, { data: camadas, error: errC }, { data: sacrificios, error: errS }] = await Promise.all([
           supabase.from('animales').select('*').order('created_at', { ascending: true }),
           supabase.from('camadas').select('*').order('created_at', { ascending: true }),
+          supabase.from('sacrificios').select('*').order('created_at', { ascending: true }),
         ])
         if (errA) throw errA
         if (errC) throw errC
+        // sacrificios: si la tabla no existe aún, no bloquear la carga
         dispatch({ type: 'SET_ANIMALES', payload: animales ?? [] })
         dispatch({ type: 'SET_CAMADAS', payload: camadas ?? [] })
+        dispatch({ type: 'SET_SACRIFICIOS', payload: sacrificios ?? [] })
       } catch (e) {
         console.error('Error al cargar datos:', e)
         setError('No se pudieron cargar los datos. Verificá la conexión.')
@@ -118,14 +128,39 @@ export function BiotheriumProvider({ children }) {
     }
   }
 
+  // ── SACRIFICIOS ────────────────────────────────────────────────────────────
+
+  async function registrarSacrificio(datos) {
+    const nuevo = { ...datos, id: generarId() }
+    dispatch({ type: 'AGREGAR_SACRIFICIO', payload: nuevo })
+    const { error } = await supabase.from('sacrificios').insert(nuevo)
+    if (error) {
+      console.error('Error al registrar sacrificio:', error)
+      dispatch({ type: 'ELIMINAR_SACRIFICIO', payload: nuevo.id })
+      throw error
+    }
+  }
+
+  async function eliminarSacrificio(id) {
+    const respaldo = estado.sacrificios.find((s) => s.id === id)
+    dispatch({ type: 'ELIMINAR_SACRIFICIO', payload: id })
+    const { error } = await supabase.from('sacrificios').delete().eq('id', id)
+    if (error) {
+      console.error('Error al eliminar sacrificio:', error)
+      if (respaldo) dispatch({ type: 'AGREGAR_SACRIFICIO', payload: respaldo })
+    }
+  }
+
   return (
     <BiotheriumCtx.Provider value={{
       animales: estado.animales,
       camadas: estado.camadas,
+      sacrificios: estado.sacrificios,
       cargando,
       error,
       agregarAnimal, editarAnimal, eliminarAnimal,
       agregarCamada, editarCamada, eliminarCamada,
+      registrarSacrificio, eliminarSacrificio,
     }}>
       {children}
     </BiotheriumCtx.Provider>

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
-import { calcularRendimientoMacho, calcularLatencia, interpretarLatencia, formatFecha } from '../utils/calculos'
+import { calcularRendimientoMacho, calcularLatencia, interpretarLatencia, scorePorLatencia, formatFecha } from '../utils/calculos'
 import Badge from '../components/Badge'
 
 const cardStyle = { background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }
@@ -23,11 +23,24 @@ function BarraLatencia({ valor, max }) {
 }
 
 function ScoreBadge({ score }) {
-  if (score === null) return <Badge color="gris">Sin datos</Badge>
-  if (score >= 8) return <Badge color="verde">Excelente</Badge>
-  if (score >= 6) return <Badge color="azul">Bueno</Badge>
-  if (score >= 4) return <Badge color="amarillo">Regular</Badge>
-  return <Badge color="rojo">Lento</Badge>
+  if (score === null || score === undefined) return <Badge color="gris">Sin datos</Badge>
+  if (score >= 8.5) return <Badge color="verde">Excelente</Badge>
+  if (score >= 6.5) return <Badge color="azul">Bueno</Badge>
+  if (score >= 4.5) return <Badge color="amarillo">Regular</Badge>
+  return <Badge color="rojo">Muy lento</Badge>
+}
+
+function ScoreChip({ score }) {
+  if (score === null || score === undefined) return <span style={{ color: '#4a5f7a' }}>—</span>
+  const color = score === 10 ? '#00e676' : score === 7 ? '#40c4ff' : score === 5 ? '#ffb300' : '#8a9bb0'
+  return (
+    <span
+      className="inline-flex items-center justify-center font-mono font-bold text-xs px-2 py-0.5 rounded-full"
+      style={{ background: `${color}18`, border: `1px solid ${color}44`, color }}
+    >
+      {score}pts
+    </span>
+  )
 }
 
 function Medalla({ pos }) {
@@ -160,7 +173,13 @@ export default function Rendimiento() {
                     </div>
                     {/* Métricas numéricas */}
                     <div className="hidden md:flex items-center divide-x" style={{ divideColor: 'rgba(30,51,82,0.6)' }}>
-                      <Metric label="Promedio" valor={m.promedio_latencia} color="#40c4ff" />
+                      <div className="text-center px-3">
+                        <div className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5f7a' }}>Score prom.</div>
+                        <div className="font-mono font-bold text-xl" style={{ color: m.score_promedio !== null ? '#00e676' : '#8a9bb0' }}>
+                          {m.score_promedio !== null ? m.score_promedio : '—'}
+                        </div>
+                      </div>
+                      <Metric label="Lat. prom." valor={m.promedio_latencia} color="#40c4ff" />
                       <Metric label="Mínimo" valor={m.min_latencia} color="#00e676" />
                       <Metric label="Máximo" valor={m.max_latencia} color="#ff6b80" />
                     </div>
@@ -187,6 +206,7 @@ export default function Rendimiento() {
                             <th className="text-left pb-1.5 font-medium">Nacimiento</th>
                             <th className="text-left pb-1.5 font-medium">Crías</th>
                             <th className="text-left pb-1.5 font-medium">Latencia</th>
+                            <th className="text-left pb-1.5 font-medium">Score</th>
                             <th className="text-left pb-1.5 font-medium">Interpretación</th>
                           </tr>
                         </thead>
@@ -196,6 +216,7 @@ export default function Rendimiento() {
                               : c.lat <= 2 ? '#00e676'
                               : c.lat <= 5 ? '#40c4ff'
                               : c.lat <= 10 ? '#ffb300' : '#ff6b80'
+                            const scoreInd = scorePorLatencia(c.lat)
                             return (
                               <tr key={c.id} style={{ borderTop: '1px solid rgba(30,51,82,0.4)' }}>
                                 <td className="py-1.5 font-mono font-semibold" style={{ color: '#ce93d8' }}>
@@ -209,6 +230,7 @@ export default function Rendimiento() {
                                 <td className="py-1.5 font-mono font-bold" style={{ color: latColor }}>
                                   {c.lat !== null ? `${c.lat}d` : '—'}
                                 </td>
+                                <td className="py-1.5"><ScoreChip score={scoreInd} /></td>
                                 <td className="py-1.5" style={{ color: '#4a5f7a' }}>{interpretarLatencia(c.lat)}</td>
                               </tr>
                             )
@@ -250,7 +272,7 @@ export default function Rendimiento() {
                       {prom !== null ? `${prom}d` : '—'}
                     </td>
                     <td className="px-4 py-3">
-                      <ScoreBadge score={prom !== null ? Math.max(0, 10 - prom) : null} />
+                      <ScoreBadge score={prom !== null ? scorePorLatencia(Math.round(prom)) : null} />
                     </td>
                   </tr>
                 ))}
