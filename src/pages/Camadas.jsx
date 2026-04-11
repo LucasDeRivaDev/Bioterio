@@ -9,6 +9,193 @@ import Modal from '../components/Modal'
 import CamadaForm from '../components/CamadaForm'
 import Badge from '../components/Badge'
 
+// ── Editor de distribución de jaulas ─────────────────────────────────────────
+
+const inputJaulaStyle = {
+  background: 'rgba(8,13,26,0.8)',
+  border: '1px solid rgba(30,51,82,0.8)',
+  color: '#c9d4e0',
+  borderRadius: '8px',
+}
+
+function JaulasDistribucion({ camada, jaulas, agregarJaula, editarJaula, eliminarJaula }) {
+  const jaulasCamada = jaulas.filter((j) => j.camada_id === camada.id)
+  const totalJaulas  = jaulasCamada.reduce((s, j) => s + (j.total ?? 0), 0)
+  const target       = camada.total_destetados ?? 0
+  const equilibrio   = totalJaulas === target
+
+  const [editando, setEditando] = useState(null) // id de jaula en edición
+  const [formEdit, setFormEdit] = useState({})
+  const [mostrarNueva, setMostrarNueva] = useState(false)
+  const [formNueva, setFormNueva] = useState({ total: '', machos: '', hembras: '', notas: '' })
+
+  function iniciarEdicion(j) {
+    setEditando(j.id)
+    setFormEdit({ total: j.total ?? '', machos: j.machos ?? '', hembras: j.hembras ?? '', notas: j.notas ?? '' })
+  }
+
+  function guardarEdicion(j) {
+    editarJaula({
+      ...j,
+      total:   Number(formEdit.total)  || 0,
+      machos:  formEdit.machos !== '' ? Number(formEdit.machos)  : null,
+      hembras: formEdit.hembras !== '' ? Number(formEdit.hembras) : null,
+      notas:   formEdit.notas || '',
+    })
+    setEditando(null)
+  }
+
+  function guardarNueva() {
+    const total = Number(formNueva.total) || 0
+    if (total <= 0) return
+    agregarJaula({
+      camada_id: camada.id,
+      total,
+      machos:  formNueva.machos  !== '' ? Number(formNueva.machos)  : null,
+      hembras: formNueva.hembras !== '' ? Number(formNueva.hembras) : null,
+      notas:   formNueva.notas || '',
+    })
+    setFormNueva({ total: '', machos: '', hembras: '', notas: '' })
+    setMostrarNueva(false)
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Header de distribución */}
+      <div className="flex items-center justify-between">
+        <div className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#4a5f7a' }}>
+          Distribución en jaulas
+        </div>
+        <div className="flex items-center gap-2">
+          <span
+            className="text-xs font-mono font-bold px-2 py-0.5 rounded-lg"
+            style={
+              equilibrio
+                ? { background: 'rgba(0,230,118,0.12)', color: '#00e676', border: '1px solid rgba(0,230,118,0.3)' }
+                : { background: 'rgba(255,179,0,0.12)', color: '#ffb300', border: '1px solid rgba(255,179,0,0.3)' }
+            }
+          >
+            {totalJaulas}/{target} {equilibrio ? '✓' : '⚠'}
+          </span>
+          <button
+            onClick={() => setMostrarNueva((v) => !v)}
+            className="text-xs font-semibold px-2 py-0.5 rounded-lg"
+            style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676' }}
+          >
+            + Jaula
+          </button>
+        </div>
+      </div>
+
+      {/* Sin jaulas aún */}
+      {jaulasCamada.length === 0 && !mostrarNueva && (
+        <div className="text-xs py-2 text-center" style={{ color: '#4a5f7a' }}>
+          Sin jaulas asignadas — agregá una para organizar el stock
+        </div>
+      )}
+
+      {/* Lista de jaulas */}
+      <div className="space-y-1.5">
+        {jaulasCamada.map((j, idx) =>
+          editando === j.id ? (
+            // Fila en edición
+            <div key={j.id} className="rounded-lg p-2.5 space-y-2" style={{ background: 'rgba(64,196,255,0.06)', border: '1px solid rgba(64,196,255,0.2)' }}>
+              <div className="grid grid-cols-3 gap-2">
+                {[['Total', 'total'], ['♂ Machos', 'machos'], ['♀ Hembras', 'hembras']].map(([lbl, campo]) => (
+                  <div key={campo}>
+                    <div className="text-xs mb-1" style={{ color: '#4a5f7a' }}>{lbl}</div>
+                    <input
+                      type="number"
+                      min={0}
+                      value={formEdit[campo]}
+                      onChange={(e) => setFormEdit((p) => ({ ...p, [campo]: e.target.value }))}
+                      className="w-full px-2 py-1 text-xs font-mono focus:outline-none"
+                      style={inputJaulaStyle}
+                    />
+                  </div>
+                ))}
+              </div>
+              <input
+                type="text"
+                placeholder="Notas (opcional)"
+                value={formEdit.notas}
+                onChange={(e) => setFormEdit((p) => ({ ...p, notas: e.target.value }))}
+                className="w-full px-2 py-1 text-xs focus:outline-none"
+                style={inputJaulaStyle}
+              />
+              <div className="flex gap-2">
+                <button onClick={() => guardarEdicion(j)} className="flex-1 py-1 rounded text-xs font-bold" style={{ background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.35)', color: '#00e676' }}>
+                  Guardar
+                </button>
+                <button onClick={() => setEditando(null)} className="px-3 py-1 rounded text-xs" style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: '#4a5f7a' }}>
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          ) : (
+            // Fila normal
+            <div key={j.id} className="flex items-center justify-between rounded-lg px-3 py-2" style={{ background: 'rgba(13,21,40,0.6)', border: '1px solid rgba(30,51,82,0.6)' }}>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>J{idx + 1}</span>
+                <span className="font-mono font-bold text-sm text-white">{j.total ?? 0}</span>
+                {(j.machos != null || j.hembras != null) && (
+                  <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                    {j.machos != null && <span style={{ color: '#40c4ff' }}>♂{j.machos} </span>}
+                    {j.hembras != null && <span style={{ color: '#ce93d8' }}>♀{j.hembras}</span>}
+                  </span>
+                )}
+                {j.notas && <span className="text-xs" style={{ color: '#4a5f7a' }}>{j.notas}</span>}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => iniciarEdicion(j)} className="text-xs font-semibold" style={{ color: '#40c4ff' }}>Editar</button>
+                <button onClick={() => eliminarJaula(j.id)} className="text-xs font-semibold" style={{ color: '#ff6b80' }}>✕</button>
+              </div>
+            </div>
+          )
+        )}
+
+        {/* Formulario nueva jaula */}
+        {mostrarNueva && (
+          <div className="rounded-lg p-2.5 space-y-2" style={{ background: 'rgba(0,230,118,0.05)', border: '1px solid rgba(0,230,118,0.2)' }}>
+            <div className="text-xs font-semibold" style={{ color: '#00e676' }}>Nueva jaula</div>
+            <div className="grid grid-cols-3 gap-2">
+              {[['Total *', 'total'], ['♂ Machos', 'machos'], ['♀ Hembras', 'hembras']].map(([lbl, campo]) => (
+                <div key={campo}>
+                  <div className="text-xs mb-1" style={{ color: '#4a5f7a' }}>{lbl}</div>
+                  <input
+                    type="number"
+                    min={0}
+                    value={formNueva[campo]}
+                    onChange={(e) => setFormNueva((p) => ({ ...p, [campo]: e.target.value }))}
+                    className="w-full px-2 py-1 text-xs font-mono focus:outline-none"
+                    style={inputJaulaStyle}
+                  />
+                </div>
+              ))}
+            </div>
+            <input
+              type="text"
+              placeholder="Notas (opcional)"
+              value={formNueva.notas}
+              onChange={(e) => setFormNueva((p) => ({ ...p, notas: e.target.value }))}
+              className="w-full px-2 py-1 text-xs focus:outline-none"
+              style={inputJaulaStyle}
+            />
+            <div className="flex gap-2">
+              <button onClick={guardarNueva} className="flex-1 py-1 rounded text-xs font-bold" style={{ background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.35)', color: '#00e676' }}>
+                + Agregar
+              </button>
+              <button onClick={() => setMostrarNueva(false)} className="px-3 py-1 rounded text-xs" style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: '#4a5f7a' }}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 const cardStyle = { background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }
 const estadoConfig = {
   apareamiento: { badge: 'azul',    label: 'En apareamiento', icono: '💑' },
@@ -31,7 +218,7 @@ function LatenciaBit({ dias }) {
 }
 
 export default function Camadas() {
-  const { camadas, animales, agregarCamada, editarCamada, eliminarCamada, confirmarSeparacion } = useBioterio()
+  const { camadas, animales, jaulas, agregarCamada, editarCamada, eliminarCamada, confirmarSeparacion, agregarJaula, editarJaula, eliminarJaula } = useBioterio()
   const [modal, setModal] = useState(null)
   const [confirmarEliminar, setConfirmarEliminar] = useState(null)
   const [filtro, setFiltro] = useState('todas')
@@ -236,6 +423,7 @@ export default function Camadas() {
 
                 {/* Detalle */}
                 {isExp && (
+                  <>
                   <div
                     className="px-5 py-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm"
                     style={{ borderTop: '1px solid rgba(0,230,118,0.08)', background: 'rgba(0,0,0,0.2)' }}
@@ -316,6 +504,23 @@ export default function Camadas() {
                       </div>
                     )}
                   </div>
+
+                  {/* Editor de distribución en jaulas (solo si hay destete registrado) */}
+                  {camada.fecha_destete && (
+                    <div
+                      className="px-5 py-4"
+                      style={{ borderTop: '1px solid rgba(0,230,118,0.08)', background: 'rgba(0,0,0,0.2)' }}
+                    >
+                      <JaulasDistribucion
+                        camada={camada}
+                        jaulas={jaulas}
+                        agregarJaula={agregarJaula}
+                        editarJaula={editarJaula}
+                        eliminarJaula={eliminarJaula}
+                      />
+                    </div>
+                  )}
+                  </>
                 )}
               </div>
             )
