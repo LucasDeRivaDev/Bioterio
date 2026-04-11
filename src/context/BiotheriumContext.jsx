@@ -109,6 +109,36 @@ export function BiotheriumProvider({ children }) {
     if (error) {
       console.error('Error al guardar camada:', error)
       dispatch({ type: 'ELIMINAR_CAMADA', payload: nueva.id })
+      return
+    }
+    // Auto-setear la hembra a 'en_apareamiento' si estaba 'activo'
+    if (datos.id_madre) {
+      const madre = estado.animales.find((a) => a.id === datos.id_madre)
+      if (madre && madre.estado === 'activo') {
+        const madreActualizada = { ...madre, estado: 'en_apareamiento' }
+        dispatch({ type: 'EDITAR_ANIMAL', payload: madreActualizada })
+        const { error: errA } = await supabase.from('animales').update({ estado: 'en_apareamiento' }).eq('id', datos.id_madre)
+        if (errA) console.error('Error al actualizar estado de madre:', errA)
+      }
+    }
+  }
+
+  async function confirmarSeparacion(camadaId, fechaSeparacion) {
+    const camada = estado.camadas.find((c) => c.id === camadaId)
+    if (!camada) return
+    const camadaActualizada = { ...camada, fecha_separacion: fechaSeparacion }
+    dispatch({ type: 'EDITAR_CAMADA', payload: camadaActualizada })
+    const { error: errC } = await supabase.from('camadas').update({ fecha_separacion: fechaSeparacion }).eq('id', camadaId)
+    if (errC) console.error('Error al confirmar separación:', errC)
+    // Cambiar la hembra a 'en_cria' (preñada) si estaba 'en_apareamiento'
+    if (camada.id_madre) {
+      const madre = estado.animales.find((a) => a.id === camada.id_madre)
+      if (madre && madre.estado === 'en_apareamiento') {
+        const madreActualizada = { ...madre, estado: 'en_cria' }
+        dispatch({ type: 'EDITAR_ANIMAL', payload: madreActualizada })
+        const { error: errA } = await supabase.from('animales').update({ estado: 'en_cria' }).eq('id', camada.id_madre)
+        if (errA) console.error('Error al actualizar estado de madre:', errA)
+      }
     }
   }
 
@@ -159,7 +189,7 @@ export function BiotheriumProvider({ children }) {
       cargando,
       error,
       agregarAnimal, editarAnimal, eliminarAnimal,
-      agregarCamada, editarCamada, eliminarCamada,
+      agregarCamada, editarCamada, eliminarCamada, confirmarSeparacion,
       registrarSacrificio, eliminarSacrificio,
     }}>
       {children}

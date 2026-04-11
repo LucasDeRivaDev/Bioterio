@@ -35,6 +35,7 @@ const PRIORIDAD = {
 }
 
 const ICONO_TIPO = {
+  separacion: '✂️',
   control_parto: '🐣',
   destete: '📦',
   madurez: '🐀',
@@ -104,10 +105,20 @@ export default function Dashboard() {
   const deHoy = tareas.filter((t) => t.prioridad === 'hoy')
   const proximas = tareas.filter((t) => t.prioridad === 'proxima')
 
-  const activas = animales.filter((a) => a.estado === 'activo' || a.estado === 'en_cria')
+  const activas = animales.filter((a) => a.estado === 'activo' || a.estado === 'en_apareamiento' || a.estado === 'en_cria')
   const hembrasActivas = activas.filter((a) => a.sexo === 'hembra').length
   const machosActivos = activas.filter((a) => a.sexo === 'macho').length
-  const camadasPendientes = camadas.filter((c) => c.fecha_copula && !c.fecha_nacimiento).length
+  const enApareamiento = camadas.filter((c) => {
+    if (c.fecha_nacimiento || c.fecha_destete || c.fecha_separacion) return false
+    if (!c.fecha_copula) return false
+    return difDias(parseDate(c.fecha_copula), hoyDate) < 15
+  }).length
+  const enPreñez = camadas.filter((c) => {
+    if (c.fecha_nacimiento || c.fecha_destete) return false
+    if (!c.fecha_copula) return false
+    if (c.fecha_separacion) return true
+    return difDias(parseDate(c.fecha_copula), hoyDate) >= 15
+  }).length
   const camadasConCrias = camadas.filter((c) => c.fecha_nacimiento && !c.fecha_destete).length
 
   const hoyDate = parseDate(hoy())
@@ -157,11 +168,12 @@ export default function Dashboard() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard valor={hembrasActivas} label="Hembras activas" icono="♀" color="violeta" />
-        <StatCard valor={machosActivos} label="Machos activos" icono="♂" color="azul" />
-        <StatCard valor={camadasPendientes} label="Preñeces en curso" icono="🫄" color="naranja" />
-        <StatCard valor={camadasConCrias} label="Camadas con crías" icono="🪺" color="verde" />
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <StatCard valor={hembrasActivas} label="Hembras activas"   icono="♀"  color="violeta" />
+        <StatCard valor={machosActivos}  label="Machos activos"    icono="♂"  color="azul"    />
+        <StatCard valor={enApareamiento} label="En apareamiento"   icono="💑" color="azul"    />
+        <StatCard valor={enPreñez}       label="Preñadas"          icono="🫄" color="naranja"  />
+        <StatCard valor={camadasConCrias} label="Camadas con crías" icono="🪺" color="verde"   />
       </div>
 
       {/* Alertas urgentes */}

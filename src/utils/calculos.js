@@ -1,5 +1,13 @@
 import { BIO } from './constants'
 
+/**
+ * Calcula la fecha esperada de separación de la pareja (fecha_copula + 15 días).
+ */
+export function calcularFechaSeparacion(fechaCopula) {
+  if (!fechaCopula) return null
+  return sumarDias(parseDate(fechaCopula), BIO.DURACION_APAREAMIENTO_DIAS)
+}
+
 // Sumar días a una fecha (retorna Date)
 export function sumarDias(fecha, dias) {
   const d = new Date(fecha)
@@ -207,34 +215,57 @@ export function generarTareas(camadas, animales) {
     const nombreMadre = madre ? madre.codigo : 'Madre desconocida'
     const nombrePadre = padre ? padre.codigo : '?'
 
-    // 1. Parto esperado (solo si no hay fecha_nacimiento real aún)
-    if (!camada.fecha_nacimiento && camada.fecha_copula) {
-      const rango = calcularRangoParto(camada.fecha_copula)
-      if (rango) {
-        const { partoMin, partoMax, partoProbable } = rango
-        const diasHastaMin = difDias(hoyDate, partoMin)
-        const diasHastaMax = difDias(hoyDate, partoMax)
-
-        // Si estamos en la ventana de parto (desde partoMin hasta partoMax + 2 días)
-        if (diasHastaMin <= 2 && diasHastaMax >= -2) {
-          let prioridad
-          if (difDias(hoyDate, partoMin) < 0 && difDias(hoyDate, partoMax) < 0) {
-            prioridad = 'vencida'
-          } else if (difDias(hoyDate, partoMin) === 0 || difDias(hoyDate, partoMax) === 0) {
-            prioridad = 'hoy'
-          } else {
-            prioridad = 'proxima'
-          }
-
+    // 0. Separación de pareja (solo si está en período de apareamiento activo)
+    if (camada.fecha_copula && !camada.fecha_separacion && !camada.fecha_nacimiento) {
+      const fechaSep = calcularFechaSeparacion(camada.fecha_copula)
+      if (fechaSep) {
+        const diasHasta = difDias(hoyDate, fechaSep)
+        if (diasHasta >= -7 && diasHasta <= 7) {
           tareas.push({
-            id: `parto-${camada.id}`,
-            tipo: 'control_parto',
-            prioridad,
-            fecha: partoProbable.toISOString().split('T')[0],
-            descripcion: `Controlar parto de ${nombreMadre} × ${nombrePadre}`,
-            detalle: `Ventana: ${formatFecha(partoMin)} — ${formatFecha(partoMax)}`,
+            id: `separacion-${camada.id}`,
+            tipo: 'separacion',
+            prioridad: diasHasta < 0 ? 'vencida' : diasHasta === 0 ? 'hoy' : 'proxima',
+            fecha: fechaSep.toISOString().split('T')[0],
+            descripcion: `Separar pareja: ${nombreMadre} × ${nombrePadre}`,
+            detalle: `Cópula: ${formatFecha(camada.fecha_copula)} · Fin período de convivencia`,
             camadaId: camada.id,
           })
+        }
+      }
+    }
+
+    // 1. Parto esperado (solo si no hay fecha_nacimiento real aún Y ya pasó el período de apareamiento)
+    if (!camada.fecha_nacimiento && camada.fecha_copula) {
+      const diasDesdeCopula = difDias(parseDate(camada.fecha_copula), hoyDate)
+      const pastSeparacion = camada.fecha_separacion || diasDesdeCopula >= BIO.DURACION_APAREAMIENTO_DIAS
+      if (pastSeparacion) {
+        const rango = calcularRangoParto(camada.fecha_copula)
+        if (rango) {
+          const { partoMin, partoMax, partoProbable } = rango
+          const diasHastaMin = difDias(hoyDate, partoMin)
+          const diasHastaMax = difDias(hoyDate, partoMax)
+
+          // Si estamos en la ventana de parto (desde partoMin hasta partoMax + 2 días)
+          if (diasHastaMin <= 2 && diasHastaMax >= -2) {
+            let prioridad
+            if (difDias(hoyDate, partoMin) < 0 && difDias(hoyDate, partoMax) < 0) {
+              prioridad = 'vencida'
+            } else if (difDias(hoyDate, partoMin) === 0 || difDias(hoyDate, partoMax) === 0) {
+              prioridad = 'hoy'
+            } else {
+              prioridad = 'proxima'
+            }
+
+            tareas.push({
+              id: `parto-${camada.id}`,
+              tipo: 'control_parto',
+              prioridad,
+              fecha: partoProbable.toISOString().split('T')[0],
+              descripcion: `Controlar parto de ${nombreMadre} × ${nombrePadre}`,
+              detalle: `Ventana: ${formatFecha(partoMin)} — ${formatFecha(partoMax)}`,
+              camadaId: camada.id,
+            })
+          }
         }
       }
     }
@@ -355,6 +386,29 @@ export function generarEventosCalendario(camadas, animales) {
         titulo: `Cópula: ${nombreMadre}`,
         color: 'gray',
       })
+    }
+
+    // Separación confirmada
+    if (camada.fecha_separacion) {
+      eventos.push({
+        id: `sep-${camada.id}`,
+        fecha: camada.fecha_separacion,
+        tipo: 'separacion',
+        titulo: `Separación: ${nombreMadre}`,
+        color: 'teal',
+      })
+    } else if (camada.fecha_copula && !camada.fecha_nacimiento) {
+      // Separación esperada (si aún no ocurrió)
+      const fechaSep = calcularFechaSeparacion(camada.fecha_copula)
+      if (fechaSep) {
+        eventos.push({
+          id: `sep-esp-${camada.id}`,
+          fecha: fechaSep.toISOString().split('T')[0],
+          tipo: 'separacion',
+          titulo: `Separar pareja: ${nombreMadre}`,
+          color: 'teal',
+        })
+      }
     }
   })
 

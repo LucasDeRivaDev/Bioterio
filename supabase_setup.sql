@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS animales (
   id_madre         TEXT,
   id_padre         TEXT,
   estado           TEXT DEFAULT 'activo'
-                   CHECK (estado IN ('activo', 'en_cria', 'retirado', 'fallecido')),
+                   CHECK (estado IN ('activo', 'en_apareamiento', 'en_cria', 'retirado', 'fallecido')),
   notas            TEXT,
   created_at       TIMESTAMPTZ DEFAULT NOW()
 );
@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS camadas (
   id_madre          TEXT,
   id_padre          TEXT,
   fecha_copula      TEXT,
+  fecha_separacion  TEXT,      -- fecha en que se separó la pareja (fin del apareamiento)
   fecha_nacimiento  TEXT,
   gestacion_real    INTEGER,
   total_crias       INTEGER,

@@ -1,18 +1,20 @@
 import { useState, useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import {
-  formatFecha, calcularRangoParto, calcularDestete, calcularMadurez,
+  formatFecha, calcularRangoParto, calcularDestete, calcularMadurez, calcularFechaSeparacion,
   calcularLatencia, interpretarLatencia, difDias, parseDate, hoy,
 } from '../utils/calculos'
+import { BIO } from '../utils/constants'
 import Modal from '../components/Modal'
 import CamadaForm from '../components/CamadaForm'
 import Badge from '../components/Badge'
 
 const cardStyle = { background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }
 const estadoConfig = {
-  preñez:    { badge: 'violeta', label: 'En preñez',  icono: '🫄' },
-  lactancia: { badge: 'naranja', label: 'Lactancia',  icono: '🤱' },
-  completada:{ badge: 'verde',   label: 'Completada', icono: '✅' },
+  apareamiento: { badge: 'azul',    label: 'En apareamiento', icono: '💑' },
+  preñez:       { badge: 'violeta', label: 'En preñez',       icono: '🫄' },
+  lactancia:    { badge: 'naranja', label: 'Lactancia',       icono: '🤱' },
+  completada:   { badge: 'verde',   label: 'Completada',      icono: '✅' },
 }
 
 function LatenciaBit({ dias }) {
@@ -29,11 +31,13 @@ function LatenciaBit({ dias }) {
 }
 
 export default function Camadas() {
-  const { camadas, animales, agregarCamada, editarCamada, eliminarCamada } = useBioterio()
+  const { camadas, animales, agregarCamada, editarCamada, eliminarCamada, confirmarSeparacion } = useBioterio()
   const [modal, setModal] = useState(null)
   const [confirmarEliminar, setConfirmarEliminar] = useState(null)
   const [filtro, setFiltro] = useState('todas')
   const [expandida, setExpandida] = useState(null)
+  const [separando, setSeparando] = useState(null)       // id de camada en proceso de confirmar separación
+  const [fechaSepInput, setFechaSepInput] = useState('')
 
   const hoyDate = parseDate(hoy())
 
@@ -46,13 +50,24 @@ export default function Camadas() {
       const rango = c.fecha_copula && !c.fecha_nacimiento ? calcularRangoParto(c.fecha_copula) : null
       const fechaDestete = c.fecha_nacimiento ? calcularDestete(c.fecha_nacimiento) : null
       const fechaMadurez = c.fecha_nacimiento ? calcularMadurez(c.fecha_nacimiento) : null
+      const fechaSepEsperada = c.fecha_copula && !c.fecha_nacimiento ? calcularFechaSeparacion(c.fecha_copula) : null
       const latencia = calcularLatencia(c)
-      let estado = 'preñez'
-      if (c.fecha_destete) estado = 'completada'
-      else if (c.fecha_nacimiento) estado = 'lactancia'
-      return { ...c, rango, fechaDestete, fechaMadurez, latencia, estado }
+
+      let estado
+      if (c.fecha_destete) {
+        estado = 'completada'
+      } else if (c.fecha_nacimiento) {
+        estado = 'lactancia'
+      } else {
+        const tieneSeparacion = !!c.fecha_separacion
+        const diasDesdeCopula = c.fecha_copula ? difDias(parseDate(c.fecha_copula), hoyDate) : 0
+        const autoSeparada = !c.fecha_separacion && c.fecha_copula && diasDesdeCopula >= BIO.DURACION_APAREAMIENTO_DIAS
+        estado = (tieneSeparacion || autoSeparada) ? 'preñez' : 'apareamiento'
+      }
+
+      return { ...c, rango, fechaDestete, fechaMadurez, fechaSepEsperada, latencia, estado }
     })
-  }, [camadas])
+  }, [camadas, hoyDate])
 
   const filtradas = useMemo(() =>
     filtro === 'todas' ? camadasEnriquecidas : camadasEnriquecidas.filter((c) => c.estado === filtro),
@@ -118,8 +133,9 @@ export default function Camadas() {
       </div>
 
       {/* Filtros */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <FiltroBtn valor="todas">Todas</FiltroBtn>
+        <FiltroBtn valor="apareamiento">En apareamiento</FiltroBtn>
         <FiltroBtn valor="preñez">En preñez</FiltroBtn>
         <FiltroBtn valor="lactancia">Lactancia</FiltroBtn>
         <FiltroBtn valor="completada">Completadas</FiltroBtn>
@@ -167,6 +183,41 @@ export default function Camadas() {
                         <LatenciaBit dias={camada.latencia} />
                       </div>
                     )}
+
+                    {/* Botón / inline de separación */}
+                    {camada.estado === 'apareamiento' && (
+                      separando === camada.id ? (
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="date"
+                            value={fechaSepInput}
+                            onChange={(e) => setFechaSepInput(e.target.value)}
+                            className="px-2 py-1 text-xs rounded-lg font-mono focus:outline-none"
+                            style={{ background: 'rgba(8,13,26,0.8)', border: '1px solid rgba(64,196,255,0.4)', color: '#c9d4e0' }}
+                          />
+                          <button
+                            onClick={() => {
+                              if (fechaSepInput) {
+                                confirmarSeparacion(camada.id, fechaSepInput)
+                                setSeparando(null)
+                              }
+                            }}
+                            className="px-2 py-1 rounded-lg text-xs font-bold"
+                            style={{ background: 'rgba(64,196,255,0.15)', border: '1px solid rgba(64,196,255,0.4)', color: '#40c4ff' }}
+                          >✓</button>
+                          <button onClick={() => setSeparando(null)} className="text-xs" style={{ color: '#4a5f7a' }}>✕</button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setSeparando(camada.id); setFechaSepInput(hoy()) }}
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-semibold"
+                          style={{ background: 'rgba(64,196,255,0.1)', border: '1px solid rgba(64,196,255,0.3)', color: '#40c4ff' }}
+                        >
+                          ✂ Separar
+                        </button>
+                      )
+                    )}
+
                     <button
                       onClick={() => setExpandida(isExp ? null : camada.id)}
                       className="w-7 h-7 rounded-lg flex items-center justify-center text-xs"
@@ -189,6 +240,18 @@ export default function Camadas() {
                     className="px-5 py-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm"
                     style={{ borderTop: '1px solid rgba(0,230,118,0.08)', background: 'rgba(0,0,0,0.2)' }}
                   >
+                    {/* Separación */}
+                    {camada.fecha_separacion ? (
+                      <DataItem label="Separación confirmada" valor={formatFecha(camada.fecha_separacion)} color="#40c4ff" />
+                    ) : camada.fechaSepEsperada ? (
+                      <DataItem
+                        label="Separación esperada"
+                        valor={formatFecha(camada.fechaSepEsperada)}
+                        sub={`${BIO.DURACION_APAREAMIENTO_DIAS}d post-cópula`}
+                        color="#40c4ff"
+                      />
+                    ) : null}
+
                     {camada.rango && (
                       <DataItem
                         label="Parto esperado"

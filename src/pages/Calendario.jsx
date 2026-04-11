@@ -7,6 +7,7 @@ const TIPOS = {
   destete:       { label: 'Destete',          color: '#ffb300', bg: 'rgba(255,179,0,0.12)',   borde: 'rgba(255,179,0,0.3)'   },
   madurez:       { label: 'Madurez',          color: '#ce93d8', bg: 'rgba(206,147,216,0.12)', borde: 'rgba(206,147,216,0.3)' },
   parto_esperado:{ label: 'Parto esperado',   color: '#40c4ff', bg: 'rgba(64,196,255,0.12)',  borde: 'rgba(64,196,255,0.3)'  },
+  separacion:    { label: 'Separación pareja',color: '#4dd0e1', bg: 'rgba(77,208,225,0.10)',  borde: 'rgba(77,208,225,0.28)' },
   copula:        { label: 'Cópula',           color: '#8a9bb0', bg: 'rgba(138,155,176,0.08)', borde: 'rgba(138,155,176,0.2)' },
 }
 
