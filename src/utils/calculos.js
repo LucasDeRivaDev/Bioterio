@@ -1,13 +1,5 @@
 import { BIO } from './constants'
 
-/**
- * Calcula la fecha esperada de separación de la pareja (fecha_copula + 15 días).
- */
-export function calcularFechaSeparacion(fechaCopula) {
-  if (!fechaCopula) return null
-  return sumarDias(parseDate(fechaCopula), BIO.DURACION_APAREAMIENTO_DIAS)
-}
-
 // Sumar días a una fecha (retorna Date)
 export function sumarDias(fecha, dias) {
   const d = new Date(fecha)
@@ -46,6 +38,14 @@ export function hoy() {
 export function parseDate(str) {
   if (!str) return null
   return new Date(str + 'T12:00:00')
+}
+
+/**
+ * Calcula la fecha esperada de separación de la pareja (fecha_copula + 15 días).
+ */
+export function calcularFechaSeparacion(fechaCopula) {
+  if (!fechaCopula) return null
+  return sumarDias(parseDate(fechaCopula), BIO.DURACION_APAREAMIENTO_DIAS)
 }
 
 // ─── MOTOR PREDICTIVO ────────────────────────────────────────────────────────
