@@ -1,11 +1,17 @@
 import { useState } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
-import { calcularRangoParto, calcularDestete, formatFecha } from '../utils/calculos'
+import { calcularRangoParto, calcularDestete, formatFecha, hoy } from '../utils/calculos'
 
 const vacioCamada = {
   id_madre: '', id_padre: '', fecha_copula: '', fecha_nacimiento: '',
   gestacion_real: '', total_crias: '', crias_machos: '', crias_hembras: '',
   total_destetados: '', fecha_destete: '', notas: '',
+}
+
+const ESTADOS_ACTIVOS = ['activo', 'en_apareamiento', 'en_cria']
+
+function esInactivo(animal) {
+  return animal && !ESTADOS_ACTIVOS.includes(animal.estado)
 }
 
 const inputStyle = {
@@ -33,9 +39,17 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
   const { animales } = useBioterio()
   const [form, setForm] = useState(camada ?? vacioCamada)
   const [errores, setErrores] = useState({})
+  const [modoHistorico, setModoHistorico] = useState(false)
 
-  const hembras = animales.filter((a) => a.sexo === 'hembra' && a.estado !== 'fallecido')
-  const machos = animales.filter((a) => a.sexo === 'macho' && a.estado !== 'fallecido')
+  // En modo normal: solo activos. En modo histórico: todos.
+  const hembrasBase = animales.filter((a) => a.sexo === 'hembra')
+  const machosBase  = animales.filter((a) => a.sexo === 'macho')
+  const hembras = modoHistorico ? hembrasBase : hembrasBase.filter((a) => ESTADOS_ACTIVOS.includes(a.estado))
+  const machos  = modoHistorico ? machosBase  : machosBase.filter((a)  => ESTADOS_ACTIVOS.includes(a.estado))
+
+  const madreSelec = animales.find((a) => a.id === form.id_madre)
+  const padreSelec = animales.find((a) => a.id === form.id_padre)
+  const fechaEsPasada = form.fecha_copula && form.fecha_copula < hoy()
 
   function cambiar(campo, valor) {
     setForm((prev) => ({ ...prev, [campo]: valor }))
@@ -47,6 +61,13 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
     if (!form.id_madre) nuevos.id_madre = 'Seleccioná una hembra'
     if (!form.id_padre) nuevos.id_padre = 'Seleccioná un macho'
     if (!form.fecha_copula) nuevos.fecha_copula = 'La fecha de cópula es obligatoria'
+
+    // No permitir apareamiento futuro con animales inactivos
+    if (form.fecha_copula && form.fecha_copula >= hoy()) {
+      if (esInactivo(madreSelec)) nuevos.id_madre = 'No se puede asignar una hembra inactiva a un apareamiento futuro'
+      if (esInactivo(padreSelec)) nuevos.id_padre = 'No se puede asignar un macho inactivo a un apareamiento futuro'
+    }
+
     setErrores(nuevos)
     return Object.keys(nuevos).length === 0
   }
@@ -69,8 +90,41 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
 
   const selectStyle = { ...inputStyle, width: '100%' }
 
+  const etiquetaEstado = { retirado: 'retirado', fallecido: 'fallecido', en_apareamiento: 'apareamiento', en_cria: 'en cría' }
+
   return (
     <form onSubmit={manejarEnvio} className="space-y-4">
+
+      {/* Toggle modo histórico */}
+      <button
+        type="button"
+        onClick={() => setModoHistorico((v) => !v)}
+        className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all"
+        style={
+          modoHistorico
+            ? { background: 'rgba(255,179,0,0.1)', border: '1px solid rgba(255,179,0,0.35)', color: '#ffb300' }
+            : { background: 'rgba(138,155,176,0.06)', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }
+        }
+      >
+        <span className="flex items-center gap-2">
+          <span>{modoHistorico ? '📋' : '📋'}</span>
+          <span className="font-semibold">Carga histórica</span>
+          {modoHistorico && <span className="text-xs opacity-70">(incluye animales inactivos y fallecidos)</span>}
+        </span>
+        <span
+          className="w-9 h-5 rounded-full flex items-center transition-all px-0.5"
+          style={{ background: modoHistorico ? 'rgba(255,179,0,0.4)' : 'rgba(30,51,82,0.8)' }}
+        >
+          <span
+            className="w-4 h-4 rounded-full transition-all"
+            style={{
+              background: modoHistorico ? '#ffb300' : '#4a5f7a',
+              transform: modoHistorico ? 'translateX(16px)' : 'translateX(0)',
+            }}
+          />
+        </span>
+      </button>
+
       {/* Pareja reproductora */}
       <div className="grid grid-cols-2 gap-3">
         <LabInput label="Hembra" required error={errores.id_madre}>
@@ -81,8 +135,17 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
             style={{ ...selectStyle, borderColor: errores.id_madre ? 'rgba(255,61,87,0.5)' : undefined }}
           >
             <option value="">— Seleccioná —</option>
-            {hembras.map((a) => <option key={a.id} value={a.id}>{a.codigo}</option>)}
+            {hembras.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.codigo}{esInactivo(a) ? ` (${etiquetaEstado[a.estado] ?? a.estado})` : ''}
+              </option>
+            ))}
           </select>
+          {esInactivo(madreSelec) && fechaEsPasada && (
+            <p className="text-xs mt-1" style={{ color: '#ffb300' }}>
+              Animal inactivo — permitido solo para carga histórica
+            </p>
+          )}
         </LabInput>
         <LabInput label="Macho" required error={errores.id_padre}>
           <select
@@ -92,8 +155,17 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
             style={{ ...selectStyle, borderColor: errores.id_padre ? 'rgba(255,61,87,0.5)' : undefined }}
           >
             <option value="">— Seleccioná —</option>
-            {machos.map((a) => <option key={a.id} value={a.id}>{a.codigo}</option>)}
+            {machos.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.codigo}{esInactivo(a) ? ` (${etiquetaEstado[a.estado] ?? a.estado})` : ''}
+              </option>
+            ))}
           </select>
+          {esInactivo(padreSelec) && fechaEsPasada && (
+            <p className="text-xs mt-1" style={{ color: '#ffb300' }}>
+              Animal inactivo — permitido solo para carga histórica
+            </p>
+          )}
         </LabInput>
       </div>
 
