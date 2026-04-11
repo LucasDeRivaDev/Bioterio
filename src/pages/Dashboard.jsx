@@ -108,6 +108,7 @@ export default function Dashboard() {
   const activas = animales.filter((a) => a.estado === 'activo' || a.estado === 'en_apareamiento' || a.estado === 'en_cria')
   const hembrasActivas = activas.filter((a) => a.sexo === 'hembra').length
   const machosActivos = activas.filter((a) => a.sexo === 'macho').length
+  const hoyDate = parseDate(hoy())
   const enApareamiento = camadas.filter((c) => {
     if (c.fecha_nacimiento || c.fecha_destete || c.fecha_separacion) return false
     if (!c.fecha_copula) return false
@@ -121,7 +122,6 @@ export default function Dashboard() {
   }).length
   const camadasConCrias = camadas.filter((c) => c.fecha_nacimiento && !c.fecha_destete).length
 
-  const hoyDate = parseDate(hoy())
   const proximosPartos = camadas
     .filter((c) => c.fecha_copula && !c.fecha_nacimiento)
     .map((c) => {
