@@ -113,53 +113,276 @@ function BloqueJaula({ bloque, onClick }) {
   )
 }
 
-function DetalleModal({ bloque, onCerrar }) {
-  const cfg = CAT[bloque.categoria]
+function JaulaModal({ bloque, jaulas, camadas, onCerrar, editarJaula, agregarJaula }) {
+  const cfg       = CAT[bloque.categoria]
+  const esRepro   = bloque.tipo === 'reproductor'
+  const esVirtual = Boolean(bloque.virtual)
+  const esReal    = bloque.tipo === 'stock' && !esVirtual
+
+  const [modo, setModo] = useState('ver')
+
+  // ── Editar ────────────────────────────────────────────────────────
+  const [eTotal,   setETotal]   = useState(String(bloque.total))
+  const [eMachos,  setEMachos]  = useState(bloque.machos  != null ? String(bloque.machos)  : '')
+  const [eHembras, setEHembras] = useState(bloque.hembras != null ? String(bloque.hembras) : '')
+  const [eNotas,   setENotas]   = useState(bloque.jaula?.notas ?? '')
+
+  // ── Dividir ───────────────────────────────────────────────────────
+  const [parts, setParts] = useState([
+    { total: String(bloque.total), machos: bloque.machos != null ? String(bloque.machos) : '', hembras: bloque.hembras != null ? String(bloque.hembras) : '' },
+    { total: '0', machos: '', hembras: '' },
+  ])
+  const sumaParts = parts.reduce((s, p) => s + (parseInt(p.total) || 0), 0)
+  const partsOk   = sumaParts === bloque.total && parts.every((p) => (parseInt(p.total) || 0) >= 0)
+
+  // ── Mover ─────────────────────────────────────────────────────────
+  const jaulasDestino = jaulas.filter((j) => j.id !== bloque.jaula?.id)
+  const [destinoId, setDestinoId] = useState(jaulasDestino[0]?.id ?? '')
+  const [cantMover, setCantMover] = useState('1')
+  const cantN   = parseInt(cantMover) || 0
+  const moverOk = destinoId && cantN > 0 && cantN <= bloque.total
+
+  // ── Estilos comunes ───────────────────────────────────────────────
+  const iStyle = {
+    background: 'rgba(5,8,16,0.6)', border: '1px solid rgba(30,51,82,0.8)',
+    color: '#e2e8f0', borderRadius: '0.5rem', padding: '0.4rem 0.6rem',
+    fontSize: '0.8125rem', fontFamily: 'monospace', width: '100%', outline: 'none',
+  }
+  const btnTab = (m, label) => (
+    <button
+      key={m} onClick={() => setModo(m)}
+      style={modo === m
+        ? { background: `${cfg.color}18`, border: `1px solid ${cfg.color}45`, color: cfg.color, borderRadius: '0.5rem', padding: '0.3rem 0.75rem', fontSize: '0.75rem', fontWeight: 600 }
+        : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a', borderRadius: '0.5rem', padding: '0.3rem 0.75rem', fontSize: '0.75rem', fontWeight: 600 }}
+    >{label}</button>
+  )
+
+  // ── Handlers ──────────────────────────────────────────────────────
+  async function guardarEdicion() {
+    const total   = Math.max(0, parseInt(eTotal) || 0)
+    const machos  = eMachos  !== '' ? parseInt(eMachos)  : null
+    const hembras = eHembras !== '' ? parseInt(eHembras) : null
+    await editarJaula({ ...bloque.jaula, total, machos, hembras, notas: eNotas })
+    onCerrar()
+  }
+
+  async function guardarDividir() {
+    if (!partsOk) return
+    const validas = parts.filter((p) => (parseInt(p.total) || 0) > 0)
+    await editarJaula({
+      ...bloque.jaula,
+      total:   parseInt(validas[0].total),
+      machos:  validas[0].machos  !== '' ? parseInt(validas[0].machos)  : null,
+      hembras: validas[0].hembras !== '' ? parseInt(validas[0].hembras) : null,
+    })
+    for (const p of validas.slice(1)) {
+      await agregarJaula({
+        camada_id: bloque.camada.id,
+        total:   parseInt(p.total),
+        machos:  p.machos  !== '' ? parseInt(p.machos)  : null,
+        hembras: p.hembras !== '' ? parseInt(p.hembras) : null,
+        notas: '',
+      })
+    }
+    onCerrar()
+  }
+
+  async function guardarMover() {
+    if (!moverOk) return
+    const destino = jaulas.find((j) => j.id === destinoId)
+    if (!destino) return
+    await editarJaula({ ...bloque.jaula, total: bloque.jaula.total - cantN })
+    await editarJaula({ ...destino,       total: destino.total       + cantN })
+    onCerrar()
+  }
+
+  async function convertirAJaula() {
+    await agregarJaula({
+      camada_id: bloque.camada.id,
+      total:   bloque.total,
+      machos:  bloque.machos  ?? null,
+      hembras: bloque.hembras ?? null,
+      notas: '',
+    })
+    onCerrar()
+  }
 
   return (
-    <Modal titulo="Detalle de jaula" onCerrar={onCerrar} ancho="max-w-sm">
+    <Modal titulo="Jaula" onCerrar={onCerrar} ancho="max-w-sm">
       <div className="space-y-4">
-        {/* Categoría */}
-        <div
-          className="flex items-center gap-3 px-4 py-3 rounded-xl"
-          style={{ background: cfg.bg, border: `1px solid ${cfg.borde}` }}
-        >
+
+        {/* Badge de categoría */}
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: cfg.bg, border: `1px solid ${cfg.borde}` }}>
           <span className="text-2xl">{cfg.icono}</span>
           <div>
             <div className="font-bold text-sm" style={{ color: cfg.color }}>{cfg.label}</div>
-            {bloque.virtual && (
-              <div className="text-xs mt-0.5" style={{ color: '#ffb300' }}>
-                Sin distribución asignada — editá desde Camadas
-              </div>
-            )}
+            {esVirtual && <div className="text-xs mt-0.5" style={{ color: '#ffb300' }}>Sin distribución asignada</div>}
+            {esRepro   && <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>Reproductor registrado</div>}
           </div>
         </div>
 
-        {/* Datos */}
-        <div className="space-y-3">
-          {bloque.tipo === 'reproductor' ? (
-            <>
-              <Row label="Código" valor={bloque.animal.codigo} color={cfg.color} />
-              <Row label="Sexo" valor={bloque.animal.sexo === 'macho' ? '♂ Macho' : '♀ Hembra'} color={cfg.color} />
-              <Row label="Estado" valor={bloque.animal.estado} />
-              <Row label="Nacimiento" valor={formatFecha(bloque.animal.fecha_nacimiento)} />
-              <Row label="Edad" valor={bloque.edad != null ? `${bloque.edad} días (${formatEdad(bloque.edad)})` : '—'} />
-              <Row label="Tipo" valor="Reproductor registrado" />
-              {bloque.animal.notas && <Row label="Notas" valor={bloque.animal.notas} />}
-            </>
-          ) : (
-            <>
-              <Row label="Origen" valor={`${bloque.madre?.codigo ?? '?'} × ${bloque.padre?.codigo ?? '?'}`} color={cfg.color} />
-              <Row label="Total en jaula" valor={`${bloque.total} animales`} color={cfg.color} />
-              {bloque.machos != null && <Row label="Machos" valor={`♂ ${bloque.machos}`} color="#40c4ff" />}
-              {bloque.hembras != null && <Row label="Hembras" valor={`♀ ${bloque.hembras}`} color="#ce93d8" />}
-              <Row label="Nacimiento" valor={formatFecha(bloque.camada?.fecha_nacimiento)} />
-              <Row label="Edad" valor={bloque.edad != null ? `${bloque.edad} días (${formatEdad(bloque.edad)})` : '—'} />
-              <Row label="Tipo" valor="Stock / Destete" />
-              {bloque.jaula?.notas && <Row label="Notas" valor={bloque.jaula.notas} />}
-            </>
-          )}
-        </div>
+        {/* Tabs — solo para jaulas reales */}
+        {esReal && (
+          <div className="flex gap-2 flex-wrap">
+            {btnTab('ver', 'Ver')}
+            {btnTab('editar', '✏ Editar')}
+            {btnTab('dividir', '✂ Dividir')}
+            {jaulasDestino.length > 0 && btnTab('mover', '→ Mover')}
+          </div>
+        )}
+
+        {/* ── VER ─────────────────────────────────────────────────── */}
+        {(modo === 'ver' || esRepro || esVirtual) && (
+          <div className="space-y-3">
+            {esRepro ? (
+              <>
+                <Row label="Código"     valor={bloque.animal.codigo} color={cfg.color} />
+                <Row label="Sexo"       valor={bloque.animal.sexo === 'macho' ? '♂ Macho' : '♀ Hembra'} color={cfg.color} />
+                <Row label="Estado"     valor={bloque.animal.estado} />
+                <Row label="Nacimiento" valor={formatFecha(bloque.animal.fecha_nacimiento)} />
+                <Row label="Edad"       valor={bloque.edad != null ? `${bloque.edad} días (${formatEdad(bloque.edad)})` : '—'} />
+                {bloque.animal.notas && <Row label="Notas" valor={bloque.animal.notas} />}
+              </>
+            ) : (
+              <>
+                <Row label="Origen"     valor={`${bloque.madre?.codigo ?? '?'} × ${bloque.padre?.codigo ?? '?'}`} color={cfg.color} />
+                <Row label="Total"      valor={`${bloque.total} animales`} color={cfg.color} />
+                {bloque.machos  != null && <Row label="Machos"  valor={`♂ ${bloque.machos}`}  color="#40c4ff" />}
+                {bloque.hembras != null && <Row label="Hembras" valor={`♀ ${bloque.hembras}`} color="#ce93d8" />}
+                <Row label="Nacimiento" valor={formatFecha(bloque.camada?.fecha_nacimiento)} />
+                <Row label="Edad"       valor={bloque.edad != null ? `${bloque.edad} días (${formatEdad(bloque.edad)})` : '—'} />
+                {bloque.jaula?.notas && <Row label="Notas" valor={bloque.jaula.notas} />}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── EDITAR ──────────────────────────────────────────────── */}
+        {modo === 'editar' && esReal && (
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs uppercase tracking-widest font-semibold mb-1 block" style={{ color: '#4a5f7a' }}>Total animales</label>
+              <input type="number" min="0" value={eTotal} onChange={(e) => setETotal(e.target.value)} style={iStyle} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs uppercase tracking-widest font-semibold mb-1 block" style={{ color: '#40c4ff' }}>♂ Machos</label>
+                <input type="number" min="0" placeholder="—" value={eMachos} onChange={(e) => setEMachos(e.target.value)} style={iStyle} />
+              </div>
+              <div>
+                <label className="text-xs uppercase tracking-widest font-semibold mb-1 block" style={{ color: '#ce93d8' }}>♀ Hembras</label>
+                <input type="number" min="0" placeholder="—" value={eHembras} onChange={(e) => setEHembras(e.target.value)} style={iStyle} />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs uppercase tracking-widest font-semibold mb-1 block" style={{ color: '#4a5f7a' }}>Notas</label>
+              <input type="text" placeholder="—" value={eNotas} onChange={(e) => setENotas(e.target.value)} style={iStyle} />
+            </div>
+            <button onClick={guardarEdicion} className="w-full py-2 rounded-xl text-sm font-bold"
+              style={{ background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.3)', color: '#00e676', cursor: 'pointer' }}>
+              Guardar cambios
+            </button>
+          </div>
+        )}
+
+        {/* ── DIVIDIR ─────────────────────────────────────────────── */}
+        {modo === 'dividir' && esReal && (
+          <div className="space-y-3">
+            <p className="text-xs" style={{ color: '#4a5f7a' }}>
+              Repartí los <span style={{ color: cfg.color, fontWeight: 700 }}>{bloque.total} animales</span> en nuevas jaulas.
+              La primera actualiza la actual; las demás se crean nuevas.
+            </p>
+            {parts.map((p, i) => (
+              <div key={i} className="rounded-xl p-3 space-y-2"
+                style={{ background: 'rgba(5,8,16,0.5)', border: '1px solid rgba(30,51,82,0.6)' }}>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold" style={{ color: i === 0 ? cfg.color : '#8a9bb0' }}>
+                    {i === 0 ? 'Jaula actual' : `Nueva jaula ${i}`}
+                  </span>
+                  {i > 1 && (
+                    <button onClick={() => setParts((prev) => prev.filter((_, idx) => idx !== i))}
+                      style={{ color: '#ff6b80', fontSize: '0.7rem', background: 'none', border: 'none', cursor: 'pointer' }}>
+                      ✕ quitar
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[['total', 'Total', '#8a9bb0'], ['machos', '♂', '#40c4ff'], ['hembras', '♀', '#ce93d8']].map(([field, lbl, col]) => (
+                    <div key={field}>
+                      <div className="text-xs mb-1 font-semibold" style={{ color: col }}>{lbl}</div>
+                      <input
+                        type="number" min="0" placeholder={field !== 'total' ? '—' : ''}
+                        value={p[field]}
+                        onChange={(e) => setParts((prev) => prev.map((x, idx) => idx === i ? { ...x, [field]: e.target.value } : x))}
+                        style={{ ...iStyle }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <div className="text-xs font-mono text-center py-1.5 rounded-lg"
+              style={{ color: partsOk ? '#00e676' : '#ff6b80', background: partsOk ? 'rgba(0,230,118,0.06)' : 'rgba(255,61,87,0.06)' }}>
+              {sumaParts} / {bloque.total} animales asignados
+              {!partsOk && sumaParts > bloque.total && ' — excede el total'}
+              {!partsOk && sumaParts < bloque.total && ' — faltan asignar'}
+            </div>
+            <button onClick={() => setParts((prev) => [...prev, { total: '0', machos: '', hembras: '' }])}
+              className="w-full py-1.5 rounded-lg text-xs font-semibold"
+              style={{ background: 'transparent', border: '1px dashed rgba(30,51,82,0.8)', color: '#4a5f7a', cursor: 'pointer' }}>
+              + Agregar jaula
+            </button>
+            <button onClick={guardarDividir} disabled={!partsOk} className="w-full py-2 rounded-xl text-sm font-bold"
+              style={{ background: partsOk ? 'rgba(0,230,118,0.12)' : 'rgba(30,51,82,0.3)', border: `1px solid ${partsOk ? 'rgba(0,230,118,0.3)' : 'rgba(30,51,82,0.5)'}`, color: partsOk ? '#00e676' : '#4a5f7a', cursor: partsOk ? 'pointer' : 'not-allowed' }}>
+              Confirmar división
+            </button>
+          </div>
+        )}
+
+        {/* ── MOVER ───────────────────────────────────────────────── */}
+        {modo === 'mover' && esReal && jaulasDestino.length > 0 && (
+          <div className="space-y-3">
+            <p className="text-xs" style={{ color: '#4a5f7a' }}>
+              Mover animales de esta jaula (<span style={{ color: cfg.color }}>{bloque.total} en total</span>) a otra existente.
+            </p>
+            <div>
+              <label className="text-xs uppercase tracking-widest font-semibold mb-1 block" style={{ color: '#4a5f7a' }}>Jaula destino</label>
+              <select value={destinoId} onChange={(e) => setDestinoId(e.target.value)} style={{ ...iStyle }}>
+                {jaulasDestino.map((j) => {
+                  const c = camadas.find((x) => x.id === j.camada_id)
+                  return (
+                    <option key={j.id} value={j.id}>
+                      {c ? `Camada ...${c.id.slice(-4)}` : `Jaula ...${j.id.slice(-4)}`} — {j.total} animales
+                    </option>
+                  )
+                })}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs uppercase tracking-widest font-semibold mb-1 block" style={{ color: '#4a5f7a' }}>
+                Cantidad a mover (máx. {bloque.total})
+              </label>
+              <input type="number" min="1" max={bloque.total} value={cantMover}
+                onChange={(e) => setCantMover(e.target.value)} style={iStyle} />
+              {cantN > bloque.total && (
+                <p className="text-xs mt-1" style={{ color: '#ff6b80' }}>No podés mover más de {bloque.total} animales</p>
+              )}
+            </div>
+            <button onClick={guardarMover} disabled={!moverOk} className="w-full py-2 rounded-xl text-sm font-bold"
+              style={{ background: moverOk ? 'rgba(0,230,118,0.12)' : 'rgba(30,51,82,0.3)', border: `1px solid ${moverOk ? 'rgba(0,230,118,0.3)' : 'rgba(30,51,82,0.5)'}`, color: moverOk ? '#00e676' : '#4a5f7a', cursor: moverOk ? 'pointer' : 'not-allowed' }}>
+              Confirmar movimiento
+            </button>
+          </div>
+        )}
+
+        {/* Virtual → registrar como jaula real */}
+        {esVirtual && (
+          <button onClick={convertirAJaula} className="w-full py-2 rounded-xl text-sm font-bold"
+            style={{ background: 'rgba(255,179,0,0.1)', border: '1px solid rgba(255,179,0,0.3)', color: '#ffb300', cursor: 'pointer' }}>
+            Asignar a jaula registrada
+          </button>
+        )}
+
       </div>
     </Modal>
   )
@@ -220,7 +443,7 @@ function CategoriaCard({ icono, titulo, subtitulo, total, grupos, gruposLabel, m
 // ── Página principal ──────────────────────────────────────────────────────────
 
 export default function Stock() {
-  const { animales, camadas, sacrificios, jaulas } = useBioterio()
+  const { animales, camadas, sacrificios, jaulas, editarJaula, agregarJaula } = useBioterio()
   const [vista, setVista] = useState('jaulas')
   const [detalle, setDetalle] = useState(null)
   const [filtroCat, setFiltroCat] = useState('todas')
@@ -476,8 +699,17 @@ export default function Stock() {
         </div>
       )}
 
-      {/* Modal de detalle */}
-      {detalle && <DetalleModal bloque={detalle} onCerrar={() => setDetalle(null)} />}
+      {/* Modal de jaula */}
+      {detalle && (
+        <JaulaModal
+          bloque={detalle}
+          jaulas={jaulas}
+          camadas={camadas}
+          onCerrar={() => setDetalle(null)}
+          editarJaula={editarJaula}
+          agregarJaula={agregarJaula}
+        />
+      )}
     </div>
   )
 }
