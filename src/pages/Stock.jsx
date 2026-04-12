@@ -57,14 +57,35 @@ function ChipCategoria({ label, animales, jaulas, color }) {
   )
 }
 
-function BloqueJaula({ bloque, onClick }) {
+function BloqueJaula({ bloque, onClick, modoSeleccion = false, seleccionada = false }) {
   const cfg = CAT[bloque.categoria]
+  const esSeleccionable = modoSeleccion && bloque.tipo === 'stock'
   return (
     <button
       onClick={() => onClick(bloque)}
+      disabled={modoSeleccion && !esSeleccionable}
       className="rounded-xl overflow-hidden text-left w-full transition-all hover:scale-[1.02] active:scale-[0.98]"
-      style={{ background: 'rgba(13,21,40,0.9)', border: `1px solid ${cfg.borde}`, boxShadow: `0 0 12px ${cfg.bg}` }}
+      style={{
+        background: seleccionada ? 'rgba(255,61,87,0.08)' : 'rgba(13,21,40,0.9)',
+        border: seleccionada ? '2px solid rgba(255,61,87,0.7)' : `1px solid ${cfg.borde}`,
+        boxShadow: seleccionada ? '0 0 16px rgba(255,61,87,0.15)' : `0 0 12px ${cfg.bg}`,
+        opacity: modoSeleccion && !esSeleccionable ? 0.35 : 1,
+        position: 'relative',
+        cursor: modoSeleccion && !esSeleccionable ? 'default' : 'pointer',
+      }}
     >
+      {/* Indicador de selección */}
+      {modoSeleccion && esSeleccionable && (
+        <div
+          className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold z-10"
+          style={seleccionada
+            ? { background: '#ff6b80', color: '#050810' }
+            : { border: '2px solid rgba(255,61,87,0.4)', background: 'rgba(5,8,16,0.6)' }}
+        >
+          {seleccionada && '✓'}
+        </div>
+      )}
+
       {/* Header coloreado */}
       <div
         className="px-3 py-1.5 flex items-center justify-between"
@@ -82,14 +103,11 @@ function BloqueJaula({ bloque, onClick }) {
 
       {/* Cuerpo */}
       <div className="px-3 py-3 space-y-1.5">
-        {/* Identificador */}
         <div className="font-mono font-bold text-sm text-white">
           {bloque.tipo === 'reproductor'
             ? bloque.animal.codigo
             : `${bloque.madre?.codigo ?? '?'} × ${bloque.padre?.codigo ?? '?'}`}
         </div>
-
-        {/* Conteo */}
         <div className="flex items-center gap-2 text-xs font-mono">
           {bloque.tipo === 'reproductor' ? (
             <span style={{ color: cfg.color }}>
@@ -103,8 +121,6 @@ function BloqueJaula({ bloque, onClick }) {
             </span>
           )}
         </div>
-
-        {/* Edad */}
         <div className="text-xs" style={{ color: '#4a5f7a' }}>
           {bloque.edad != null ? `${formatEdad(bloque.edad)} · ${bloque.edad}d` : '—'}
         </div>
@@ -397,6 +413,112 @@ function Row({ label, valor, color = '#8a9bb0' }) {
   )
 }
 
+function ModalSacrificio({ bloques, onConfirmar, onCerrar }) {
+  const [fecha, setFecha]     = useState(hoy())
+  const [notas, setNotas]     = useState('')
+  const [guardando, setGuardando] = useState(false)
+
+  const total = bloques.reduce((s, b) => s + b.total, 0)
+  const iStyle = {
+    background: 'rgba(5,8,16,0.6)', border: '1px solid rgba(30,51,82,0.8)',
+    color: '#e2e8f0', borderRadius: '0.5rem', padding: '0.4rem 0.6rem',
+    fontSize: '0.8125rem', width: '100%', outline: 'none',
+  }
+
+  async function confirmar() {
+    setGuardando(true)
+    try { await onConfirmar(fecha, notas || null) }
+    finally { setGuardando(false) }
+  }
+
+  return (
+    <Modal titulo="Confirmar sacrificio" onCerrar={onCerrar} ancho="max-w-md">
+      <div className="space-y-4">
+
+        {/* Advertencia */}
+        <div className="flex items-start gap-3 px-4 py-3 rounded-xl"
+          style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)' }}>
+          <span className="text-xl shrink-0">⚠️</span>
+          <div>
+            <div className="font-bold text-sm" style={{ color: '#ff6b80' }}>Esta acción no se puede deshacer</div>
+            <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>
+              Las jaulas seleccionadas se eliminarán del stock y se registrará el sacrificio
+            </div>
+          </div>
+        </div>
+
+        {/* Lista de jaulas */}
+        <div>
+          <div className="text-xs uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5f7a' }}>
+            Jaulas a sacrificar ({bloques.length})
+          </div>
+          <div className="space-y-2 max-h-52 overflow-y-auto">
+            {bloques.map((b) => {
+              const cfg = CAT[b.categoria]
+              return (
+                <div key={b.id} className="flex items-center justify-between px-3 py-2 rounded-xl"
+                  style={{ background: 'rgba(5,8,16,0.5)', border: `1px solid ${cfg.borde}` }}>
+                  <div className="flex items-center gap-2">
+                    <span>{cfg.icono}</span>
+                    <div>
+                      <div className="text-xs font-mono font-semibold" style={{ color: cfg.color }}>
+                        {b.madre?.codigo ?? '?'} × {b.padre?.codigo ?? '?'}
+                      </div>
+                      <div className="text-xs" style={{ color: '#4a5f7a' }}>
+                        {cfg.label}{b.edad != null ? ` · ${b.edad}d` : ''}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="font-mono font-bold text-lg" style={{ color: '#ff6b80' }}>{b.total}</div>
+                </div>
+              )
+            })}
+          </div>
+          <div className="flex justify-between items-center mt-3 px-1">
+            <span className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#4a5f7a' }}>Total</span>
+            <span className="font-mono font-bold text-xl" style={{ color: '#ff6b80' }}>{total} animales</span>
+          </div>
+        </div>
+
+        {/* Fecha */}
+        <div>
+          <label className="text-xs uppercase tracking-widest font-semibold mb-1 block" style={{ color: '#4a5f7a' }}>Fecha del sacrificio</label>
+          <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={iStyle} />
+        </div>
+
+        {/* Notas */}
+        <div>
+          <label className="text-xs uppercase tracking-widest font-semibold mb-1 block" style={{ color: '#4a5f7a' }}>
+            Notas <span className="normal-case font-normal opacity-60">(opcional)</span>
+          </label>
+          <input type="text" placeholder="Motivo, protocolo, observaciones..."
+            value={notas} onChange={(e) => setNotas(e.target.value)}
+            style={{ ...iStyle, fontFamily: 'monospace' }} />
+        </div>
+
+        {/* Botones */}
+        <div className="flex gap-3">
+          <button onClick={onCerrar} disabled={guardando}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+            style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: '#8a9bb0' }}>
+            Cancelar
+          </button>
+          <button onClick={confirmar} disabled={guardando}
+            className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+            style={{
+              background: guardando ? 'rgba(30,51,82,0.3)' : 'rgba(255,61,87,0.15)',
+              border: `1.5px solid ${guardando ? 'rgba(30,51,82,0.5)' : 'rgba(255,61,87,0.4)'}`,
+              color: guardando ? '#4a5f7a' : '#ff6b80',
+              cursor: guardando ? 'not-allowed' : 'pointer',
+            }}>
+            {guardando ? 'Registrando...' : `🗡 Sacrificar ${total} animales`}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 // ── Componentes de la vista Resumen (existentes, sin cambios) ─────────────────
 
 function CategoriaCard({ icono, titulo, subtitulo, total, grupos, gruposLabel, machos, hembras, color, descripcion }) {
@@ -443,10 +565,13 @@ function CategoriaCard({ icono, titulo, subtitulo, total, grupos, gruposLabel, m
 // ── Página principal ──────────────────────────────────────────────────────────
 
 export default function Stock() {
-  const { animales, camadas, sacrificios, jaulas, editarJaula, agregarJaula } = useBioterio()
+  const { animales, camadas, sacrificios, jaulas, editarJaula, agregarJaula, eliminarJaula, registrarSacrificio } = useBioterio()
   const [vista, setVista] = useState('jaulas')
   const [detalle, setDetalle] = useState(null)
   const [filtroCat, setFiltroCat] = useState('todas')
+  const [modoSeleccion, setModoSeleccion] = useState(false)
+  const [seleccionadas, setSeleccionadas] = useState(new Set())
+  const [modalSacrificio, setModalSacrificio] = useState(false)
 
   // ── Bloques de jaulas (reproductores + stock) ─────────────────────────────
   const bloques = useMemo(() => {
@@ -562,6 +687,44 @@ export default function Stock() {
     filtroCat === 'todas' ? bloques : bloques.filter((b) => b.categoria === filtroCat),
   [bloques, filtroCat])
 
+  // ── Selección + sacrificio ────────────────────────────────────────────────
+  const totalSeleccionado = useMemo(() =>
+    bloques.filter((b) => seleccionadas.has(b.id)).reduce((s, b) => s + b.total, 0),
+  [bloques, seleccionadas])
+
+  function toggleSeleccion(bloque) {
+    if (bloque.tipo !== 'stock') return
+    setSeleccionadas((prev) => {
+      const next = new Set(prev)
+      next.has(bloque.id) ? next.delete(bloque.id) : next.add(bloque.id)
+      return next
+    })
+  }
+
+  function salirModoSeleccion() {
+    setModoSeleccion(false)
+    setSeleccionadas(new Set())
+  }
+
+  async function ejecutarSacrificio(fecha, notas) {
+    const bloquesSel = bloques.filter((b) => seleccionadas.has(b.id))
+    for (const b of bloquesSel) {
+      await registrarSacrificio({
+        camada_id: b.camada.id,
+        cantidad: b.total,
+        fecha,
+        categoria: b.categoria === 'crias' ? 'cria' : b.categoria === 'jovenes' ? 'joven' : b.categoria === 'adultos' ? 'adulto_nr' : null,
+        notas,
+        jaula: b.jaula?.id ?? null,
+      })
+      if (!b.virtual && b.jaula?.id) {
+        await eliminarJaula(b.jaula.id)
+      }
+    }
+    setModalSacrificio(false)
+    salirModoSeleccion()
+  }
+
   const btnTab = (v, label) => (
     <button
       onClick={() => setVista(v)}
@@ -608,9 +771,20 @@ export default function Stock() {
       </div>
 
       {/* ── TOGGLE VISTA ──────────────────────────────────────────────────── */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         {btnTab('jaulas', '⬛ Vista por jaulas')}
         {btnTab('resumen', '📊 Vista por categorías')}
+        {vista === 'jaulas' && (
+          <button
+            onClick={() => modoSeleccion ? salirModoSeleccion() : setModoSeleccion(true)}
+            className="px-4 py-2 rounded-xl text-xs font-bold transition-all ml-auto"
+            style={modoSeleccion
+              ? { background: 'rgba(255,61,87,0.15)', border: '1px solid rgba(255,61,87,0.4)', color: '#ff6b80' }
+              : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }}
+          >
+            {modoSeleccion ? '✕ Cancelar selección' : '☑ Seleccionar'}
+          </button>
+        )}
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════ */}
@@ -647,7 +821,13 @@ export default function Stock() {
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {bloquesFiltrados.map((b) => (
-                <BloqueJaula key={b.id} bloque={b} onClick={setDetalle} />
+                <BloqueJaula
+                  key={b.id}
+                  bloque={b}
+                  onClick={modoSeleccion ? toggleSeleccion : setDetalle}
+                  modoSeleccion={modoSeleccion}
+                  seleccionada={seleccionadas.has(b.id)}
+                />
               ))}
             </div>
           )}
@@ -699,6 +879,34 @@ export default function Stock() {
         </div>
       )}
 
+      {/* ── BARRA FLOTANTE DE SELECCIÓN ─────────────────────────────────────── */}
+      {modoSeleccion && seleccionadas.size > 0 && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-4 px-5 py-3 rounded-2xl"
+          style={{
+            background: '#0d1528',
+            border: '1px solid rgba(255,61,87,0.45)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.7), 0 0 24px rgba(255,61,87,0.1)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <span className="text-sm font-mono">
+            <span style={{ color: '#ff6b80', fontWeight: 700 }}>{totalSeleccionado}</span>
+            <span style={{ color: '#4a5f7a' }}> animales · </span>
+            <span style={{ color: '#ff6b80', fontWeight: 700 }}>{seleccionadas.size}</span>
+            <span style={{ color: '#4a5f7a' }}> jaula{seleccionadas.size !== 1 ? 's' : ''}</span>
+          </span>
+          <div style={{ width: '1px', height: '20px', background: 'rgba(30,51,82,0.8)' }} />
+          <button
+            onClick={() => setModalSacrificio(true)}
+            className="px-4 py-1.5 rounded-xl text-sm font-bold"
+            style={{ background: 'rgba(255,61,87,0.15)', border: '1px solid rgba(255,61,87,0.5)', color: '#ff6b80', cursor: 'pointer' }}
+          >
+            🗡 Registrar sacrificio
+          </button>
+        </div>
+      )}
+
       {/* Modal de jaula */}
       {detalle && (
         <JaulaModal
@@ -708,6 +916,15 @@ export default function Stock() {
           onCerrar={() => setDetalle(null)}
           editarJaula={editarJaula}
           agregarJaula={agregarJaula}
+        />
+      )}
+
+      {/* Modal sacrificio */}
+      {modalSacrificio && (
+        <ModalSacrificio
+          bloques={bloques.filter((b) => seleccionadas.has(b.id))}
+          onConfirmar={ejecutarSacrificio}
+          onCerrar={() => setModalSacrificio(false)}
         />
       )}
     </div>
