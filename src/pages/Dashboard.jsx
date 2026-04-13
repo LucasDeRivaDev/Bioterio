@@ -140,23 +140,23 @@ export default function Dashboard() {
   })
 
   return (
-    <div className="p-6 space-y-6 bg-dots min-h-screen" style={{ background: '#050810' }}>
+    <div className="p-4 md:p-6 space-y-5 bg-dots min-h-screen" style={{ background: '#050810' }}>
 
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <div className="flex items-center gap-3 mb-1">
             <div
-              className="w-2 h-8 rounded-full"
+              className="w-2 h-8 rounded-full shrink-0"
               style={{ background: '#00e676', boxShadow: '0 0 10px rgba(0,230,118,0.6)' }}
             />
-            <h1 className="text-2xl font-bold text-white tracking-tight">Panel de hoy</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">Panel de hoy</h1>
           </div>
           <p className="text-sm ml-5 capitalize" style={{ color: '#4a5f7a' }}>{fechaHoy}</p>
         </div>
-        {/* Indicador de estado */}
+        {/* Indicador de estado — solo desktop */}
         <div
-          className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-mono"
+          className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full text-xs font-mono shrink-0"
           style={{ background: 'rgba(0,230,118,0.07)', border: '1px solid rgba(0,230,118,0.2)', color: '#00e676' }}
         >
           <span
@@ -223,7 +223,8 @@ export default function Dashboard() {
             className="rounded-xl overflow-hidden"
             style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }}
           >
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm" style={{ minWidth: '480px' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(0,230,118,0.1)', background: 'rgba(0,230,118,0.03)' }}>
                   {['Hembra', 'Cópula', 'Ventana de parto', 'Estado'].map((h) => (
@@ -263,6 +264,7 @@ export default function Dashboard() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       )}

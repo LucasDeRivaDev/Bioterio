@@ -23,7 +23,7 @@ const datosBio = [
   { label: 'Vida reproductiva',   valor: '~14 meses' },
 ]
 
-export default function Sidebar({ onCerrarSesion }) {
+export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
   const { animales, camadas } = useBioterio()
   const { sesion } = useAuth()
   const emailUsuario = sesion?.user?.email ?? ''
@@ -34,7 +34,7 @@ export default function Sidebar({ onCerrarSesion }) {
 
   return (
     <aside
-      className="w-64 min-h-screen flex flex-col shrink-0 overflow-y-auto"
+      className="w-64 h-full min-h-screen flex flex-col shrink-0 overflow-y-auto"
       style={{
         background: 'linear-gradient(180deg, #080d1a 0%, #050810 100%)',
         borderRight: '1px solid rgba(0,230,118,0.12)',
@@ -93,6 +93,7 @@ export default function Sidebar({ onCerrarSesion }) {
             key={to}
             to={to}
             end={to === '/'}
+            onClick={onCerrarMenu}
             style={({ isActive }) =>
               isActive
                 ? {

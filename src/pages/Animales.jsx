@@ -71,7 +71,7 @@ export default function Animales() {
   }
 
   return (
-    <div className="p-6 space-y-5 min-h-screen" style={{ background: '#050810' }}>
+    <div className="p-4 md:p-6 space-y-5 min-h-screen" style={{ background: '#050810' }}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -131,7 +131,8 @@ export default function Animales() {
         </div>
       ) : (
         <div className="rounded-xl overflow-hidden" style={cardStyle}>
-          <table className="w-full text-sm table-lab">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm table-lab" style={{ minWidth: '560px' }}>
             <thead>
               <tr>
                 {['Código','Sexo','Nacimiento','Edad','Progenitores','Camadas','Estado',''].map((h) => (
@@ -193,6 +194,7 @@ export default function Animales() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

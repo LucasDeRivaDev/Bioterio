@@ -29,7 +29,7 @@ export default function Sacrificios() {
   const totalSacrificados = sacrificios.reduce((sum, s) => sum + s.cantidad, 0)
 
   return (
-    <div className="p-6 space-y-6 min-h-screen" style={{ background: '#050810' }}>
+    <div className="p-4 md:p-6 space-y-5 min-h-screen" style={{ background: '#050810' }}>
 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -68,7 +68,8 @@ export default function Sacrificios() {
               Registros
             </div>
           </div>
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm" style={{ minWidth: '520px' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(30,51,82,0.6)', background: 'rgba(0,0,0,0.1)' }}>
                 {['Fecha', 'Grupo / Camada', 'Cantidad', 'Categoría', 'Notas', ''].map((h) => (
@@ -124,6 +125,7 @@ export default function Sacrificios() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

@@ -60,25 +60,74 @@ function PantallaCargaDatos() {
 // ── Layout principal (solo si hay sesión) ────────────────────────────────────
 function AppLayout() {
   const { sesion, cerrarSesion } = useAuth()
+  const [sidebarAbierto, setSidebarAbierto] = useState(false)
 
   if (!sesion) return <Navigate to="/login" replace />
+
+  function cerrarSidebar() { setSidebarAbierto(false) }
 
   return (
     <BiotheriumProvider>
       <div className="flex min-h-screen">
-        <Sidebar onCerrarSesion={cerrarSesion} />
-        <main className="flex-1 overflow-auto">
-          <Routes>
-            <Route path="/"           element={<Dashboard />} />
-            <Route path="/animales"   element={<Animales />} />
-            <Route path="/camadas"    element={<Camadas />} />
-            <Route path="/calendario" element={<Calendario />} />
-            <Route path="/rendimiento" element={<Rendimiento />} />
-            <Route path="/stock"      element={<Stock />} />
-            <Route path="/sacrificios" element={<Sacrificios />} />
-            <Route path="/reportes"   element={<Reportes />} />
-            <Route path="*"           element={<Navigate to="/" replace />} />
-          </Routes>
+
+        {/* Overlay oscuro en mobile cuando el sidebar está abierto */}
+        {sidebarAbierto && (
+          <div
+            className="fixed inset-0 z-30 md:hidden backdrop-blur-sm"
+            style={{ background: 'rgba(5,8,16,0.75)' }}
+            onClick={cerrarSidebar}
+          />
+        )}
+
+        {/* Sidebar — drawer en mobile, estático en desktop */}
+        <div
+          className={`fixed md:static top-0 left-0 z-40 h-full md:h-auto transition-transform duration-300 ease-in-out ${
+            sidebarAbierto ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+          }`}
+          style={{ height: '100dvh' }}
+        >
+          <Sidebar onCerrarSesion={cerrarSesion} onCerrarMenu={cerrarSidebar} />
+        </div>
+
+        {/* Contenido principal */}
+        <main className="flex-1 overflow-auto min-w-0 flex flex-col">
+
+          {/* Topbar solo en mobile */}
+          <div
+            className="sticky top-0 z-20 flex items-center gap-3 px-4 py-3 md:hidden shrink-0"
+            style={{ background: '#050810', borderBottom: '1px solid rgba(0,230,118,0.12)' }}
+          >
+            <button
+              onClick={() => setSidebarAbierto(true)}
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
+              style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676' }}
+            >
+              ☰
+            </button>
+            <span className="font-bold text-white text-sm tracking-wide">BIOTERIO</span>
+            <div
+              className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono shrink-0"
+              style={{ background: 'rgba(0,230,118,0.07)', border: '1px solid rgba(0,230,118,0.2)', color: '#00e676' }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#00e676' }} />
+              ACTIVO
+            </div>
+          </div>
+
+          {/* Rutas */}
+          <div className="flex-1">
+            <Routes>
+              <Route path="/"            element={<Dashboard />} />
+              <Route path="/animales"    element={<Animales />} />
+              <Route path="/camadas"     element={<Camadas />} />
+              <Route path="/calendario"  element={<Calendario />} />
+              <Route path="/rendimiento" element={<Rendimiento />} />
+              <Route path="/stock"       element={<Stock />} />
+              <Route path="/sacrificios" element={<Sacrificios />} />
+              <Route path="/reportes"    element={<Reportes />} />
+              <Route path="*"            element={<Navigate to="/" replace />} />
+            </Routes>
+          </div>
         </main>
       </div>
     </BiotheriumProvider>

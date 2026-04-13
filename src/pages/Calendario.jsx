@@ -45,7 +45,7 @@ export default function Calendario() {
   const eventosDia = diaSelec ? (porFecha[fStr(diaSelec)] ?? []) : []
 
   return (
-    <div className="p-6 space-y-5 min-h-screen" style={{ background: '#050810' }}>
+    <div className="p-4 md:p-6 space-y-5 min-h-screen" style={{ background: '#050810' }}>
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-1.5 h-7 rounded-full" style={{ background: '#00e676', boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
@@ -62,10 +62,10 @@ export default function Calendario() {
         ))}
       </div>
 
-      <div className="flex gap-5">
+      <div className="flex flex-col md:flex-row gap-5">
         {/* Grilla del calendario */}
         <div
-          className="flex-1 rounded-2xl p-5"
+          className="flex-1 rounded-2xl p-4 md:p-5"
           style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }}
         >
           {/* Navegación */}
@@ -107,7 +107,7 @@ export default function Calendario() {
                 <button
                   key={dia}
                   onClick={() => setDiaSelec(esSel ? null : dia)}
-                  className="rounded-xl flex flex-col items-center py-1.5 px-1 min-h-[52px] transition-all"
+                  className="rounded-xl flex flex-col items-center py-1 px-0.5 min-h-[44px] md:min-h-[52px] transition-all"
                   style={
                     esSel
                       ? { background: 'rgba(0,230,118,0.15)', border: '1.5px solid rgba(0,230,118,0.4)' }
@@ -146,7 +146,7 @@ export default function Calendario() {
 
         {/* Panel lateral */}
         <div
-          className="w-72 rounded-2xl p-4 h-fit"
+          className="w-full md:w-72 rounded-2xl p-4 h-fit"
           style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }}
         >
           {diaSelec ? (
