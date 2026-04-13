@@ -209,6 +209,24 @@ export function BiotheriumProvider({ children }) {
     }
   }
 
+  // Sacrificio de animales reproductores (actualiza estado + intenta guardar fecha)
+  async function sacrificarReproductor(animal, fecha, motivo) {
+    const actualizado = { ...animal, estado: 'fallecido', fecha_sacrificio: fecha, motivo_sacrificio: motivo || null }
+    dispatch({ type: 'EDITAR_ANIMAL', payload: actualizado })
+
+    // Intenta actualizar con fecha_sacrificio (requiere migración DB)
+    const { error } = await supabase
+      .from('animales')
+      .update({ estado: 'fallecido', fecha_sacrificio: fecha, motivo_sacrificio: motivo || null })
+      .eq('id', animal.id)
+
+    if (error) {
+      // Fallback: solo actualiza el estado (funciona sin migración)
+      console.warn('Columnas fecha/motivo_sacrificio no disponibles, actualizando solo estado.')
+      await supabase.from('animales').update({ estado: 'fallecido' }).eq('id', animal.id)
+    }
+  }
+
   async function eliminarSacrificio(id) {
     const respaldo = estado.sacrificios.find((s) => s.id === id)
     dispatch({ type: 'ELIMINAR_SACRIFICIO', payload: id })
@@ -227,7 +245,7 @@ export function BiotheriumProvider({ children }) {
       jaulas: estado.jaulas,
       cargando,
       error,
-      agregarAnimal, editarAnimal, eliminarAnimal,
+      agregarAnimal, editarAnimal, eliminarAnimal, sacrificarReproductor,
       agregarCamada, editarCamada, eliminarCamada, confirmarSeparacion,
       registrarSacrificio, eliminarSacrificio,
       agregarJaula, editarJaula, eliminarJaula,

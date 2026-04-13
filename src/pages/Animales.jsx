@@ -5,8 +5,8 @@ import Modal from '../components/Modal'
 import AnimalForm from '../components/AnimalForm'
 import Badge from '../components/Badge'
 
-const colorEstado = { activo:'verde', en_cria:'violeta', retirado:'gris', fallecido:'rojo' }
-const labelEstado = { activo:'Activo', en_cria:'En cría', retirado:'Retirado', fallecido:'Fallecido' }
+const colorEstado = { activo:'verde', en_apareamiento:'azul', en_cria:'violeta', retirado:'gris', fallecido:'rojo' }
+const labelEstado = { activo:'Activo', en_apareamiento:'En apareamiento', en_cria:'En cría', retirado:'Retirado', fallecido:'Fallecido' }
 
 const cardStyle = {
   background: 'rgba(13,21,40,0.8)',
@@ -77,7 +77,7 @@ export default function Animales() {
         <div className="flex items-center gap-3">
           <div className="w-1.5 h-7 rounded-full" style={{ background: '#00e676', boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
           <div>
-            <h1 className="text-xl font-bold text-white">Animales</h1>
+            <h1 className="text-xl font-bold text-white">Reproductores</h1>
             <p className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{animales.length} registros</p>
           </div>
         </div>
@@ -91,7 +91,7 @@ export default function Animales() {
             boxShadow: '0 0 16px rgba(0,230,118,0.08)',
           }}
         >
-          + Agregar animal
+          + Agregar reproductor
         </button>
       </div>
 
@@ -127,7 +127,7 @@ export default function Animales() {
       {filtrados.length === 0 ? (
         <div className="text-center py-16" style={{ color: '#4a5f7a' }}>
           <div className="text-4xl mb-3">🔬</div>
-          <div className="text-sm">No se encontraron animales</div>
+          <div className="text-sm">No se encontraron reproductores</div>
         </div>
       ) : (
         <div className="rounded-xl overflow-hidden" style={cardStyle}>
@@ -135,7 +135,7 @@ export default function Animales() {
           <table className="w-full text-sm table-lab" style={{ minWidth: '560px' }}>
             <thead>
               <tr>
-                {['Código','Sexo','Nacimiento','Edad','Progenitores','Camadas','Estado',''].map((h) => (
+                {['Código','Sexo','Nacimiento','Edad','Progenitores','Emparejamientos','Estado',''].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest"
                     style={{ color: '#4a5f7a' }}>{h}</th>
                 ))}
@@ -200,13 +200,13 @@ export default function Animales() {
 
       {/* Modales */}
       {modal && (
-        <Modal titulo={modal === 'nuevo' ? 'Registrar animal' : `Editar ${modal.codigo}`} onCerrar={() => setModal(null)}>
+        <Modal titulo={modal === 'nuevo' ? 'Registrar reproductor' : `Editar ${modal.codigo}`} onCerrar={() => setModal(null)}>
           <AnimalForm animal={modal === 'nuevo' ? null : modal} onGuardar={guardar} onCancelar={() => setModal(null)} />
         </Modal>
       )}
 
       {confirmarEliminar && (
-        <Modal titulo="Eliminar animal" onCerrar={() => setConfirmarEliminar(null)} ancho="max-w-sm">
+        <Modal titulo="Eliminar reproductor" onCerrar={() => setConfirmarEliminar(null)} ancho="max-w-sm">
           <div className="text-center space-y-4">
             <div className="text-4xl">⚠️</div>
             <p style={{ color: '#8a9bb0' }}>

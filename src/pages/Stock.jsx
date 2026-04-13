@@ -59,11 +59,11 @@ function ChipCategoria({ label, animales, jaulas, color }) {
 
 function BloqueJaula({ bloque, onClick, modoSeleccion = false, seleccionada = false }) {
   const cfg = CAT[bloque.categoria]
-  const esSeleccionable = modoSeleccion && bloque.tipo === 'stock'
+  const esSeleccionable = modoSeleccion && !bloque.virtual
   return (
     <button
       onClick={() => onClick(bloque)}
-      disabled={modoSeleccion && !esSeleccionable}
+      disabled={false}
       className="rounded-xl overflow-hidden text-left w-full transition-all hover:scale-[1.02] active:scale-[0.98]"
       style={{
         background: seleccionada ? 'rgba(255,61,87,0.08)' : 'rgba(13,21,40,0.9)',
@@ -111,7 +111,7 @@ function BloqueJaula({ bloque, onClick, modoSeleccion = false, seleccionada = fa
         <div className="flex items-center gap-2 text-xs font-mono">
           {bloque.tipo === 'reproductor' ? (
             <span style={{ color: cfg.color }}>
-              {bloque.animal.sexo === 'macho' ? '♂' : '♀'} 1 animal
+              {bloque.animal.sexo === 'macho' ? '♂ 1 macho' : '♀ 1 hembra'}
             </span>
           ) : (
             <span style={{ color: cfg.color }}>
@@ -129,7 +129,9 @@ function BloqueJaula({ bloque, onClick, modoSeleccion = false, seleccionada = fa
   )
 }
 
-function JaulaModal({ bloque, jaulas, camadas, onCerrar, editarJaula, agregarJaula }) {
+const labelEstadoRepro = { activo: 'Activo', en_apareamiento: 'En apareamiento', en_cria: 'En cría', retirado: 'Retirado', fallecido: 'Fallecido' }
+
+function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, agregarJaula }) {
   const cfg       = CAT[bloque.categoria]
   const esRepro   = bloque.tipo === 'reproductor'
   const esVirtual = Boolean(bloque.virtual)
@@ -254,14 +256,19 @@ function JaulaModal({ bloque, jaulas, camadas, onCerrar, editarJaula, agregarJau
               <>
                 <Row label="Código"     valor={bloque.animal.codigo} color={cfg.color} />
                 <Row label="Sexo"       valor={bloque.animal.sexo === 'macho' ? '♂ Macho' : '♀ Hembra'} color={cfg.color} />
-                <Row label="Estado"     valor={bloque.animal.estado} />
+                <Row label="Estado"     valor={labelEstadoRepro[bloque.animal.estado] ?? bloque.animal.estado} />
                 <Row label="Nacimiento" valor={formatFecha(bloque.animal.fecha_nacimiento)} />
                 <Row label="Edad"       valor={bloque.edad != null ? `${bloque.edad} días (${formatEdad(bloque.edad)})` : '—'} />
+                {(bloque.animal.id_madre || bloque.animal.id_padre) && (
+                  <Row label="Progenitores" valor={
+                    `${animales?.find(a => a.id === bloque.animal.id_madre)?.codigo ?? '?'} × ${animales?.find(a => a.id === bloque.animal.id_padre)?.codigo ?? '?'}`
+                  } color="#8a9bb0" />
+                )}
                 {bloque.animal.notas && <Row label="Notas" valor={bloque.animal.notas} />}
               </>
             ) : (
               <>
-                <Row label="Origen"     valor={`${bloque.madre?.codigo ?? '?'} × ${bloque.padre?.codigo ?? '?'}`} color={cfg.color} />
+                <Row label="Progenitores" valor={`${bloque.madre?.codigo ?? '?'} × ${bloque.padre?.codigo ?? '?'}`} color={cfg.color} />
                 <Row label="Total"      valor={`${bloque.total} animales`} color={cfg.color} />
                 {bloque.machos  != null && <Row label="Machos"  valor={`♂ ${bloque.machos}`}  color="#40c4ff" />}
                 {bloque.hembras != null && <Row label="Hembras" valor={`♀ ${bloque.hembras}`} color="#ce93d8" />}
@@ -418,7 +425,9 @@ function ModalSacrificio({ bloques, onConfirmar, onCerrar }) {
   const [notas, setNotas]     = useState('')
   const [guardando, setGuardando] = useState(false)
 
-  const total = bloques.reduce((s, b) => s + b.total, 0)
+  const total        = bloques.reduce((s, b) => s + b.total, 0)
+  const tieneRepros  = bloques.some(b => b.tipo === 'reproductor')
+  const tieneStock   = bloques.some(b => b.tipo === 'stock')
   const iStyle = {
     background: 'rgba(5,8,16,0.6)', border: '1px solid rgba(30,51,82,0.8)',
     color: '#e2e8f0', borderRadius: '0.5rem', padding: '0.4rem 0.6rem',
@@ -431,6 +440,12 @@ function ModalSacrificio({ bloques, onConfirmar, onCerrar }) {
     finally { setGuardando(false) }
   }
 
+  const mensajeAccion = tieneRepros && tieneStock
+    ? 'Los reproductores seleccionados pasarán a estado "Fallecido" y las jaulas de stock se eliminarán del inventario.'
+    : tieneRepros
+    ? 'Los reproductores seleccionados pasarán a estado "Fallecido" y dejarán de aparecer en listas activas. Su historial queda conservado.'
+    : 'Las jaulas seleccionadas se eliminarán del stock y se registrará el sacrificio.'
+
   return (
     <Modal titulo="Confirmar sacrificio" onCerrar={onCerrar} ancho="max-w-md">
       <div className="space-y-4">
@@ -441,20 +456,19 @@ function ModalSacrificio({ bloques, onConfirmar, onCerrar }) {
           <span className="text-xl shrink-0">⚠️</span>
           <div>
             <div className="font-bold text-sm" style={{ color: '#ff6b80' }}>Esta acción no se puede deshacer</div>
-            <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>
-              Las jaulas seleccionadas se eliminarán del stock y se registrará el sacrificio
-            </div>
+            <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>{mensajeAccion}</div>
           </div>
         </div>
 
-        {/* Lista de jaulas */}
+        {/* Lista de seleccionados */}
         <div>
           <div className="text-xs uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5f7a' }}>
-            Jaulas a sacrificar ({bloques.length})
+            Seleccionados para sacrificio ({bloques.length})
           </div>
           <div className="space-y-2 max-h-52 overflow-y-auto">
             {bloques.map((b) => {
               const cfg = CAT[b.categoria]
+              const esRepro = b.tipo === 'reproductor'
               return (
                 <div key={b.id} className="flex items-center justify-between px-3 py-2 rounded-xl"
                   style={{ background: 'rgba(5,8,16,0.5)', border: `1px solid ${cfg.borde}` }}>
@@ -462,10 +476,13 @@ function ModalSacrificio({ bloques, onConfirmar, onCerrar }) {
                     <span>{cfg.icono}</span>
                     <div>
                       <div className="text-xs font-mono font-semibold" style={{ color: cfg.color }}>
-                        {b.madre?.codigo ?? '?'} × {b.padre?.codigo ?? '?'}
+                        {esRepro
+                          ? `${b.animal.sexo === 'macho' ? '♂' : '♀'} ${b.animal.codigo}`
+                          : `${b.madre?.codigo ?? '?'} × ${b.padre?.codigo ?? '?'}`}
                       </div>
                       <div className="text-xs" style={{ color: '#4a5f7a' }}>
                         {cfg.label}{b.edad != null ? ` · ${b.edad}d` : ''}
+                        {esRepro && ' · Reproductor'}
                       </div>
                     </div>
                   </div>
@@ -565,7 +582,7 @@ function CategoriaCard({ icono, titulo, subtitulo, total, grupos, gruposLabel, m
 // ── Página principal ──────────────────────────────────────────────────────────
 
 export default function Stock() {
-  const { animales, camadas, sacrificios, jaulas, editarJaula, agregarJaula, eliminarJaula, registrarSacrificio } = useBioterio()
+  const { animales, camadas, sacrificios, jaulas, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, registrarSacrificio } = useBioterio()
   const [vista, setVista] = useState('jaulas')
   const [detalle, setDetalle] = useState(null)
   const [filtroCat, setFiltroCat] = useState('todas')
@@ -693,7 +710,7 @@ export default function Stock() {
   [bloques, seleccionadas])
 
   function toggleSeleccion(bloque) {
-    if (bloque.tipo !== 'stock') return
+    if (bloque.virtual) return
     setSeleccionadas((prev) => {
       const next = new Set(prev)
       next.has(bloque.id) ? next.delete(bloque.id) : next.add(bloque.id)
@@ -709,16 +726,20 @@ export default function Stock() {
   async function ejecutarSacrificio(fecha, notas) {
     const bloquesSel = bloques.filter((b) => seleccionadas.has(b.id))
     for (const b of bloquesSel) {
-      await registrarSacrificio({
-        camada_id: b.camada.id,
-        cantidad: b.total,
-        fecha,
-        categoria: b.categoria === 'crias' ? 'cria' : b.categoria === 'jovenes' ? 'joven' : b.categoria === 'adultos' ? 'adulto_nr' : null,
-        notas,
-        jaula: b.jaula?.id ?? null,
-      })
-      if (!b.virtual && b.jaula?.id) {
-        await eliminarJaula(b.jaula.id)
+      if (b.tipo === 'reproductor') {
+        await sacrificarReproductor(b.animal, fecha, notas)
+      } else {
+        await registrarSacrificio({
+          camada_id: b.camada.id,
+          cantidad: b.total,
+          fecha,
+          categoria: b.categoria === 'crias' ? 'cria' : b.categoria === 'jovenes' ? 'joven' : b.categoria === 'adultos' ? 'adulto_nr' : null,
+          notas,
+          jaula: b.jaula?.id ?? null,
+        })
+        if (!b.virtual && b.jaula?.id) {
+          await eliminarJaula(b.jaula.id)
+        }
       }
     }
     setModalSacrificio(false)
@@ -880,32 +901,48 @@ export default function Stock() {
       )}
 
       {/* ── BARRA FLOTANTE DE SELECCIÓN ─────────────────────────────────────── */}
-      {modoSeleccion && seleccionadas.size > 0 && (
-        <div
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-4 px-5 py-3 rounded-2xl"
-          style={{
-            background: '#0d1528',
-            border: '1px solid rgba(255,61,87,0.45)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.7), 0 0 24px rgba(255,61,87,0.1)',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          <span className="text-sm font-mono">
-            <span style={{ color: '#ff6b80', fontWeight: 700 }}>{totalSeleccionado}</span>
-            <span style={{ color: '#4a5f7a' }}> animales · </span>
-            <span style={{ color: '#ff6b80', fontWeight: 700 }}>{seleccionadas.size}</span>
-            <span style={{ color: '#4a5f7a' }}> jaula{seleccionadas.size !== 1 ? 's' : ''}</span>
-          </span>
-          <div style={{ width: '1px', height: '20px', background: 'rgba(30,51,82,0.8)' }} />
-          <button
-            onClick={() => setModalSacrificio(true)}
-            className="px-4 py-1.5 rounded-xl text-sm font-bold"
-            style={{ background: 'rgba(255,61,87,0.15)', border: '1px solid rgba(255,61,87,0.5)', color: '#ff6b80', cursor: 'pointer' }}
+      {modoSeleccion && seleccionadas.size > 0 && (() => {
+        const reproSel   = bloques.filter(b => seleccionadas.has(b.id) && b.tipo === 'reproductor')
+        const jaulasSel  = bloques.filter(b => seleccionadas.has(b.id) && b.tipo === 'stock')
+        return (
+          <div
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-4 px-5 py-3 rounded-2xl"
+            style={{
+              background: '#0d1528',
+              border: '1px solid rgba(255,61,87,0.45)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.7), 0 0 24px rgba(255,61,87,0.1)',
+              whiteSpace: 'nowrap',
+            }}
           >
-            🗡 Registrar sacrificio
-          </button>
-        </div>
-      )}
+            <div className="flex items-center gap-3 text-sm font-mono">
+              {reproSel.length > 0 && (
+                <span>
+                  <span style={{ color: '#ff6b80', fontWeight: 700 }}>{reproSel.length}</span>
+                  <span style={{ color: '#4a5f7a' }}> reproductor{reproSel.length !== 1 ? 'es' : ''}</span>
+                </span>
+              )}
+              {reproSel.length > 0 && jaulasSel.length > 0 && (
+                <span style={{ color: 'rgba(30,51,82,0.8)' }}>·</span>
+              )}
+              {jaulasSel.length > 0 && (
+                <span>
+                  <span style={{ color: '#ff6b80', fontWeight: 700 }}>{jaulasSel.length}</span>
+                  <span style={{ color: '#4a5f7a' }}> jaula{jaulasSel.length !== 1 ? 's' : ''}</span>
+                  <span style={{ color: '#4a5f7a' }}> ({jaulasSel.reduce((s,b) => s + b.total, 0)} animales)</span>
+                </span>
+              )}
+            </div>
+            <div style={{ width: '1px', height: '20px', background: 'rgba(30,51,82,0.8)' }} />
+            <button
+              onClick={() => setModalSacrificio(true)}
+              className="px-4 py-1.5 rounded-xl text-sm font-bold"
+              style={{ background: 'rgba(255,61,87,0.15)', border: '1px solid rgba(255,61,87,0.5)', color: '#ff6b80', cursor: 'pointer' }}
+            >
+              🗡 Sacrificar seleccionados
+            </button>
+          </div>
+        )
+      })()}
 
       {/* Modal de jaula */}
       {detalle && (
@@ -913,6 +950,7 @@ export default function Stock() {
           bloque={detalle}
           jaulas={jaulas}
           camadas={camadas}
+          animales={animales}
           onCerrar={() => setDetalle(null)}
           editarJaula={editarJaula}
           agregarJaula={agregarJaula}

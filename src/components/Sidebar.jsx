@@ -5,8 +5,8 @@ import { BIO } from '../utils/constants'
 
 const links = [
   { to: '/', label: 'Panel de hoy', icon: '📋' },
-  { to: '/animales', label: 'Animales', icon: '🐀' },
-  { to: '/camadas', label: 'Camadas', icon: '🪺' },
+  { to: '/animales', label: 'Reproductores', icon: '🐀' },
+  { to: '/camadas', label: 'Emparejamientos', icon: '🪺' },
   { to: '/calendario', label: 'Calendario', icon: '📅' },
   { to: '/rendimiento', label: 'Rendimiento', icon: '📊' },
   { to: '/stock', label: 'Stock', icon: '📦' },

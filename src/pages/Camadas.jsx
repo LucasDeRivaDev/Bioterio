@@ -302,7 +302,7 @@ export default function Camadas() {
         <div className="flex items-center gap-3">
           <div className="w-1.5 h-7 rounded-full" style={{ background: '#00e676', boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
           <div>
-            <h1 className="text-xl font-bold text-white">Camadas</h1>
+            <h1 className="text-xl font-bold text-white">Emparejamientos</h1>
             <p className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{camadas.length} registros</p>
           </div>
         </div>
@@ -332,7 +332,7 @@ export default function Camadas() {
       {filtradas.length === 0 ? (
         <div className="text-center py-16" style={{ color: '#4a5f7a' }}>
           <div className="text-4xl mb-3">🪺</div>
-          <div className="text-sm">No hay camadas en esta categoría</div>
+          <div className="text-sm">No hay emparejamientos en esta categoría</div>
         </div>
       ) : (
         <div className="space-y-2">
@@ -389,9 +389,9 @@ export default function Camadas() {
                                 setSeparando(null)
                               }
                             }}
-                            className="px-2 py-1 rounded-lg text-xs font-bold"
+                            className="px-2.5 py-1 rounded-lg text-xs font-bold"
                             style={{ background: 'rgba(64,196,255,0.15)', border: '1px solid rgba(64,196,255,0.4)', color: '#40c4ff' }}
-                          >✓</button>
+                          >✓ Ok</button>
                           <button onClick={() => setSeparando(null)} className="text-xs" style={{ color: '#4a5f7a' }}>✕</button>
                         </div>
                       ) : (
