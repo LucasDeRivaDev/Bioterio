@@ -123,6 +123,17 @@ temperature_logs
 
 ---
 
+## Nomenclatura UI vs rutas
+
+| Ruta | Label en sidebar |
+|---|---|
+| `/animales` | Reproductores |
+| `/camadas` | Emparejamientos |
+
+El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproductores"/"Emparejamientos".
+
+---
+
 ## Comportamientos importantes
 
 - **Carga histórica en CamadaForm:** toggle que habilita animales inactivos/fallecidos para registros del pasado
