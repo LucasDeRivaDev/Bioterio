@@ -290,9 +290,9 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
   const haySurvivencia   = camada.total_crias != null && camada.total_destetados != null
   const hayCrias         = camada.total_crias != null
   const hayScores        = hayCrias && camada.fecha_nacimiento
-  const hayPerfil        = perfilMadre || rendMacho?.score_promedio != null
 
-  if (!hayScores && !hayPerfil) return null
+  // Mostrar siempre que haya padres identificados, aunque no haya datos históricos aún
+  if (!hayScores && !madre && !padre) return null
 
   return (
     <div
@@ -428,41 +428,61 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
         </div>
       )}
 
-      {/* Perfil de padres */}
-      {hayPerfil && (
+      {/* Perfil de padres — siempre visible si hay padres identificados */}
+      {(madre || padre) && (
         <div className="space-y-2">
           <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>
             Perfil histórico de los padres
           </div>
 
-          {perfilMadre && (
-            <PerfilRow
-              label={`♀ ${madre?.codigo ?? 'Madre'} · ${perfilMadre.total_camadas} camada${perfilMadre.total_camadas !== 1 ? 's' : ''}`}
-              color="#ce93d8"
-              scores={{
-                time:     perfilMadre.avg_time_score,
-                litter:   perfilMadre.avg_litter_size_score,
-                sex:      perfilMadre.avg_sex_ratio_score,
-                survival: perfilMadre.avg_survival_score,
-              }}
-            />
+          {/* Hembra */}
+          {madre && (
+            perfilMadre ? (
+              <PerfilRow
+                label={`♀ ${madre.codigo} · ${perfilMadre.total_camadas} camada${perfilMadre.total_camadas !== 1 ? 's' : ''}`}
+                color="#ce93d8"
+                scores={{
+                  time:     perfilMadre.avg_time_score,
+                  litter:   perfilMadre.avg_litter_size_score,
+                  sex:      perfilMadre.avg_sex_ratio_score,
+                  survival: perfilMadre.avg_survival_score,
+                }}
+              />
+            ) : (
+              <div className="rounded-xl p-3" style={{ background: 'rgba(5,8,16,0.4)', border: '1px solid rgba(30,51,82,0.5)' }}>
+                <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: '#ce93d8' }}>
+                  ♀ {madre.codigo}
+                </div>
+                <div className="text-xs" style={{ color: '#4a5f7a' }}>Sin camadas previas con parto registrado</div>
+              </div>
+            )
           )}
 
-          {rendMacho && rendMacho.score_promedio != null && (
-            <div className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(5,8,16,0.4)', border: '1px solid rgba(30,51,82,0.5)' }}>
-              <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#40c4ff' }}>
-                ♂ {padre?.codigo ?? 'Padre'} · {rendMacho.total_camadas} camada{rendMacho.total_camadas !== 1 ? 's' : ''}
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <ScoreVal label="Latencia fert."  value={rendMacho.score_promedio} />
-                <div className="flex flex-col items-center gap-0.5">
-                  <span className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#4a5f7a' }}>Prom. latencia</span>
-                  <span className="font-mono font-bold text-base" style={{ color: colorScore(rendMacho.score_promedio) }}>
-                    {rendMacho.promedio_latencia != null ? `${rendMacho.promedio_latencia}d` : '—'}
-                  </span>
+          {/* Macho */}
+          {padre && (
+            rendMacho && rendMacho.total_camadas > 0 ? (
+              <div className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(5,8,16,0.4)', border: '1px solid rgba(30,51,82,0.5)' }}>
+                <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#40c4ff' }}>
+                  ♂ {padre.codigo} · {rendMacho.total_camadas} camada{rendMacho.total_camadas !== 1 ? 's' : ''}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <ScoreVal label="Latencia fert."  value={rendMacho.score_promedio} />
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#4a5f7a' }}>Prom. latencia</span>
+                    <span className="font-mono font-bold text-base" style={{ color: colorScore(rendMacho.score_promedio) }}>
+                      {rendMacho.promedio_latencia != null ? `${rendMacho.promedio_latencia}d` : '—'}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="rounded-xl p-3" style={{ background: 'rgba(5,8,16,0.4)', border: '1px solid rgba(30,51,82,0.5)' }}>
+                <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: '#40c4ff' }}>
+                  ♂ {padre.codigo}
+                </div>
+                <div className="text-xs" style={{ color: '#4a5f7a' }}>Sin camadas previas con parto registrado</div>
+              </div>
+            )
           )}
         </div>
       )}

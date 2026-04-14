@@ -324,13 +324,13 @@ export function generarTareas(camadas, animales) {
 
 /**
  * Score por tamaño de camada.
- * 10+ crías → 10 | 8–9 → 7 | <8 → 1 (rendimiento bajo, alerta)
+ * 10+ crías → 10 | 8–9 → 7 | <8 → 5 (rendimiento bajo)
  */
 export function scoreTamanoCamada(totalCrias) {
   if (totalCrias == null) return null
   if (totalCrias >= 10) return 10
   if (totalCrias >= 8)  return 7
-  return 1
+  return 5
 }
 
 /**
