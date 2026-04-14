@@ -1,6 +1,10 @@
 import { useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
-import { calcularRendimientoMacho, calcularLatencia, interpretarLatencia, scorePorLatencia, formatFecha } from '../utils/calculos'
+import {
+  calcularRendimientoMacho, calcularLatencia, interpretarLatencia,
+  scorePorLatencia, formatFecha,
+  calcularPerfilHembra, calcularConfiabilidadHembra,
+} from '../utils/calculos'
 import Badge from '../components/Badge'
 
 const cardStyle = { background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }
@@ -61,6 +65,35 @@ function Metric({ label, valor, color }) {
   )
 }
 
+function colorScore(v) {
+  if (v == null) return '#4a5f7a'
+  if (v >= 8)   return '#00e676'
+  if (v >= 6)   return '#ffd740'
+  return '#ff6b80'
+}
+
+function ScoreCell({ label, value }) {
+  const color = colorScore(value)
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <span className="text-xs uppercase tracking-widest font-semibold text-center leading-tight" style={{ color: '#4a5f7a' }}>{label}</span>
+      <span
+        className="font-mono font-bold text-sm px-2 py-0.5 rounded-lg"
+        style={{ color, background: `${color}12`, border: `1px solid ${color}30` }}
+      >
+        {value != null ? value : '—'}
+      </span>
+    </div>
+  )
+}
+
+const CONF_CONFIG = {
+  ok:       { color: '#00e676', label: 'OK' },
+  leve:     { color: '#ffd740', label: 'Leve' },
+  moderada: { color: '#ff9100', label: 'Moderada' },
+  critica:  { color: '#ff1744', label: 'Crítica' },
+}
+
 export default function Rendimiento() {
   const { animales, camadas } = useBioterio()
   const machos = animales.filter((a) => a.sexo === 'macho')
@@ -91,13 +124,21 @@ export default function Rendimiento() {
   const hembraStats = useMemo(() =>
     animales.filter((a) => a.sexo === 'hembra')
       .map((h) => {
-        const sus = camadas.filter((c) => c.id_madre === h.id && c.fecha_nacimiento)
-        const lats = sus.map((c) => calcularLatencia(c)).filter((l) => l !== null)
-        const prom = lats.length ? Math.round(lats.reduce((a,b)=>a+b,0)/lats.length*10)/10 : null
-        return { h, total: sus.length, prom, crias: sus.reduce((s,c)=>s+(c.total_crias??0),0) }
+        const sus    = camadas.filter((c) => c.id_madre === h.id && c.fecha_nacimiento)
+        const perfil = calcularPerfilHembra(h.id, camadas)
+        const conf   = calcularConfiabilidadHembra(h.id, camadas)
+        const crias  = sus.reduce((s, c) => s + (c.total_crias ?? 0), 0)
+        return { h, total: sus.length, crias, perfil, conf }
       })
       .filter((x) => x.total > 0)
-      .sort((a, b) => (a.prom ?? 99) - (b.prom ?? 99)),
+      .sort((a, b) => {
+        // Ordenar por promedio de scores (mejor primero) o por nombre si no hay datos
+        const avgA = a.perfil ? [a.perfil.avg_time_score, a.perfil.avg_litter_size_score, a.perfil.avg_survival_score].filter(Boolean) : []
+        const avgB = b.perfil ? [b.perfil.avg_time_score, b.perfil.avg_litter_size_score, b.perfil.avg_survival_score].filter(Boolean) : []
+        const scoreA = avgA.length ? avgA.reduce((s,v) => s+v, 0) / avgA.length : 0
+        const scoreB = avgB.length ? avgB.reduce((s,v) => s+v, 0) / avgB.length : 0
+        return scoreB - scoreA
+      }),
   [animales, camadas])
 
   return (
@@ -250,34 +291,66 @@ export default function Rendimiento() {
       {hembraStats.length > 0 && (
         <div>
           <div className="text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: '#4a5f7a' }}>
-            <span>♀</span> Rendimiento de hembras
+            <span>♀</span> Perfil reproductivo de hembras
           </div>
-          <div className="rounded-xl overflow-hidden" style={cardStyle}>
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ borderBottom: '1px solid rgba(0,230,118,0.1)', background: 'rgba(0,230,118,0.02)' }}>
-                  {['Hembra','Partos','Total crías','Latencia promedio','Rendimiento'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest"
-                      style={{ color: '#4a5f7a' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {hembraStats.map(({ h, total, crias, prom }) => (
-                  <tr key={h.id} style={{ borderBottom: '1px solid rgba(30,51,82,0.4)' }}>
-                    <td className="px-4 py-3 font-mono font-bold" style={{ color: '#ce93d8' }}>{h.codigo}</td>
-                    <td className="px-4 py-3 font-mono" style={{ color: '#8a9bb0' }}>{total}</td>
-                    <td className="px-4 py-3 font-mono" style={{ color: '#8a9bb0' }}>{crias}</td>
-                    <td className="px-4 py-3 font-mono font-bold" style={{ color: prom !== null ? '#40c4ff' : '#4a5f7a' }}>
-                      {prom !== null ? `${prom}d` : '—'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <ScoreBadge score={prom !== null ? scorePorLatencia(Math.round(prom)) : null} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="space-y-3">
+            {hembraStats.map(({ h, total, crias, perfil, conf }, idx) => {
+              const confCfg = conf ? CONF_CONFIG[conf.nivel] : null
+              return (
+                <div key={h.id} className="rounded-xl overflow-hidden" style={cardStyle}>
+                  {/* Header */}
+                  <div className="flex items-center gap-4 px-5 py-3"
+                    style={{ borderBottom: '1px solid rgba(30,51,82,0.4)', background: 'rgba(206,147,216,0.03)' }}>
+                    <div className="w-10 flex justify-center">
+                      <Medalla pos={idx + 1} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono font-bold text-lg" style={{ color: '#ce93d8' }}>{h.codigo}</span>
+                        {confCfg && (
+                          <span
+                            className="text-xs font-bold px-2 py-0.5 rounded-full"
+                            style={{ background: `${confCfg.color}15`, border: `1px solid ${confCfg.color}40`, color: confCfg.color }}
+                          >
+                            {conf.nivel !== 'ok' ? `⚠ ${confCfg.label}` : `✓ ${confCfg.label}`}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
+                        {total} parto{total !== 1 ? 's' : ''} · {crias} crías totales
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Scores de la hembra */}
+                  <div className="px-5 py-4">
+                    {perfil ? (
+                      <div className="grid grid-cols-4 gap-4">
+                        <ScoreCell label="Vel. repro." value={perfil.avg_time_score} />
+                        <ScoreCell label="Tamaño camada" value={perfil.avg_litter_size_score} />
+                        <ScoreCell label="Prop. sexual" value={perfil.avg_sex_ratio_score} />
+                        <ScoreCell label="Supervivencia" value={perfil.avg_survival_score} />
+                      </div>
+                    ) : (
+                      <div className="text-xs" style={{ color: '#4a5f7a' }}>Sin camadas con datos completos</div>
+                    )}
+
+                    {/* Leyenda de colores */}
+                    {perfil && (
+                      <div className="flex items-center gap-3 mt-3 pt-3" style={{ borderTop: '1px solid rgba(30,51,82,0.4)' }}>
+                        <span className="text-xs" style={{ color: '#4a5f7a' }}>Escala:</span>
+                        {[['#00e676','8–10 Excelente'],['#ffd740','6–7.9 Bueno'],['#ff6b80','<6 Bajo']].map(([c,l]) => (
+                          <span key={l} className="flex items-center gap-1 text-xs">
+                            <span className="w-2 h-2 rounded-full inline-block" style={{ background: c }} />
+                            <span style={{ color: '#4a5f7a' }}>{l}</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
