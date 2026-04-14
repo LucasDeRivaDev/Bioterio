@@ -3,6 +3,10 @@ import { useBioterio } from '../context/BiotheriumContext'
 import { difDias, parseDate, hoy, formatFecha } from '../utils/calculos'
 import { BIO } from '../utils/constants'
 import Modal from '../components/Modal'
+import {
+  ComposedChart, Area, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ResponsiveContainer, ReferenceLine,
+} from 'recharts'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -485,13 +489,22 @@ function Row({ label, valor, color = '#8a9bb0' }) {
 }
 
 function ModalSacrificio({ bloques, onConfirmar, onCerrar }) {
-  const [fecha, setFecha]     = useState(hoy())
-  const [notas, setNotas]     = useState('')
+  const [fecha, setFecha]       = useState(hoy())
+  const [notas, setNotas]       = useState('')
   const [guardando, setGuardando] = useState(false)
+  // cantidad editable por bloque (solo stock, repros siempre = 1)
+  const [cantidades, setCantidades] = useState(() =>
+    Object.fromEntries(bloques.map((b) => [b.id, b.total]))
+  )
 
-  const total        = bloques.reduce((s, b) => s + b.total, 0)
-  const tieneRepros  = bloques.some(b => b.tipo === 'reproductor')
-  const tieneStock   = bloques.some(b => b.tipo === 'stock')
+  const tieneRepros = bloques.some(b => b.tipo === 'reproductor')
+  const tieneStock  = bloques.some(b => b.tipo === 'stock')
+  const total       = bloques.reduce((s, b) => s + (parseInt(cantidades[b.id]) || 0), 0)
+  const cantOk      = bloques.every((b) => {
+    const v = parseInt(cantidades[b.id]) || 0
+    return v >= 1 && v <= b.total
+  })
+
   const iStyle = {
     background: 'rgba(5,8,16,0.6)', border: '1px solid rgba(30,51,82,0.8)',
     color: '#e2e8f0', borderRadius: '0.5rem', padding: '0.4rem 0.6rem',
@@ -499,16 +512,17 @@ function ModalSacrificio({ bloques, onConfirmar, onCerrar }) {
   }
 
   async function confirmar() {
+    if (!cantOk) return
     setGuardando(true)
-    try { await onConfirmar(fecha, notas || null) }
+    try { await onConfirmar(fecha, notas || null, cantidades) }
     finally { setGuardando(false) }
   }
 
   const mensajeAccion = tieneRepros && tieneStock
-    ? 'Los reproductores seleccionados pasarán a estado "Fallecido" y las jaulas de stock se eliminarán del inventario.'
+    ? 'Los reproductores seleccionados pasarán a estado "Fallecido". Las jaulas de stock se reducirán (o eliminarán si sacrificás el total).'
     : tieneRepros
     ? 'Los reproductores seleccionados pasarán a estado "Fallecido" y dejarán de aparecer en listas activas. Su historial queda conservado.'
-    : 'Las jaulas seleccionadas se eliminarán del stock y se registrará el sacrificio.'
+    : 'Se registrará el sacrificio. Si sacrificás menos del total, la jaula queda con el resto.'
 
   return (
     <Modal titulo="Confirmar sacrificio" onCerrar={onCerrar} ancho="max-w-md">
@@ -524,39 +538,61 @@ function ModalSacrificio({ bloques, onConfirmar, onCerrar }) {
           </div>
         </div>
 
-        {/* Lista de seleccionados */}
+        {/* Lista de seleccionados con cantidad editable */}
         <div>
           <div className="text-xs uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5f7a' }}>
             Seleccionados para sacrificio ({bloques.length})
           </div>
-          <div className="space-y-2 max-h-52 overflow-y-auto">
+          <div className="space-y-2 max-h-64 overflow-y-auto">
             {bloques.map((b) => {
               const cfg = CAT[b.categoria]
               const esRepro = b.tipo === 'reproductor'
+              const cant = parseInt(cantidades[b.id]) || 0
+              const parcial = !esRepro && cant < b.total && cant > 0
+              const error   = !esRepro && (cant < 1 || cant > b.total)
               return (
-                <div key={b.id} className="flex items-center justify-between px-3 py-2 rounded-xl"
-                  style={{ background: 'rgba(5,8,16,0.5)', border: `1px solid ${cfg.borde}` }}>
-                  <div className="flex items-center gap-2">
-                    <span>{cfg.icono}</span>
-                    <div>
-                      <div className="text-xs font-mono font-semibold" style={{ color: cfg.color }}>
-                        {esRepro
-                          ? `${b.animal.sexo === 'macho' ? '♂' : '♀'} ${b.animal.codigo}`
-                          : `${b.madre?.codigo ?? '?'} × ${b.padre?.codigo ?? '?'}`}
-                      </div>
-                      <div className="text-xs" style={{ color: '#4a5f7a' }}>
-                        {cfg.label}{b.edad != null ? ` · ${b.edad}d` : ''}
-                        {esRepro && ' · Reproductor'}
+                <div key={b.id} className="px-3 py-2 rounded-xl"
+                  style={{ background: 'rgba(5,8,16,0.5)', border: `1px solid ${error ? 'rgba(255,61,87,0.5)' : cfg.borde}` }}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span>{cfg.icono}</span>
+                      <div className="min-w-0">
+                        <div className="text-xs font-mono font-semibold truncate" style={{ color: cfg.color }}>
+                          {esRepro
+                            ? `${b.animal.sexo === 'macho' ? '♂' : '♀'} ${b.animal.codigo}`
+                            : `${b.madre?.codigo ?? '?'} × ${b.padre?.codigo ?? '?'}`}
+                        </div>
+                        <div className="text-xs" style={{ color: '#4a5f7a' }}>
+                          {cfg.label}{b.edad != null ? ` · ${b.edad}d` : ''}
+                          {!esRepro && <span style={{ color: '#4a5f7a' }}> · total: {b.total}</span>}
+                        </div>
                       </div>
                     </div>
+                    {esRepro ? (
+                      <div className="font-mono font-bold text-lg" style={{ color: '#ff6b80' }}>1</div>
+                    ) : (
+                      <div className="flex flex-col items-end gap-0.5">
+                        <input
+                          type="number" min="1" max={b.total}
+                          value={cantidades[b.id]}
+                          onChange={(e) => setCantidades((prev) => ({ ...prev, [b.id]: e.target.value }))}
+                          style={{ ...iStyle, width: '5rem', textAlign: 'center', color: error ? '#ff6b80' : '#e2e8f0' }}
+                        />
+                        {parcial && (
+                          <span className="text-xs" style={{ color: '#ffd740' }}>parcial — quedan {b.total - cant}</span>
+                        )}
+                        {error && (
+                          <span className="text-xs" style={{ color: '#ff6b80' }}>1 – {b.total}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div className="font-mono font-bold text-lg" style={{ color: '#ff6b80' }}>{b.total}</div>
                 </div>
               )
             })}
           </div>
           <div className="flex justify-between items-center mt-3 px-1">
-            <span className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#4a5f7a' }}>Total</span>
+            <span className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#4a5f7a' }}>Total a sacrificar</span>
             <span className="font-mono font-bold text-xl" style={{ color: '#ff6b80' }}>{total} animales</span>
           </div>
         </div>
@@ -584,13 +620,13 @@ function ModalSacrificio({ bloques, onConfirmar, onCerrar }) {
             style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: '#8a9bb0' }}>
             Cancelar
           </button>
-          <button onClick={confirmar} disabled={guardando}
+          <button onClick={confirmar} disabled={guardando || !cantOk}
             className="flex-1 py-2.5 rounded-xl text-sm font-bold"
             style={{
-              background: guardando ? 'rgba(30,51,82,0.3)' : 'rgba(255,61,87,0.15)',
-              border: `1.5px solid ${guardando ? 'rgba(30,51,82,0.5)' : 'rgba(255,61,87,0.4)'}`,
-              color: guardando ? '#4a5f7a' : '#ff6b80',
-              cursor: guardando ? 'not-allowed' : 'pointer',
+              background: (!cantOk || guardando) ? 'rgba(30,51,82,0.3)' : 'rgba(255,61,87,0.15)',
+              border: `1.5px solid ${(!cantOk || guardando) ? 'rgba(30,51,82,0.5)' : 'rgba(255,61,87,0.4)'}`,
+              color: (!cantOk || guardando) ? '#4a5f7a' : '#ff6b80',
+              cursor: (!cantOk || guardando) ? 'not-allowed' : 'pointer',
             }}>
             {guardando ? 'Registrando...' : `🗡 Sacrificar ${total} animales`}
           </button>
@@ -638,6 +674,210 @@ function CategoriaCard({ icono, titulo, subtitulo, total, grupos, gruposLabel, m
           </div>
         )}
         {descripcion && <div className="ml-auto self-center text-xs text-right" style={{ color: '#4a5f7a' }}>{descripcion}</div>}
+      </div>
+    </div>
+  )
+}
+
+// ── Gráfico de evolución de stock ─────────────────────────────────────────────
+
+function mesStr(fecha) {
+  // Retorna "YYYY-MM" desde un string "YYYY-MM-DD"
+  return fecha ? fecha.slice(0, 7) : null
+}
+
+function GraficoEvolucion({ camadas, sacrificios }) {
+  const [rango, setRango] = useState('12m')
+
+  const datos = useMemo(() => {
+    // 1. Recolectar todos los eventos con fecha
+    const eventos = []
+
+    camadas.filter(c => c.fecha_nacimiento).forEach(c => {
+      eventos.push({ fecha: c.fecha_nacimiento, nacimientos: c.total_crias ?? 0, sacrificados: 0 })
+    })
+    sacrificios.forEach(s => {
+      if (s.fecha) eventos.push({ fecha: s.fecha, nacimientos: 0, sacrificados: s.cantidad })
+    })
+
+    if (eventos.length === 0) return []
+
+    // 2. Agrupar por mes
+    const porMes = {}
+    eventos.forEach(({ fecha, nacimientos, sacrificados }) => {
+      const mes = mesStr(fecha)
+      if (!mes) return
+      if (!porMes[mes]) porMes[mes] = { mes, nacimientos: 0, sacrificados: 0 }
+      porMes[mes].nacimientos  += nacimientos
+      porMes[mes].sacrificados += sacrificados
+    })
+
+    // 3. Ordenar meses cronológicamente
+    const meses = Object.keys(porMes).sort()
+    if (meses.length === 0) return []
+
+    // 4. Filtrar por rango
+    const hoyMes = hoy().slice(0, 7)
+    let desde = meses[0]
+    if (rango === '12m') {
+      const d = new Date(hoyMes + '-01')
+      d.setMonth(d.getMonth() - 11)
+      desde = d.toISOString().slice(0, 7)
+    } else if (rango === '6m') {
+      const d = new Date(hoyMes + '-01')
+      d.setMonth(d.getMonth() - 5)
+      desde = d.toISOString().slice(0, 7)
+    }
+
+    // 5. Generar todos los meses del rango (incluso sin eventos) y calcular running total
+    // Primero calculamos el total acumulado ANTES del rango para arrancar desde el valor correcto
+    let totalAntes = 0
+    meses.filter(m => m < desde).forEach(m => {
+      totalAntes += porMes[m].nacimientos - porMes[m].sacrificados
+    })
+
+    // Generar secuencia de meses desde 'desde' hasta hoyMes
+    const resultado = []
+    let cursor = new Date(desde + '-01')
+    const fin   = new Date(hoyMes + '-01')
+    let acumulado = totalAntes
+
+    while (cursor <= fin) {
+      const mesKey = cursor.toISOString().slice(0, 7)
+      const d = porMes[mesKey] ?? { nacimientos: 0, sacrificados: 0 }
+      acumulado = Math.max(0, acumulado + d.nacimientos - d.sacrificados)
+      resultado.push({
+        mes: mesKey,
+        label: cursor.toLocaleDateString('es-AR', { month: 'short', year: '2-digit' }),
+        total: acumulado,
+        nacimientos: d.nacimientos,
+        sacrificados: d.sacrificados,
+      })
+      cursor.setMonth(cursor.getMonth() + 1)
+    }
+
+    return resultado
+  }, [camadas, sacrificios, rango])
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (!active || !payload?.length) return null
+    const d = payload[0]?.payload
+    return (
+      <div className="rounded-xl px-4 py-3 space-y-1.5"
+        style={{ background: '#0d1528', border: '1px solid rgba(30,51,82,0.9)', minWidth: 160 }}>
+        <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>{d?.label}</div>
+        <div className="flex justify-between gap-4 text-xs">
+          <span style={{ color: '#40c4ff' }}>Stock total</span>
+          <span className="font-mono font-bold" style={{ color: '#40c4ff' }}>{d?.total ?? 0}</span>
+        </div>
+        {d?.nacimientos > 0 && (
+          <div className="flex justify-between gap-4 text-xs">
+            <span style={{ color: '#00e676' }}>Nacidos</span>
+            <span className="font-mono font-bold" style={{ color: '#00e676' }}>+{d.nacimientos}</span>
+          </div>
+        )}
+        {d?.sacrificados > 0 && (
+          <div className="flex justify-between gap-4 text-xs">
+            <span style={{ color: '#ff6b80' }}>Sacrificados</span>
+            <span className="font-mono font-bold" style={{ color: '#ff6b80' }}>-{d.sacrificados}</span>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const btnRango = (v, label) => (
+    <button
+      key={v} onClick={() => setRango(v)}
+      className="px-3 py-1 rounded-lg text-xs font-semibold transition-all"
+      style={rango === v
+        ? { background: 'rgba(64,196,255,0.15)', border: '1px solid rgba(64,196,255,0.4)', color: '#40c4ff' }
+        : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }}
+    >{label}</button>
+  )
+
+  if (datos.length === 0) {
+    return (
+      <div className="rounded-2xl p-12 text-center"
+        style={{ background: 'rgba(64,196,255,0.04)', border: '1px solid rgba(64,196,255,0.15)' }}>
+        <div className="text-3xl mb-3">📈</div>
+        <div className="font-semibold text-sm" style={{ color: '#40c4ff' }}>Sin datos para mostrar</div>
+        <div className="text-xs mt-1" style={{ color: '#4a5f7a' }}>Registrá camadas y sacrificios para ver la evolución</div>
+      </div>
+    )
+  }
+
+  const maxVal = Math.max(...datos.map(d => d.total), ...datos.map(d => d.nacimientos))
+
+  return (
+    <div className="space-y-5">
+      {/* Selector de rango */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>Rango</span>
+        {btnRango('6m', 'Últimos 6 meses')}
+        {btnRango('12m', 'Últimos 12 meses')}
+        {btnRango('todo', 'Todo el historial')}
+      </div>
+
+      {/* Gráfico principal — stock total */}
+      <div className="rounded-2xl px-4 pt-5 pb-3"
+        style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }}>
+        <div className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: '#4a5f7a' }}>
+          Stock total en colonia
+        </div>
+        <ResponsiveContainer width="100%" height={220}>
+          <ComposedChart data={datos} margin={{ top: 4, right: 8, left: -10, bottom: 0 }}>
+            <defs>
+              <linearGradient id="gradTotal" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%"  stopColor="#40c4ff" stopOpacity={0.25} />
+                <stop offset="95%" stopColor="#40c4ff" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,51,82,0.5)" vertical={false} />
+            <XAxis dataKey="label" tick={{ fill: '#4a5f7a', fontSize: 10 }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fill: '#4a5f7a', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+            <Tooltip content={<CustomTooltip />} />
+            <Area type="monotone" dataKey="total" stroke="#40c4ff" strokeWidth={2}
+              fill="url(#gradTotal)" dot={false} activeDot={{ r: 4, fill: '#40c4ff' }} />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Gráfico de entradas y salidas */}
+      <div className="rounded-2xl px-4 pt-5 pb-3"
+        style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }}>
+        <div className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: '#4a5f7a' }}>
+          Nacimientos vs. sacrificios por mes
+        </div>
+        <ResponsiveContainer width="100%" height={180}>
+          <ComposedChart data={datos} margin={{ top: 4, right: 8, left: -10, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,51,82,0.5)" vertical={false} />
+            <XAxis dataKey="label" tick={{ fill: '#4a5f7a', fontSize: 10 }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fill: '#4a5f7a', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend
+              formatter={(v) => <span style={{ color: '#8a9bb0', fontSize: 11 }}>{v === 'nacimientos' ? 'Nacidos' : 'Sacrificados'}</span>}
+              wrapperStyle={{ paddingTop: 8 }}
+            />
+            <Bar dataKey="nacimientos"  fill="#00e676" fillOpacity={0.7} radius={[3,3,0,0]} maxBarSize={24} />
+            <Bar dataKey="sacrificados" fill="#ff6b80" fillOpacity={0.7} radius={[3,3,0,0]} maxBarSize={24} />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Resumen numérico */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: 'Stock actual', val: datos[datos.length - 1]?.total ?? 0, color: '#40c4ff' },
+          { label: 'Total nacidos', val: datos.reduce((s, d) => s + d.nacimientos, 0), color: '#00e676' },
+          { label: 'Total sacrificados', val: datos.reduce((s, d) => s + d.sacrificados, 0), color: '#ff6b80' },
+        ].map(({ label, val, color }) => (
+          <div key={label} className="rounded-xl px-4 py-3 text-center"
+            style={{ background: `${color}08`, border: `1px solid ${color}20` }}>
+            <div className="font-mono font-bold text-2xl" style={{ color }}>{val}</div>
+            <div className="text-xs mt-1" style={{ color: '#4a5f7a' }}>{label}</div>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -787,22 +1027,31 @@ export default function Stock() {
     setSeleccionadas(new Set())
   }
 
-  async function ejecutarSacrificio(fecha, notas) {
+  async function ejecutarSacrificio(fecha, notas, cantidades) {
     const bloquesSel = bloques.filter((b) => seleccionadas.has(b.id))
     for (const b of bloquesSel) {
       if (b.tipo === 'reproductor') {
         await sacrificarReproductor(b.animal, fecha, notas)
       } else {
+        const cant = parseInt(cantidades?.[b.id]) || b.total
         await registrarSacrificio({
           camada_id: b.camada.id,
-          cantidad: b.total,
+          cantidad: cant,
           fecha,
           categoria: b.categoria === 'crias' ? 'cria' : b.categoria === 'jovenes' ? 'joven' : b.categoria === 'adultos' ? 'adulto_nr' : null,
           notas,
           jaula: b.jaula?.id ?? null,
         })
         if (!b.virtual && b.jaula?.id) {
-          await eliminarJaula(b.jaula.id)
+          const resto = b.jaula.total - cant
+          if (resto <= 0) {
+            await eliminarJaula(b.jaula.id)
+          } else {
+            // sacrificio parcial: reducir la jaula
+            const nuevosMachos  = b.jaula.machos  != null ? Math.max(0, b.jaula.machos  - Math.round(cant * (b.jaula.machos  / b.jaula.total))) : null
+            const nuevasHembras = b.jaula.hembras != null ? Math.max(0, b.jaula.hembras - Math.round(cant * (b.jaula.hembras / b.jaula.total))) : null
+            await editarJaula({ ...b.jaula, total: resto, machos: nuevosMachos, hembras: nuevasHembras })
+          }
         }
       }
     }
@@ -859,6 +1108,7 @@ export default function Stock() {
       <div className="flex gap-2 flex-wrap">
         {btnTab('jaulas', '⬛ Vista por jaulas')}
         {btnTab('resumen', '📊 Vista por categorías')}
+        {btnTab('evolucion', '📈 Evolución')}
         {vista === 'jaulas' && (
           <button
             onClick={() => modoSeleccion ? salirModoSeleccion() : setModoSeleccion(true)}
@@ -962,6 +1212,11 @@ export default function Stock() {
             </div>
           )}
         </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {vista === 'evolucion' && (
+        <GraficoEvolucion camadas={camadas} sacrificios={sacrificios} />
       )}
 
       {/* ── BARRA FLOTANTE DE SELECCIÓN ─────────────────────────────────────── */}

@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
-import { formatFecha, difDias, parseDate, hoy } from '../utils/calculos'
+import { formatFecha, difDias, parseDate, hoy, calcularPerfilHembra, calcularConfiabilidadHembra, calcularRendimientoMacho } from '../utils/calculos'
 import Modal from '../components/Modal'
 import AnimalForm from '../components/AnimalForm'
 import Badge from '../components/Badge'
@@ -16,6 +16,7 @@ const cardStyle = {
 export default function Animales() {
   const { animales, agregarAnimal, editarAnimal, eliminarAnimal, camadas } = useBioterio()
   const [modal, setModal] = useState(null)
+  const [expandido, setExpandido] = useState(null)
   const [filtroSexo, setFiltroSexo] = useState('todos')
   const [filtroEstado, setFiltroEstado] = useState('todos')
   const [busqueda, setBusqueda] = useState('')
@@ -46,6 +47,76 @@ export default function Animales() {
 
   function nombreAnimal(id) {
     return animales.find((a) => a.id === id)?.codigo ?? '—'
+  }
+
+  const colorConfiabilidad = { ok: '#00e676', leve: '#ffd740', moderada: '#ff9100', critica: '#ff1744' }
+  const labelConfiabilidad = { ok: 'OK', leve: 'Leve', moderada: 'Moderada', critica: 'Crítica' }
+
+  function ScoreBarra({ label, valor, max = 10 }) {
+    if (valor == null) return (
+      <div className="flex items-center gap-2">
+        <span className="text-xs w-32" style={{ color: '#4a5f7a' }}>{label}</span>
+        <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>—</span>
+      </div>
+    )
+    const pct = Math.min((valor / max) * 100, 100)
+    const color = valor >= 8 ? '#00e676' : valor >= 6 ? '#ffd740' : '#ff6b80'
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-xs w-32" style={{ color: '#8a9bb0' }}>{label}</span>
+        <div className="flex-1 h-1.5 rounded-full" style={{ background: 'rgba(30,51,82,0.8)', minWidth: 60 }}>
+          <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
+        </div>
+        <span className="text-xs font-mono font-bold w-8 text-right" style={{ color }}>{valor}</span>
+      </div>
+    )
+  }
+
+  function PerfilAnimal({ animal }) {
+    if (animal.sexo === 'hembra') {
+      const perfil = calcularPerfilHembra(animal.id, camadas)
+      const conf   = calcularConfiabilidadHembra(animal.id, camadas)
+      if (!perfil) return (
+        <div className="text-xs py-2" style={{ color: '#4a5f7a' }}>Sin camadas con parto registrado</div>
+      )
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-xs font-semibold" style={{ color: '#8a9bb0' }}>{perfil.total_camadas} camada{perfil.total_camadas !== 1 ? 's' : ''} analizadas</span>
+            {conf && conf.nivel !== 'ok' && (
+              <span className="px-2 py-0.5 rounded text-xs font-bold" style={{ background: `${colorConfiabilidad[conf.nivel]}18`, color: colorConfiabilidad[conf.nivel], border: `1px solid ${colorConfiabilidad[conf.nivel]}40` }}>
+                ⚠ {labelConfiabilidad[conf.nivel]} — {conf.mensaje}
+              </span>
+            )}
+            {conf && conf.nivel === 'ok' && (
+              <span className="px-2 py-0.5 rounded text-xs font-bold" style={{ background: 'rgba(0,230,118,0.08)', color: '#00e676', border: '1px solid rgba(0,230,118,0.2)' }}>
+                ✓ Confiabilidad OK
+              </span>
+            )}
+          </div>
+          <ScoreBarra label="Velocidad fertiliz." valor={perfil.avg_time_score} />
+          <ScoreBarra label="Tamaño camada" valor={perfil.avg_litter_size_score} />
+          <ScoreBarra label="Proporción sexual" valor={perfil.avg_sex_ratio_score} />
+          <ScoreBarra label="Supervivencia" valor={perfil.avg_survival_score} />
+        </div>
+      )
+    } else {
+      const rend = calcularRendimientoMacho(animal.id, camadas)
+      if (rend.total_camadas === 0) return (
+        <div className="text-xs py-2" style={{ color: '#4a5f7a' }}>Sin camadas con parto registrado</div>
+      )
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-xs font-semibold" style={{ color: '#8a9bb0' }}>{rend.total_camadas} camada{rend.total_camadas !== 1 ? 's' : ''} analizadas</span>
+            {rend.promedio_latencia != null && (
+              <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Latencia prom: <span className="font-bold text-white">{rend.promedio_latencia}d</span></span>
+            )}
+          </div>
+          <ScoreBarra label="Score fertilización" valor={rend.score_promedio} />
+        </div>
+      )
+    }
   }
 
   function guardar(datos) {
@@ -143,54 +214,70 @@ export default function Animales() {
             </thead>
             <tbody>
               {filtrados.map((animal) => (
-                <tr
-                  key={animal.id}
-                  style={{ borderBottom: '1px solid rgba(30,51,82,0.4)' }}
-                  className="transition-colors hover:bg-white/[0.01]"
-                >
-                  <td className="px-4 py-3 font-mono font-bold" style={{ color: '#c9d4e0' }}>
-                    {animal.codigo}
-                  </td>
-                  <td className="px-4 py-3 font-medium text-xs">
-                    <span style={{ color: animal.sexo === 'hembra' ? '#ce93d8' : '#40c4ff' }}>
-                      {animal.sexo === 'hembra' ? '♀ Hembra' : '♂ Macho'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs" style={{ color: '#8a9bb0' }}>
-                    {formatFecha(animal.fecha_nacimiento)}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs" style={{ color: '#4a5f7a' }}>
-                    {calcularEdad(animal.fecha_nacimiento)}
-                  </td>
-                  <td className="px-4 py-3 text-xs" style={{ color: '#4a5f7a' }}>
-                    {animal.id_madre || animal.id_padre ? (
-                      <span className="font-mono">
-                        {animal.id_madre ? nombreAnimal(animal.id_madre) : '?'} ×{' '}
-                        {animal.id_padre ? nombreAnimal(animal.id_padre) : '?'}
+                <React.Fragment key={animal.id}>
+                  <tr
+                    style={{ borderBottom: '1px solid rgba(30,51,82,0.4)' }}
+                    className="transition-colors hover:bg-white/[0.01]"
+                  >
+                    <td className="px-4 py-3 font-mono font-bold" style={{ color: '#c9d4e0' }}>
+                      {animal.codigo}
+                    </td>
+                    <td className="px-4 py-3 font-medium text-xs">
+                      <span style={{ color: animal.sexo === 'hembra' ? '#ce93d8' : '#40c4ff' }}>
+                        {animal.sexo === 'hembra' ? '♀ Hembra' : '♂ Macho'}
                       </span>
-                    ) : <span style={{ color: 'rgba(74,95,122,0.3)' }}>—</span>}
-                  </td>
-                  <td className="px-4 py-3 text-center font-mono font-bold" style={{ color: '#8a9bb0' }}>
-                    {contarCamadas(animal.id)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge color={colorEstado[animal.estado] ?? 'gris'}>
-                      {labelEstado[animal.estado] ?? animal.estado}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => setModal(animal)}
-                      className="text-xs font-semibold mr-3 transition-colors"
-                      style={{ color: '#40c4ff' }}
-                    >Editar</button>
-                    <button
-                      onClick={() => setConfirmarEliminar(animal)}
-                      className="text-xs font-semibold transition-colors"
-                      style={{ color: '#ff6b80' }}
-                    >Eliminar</button>
-                  </td>
-                </tr>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs" style={{ color: '#8a9bb0' }}>
+                      {formatFecha(animal.fecha_nacimiento)}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs" style={{ color: '#4a5f7a' }}>
+                      {calcularEdad(animal.fecha_nacimiento)}
+                    </td>
+                    <td className="px-4 py-3 text-xs" style={{ color: '#4a5f7a' }}>
+                      {animal.id_madre || animal.id_padre ? (
+                        <span className="font-mono">
+                          {animal.id_madre ? nombreAnimal(animal.id_madre) : '?'} ×{' '}
+                          {animal.id_padre ? nombreAnimal(animal.id_padre) : '?'}
+                        </span>
+                      ) : <span style={{ color: 'rgba(74,95,122,0.3)' }}>—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-center font-mono font-bold" style={{ color: '#8a9bb0' }}>
+                      {contarCamadas(animal.id)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge color={colorEstado[animal.estado] ?? 'gris'}>
+                        {labelEstado[animal.estado] ?? animal.estado}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => setExpandido(expandido === animal.id ? null : animal.id)}
+                        className="text-xs font-semibold mr-3 transition-colors"
+                        style={{ color: expandido === animal.id ? '#ffd740' : '#8a9bb0' }}
+                      >{expandido === animal.id ? '▲ Perfil' : '▼ Perfil'}</button>
+                      <button
+                        onClick={() => setModal(animal)}
+                        className="text-xs font-semibold mr-3 transition-colors"
+                        style={{ color: '#40c4ff' }}
+                      >Editar</button>
+                      <button
+                        onClick={() => setConfirmarEliminar(animal)}
+                        className="text-xs font-semibold transition-colors"
+                        style={{ color: '#ff6b80' }}
+                      >Eliminar</button>
+                    </td>
+                  </tr>
+                  {expandido === animal.id && (
+                    <tr style={{ borderBottom: '1px solid rgba(30,51,82,0.4)', background: 'rgba(8,13,26,0.6)' }}>
+                      <td colSpan={8} className="px-6 py-4">
+                        <div className="text-xs font-semibold mb-3 uppercase tracking-widest" style={{ color: '#ffd740' }}>
+                          Perfil reproductivo — {animal.codigo}
+                        </div>
+                        <PerfilAnimal animal={animal} />
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>

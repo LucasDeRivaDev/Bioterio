@@ -25,7 +25,7 @@ Sistema web de gestión de una colonia de ratones de laboratorio (*Mus musculus*
 
 **Sistema de scores reproductivos (calculados en tiempo real, sin DB):**
 - Velocidad de reproducción: latencia 1–5d → 10pts / 6–10d → 7pts / 11–15d → 5pts
-- Tamaño de camada: ≥10 → 10pts / 8–9 → 7pts / <8 → 1pt (alerta)
+- Tamaño de camada: ≥10 → 10pts / 8–9 → 7pts / <8 → 5pts
 - Proporción sexual: más hembras → 10pts / igual → 7pts / más machos → 5pts
 - Supervivencia al destete: (destetados/nacidos) × 10
 
@@ -111,7 +111,7 @@ temperature_logs
 |---|---|
 | `calcularLatencia(camada)` | Días entre cópula y concepción estimada |
 | `scorePorLatencia(dias)` | 10/7/5 según latencia |
-| `scoreTamanoCamada(n)` | 10/7/1 según crías nacidas |
+| `scoreTamanoCamada(n)` | 10/7/5 según crías nacidas |
 | `scoreProporcionSexual(m,h)` | 10/7/5 según distribución sexual |
 | `scoreSupervivencia(nacidas, destetadas)` | tasa × 10 |
 | `calcularScoresCamada(camada)` | Todos los scores + loss_count + survival_rate |
@@ -140,8 +140,18 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
 - **Separación de pareja:** inline desde la lista de camadas, sin abrir modal
 - **Scores son calculados en tiempo real** — no se guardan en DB, se derivan de los datos existentes
 - **Temperatura:** la impresión usa `window.print()` con `@media print` CSS para ocultar la UI y mostrar solo la tabla limpia
-- **Jaulas en stock:** `SexoDisplay` diferencia automáticamente si son solo machos, solo hembras o mixto
+- **Jaulas en stock:** `SexoDisplay` muestra 4 variantes según datos disponibles: solo hembras, solo machos, mixto (♂M/♀H), o "X animales — sexo sin registrar" cuando faltan datos. Funciona para jaulas reales y bloques virtuales.
 - **failure_flag en camada:** se muestra como badge rojo en el detalle expandido y alimenta el cálculo de confiabilidad de la hembra
+- **AnalisisReproductivo en Camadas:** siempre visible al expandir una camada si hay padres identificados. Si no hay historial previo muestra "Sin camadas previas con parto registrado". No depende de datos históricos para renderizar.
+- **temperature_logs en Supabase:** usa `id uuid` (auto-generado por Supabase). Al insertar, NO se manda el `id` — se deja que Supabase lo genere y luego se reemplaza el registro temporal en el estado local. Las otras tablas usan `id text` generado por `generarId()`.
+
+---
+
+## Implementado recientemente
+
+- **Perfil reproductivo en Animales (14/04/2026):** fila expandible por animal con botón "▼ Perfil". Hembras: 4 scores promedio (velocidad fertiliz., tamaño camada, proporción sexual, supervivencia) + badge de confiabilidad. Machos: score de fertilización + latencia promedio. Calculado en tiempo real con `calcularPerfilHembra`, `calcularConfiabilidadHembra`, `calcularRendimientoMacho`.
+- **Gráficos de evolución de stock (14/04/2026):** nueva tab "📈 Evolución" en Stock. Usa recharts (instalado). Muestra: área de stock total acumulado en el tiempo + barras de nacimientos vs. sacrificios por mes + resumen numérico (stock actual / total nacidos / total sacrificados). Filtros de rango: 6 meses, 12 meses, todo el historial. Construido en tiempo real desde `camadas` y `sacrificios` sin datos extra en DB.
+- **Sacrificio parcial de jaulas (14/04/2026):** en `ModalSacrificio` cada jaula de stock ahora tiene un input editable de cantidad (1 hasta el total). Si sacrificás menos del total, la jaula queda con el resto (se actualiza con `editarJaula`); si sacrificás todo, se elimina. Los machos/hembras se reducen proporcionalmente. Reproductores siempre sacrifican 1 (sin cambio).
 
 ---
 
@@ -149,9 +159,6 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
 
 - [ ] Notificaciones push o por email cuando hay tareas vencidas
 - [ ] Módulo de reportes con exportación real (PDF/Excel)
-- [ ] Sacrificio parcial de jaulas (hoy solo se puede sacrificar la jaula entera)
 - [ ] Historial de cambios por animal/camada (auditoría)
 - [ ] Multi-colonia o multi-usuario con roles
 - [ ] Modo offline con sincronización posterior
-- [ ] Gráficos de evolución de stock a lo largo del tiempo
-- [ ] Scores visibles también en la página de Animales (perfil de hembra desde la lista)
