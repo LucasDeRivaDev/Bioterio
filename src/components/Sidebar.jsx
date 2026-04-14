@@ -11,6 +11,7 @@ const links = [
   { to: '/rendimiento', label: 'Rendimiento', icon: '📊' },
   { to: '/stock', label: 'Stock', icon: '📦' },
   { to: '/sacrificios', label: 'Sacrificios', icon: '🗡️' },
+  { to: '/temperatura', label: 'Temperatura', icon: '🌡️' },
   { to: '/reportes', label: 'Reportes e impresión', icon: '🖨️' },
 ]
 

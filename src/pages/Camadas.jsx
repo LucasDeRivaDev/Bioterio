@@ -1,8 +1,11 @@
 import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useBioterio } from '../context/BiotheriumContext'
 import {
   formatFecha, calcularRangoParto, calcularDestete, calcularMadurez, calcularFechaSeparacion,
   calcularLatencia, interpretarLatencia, difDias, parseDate, hoy,
+  calcularScoresCamada, calcularPerfilHembra, calcularRendimientoMacho,
+  calcularConfiabilidadHembra,
 } from '../utils/calculos'
 import { BIO } from '../utils/constants'
 import Modal from '../components/Modal'
@@ -214,6 +217,273 @@ function LatenciaBit({ dias }) {
     >
       {dias}d
     </span>
+  )
+}
+
+// ── Análisis Reproductivo ─────────────────────────────────────────────────────
+
+function colorScore(v) {
+  if (v == null) return '#4a5f7a'
+  if (v >= 8)   return '#00e676'
+  if (v >= 6)   return '#ffb300'
+  return '#ff6b80'
+}
+
+function ScoreVal({ label, value }) {
+  const c = colorScore(value)
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <span className="text-xs uppercase tracking-widest font-semibold text-center leading-tight" style={{ color: '#4a5f7a' }}>{label}</span>
+      <span
+        className="font-mono font-bold text-base px-2 py-0.5 rounded-lg"
+        style={{ color: c, background: `${c}12`, border: `1px solid ${c}30` }}
+      >
+        {value != null ? value : '—'}
+      </span>
+    </div>
+  )
+}
+
+function PerfilRow({ label, color, scores }) {
+  return (
+    <div className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(5,8,16,0.4)', border: '1px solid rgba(30,51,82,0.5)' }}>
+      <div className="text-xs font-bold uppercase tracking-widest" style={{ color }}>{label}</div>
+      <div className="grid grid-cols-4 gap-2">
+        <ScoreVal label="Vel. repro" value={scores.time} />
+        <ScoreVal label="Tamaño"     value={scores.litter} />
+        <ScoreVal label="Prop. sex." value={scores.sex} />
+        <ScoreVal label="Sup. dest." value={scores.survival} />
+      </div>
+    </div>
+  )
+}
+
+const NIVEL_CONFIG = {
+  ok:       { color: '#00e676', bg: 'rgba(0,230,118,0.06)',   border: 'rgba(0,230,118,0.2)',   label: 'Normal' },
+  leve:     { color: '#ffb300', bg: 'rgba(255,179,0,0.06)',   border: 'rgba(255,179,0,0.25)',   label: 'Alerta leve' },
+  moderada: { color: '#ff6b80', bg: 'rgba(255,61,87,0.06)',   border: 'rgba(255,61,87,0.25)',   label: 'Alerta moderada' },
+  critica:  { color: '#ff6b80', bg: 'rgba(255,61,87,0.10)',   border: 'rgba(255,61,87,0.4)',    label: 'Alerta crítica' },
+}
+
+function AnalisisReproductivo({ camada, todasCamadas, animales }) {
+  const navigate = useNavigate()
+  const scores = calcularScoresCamada(camada)
+
+  const perfilMadre    = calcularPerfilHembra(camada.id_madre, todasCamadas)
+  const confiabilidad  = calcularConfiabilidadHembra(camada.id_madre, todasCamadas)
+  const rendMacho      = calcularRendimientoMacho(camada.id_padre, todasCamadas)
+
+  const madre = animales.find((a) => a.id === camada.id_madre)
+  const padre = animales.find((a) => a.id === camada.id_padre)
+
+  // Predicción: promedio de histórico madre + histórico padre (latencia)
+  function avgExpected(madreVal, padreVal) {
+    const vals = [madreVal, padreVal].filter((v) => v != null)
+    if (!vals.length) return null
+    return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length * 10) / 10
+  }
+
+  const predTimeScore    = avgExpected(perfilMadre?.avg_time_score,        rendMacho?.score_promedio)
+  const predLitterScore  = perfilMadre?.avg_litter_size_score ?? null
+  const predSurvScore    = perfilMadre?.avg_survival_score ?? null
+
+  const haySurvivencia   = camada.total_crias != null && camada.total_destetados != null
+  const hayCrias         = camada.total_crias != null
+  const hayScores        = hayCrias && camada.fecha_nacimiento
+  const hayPerfil        = perfilMadre || rendMacho?.score_promedio != null
+
+  if (!hayScores && !hayPerfil) return null
+
+  return (
+    <div
+      className="px-5 py-4 space-y-4"
+      style={{ borderTop: '1px solid rgba(0,230,118,0.08)', background: 'rgba(0,0,0,0.15)' }}
+    >
+      {/* Título */}
+      <div className="flex items-center gap-2">
+        <div className="w-1 h-4 rounded-full" style={{ background: '#ce93d8' }} />
+        <span className="text-xs font-bold uppercase tracking-widest" style={{ color: '#ce93d8' }}>
+          Análisis reproductivo
+        </span>
+      </div>
+
+      {/* Supervivencia */}
+      {haySurvivencia && (
+        <div
+          className="rounded-xl p-3 space-y-2"
+          style={{
+            background: scores.loss_count > 0 ? 'rgba(255,61,87,0.05)' : 'rgba(0,230,118,0.05)',
+            border: scores.loss_count > 0 ? '1px solid rgba(255,61,87,0.2)' : '1px solid rgba(0,230,118,0.2)',
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-widest" style={{ color: scores.loss_count > 0 ? '#ff6b80' : '#00e676' }}>
+              {scores.loss_count > 0 ? '⚠ Pérdida parcial detectada' : '✓ Supervivencia completa'}
+            </span>
+          </div>
+          <div className="grid grid-cols-4 gap-3">
+            {[
+              { label: 'Nacidas',    val: camada.total_crias,      color: '#8a9bb0' },
+              { label: 'Destetadas', val: camada.total_destetados,  color: '#00e676' },
+              { label: 'Pérdidas',   val: scores.loss_count,        color: scores.loss_count > 0 ? '#ff6b80' : '#4a5f7a' },
+              { label: 'Tasa',       val: scores.survival_rate != null ? `${Math.round(scores.survival_rate * 100)}%` : '—', color: colorScore(scores.survival_score) },
+            ].map(({ label, val, color }) => (
+              <div key={label} className="text-center">
+                <div className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#4a5f7a' }}>{label}</div>
+                <div className="font-mono font-bold text-base" style={{ color }}>{val ?? '—'}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Scores de esta camada */}
+      {hayScores && (
+        <div className="space-y-1.5">
+          <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>
+            Scores de esta camada
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            <ScoreVal label="Vel. repro"   value={scores.time_score} />
+            <ScoreVal label="Tamaño"       value={scores.litter_size_score} />
+            <ScoreVal label="Prop. sexual" value={scores.sex_ratio_score} />
+            <ScoreVal label="Supervivencia" value={scores.survival_score} />
+          </div>
+        </div>
+      )}
+
+      {/* Confiabilidad reproductiva de la hembra */}
+      {confiabilidad && confiabilidad.nivel !== 'ok' && (
+        <div
+          className="rounded-xl p-3 space-y-3"
+          style={{
+            background: NIVEL_CONFIG[confiabilidad.nivel].bg,
+            border: `1px solid ${NIVEL_CONFIG[confiabilidad.nivel].border}`,
+          }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <span className="text-base">
+                {confiabilidad.nivel === 'critica' ? '🔴' : confiabilidad.nivel === 'moderada' ? '🟠' : '🟡'}
+              </span>
+              <span className="text-xs font-bold uppercase tracking-widest" style={{ color: NIVEL_CONFIG[confiabilidad.nivel].color }}>
+                Confiabilidad reproductiva — {NIVEL_CONFIG[confiabilidad.nivel].label}
+              </span>
+            </div>
+            {(confiabilidad.nivel === 'critica' || confiabilidad.nivel === 'moderada') && (
+              <button
+                onClick={() => navigate('/sacrificios')}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all"
+                style={{
+                  background: 'rgba(255,61,87,0.12)',
+                  border: '1px solid rgba(255,61,87,0.4)',
+                  color: '#ff6b80',
+                }}
+              >
+                🗡 Ir a Sacrificios
+              </button>
+            )}
+          </div>
+
+          {/* Mensaje */}
+          <p className="text-xs" style={{ color: NIVEL_CONFIG[confiabilidad.nivel].color, opacity: 0.85 }}>
+            {confiabilidad.mensaje}
+          </p>
+
+          {/* Indicadores */}
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: 'Fallos registrados', val: confiabilidad.fallos },
+              { label: 'Camadas < 8 crías',  val: confiabilidad.camadasBajas },
+              { label: 'Total eventos',       val: confiabilidad.combinados },
+            ].map(({ label, val }) => (
+              <div key={label} className="text-center">
+                <div className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#4a5f7a' }}>{label}</div>
+                <div className="font-mono font-bold text-base" style={{ color: NIVEL_CONFIG[confiabilidad.nivel].color }}>{val}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Último fallo */}
+          {confiabilidad.ultimoFallo && (
+            <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+              Último fallo: <span style={{ color: '#8a9bb0' }}>{confiabilidad.ultimoFallo}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Alerta: camada con bajo litter score pero sin falla formal */}
+      {camada.total_crias != null && camada.total_crias < 8 && !camada.failure_flag && (
+        <div
+          className="flex items-start gap-2 rounded-xl px-3 py-2.5"
+          style={{ background: 'rgba(255,179,0,0.06)', border: '1px solid rgba(255,179,0,0.25)' }}
+        >
+          <span className="text-sm mt-0.5">⚠</span>
+          <p className="text-xs" style={{ color: '#ffb300' }}>
+            Esta camada produjo menos de 8 crías. Considerá registrar un fallo reproductivo o monitorear a{' '}
+            <span className="font-bold">{madre?.codigo ?? 'la hembra'}</span>.
+          </p>
+        </div>
+      )}
+
+      {/* Perfil de padres */}
+      {hayPerfil && (
+        <div className="space-y-2">
+          <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>
+            Perfil histórico de los padres
+          </div>
+
+          {perfilMadre && (
+            <PerfilRow
+              label={`♀ ${madre?.codigo ?? 'Madre'} · ${perfilMadre.total_camadas} camada${perfilMadre.total_camadas !== 1 ? 's' : ''}`}
+              color="#ce93d8"
+              scores={{
+                time:     perfilMadre.avg_time_score,
+                litter:   perfilMadre.avg_litter_size_score,
+                sex:      perfilMadre.avg_sex_ratio_score,
+                survival: perfilMadre.avg_survival_score,
+              }}
+            />
+          )}
+
+          {rendMacho && rendMacho.score_promedio != null && (
+            <div className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(5,8,16,0.4)', border: '1px solid rgba(30,51,82,0.5)' }}>
+              <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#40c4ff' }}>
+                ♂ {padre?.codigo ?? 'Padre'} · {rendMacho.total_camadas} camada{rendMacho.total_camadas !== 1 ? 's' : ''}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <ScoreVal label="Latencia fert."  value={rendMacho.score_promedio} />
+                <div className="flex flex-col items-center gap-0.5">
+                  <span className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#4a5f7a' }}>Prom. latencia</span>
+                  <span className="font-mono font-bold text-base" style={{ color: colorScore(rendMacho.score_promedio) }}>
+                    {rendMacho.promedio_latencia != null ? `${rendMacho.promedio_latencia}d` : '—'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Predicción próxima camada */}
+      {(predTimeScore != null || predLitterScore != null || predSurvScore != null) && (
+        <div
+          className="rounded-xl p-3 space-y-2"
+          style={{ background: 'rgba(206,147,216,0.05)', border: '1px solid rgba(206,147,216,0.2)' }}
+        >
+          <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#ce93d8' }}>
+            ✦ Predicción para próxima camada
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <ScoreVal label="Vel. repro esp." value={predTimeScore} />
+            <ScoreVal label="Tamaño esp."     value={predLitterScore} />
+            <ScoreVal label="Superviv. esp."  value={predSurvScore} />
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -503,7 +773,37 @@ export default function Camadas() {
                         <div className="text-sm" style={{ color: '#8a9bb0' }}>{camada.notas}</div>
                       </div>
                     )}
+                    {camada.failure_flag && (
+                      <div className="col-span-2 md:col-span-4">
+                        <div
+                          className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                          style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)' }}
+                        >
+                          <span className="text-sm">⚠</span>
+                          <span className="text-xs font-semibold" style={{ color: '#ff6b80' }}>
+                            Fallo reproductivo registrado
+                            {camada.failure_type && (
+                              <span className="font-normal opacity-80">
+                                {' '}— {{
+                                  no_birth: 'Sin parto',
+                                  failed_pregnancy: 'Preñez fallida',
+                                  reabsorption: 'Reabsorción sospechada',
+                                  unknown: 'Fallo desconocido',
+                                }[camada.failure_type] ?? camada.failure_type}
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Análisis reproductivo */}
+                  <AnalisisReproductivo
+                    camada={camada}
+                    todasCamadas={camadas}
+                    animales={animales}
+                  />
 
                   {/* Editor de distribución en jaulas (solo si hay destete registrado) */}
                   {camada.fecha_destete && (

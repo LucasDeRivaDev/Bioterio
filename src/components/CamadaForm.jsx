@@ -6,7 +6,15 @@ const vacioCamada = {
   id_madre: '', id_padre: '', fecha_copula: '', fecha_nacimiento: '',
   gestacion_real: '', total_crias: '', crias_machos: '', crias_hembras: '',
   total_destetados: '', fecha_destete: '', notas: '',
+  failure_flag: false, failure_type: '',
 }
+
+const TIPOS_FALLA = [
+  { value: 'no_birth',         label: 'Sin parto' },
+  { value: 'failed_pregnancy', label: 'Preñez fallida' },
+  { value: 'reabsorption',     label: 'Reabsorción sospechada' },
+  { value: 'unknown',          label: 'Fallo desconocido' },
+]
 
 const ESTADOS_ACTIVOS = ['activo', 'en_apareamiento', 'en_cria']
 
@@ -77,11 +85,13 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
     if (!validar()) return
     onGuardar({
       ...form,
-      gestacion_real: form.gestacion_real ? Number(form.gestacion_real) : null,
-      total_crias: form.total_crias ? Number(form.total_crias) : null,
-      crias_machos: form.crias_machos ? Number(form.crias_machos) : null,
-      crias_hembras: form.crias_hembras ? Number(form.crias_hembras) : null,
+      gestacion_real:   form.gestacion_real   ? Number(form.gestacion_real)   : null,
+      total_crias:      form.total_crias      ? Number(form.total_crias)      : null,
+      crias_machos:     form.crias_machos     ? Number(form.crias_machos)     : null,
+      crias_hembras:    form.crias_hembras    ? Number(form.crias_hembras)    : null,
       total_destetados: form.total_destetados ? Number(form.total_destetados) : null,
+      failure_flag:     Boolean(form.failure_flag),
+      failure_type:     form.failure_flag && form.failure_type ? form.failure_type : null,
     })
   }
 
@@ -297,6 +307,61 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
           style={inputStyle}
         />
       </LabInput>
+
+      {/* Falla reproductiva */}
+      <div
+        className="rounded-xl overflow-hidden"
+        style={{ border: form.failure_flag ? '1px solid rgba(255,61,87,0.35)' : '1px solid rgba(30,51,82,0.6)' }}
+      >
+        {/* Toggle */}
+        <button
+          type="button"
+          onClick={() => cambiar('failure_flag', !form.failure_flag)}
+          className="w-full flex items-center justify-between px-3 py-2.5 text-sm transition-all"
+          style={
+            form.failure_flag
+              ? { background: 'rgba(255,61,87,0.08)', color: '#ff6b80' }
+              : { background: 'rgba(138,155,176,0.04)', color: '#4a5f7a' }
+          }
+        >
+          <span className="flex items-center gap-2 font-semibold">
+            <span>⚠</span> Registrar fallo reproductivo
+            {form.failure_flag && <span className="text-xs opacity-70 font-normal">(quedará en el historial de la hembra)</span>}
+          </span>
+          <span
+            className="w-9 h-5 rounded-full flex items-center transition-all px-0.5 shrink-0"
+            style={{ background: form.failure_flag ? 'rgba(255,61,87,0.4)' : 'rgba(30,51,82,0.8)' }}
+          >
+            <span
+              className="w-4 h-4 rounded-full transition-all"
+              style={{
+                background: form.failure_flag ? '#ff6b80' : '#4a5f7a',
+                transform: form.failure_flag ? 'translateX(16px)' : 'translateX(0)',
+              }}
+            />
+          </span>
+        </button>
+
+        {/* Tipo de falla */}
+        {form.failure_flag && (
+          <div className="px-3 py-3 space-y-2" style={{ borderTop: '1px solid rgba(255,61,87,0.2)' }}>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#8a9bb0' }}>
+              Tipo de falla
+            </label>
+            <select
+              value={form.failure_type}
+              onChange={(e) => cambiar('failure_type', e.target.value)}
+              className="w-full px-3 py-2.5 text-sm focus:outline-none"
+              style={{ ...inputStyle, width: '100%', borderColor: 'rgba(255,61,87,0.3)' }}
+            >
+              <option value="">— Seleccioná el tipo —</option>
+              {TIPOS_FALLA.map(({ value, label }) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
 
       {/* Botones */}
       <div className="flex gap-3 pt-2">

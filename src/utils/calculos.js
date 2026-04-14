@@ -320,6 +320,154 @@ export function generarTareas(camadas, animales) {
   return tareas
 }
 
+// ─── SCORES REPRODUCTIVOS ─────────────────────────────────────────────────────
+
+/**
+ * Score por tamaño de camada.
+ * 10+ crías → 10 | 8–9 → 7 | <8 → 1 (rendimiento bajo, alerta)
+ */
+export function scoreTamanoCamada(totalCrias) {
+  if (totalCrias == null) return null
+  if (totalCrias >= 10) return 10
+  if (totalCrias >= 8)  return 7
+  return 1
+}
+
+/**
+ * Score por proporción sexual.
+ * Más hembras → 10 | Igual → 7 | Más machos → 5
+ */
+export function scoreProporcionSexual(machos, hembras) {
+  if (machos == null || hembras == null) return null
+  if (hembras > machos) return 10
+  if (hembras === machos) return 7
+  return 5
+}
+
+/**
+ * Score de supervivencia al destete.
+ * survival_rate * 10 (con un decimal)
+ */
+export function scoreSupervivencia(totalCrias, totalDestetados) {
+  if (totalCrias == null || totalCrias === 0 || totalDestetados == null) return null
+  const rate = totalDestetados / totalCrias
+  return Math.round(rate * 100) / 10
+}
+
+/**
+ * Calcula todos los scores de una camada en un objeto.
+ * Todos los scores son independientes — no se calcula total.
+ */
+export function calcularScoresCamada(camada) {
+  const latencia    = calcularLatencia(camada)
+  const timeScore   = scorePorLatencia(latencia)
+  const litterScore = scoreTamanoCamada(camada.total_crias)
+  const sexScore    = scoreProporcionSexual(camada.crias_machos, camada.crias_hembras)
+  const survScore   = scoreSupervivencia(camada.total_crias, camada.total_destetados)
+
+  const lossCount = (camada.total_crias != null && camada.total_destetados != null)
+    ? Math.max(0, camada.total_crias - camada.total_destetados)
+    : null
+
+  const survivalRate = (camada.total_crias > 0 && camada.total_destetados != null)
+    ? camada.total_destetados / camada.total_crias
+    : null
+
+  return {
+    time_score:       timeScore,
+    litter_size_score: litterScore,
+    sex_ratio_score:  sexScore,
+    survival_score:   survScore,
+    loss_count:       lossCount,
+    survival_rate:    survivalRate,
+    latencia,
+  }
+}
+
+/**
+ * Calcula el perfil histórico promedio de una hembra.
+ * Solo camadas con fecha_nacimiento (datos reales).
+ */
+export function calcularPerfilHembra(hembraId, camadas) {
+  const hist = camadas.filter((c) => c.id_madre === hembraId && c.fecha_nacimiento)
+  if (hist.length === 0) return null
+
+  const scores = hist.map((c) => calcularScoresCamada(c))
+
+  function avg(key) {
+    const vals = scores.map((s) => s[key]).filter((v) => v != null)
+    if (!vals.length) return null
+    return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length * 10) / 10
+  }
+
+  return {
+    total_camadas:         hist.length,
+    avg_time_score:        avg('time_score'),
+    avg_litter_size_score: avg('litter_size_score'),
+    avg_sex_ratio_score:   avg('sex_ratio_score'),
+    avg_survival_score:    avg('survival_score'),
+  }
+}
+
+const LABEL_FALLO = {
+  no_birth:           'Sin parto',
+  failed_pregnancy:   'Preñez fallida',
+  reabsorption:       'Reabsorción sospechada',
+  unknown:            'Fallo desconocido',
+}
+
+/**
+ * Calcula la confiabilidad reproductiva de una hembra basada en su historial.
+ * Considera: fallos registrados (failure_flag) + camadas con < 8 crías.
+ *
+ * Niveles:
+ *  ok        → sin eventos negativos
+ *  leve      → 1 evento (fallo o camada baja)
+ *  moderada  → 2 fallos registrados
+ *  critica   → 3+ eventos combinados
+ */
+export function calcularConfiabilidadHembra(hembraId, camadas) {
+  const hist = camadas.filter((c) => c.id_madre === hembraId)
+  if (hist.length === 0) return null
+
+  const fallos       = hist.filter((c) => c.failure_flag)
+  const camadasBajas = hist.filter((c) => c.total_crias != null && c.total_crias < 8 && !c.failure_flag)
+  const combinados   = fallos.length + camadasBajas.length
+
+  const ultimoFallo = [...fallos]
+    .sort((a, b) => (b.fecha_copula ?? '').localeCompare(a.fecha_copula ?? ''))
+    [0]
+
+  let nivel, mensaje
+  if (combinados >= 3) {
+    nivel   = 'critica'
+    mensaje = 'Baja confiabilidad — considerar descarte'
+  } else if (fallos.length >= 2) {
+    nivel   = 'moderada'
+    mensaje = 'Alerta moderada — 2 o más fallos registrados'
+  } else if (combinados >= 1) {
+    nivel   = 'leve'
+    mensaje = fallos.length === 0
+      ? 'Camada con menos de 8 crías — monitorear'
+      : 'Fallo reproductivo registrado — monitorear'
+  } else {
+    nivel   = 'ok'
+    mensaje = null
+  }
+
+  return {
+    fallos:       fallos.length,
+    camadasBajas: camadasBajas.length,
+    combinados,
+    nivel,
+    mensaje,
+    ultimoFallo:  ultimoFallo
+      ? (LABEL_FALLO[ultimoFallo.failure_type] ?? ultimoFallo.failure_type ?? 'Sin tipo')
+      : null,
+    totalCamadas: hist.length,
+  }
+}
+
 /**
  * Genera todos los eventos del calendario a partir de camadas.
  */

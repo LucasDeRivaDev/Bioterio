@@ -57,6 +57,56 @@ function ChipCategoria({ label, animales, jaulas, color }) {
   )
 }
 
+const COLOR_MACHO  = '#40c4ff'
+const COLOR_HEMBRA = '#ce93d8'
+
+function SexoDisplay({ bloque, cfg }) {
+  const { tipo, animal, machos, hembras, total } = bloque
+
+  if (tipo === 'reproductor') {
+    const esMacho = animal.sexo === 'macho'
+    return (
+      <div className="flex items-center gap-1 text-xs font-mono font-semibold">
+        <span style={{ color: esMacho ? COLOR_MACHO : COLOR_HEMBRA }}>
+          {esMacho ? '♂ 1 Macho' : '♀ 1 Hembra'}
+        </span>
+      </div>
+    )
+  }
+
+  // Jaula de stock
+  if (machos != null && hembras != null) {
+    if (machos === 0) {
+      return (
+        <div className="flex items-center gap-1 text-xs font-mono font-semibold">
+          <span style={{ color: COLOR_HEMBRA }}>♀ {hembras} {hembras === 1 ? 'Hembra' : 'Hembras'}</span>
+        </div>
+      )
+    }
+    if (hembras === 0) {
+      return (
+        <div className="flex items-center gap-1 text-xs font-mono font-semibold">
+          <span style={{ color: COLOR_MACHO }}>♂ {machos} {machos === 1 ? 'Macho' : 'Machos'}</span>
+        </div>
+      )
+    }
+    return (
+      <div className="flex items-center gap-1 text-xs font-mono font-semibold">
+        <span style={{ color: COLOR_MACHO }}>♂{machos}M</span>
+        <span style={{ color: '#4a5f7a' }}>/</span>
+        <span style={{ color: COLOR_HEMBRA }}>♀{hembras}H</span>
+        <span style={{ color: '#4a5f7a', fontWeight: 400 }}>= {total}</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="text-xs font-mono" style={{ color: cfg.color }}>
+      {total} {total === 1 ? 'animal' : 'animales'}
+    </div>
+  )
+}
+
 function BloqueJaula({ bloque, onClick, modoSeleccion = false, seleccionada = false }) {
   const cfg = CAT[bloque.categoria]
   const esSeleccionable = modoSeleccion && !bloque.virtual
@@ -108,19 +158,7 @@ function BloqueJaula({ bloque, onClick, modoSeleccion = false, seleccionada = fa
             ? bloque.animal.codigo
             : `${bloque.madre?.codigo ?? '?'} × ${bloque.padre?.codigo ?? '?'}`}
         </div>
-        <div className="flex items-center gap-2 text-xs font-mono">
-          {bloque.tipo === 'reproductor' ? (
-            <span style={{ color: cfg.color }}>
-              {bloque.animal.sexo === 'macho' ? '♂ 1 macho' : '♀ 1 hembra'}
-            </span>
-          ) : (
-            <span style={{ color: cfg.color }}>
-              {bloque.machos != null && bloque.hembras != null
-                ? `♂${bloque.machos} ♀${bloque.hembras} = ${bloque.total}`
-                : `${bloque.total} animales`}
-            </span>
-          )}
-        </div>
+        <SexoDisplay bloque={bloque} cfg={cfg} />
         <div className="text-xs" style={{ color: '#4a5f7a' }}>
           {bloque.edad != null ? `${formatEdad(bloque.edad)} · ${bloque.edad}d` : '—'}
         </div>
