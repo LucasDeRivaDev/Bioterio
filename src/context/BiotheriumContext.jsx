@@ -247,14 +247,17 @@ export function BiotheriumProvider({ children }) {
   // ── TEMPERATURAS ──────────────────────────────────────────────────────────
 
   async function agregarTemperatura(datos) {
-    const nuevo = { ...datos, id: generarId() }
-    dispatch({ type: 'AGREGAR_TEMPERATURA', payload: nuevo })
-    const { error } = await supabase.from('temperature_logs').insert(nuevo)
+    const tempId = generarId()
+    dispatch({ type: 'AGREGAR_TEMPERATURA', payload: { ...datos, id: tempId } })
+    const { data, error } = await supabase.from('temperature_logs').insert(datos).select().single()
     if (error) {
       console.error('Error al guardar temperatura:', error)
-      dispatch({ type: 'ELIMINAR_TEMPERATURA', payload: nuevo.id })
+      dispatch({ type: 'ELIMINAR_TEMPERATURA', payload: tempId })
       throw error
     }
+    // Reemplazar el registro temporal con el real (id UUID de Supabase)
+    dispatch({ type: 'ELIMINAR_TEMPERATURA', payload: tempId })
+    dispatch({ type: 'AGREGAR_TEMPERATURA', payload: data })
   }
 
   async function eliminarTemperaturasMes(yearMonth) {
