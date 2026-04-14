@@ -74,7 +74,7 @@ function SexoDisplay({ bloque, cfg }) {
     )
   }
 
-  // Jaula de stock
+  // Jaula de stock — ambos sexos conocidos
   if (machos != null && hembras != null) {
     if (machos === 0) {
       return (
@@ -100,9 +100,35 @@ function SexoDisplay({ bloque, cfg }) {
     )
   }
 
+  // Solo uno de los dos conocido
+  if (machos != null) {
+    return (
+      <div className="flex items-center gap-1 text-xs font-mono font-semibold">
+        <span style={{ color: COLOR_MACHO }}>♂{machos}M</span>
+        <span style={{ color: '#4a5f7a' }}>/</span>
+        <span style={{ color: COLOR_HEMBRA }}>♀?</span>
+        <span style={{ color: '#4a5f7a', fontWeight: 400 }}>= {total}</span>
+      </div>
+    )
+  }
+  if (hembras != null) {
+    return (
+      <div className="flex items-center gap-1 text-xs font-mono font-semibold">
+        <span style={{ color: COLOR_MACHO }}>♂?</span>
+        <span style={{ color: '#4a5f7a' }}>/</span>
+        <span style={{ color: COLOR_HEMBRA }}>♀{hembras}H</span>
+        <span style={{ color: '#4a5f7a', fontWeight: 400 }}>= {total}</span>
+      </div>
+    )
+  }
+
+  // Sin datos de sexo — mostrar total con aviso
   return (
-    <div className="text-xs font-mono" style={{ color: cfg.color }}>
-      {total} {total === 1 ? 'animal' : 'animales'}
+    <div className="flex flex-col gap-0.5">
+      <div className="text-xs font-mono font-semibold" style={{ color: cfg.color }}>
+        {total} {total === 1 ? 'animal' : 'animales'}
+      </div>
+      <div className="text-xs" style={{ color: '#4a5f7a' }}>sexo sin registrar</div>
     </div>
   )
 }
