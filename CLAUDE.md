@@ -159,6 +159,24 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
 - **Estado visual "Parto fallido" (15/04/2026):** camadas con `failure_flag: true` muestran estado `fallida` con badge rojo "✕ Parto fallido" y filtro "Fallidas" en Emparejamientos.
 - **Control de stock para apareamientos históricos (15/04/2026):** toggle "Incluir crías en el stock" en CamadaForm. Si desactivado: no se crea jaula al destetar, badge amarillo "Sin stock" en la lista, botones "Agregar/Remover del stock" en detalle expandido. Columna `incluir_en_stock` en Supabase.
 
+- **Orden cronológico global (15/04/2026):** datos de camadas, animales y sacrificios se ordenan por fecha real del evento tanto en la carga inicial desde Supabase como al agregar registros nuevos. Emparejamientos ordenados por `fecha_copula` descendente.
+
+- **Gráfico de evolución mejorado (15/04/2026):** múltiples correcciones y mejoras al gráfico Stock → Evolución:
+  - Bug crítico corregido: campo `jaula` en `registrarSacrificio` causaba fallo silencioso en Supabase — eliminado
+  - Bug corregido: `sacrificarReproductor` ahora también inserta en tabla `sacrificios` con `categoria: 'reproductor'` → aparece en el gráfico
+  - Bug corregido: sacrificios sin `fecha` usan `created_at` de Supabase como respaldo para ubicarlos en la línea temporal
+  - Rango por defecto cambiado a "Todo el historial"
+  - Tarjetas de resumen calculan totales globales desde arrays crudos (independientes del rango seleccionado)
+  - Nuevas métricas: mortalidad pre-destete (línea naranja), reproductores sacrificados, promedio crías/camada, tasa de supervivencia al destete con semáforo de color
+  - Nacimientos usan `total_destetados` (stock real) en lugar de `total_crias`
+  - Respeta `incluir_en_stock: false` en el cálculo de nacimientos
+
+- **Vista por categorías sincronizada (15/04/2026):** `datosResumen` ahora usa `bloques` como fuente única de verdad — mismo dato que Vista por jaulas. Elimina desincronización cuando jaulas son editadas directamente. Lactantes siguen calculándose desde camadas pre-destete.
+
+- **Bloques virtuales respetan incluir_en_stock (15/04/2026):** camadas marcadas como "Sin stock" ya no generan bloque virtual en la vista de jaulas.
+
+- **Registrar fecha de sacrificio en reproductores históricos (15/04/2026):** en Sacrificios → sección Reproductores, cada animal sin fecha muestra botón "+ Registrar fecha" con input inline. Al guardar crea registro en tabla `sacrificios` con `categoria: 'reproductor'` y la fecha correcta → aparece inmediatamente en el gráfico.
+
 ---
 
 ## Qué falta / pendiente
