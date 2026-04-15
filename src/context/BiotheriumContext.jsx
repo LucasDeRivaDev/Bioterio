@@ -172,7 +172,16 @@ export function BiotheriumProvider({ children }) {
   async function editarCamada(datos) {
     const antigua = estado.camadas.find((c) => c.id === datos.id)
     dispatch({ type: 'EDITAR_CAMADA', payload: datos })
-    const { error } = await supabase.from('camadas').update(datos).eq('id', datos.id)
+    // Solo mandamos las columnas reales de la DB (sin campos computados como rango, latencia, estado, etc.)
+    const { id, id_madre, id_padre, fecha_copula, fecha_separacion,
+            fecha_nacimiento, fecha_destete, gestacion_real,
+            total_crias, crias_machos, crias_hembras, total_destetados,
+            failure_flag, failure_type, notas } = datos
+    const datosDB = { id, id_madre, id_padre, fecha_copula, fecha_separacion,
+                      fecha_nacimiento, fecha_destete, gestacion_real,
+                      total_crias, crias_machos, crias_hembras, total_destetados,
+                      failure_flag, failure_type, notas }
+    const { error } = await supabase.from('camadas').update(datosDB).eq('id', datos.id)
     if (error) console.error('Error al editar camada:', error)
 
     // Auto-crear jaula inicial cuando se registra el destete por primera vez
