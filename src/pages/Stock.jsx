@@ -693,13 +693,11 @@ function GraficoEvolucion({ camadas, sacrificios, animales }) {
     // 1. Recolectar todos los eventos con fecha
     const eventos = []
 
-    camadas.filter(c => c.fecha_nacimiento && !c.failure_flag).forEach(c => {
-      // Usamos destetados para el stock real; si no hay destete aún, usamos total_crias
+    camadas.filter(c => c.fecha_nacimiento && !c.failure_flag && c.incluir_en_stock !== false).forEach(c => {
       const destetados = c.fecha_destete ? (c.total_destetados ?? c.total_crias ?? 0) : (c.total_crias ?? 0)
       const nacidos    = c.total_crias ?? 0
       const mortalidad = c.fecha_destete ? Math.max(0, nacidos - destetados) : 0
       const fechaStock = c.fecha_destete ?? c.fecha_nacimiento
-
       eventos.push({ fecha: fechaStock, nacimientos: destetados, sacrificados: 0, mortalidad, repros: 0 })
     })
 
@@ -708,7 +706,7 @@ function GraficoEvolucion({ camadas, sacrificios, animales }) {
       if (s.fecha) eventos.push({ fecha: s.fecha, nacimientos: 0, sacrificados: s.cantidad, mortalidad: 0, repros: 0 })
     })
 
-    // Reproductores sacrificados (tabla animales, estado === 'fallecido')
+    // Reproductores sacrificados — solo los que tienen fecha_sacrificio (necesita columna en DB)
     ;(animales ?? []).filter(a => a.estado === 'fallecido' && a.fecha_sacrificio).forEach(a => {
       eventos.push({ fecha: a.fecha_sacrificio, nacimientos: 0, sacrificados: 0, mortalidad: 0, repros: 1 })
     })
@@ -802,8 +800,11 @@ function GraficoEvolucion({ camadas, sacrificios, animales }) {
       ? Math.round(conCrias.reduce((s, c) => s + c.total_crias, 0) / conCrias.length * 10) / 10
       : null
 
-    return { nCamadas: enPeriodo.length, tasaSup, promCrias }
-  }, [camadas, rango])
+    // Total reproductores sacrificados — independiente del rango y de fecha_sacrificio
+    const totalReprosSacrificados = (animales ?? []).filter(a => a.estado === 'fallecido').length
+
+    return { nCamadas: enPeriodo.length, tasaSup, promCrias, totalReprosSacrificados }
+  }, [camadas, animales, rango])
 
   const CustomTooltip = ({ active, payload }) => {
     if (!active || !payload?.length) return null
@@ -933,9 +934,9 @@ function GraficoEvolucion({ camadas, sacrificios, animales }) {
           { label: 'Stock actual',       val: datos[datos.length - 1]?.total ?? 0,                          fmt: v => v,        color: '#40c4ff' },
           { label: 'Total destetados',   val: datos.reduce((s, d) => s + d.nacimientos, 0),                  fmt: v => v,        color: '#00e676' },
           { label: 'Sac. de stock',      val: datos.reduce((s, d) => s + d.sacrificados, 0),                 fmt: v => v,        color: '#ff6b80' },
+          { label: 'Reproductores sac.', val: stats.totalReprosSacrificados,                                  fmt: v => v,        color: '#ce93d8' },
           { label: 'Mort. pre-destete',  val: datos.reduce((s, d) => s + d.mortalidad, 0),                   fmt: v => v,        color: '#ffb300' },
-          { label: 'Prom. crías/camada', val: stats.promCrias,                                                fmt: v => v ?? '—', color: '#ce93d8' },
-          { label: 'Camadas en período', val: stats.nCamadas,                                                 fmt: v => v,        color: '#80cbc4' },
+          { label: 'Prom. crías/camada', val: stats.promCrias,                                                fmt: v => v ?? '—', color: '#80cbc4' },
         ].map(({ label, val, fmt, color }) => (
           <div key={label} className="rounded-xl px-4 py-3 text-center"
             style={{ background: `${color}08`, border: `1px solid ${color}20` }}>
@@ -1018,6 +1019,7 @@ export default function Stock() {
     // 3. Bloques virtuales — camadas destetadas sin jaulas asignadas (datos históricos)
     camadas.forEach((camada) => {
       if (!camada.fecha_nacimiento || !camada.fecha_destete) return
+      if (camada.incluir_en_stock === false) return
       if (jaulas.some((j) => j.camada_id === camada.id)) return
       const stock = stockCamada(camada, sacrificios)
       if (stock <= 0) return
@@ -1055,35 +1057,41 @@ export default function Stock() {
   }, [bloques])
 
   // ── Datos para la vista "Resumen" (categorías) ────────────────────────────
+  // Usa `bloques` como fuente única de verdad — siempre en sync con Vista por jaulas
   const datosResumen = useMemo(() => {
-    const hembrasRepro = animales.filter((a) => a.sexo === 'hembra' && (a.estado === 'activo' || a.estado === 'en_cria' || a.estado === 'en_apareamiento'))
-    const machosRepro  = animales.filter((a) => a.sexo === 'macho'  && (a.estado === 'activo' || a.estado === 'en_cria' || a.estado === 'en_apareamiento'))
-    let crias = { total: 0, grupos: 0, machos: 0, hembras: 0 }
-    let jovenes = { total: 0, grupos: 0, machos: 0, hembras: 0 }
+    const hembrasRepro = animales.filter((a) => a.sexo === 'hembra' && ['activo', 'en_cria', 'en_apareamiento'].includes(a.estado))
+    const machosRepro  = animales.filter((a) => a.sexo === 'macho'  && ['activo', 'en_cria', 'en_apareamiento'].includes(a.estado))
+    let crias     = { total: 0, grupos: 0, machos: 0, hembras: 0 }
+    let jovenes   = { total: 0, grupos: 0, machos: 0, hembras: 0 }
     let adultosNR = { total: 0, grupos: 0, machos: 0, hembras: 0 }
     let lactantes = { total: 0, grupos: 0 }
 
-    camadas.filter((c) => c.fecha_nacimiento).forEach((c) => {
+    // Lactantes (pre-destete) — no están en bloques todavía, los sacamos de camadas
+    camadas.filter((c) => c.fecha_nacimiento && !c.failure_flag && c.incluir_en_stock !== false).forEach((c) => {
       const edad = edadDias(c.fecha_nacimiento)
+      if (edad === null || edad >= BIO.DESTETE_DIAS) return
+      lactantes.total += c.total_crias ?? 0
+      lactantes.grupos += 1
+    })
+
+    // Stock por edad — directamente desde bloques (ya descontados jaulas editadas y sacrificios)
+    bloques.filter((b) => b.tipo === 'stock').forEach((b) => {
+      const edad = b.edad
       if (edad === null) return
-      const stock = stockCamada(c, sacrificios)
-      if (stock <= 0) return
-      const totalBase = c.total_destetados ?? c.total_crias ?? 0
-      const ratio = totalBase > 0 ? stock / totalBase : 0
-      const m = Math.round((c.crias_machos ?? 0) * ratio)
-      const h = Math.round((c.crias_hembras ?? 0) * ratio)
-      if (edad < BIO.DESTETE_DIAS) {
-        lactantes.total += c.total_crias ?? 0; lactantes.grupos += 1
-      } else if (edad < 42) {
-        crias.total += stock; crias.grupos += 1; crias.machos += m; crias.hembras += h
+      const total = b.total
+      const m = b.machos ?? 0
+      const h = b.hembras ?? 0
+      if (edad < 42) {
+        crias.total += total; crias.grupos += 1; crias.machos += m; crias.hembras += h
       } else if (edad < BIO.MADUREZ_DIAS) {
-        jovenes.total += stock; jovenes.grupos += 1; jovenes.machos += m; jovenes.hembras += h
+        jovenes.total += total; jovenes.grupos += 1; jovenes.machos += m; jovenes.hembras += h
       } else {
-        adultosNR.total += stock; adultosNR.grupos += 1; adultosNR.machos += m; adultosNR.hembras += h
+        adultosNR.total += total; adultosNR.grupos += 1; adultosNR.machos += m; adultosNR.hembras += h
       }
     })
+
     return { hembrasRepro, machosRepro, crias, jovenes, adultosNR, lactantes }
-  }, [animales, camadas, sacrificios])
+  }, [animales, camadas, bloques])
 
   const bloquesFiltrados = useMemo(() =>
     filtroCat === 'todas' ? bloques : bloques.filter((b) => b.categoria === filtroCat),
