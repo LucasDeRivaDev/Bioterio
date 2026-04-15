@@ -686,7 +686,7 @@ function mesStr(fecha) {
   return fecha ? fecha.slice(0, 7) : null
 }
 
-function GraficoEvolucion({ camadas, sacrificios }) {
+function GraficoEvolucion({ camadas, sacrificios, animales }) {
   const [rango, setRango] = useState('12m')
 
   const datos = useMemo(() => {
@@ -700,24 +700,31 @@ function GraficoEvolucion({ camadas, sacrificios }) {
       const mortalidad = c.fecha_destete ? Math.max(0, nacidos - destetados) : 0
       const fechaStock = c.fecha_destete ?? c.fecha_nacimiento
 
-      eventos.push({ fecha: fechaStock, nacimientos: destetados, sacrificados: 0, mortalidad })
+      eventos.push({ fecha: fechaStock, nacimientos: destetados, sacrificados: 0, mortalidad, repros: 0 })
     })
 
+    // Sacrificios de stock (tabla sacrificios)
     sacrificios.forEach(s => {
-      if (s.fecha) eventos.push({ fecha: s.fecha, nacimientos: 0, sacrificados: s.cantidad, mortalidad: 0 })
+      if (s.fecha) eventos.push({ fecha: s.fecha, nacimientos: 0, sacrificados: s.cantidad, mortalidad: 0, repros: 0 })
+    })
+
+    // Reproductores sacrificados (tabla animales, estado === 'fallecido')
+    ;(animales ?? []).filter(a => a.estado === 'fallecido' && a.fecha_sacrificio).forEach(a => {
+      eventos.push({ fecha: a.fecha_sacrificio, nacimientos: 0, sacrificados: 0, mortalidad: 0, repros: 1 })
     })
 
     if (eventos.length === 0) return []
 
     // 2. Agrupar por mes
     const porMes = {}
-    eventos.forEach(({ fecha, nacimientos, sacrificados, mortalidad }) => {
+    eventos.forEach(({ fecha, nacimientos, sacrificados, mortalidad, repros }) => {
       const mes = mesStr(fecha)
       if (!mes) return
-      if (!porMes[mes]) porMes[mes] = { mes, nacimientos: 0, sacrificados: 0, mortalidad: 0 }
+      if (!porMes[mes]) porMes[mes] = { mes, nacimientos: 0, sacrificados: 0, mortalidad: 0, repros: 0 }
       porMes[mes].nacimientos  += nacimientos
       porMes[mes].sacrificados += sacrificados
       porMes[mes].mortalidad   += mortalidad
+      porMes[mes].repros       += repros
     })
 
     // 3. Ordenar meses cronológicamente
@@ -751,7 +758,7 @@ function GraficoEvolucion({ camadas, sacrificios }) {
 
     while (cursor <= fin) {
       const mesKey = cursor.toISOString().slice(0, 7)
-      const d = porMes[mesKey] ?? { nacimientos: 0, sacrificados: 0, mortalidad: 0 }
+      const d = porMes[mesKey] ?? { nacimientos: 0, sacrificados: 0, mortalidad: 0, repros: 0 }
       acumulado = Math.max(0, acumulado + d.nacimientos - d.sacrificados)
       resultado.push({
         mes: mesKey,
@@ -760,6 +767,7 @@ function GraficoEvolucion({ camadas, sacrificios }) {
         nacimientos:  d.nacimientos,
         sacrificados: d.sacrificados,
         mortalidad:   d.mortalidad,
+        repros:       d.repros,
       })
       cursor.setMonth(cursor.getMonth() + 1)
     }
@@ -824,6 +832,12 @@ function GraficoEvolucion({ camadas, sacrificios }) {
           <div className="flex justify-between gap-4 text-xs">
             <span style={{ color: '#ffb300' }}>Mort. pre-destete</span>
             <span className="font-mono font-bold" style={{ color: '#ffb300' }}>{d.mortalidad}</span>
+          </div>
+        )}
+        {d?.repros > 0 && (
+          <div className="flex justify-between gap-4 text-xs">
+            <span style={{ color: '#ce93d8' }}>Reproductores</span>
+            <span className="font-mono font-bold" style={{ color: '#ce93d8' }}>-{d.repros}</span>
           </div>
         )}
       </div>
@@ -899,28 +913,29 @@ function GraficoEvolucion({ camadas, sacrificios }) {
             <Tooltip content={<CustomTooltip />} />
             <Legend
               formatter={(v) => {
-                const map = { nacimientos: 'Destetados', sacrificados: 'Sacrificados', mortalidad: 'Mort. pre-destete' }
+                const map = { nacimientos: 'Destetados', sacrificados: 'Sacrificados (stock)', repros: 'Reproductores', mortalidad: 'Mort. pre-destete' }
                 return <span style={{ color: '#8a9bb0', fontSize: 11 }}>{map[v] ?? v}</span>
               }}
               wrapperStyle={{ paddingTop: 8 }}
             />
             <Bar dataKey="nacimientos"  fill="#00e676" fillOpacity={0.7} radius={[3,3,0,0]} maxBarSize={20} />
             <Bar dataKey="sacrificados" fill="#ff6b80" fillOpacity={0.7} radius={[3,3,0,0]} maxBarSize={20} />
+            <Bar dataKey="repros"       fill="#ce93d8" fillOpacity={0.7} radius={[3,3,0,0]} maxBarSize={20} />
             <Line type="monotone" dataKey="mortalidad" stroke="#ffb300" strokeWidth={2}
               dot={false} activeDot={{ r: 3, fill: '#ffb300' }} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Resumen numérico — 6 cards */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* Resumen numérico */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {[
-          { label: 'Stock actual',        val: datos[datos.length - 1]?.total ?? 0,                               fmt: v => v,          color: '#40c4ff' },
-          { label: 'Total destetados',    val: datos.reduce((s, d) => s + d.nacimientos, 0),                       fmt: v => v,          color: '#00e676' },
-          { label: 'Total sacrificados',  val: datos.reduce((s, d) => s + d.sacrificados, 0),                      fmt: v => v,          color: '#ff6b80' },
-          { label: 'Mort. pre-destete',   val: datos.reduce((s, d) => s + d.mortalidad, 0),                        fmt: v => v,          color: '#ffb300' },
-          { label: 'Prom. crías/camada',  val: stats.promCrias,                                                     fmt: v => v ?? '—',   color: '#ce93d8' },
-          { label: 'Camadas en período',  val: stats.nCamadas,                                                      fmt: v => v,          color: '#80cbc4' },
+          { label: 'Stock actual',       val: datos[datos.length - 1]?.total ?? 0,                          fmt: v => v,        color: '#40c4ff' },
+          { label: 'Total destetados',   val: datos.reduce((s, d) => s + d.nacimientos, 0),                  fmt: v => v,        color: '#00e676' },
+          { label: 'Sac. de stock',      val: datos.reduce((s, d) => s + d.sacrificados, 0),                 fmt: v => v,        color: '#ff6b80' },
+          { label: 'Mort. pre-destete',  val: datos.reduce((s, d) => s + d.mortalidad, 0),                   fmt: v => v,        color: '#ffb300' },
+          { label: 'Prom. crías/camada', val: stats.promCrias,                                                fmt: v => v ?? '—', color: '#ce93d8' },
+          { label: 'Camadas en período', val: stats.nCamadas,                                                 fmt: v => v,        color: '#80cbc4' },
         ].map(({ label, val, fmt, color }) => (
           <div key={label} className="rounded-xl px-4 py-3 text-center"
             style={{ background: `${color}08`, border: `1px solid ${color}20` }}>
@@ -1281,7 +1296,7 @@ export default function Stock() {
 
       {/* ══════════════════════════════════════════════════════════════════ */}
       {vista === 'evolucion' && (
-        <GraficoEvolucion camadas={camadas} sacrificios={sacrificios} />
+        <GraficoEvolucion camadas={camadas} sacrificios={sacrificios} animales={animales} />
       )}
 
       {/* ── BARRA FLOTANTE DE SELECCIÓN ─────────────────────────────────────── */}
