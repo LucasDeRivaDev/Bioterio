@@ -687,7 +687,7 @@ function mesStr(fecha) {
 }
 
 function GraficoEvolucion({ camadas, sacrificios, animales }) {
-  const [rango, setRango] = useState('12m')
+  const [rango, setRango] = useState('todo')
 
   const datos = useMemo(() => {
     // 1. Recolectar todos los eventos con fecha
@@ -929,15 +929,15 @@ function GraficoEvolucion({ camadas, sacrificios, animales }) {
         </ResponsiveContainer>
       </div>
 
-      {/* Resumen numérico */}
+      {/* Resumen numérico — totales globales (independientes del rango) */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {[
-          { label: 'Stock actual',       val: datos[datos.length - 1]?.total ?? 0,                          fmt: v => v,        color: '#40c4ff' },
-          { label: 'Total destetados',   val: datos.reduce((s, d) => s + d.nacimientos, 0),                  fmt: v => v,        color: '#00e676' },
-          { label: 'Sac. de stock',      val: datos.reduce((s, d) => s + d.sacrificados, 0),                 fmt: v => v,        color: '#ff6b80' },
-          { label: 'Reproductores sac.', val: stats.totalReprosSacrificados,                                  fmt: v => v,        color: '#ce93d8' },
-          { label: 'Mort. pre-destete',  val: datos.reduce((s, d) => s + d.mortalidad, 0),                   fmt: v => v,        color: '#ffb300' },
-          { label: 'Prom. crías/camada', val: stats.promCrias,                                                fmt: v => v ?? '—', color: '#80cbc4' },
+          { label: 'Stock actual',       val: datos[datos.length - 1]?.total ?? 0,                                                                                                  fmt: v => v,        color: '#40c4ff' },
+          { label: 'Total destetados',   val: camadas.filter(c => !c.failure_flag && c.incluir_en_stock !== false && c.fecha_destete).reduce((s, c) => s + (c.total_destetados ?? c.total_crias ?? 0), 0), fmt: v => v, color: '#00e676' },
+          { label: 'Sac. de stock',      val: sacrificios.filter(s => s.categoria !== 'reproductor').reduce((s, r) => s + r.cantidad, 0),                                           fmt: v => v,        color: '#ff6b80' },
+          { label: 'Reproductores sac.', val: stats.totalReprosSacrificados,                                                                                                         fmt: v => v,        color: '#ce93d8' },
+          { label: 'Mort. pre-destete',  val: camadas.filter(c => !c.failure_flag && c.fecha_destete).reduce((s, c) => s + Math.max(0, (c.total_crias ?? 0) - (c.total_destetados ?? c.total_crias ?? 0)), 0), fmt: v => v, color: '#ffb300' },
+          { label: 'Prom. crías/camada', val: stats.promCrias,                                                                                                                       fmt: v => v ?? '—', color: '#80cbc4' },
         ].map(({ label, val, fmt, color }) => (
           <div key={label} className="rounded-xl px-4 py-3 text-center"
             style={{ background: `${color}08`, border: `1px solid ${color}20` }}>
