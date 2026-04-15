@@ -173,25 +173,26 @@ export function BiotheriumProvider({ children }) {
     const antigua = estado.camadas.find((c) => c.id === datos.id)
     dispatch({ type: 'EDITAR_CAMADA', payload: datos })
     // Solo mandamos las columnas reales de la DB (sin id ni campos computados como rango, latencia, estado, etc.)
+    // || null convierte strings vacíos ("") a null además de undefined/null
     const datosDB = {
-      id_madre: datos.id_madre,
-      id_padre: datos.id_padre,
-      fecha_copula: datos.fecha_copula,
-      fecha_separacion: datos.fecha_separacion ?? null,
-      fecha_nacimiento: datos.fecha_nacimiento ?? null,
-      fecha_destete: datos.fecha_destete ?? null,
-      gestacion_real: datos.gestacion_real ?? null,
-      total_crias: datos.total_crias ?? null,
-      crias_machos: datos.crias_machos ?? null,
-      crias_hembras: datos.crias_hembras ?? null,
-      total_destetados: datos.total_destetados ?? null,
-      failure_flag: datos.failure_flag ?? false,
-      failure_type: datos.failure_type ?? null,
-      notas: datos.notas ?? null,
+      id_madre: datos.id_madre || null,
+      id_padre: datos.id_padre || null,
+      fecha_copula: datos.fecha_copula || null,
+      fecha_separacion: datos.fecha_separacion || null,
+      fecha_nacimiento: datos.fecha_nacimiento || null,
+      fecha_destete: datos.fecha_destete || null,
+      gestacion_real: datos.gestacion_real != null && datos.gestacion_real !== '' ? Number(datos.gestacion_real) : null,
+      total_crias: datos.total_crias != null && datos.total_crias !== '' ? Number(datos.total_crias) : null,
+      crias_machos: datos.crias_machos != null && datos.crias_machos !== '' ? Number(datos.crias_machos) : null,
+      crias_hembras: datos.crias_hembras != null && datos.crias_hembras !== '' ? Number(datos.crias_hembras) : null,
+      total_destetados: datos.total_destetados != null && datos.total_destetados !== '' ? Number(datos.total_destetados) : null,
+      failure_flag: Boolean(datos.failure_flag),
+      failure_type: datos.failure_type || null,
+      notas: datos.notas || null,
     }
     const { error } = await supabase.from('camadas').update(datosDB).eq('id', datos.id)
     if (error) {
-      console.error('Error al editar camada en Supabase:', error)
+      console.error('Error al editar camada — mensaje:', error.message, '| detalle:', error.details, '| hint:', error.hint)
       if (antigua) dispatch({ type: 'EDITAR_CAMADA', payload: antigua })
       return
     }
