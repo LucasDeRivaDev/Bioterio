@@ -549,9 +549,14 @@ export default function Camadas() {
     })
   }, [camadas, hoyDate])
 
-  const filtradas = useMemo(() =>
-    filtro === 'todas' ? camadasEnriquecidas : camadasEnriquecidas.filter((c) => c.estado === filtro),
-  [camadasEnriquecidas, filtro])
+  const filtradas = useMemo(() => {
+    const lista = filtro === 'todas' ? camadasEnriquecidas : camadasEnriquecidas.filter((c) => c.estado === filtro)
+    return [...lista].sort((a, b) => {
+      const fa = a.fecha_copula ?? ''
+      const fb = b.fecha_copula ?? ''
+      return fb.localeCompare(fa) // más reciente primero
+    })
+  }, [camadasEnriquecidas, filtro])
 
   function guardar(datos) {
     if (modal === 'nueva') agregarCamada(datos)
