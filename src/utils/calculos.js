@@ -133,14 +133,16 @@ export function interpretarLatencia(dias) {
 /**
  * Asigna un score discreto a una latencia de fertilización.
  * Reglas:
- *   1–5 días  → 10 (1er ciclo, muy bueno)
+ *   0–5 días  → 10 (fecundación inmediata o 1er ciclo, óptimo)
  *   6–10 días → 7  (2do ciclo, aceptable)
  *  11–15 días → 5  (3er ciclo, lento)
+ *  negativo   → null (error de datos)
  *  fuera de rango → null
  */
 export function scorePorLatencia(latencia) {
   if (latencia === null || latencia === undefined) return null
-  if (latencia >= 1 && latencia <= 5)  return 10
+  if (latencia < 0) return null
+  if (latencia >= 0 && latencia <= 5)  return 10
   if (latencia >= 6 && latencia <= 10) return 7
   if (latencia >= 11 && latencia <= 15) return 5
   return null
