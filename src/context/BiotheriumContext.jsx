@@ -264,22 +264,23 @@ export function BiotheriumProvider({ children }) {
     }
   }
 
-  // Sacrificio de animales reproductores (actualiza estado + intenta guardar fecha)
+  // Sacrificio de animales reproductores (actualiza estado + graba en tabla sacrificios)
   async function sacrificarReproductor(animal, fecha, motivo) {
     const actualizado = { ...animal, estado: 'fallecido', fecha_sacrificio: fecha, motivo_sacrificio: motivo || null }
     dispatch({ type: 'EDITAR_ANIMAL', payload: actualizado })
 
-    // Intenta actualizar con fecha_sacrificio (requiere migración DB)
-    const { error } = await supabase
-      .from('animales')
-      .update({ estado: 'fallecido', fecha_sacrificio: fecha, motivo_sacrificio: motivo || null })
-      .eq('id', animal.id)
-
-    if (error) {
-      // Fallback: solo actualiza el estado (funciona sin migración)
-      console.warn('Columnas fecha/motivo_sacrificio no disponibles, actualizando solo estado.')
-      await supabase.from('animales').update({ estado: 'fallecido' }).eq('id', animal.id)
+    // Grabar en tabla sacrificios — así aparece en el gráfico y en el historial
+    const sacrificioRepro = { id: generarId(), camada_id: null, cantidad: 1, fecha, categoria: 'reproductor', notas: motivo || null }
+    dispatch({ type: 'AGREGAR_SACRIFICIO', payload: sacrificioRepro })
+    const { error: errSac } = await supabase.from('sacrificios').insert(sacrificioRepro)
+    if (errSac) {
+      console.error('Error al registrar sacrificio de reproductor:', errSac)
+      dispatch({ type: 'ELIMINAR_SACRIFICIO', payload: sacrificioRepro.id })
     }
+
+    // Actualizar estado del animal (el update con fecha_sacrificio es opcional, ya tenemos el sacrificio arriba)
+    const { error } = await supabase.from('animales').update({ estado: 'fallecido' }).eq('id', animal.id)
+    if (error) console.error('Error al actualizar estado de reproductor:', error)
   }
 
   async function eliminarSacrificio(id) {

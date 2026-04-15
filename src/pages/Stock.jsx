@@ -701,14 +701,15 @@ function GraficoEvolucion({ camadas, sacrificios, animales }) {
       eventos.push({ fecha: fechaStock, nacimientos: destetados, sacrificados: 0, mortalidad, repros: 0 })
     })
 
-    // Sacrificios de stock (tabla sacrificios)
+    // Todos los sacrificios vienen de la tabla sacrificios
+    // categoria === 'reproductor' → barra repros; resto → barra sacrificados de stock
     sacrificios.forEach(s => {
-      if (s.fecha) eventos.push({ fecha: s.fecha, nacimientos: 0, sacrificados: s.cantidad, mortalidad: 0, repros: 0 })
-    })
-
-    // Reproductores sacrificados — solo los que tienen fecha_sacrificio (necesita columna en DB)
-    ;(animales ?? []).filter(a => a.estado === 'fallecido' && a.fecha_sacrificio).forEach(a => {
-      eventos.push({ fecha: a.fecha_sacrificio, nacimientos: 0, sacrificados: 0, mortalidad: 0, repros: 1 })
+      if (!s.fecha) return
+      if (s.categoria === 'reproductor') {
+        eventos.push({ fecha: s.fecha, nacimientos: 0, sacrificados: 0, mortalidad: 0, repros: s.cantidad })
+      } else {
+        eventos.push({ fecha: s.fecha, nacimientos: 0, sacrificados: s.cantidad, mortalidad: 0, repros: 0 })
+      }
     })
 
     if (eventos.length === 0) return []
