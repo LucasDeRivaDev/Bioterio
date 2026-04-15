@@ -205,6 +205,7 @@ const estadoConfig = {
   preñez:       { badge: 'violeta', label: 'En preñez',       icono: '🫄' },
   lactancia:    { badge: 'naranja', label: 'Lactancia',       icono: '🤱' },
   completada:   { badge: 'verde',   label: 'Completada',      icono: '✅' },
+  fallida:      { badge: 'rojo',    label: 'Parto fallido',   icono: '✕'  },
 }
 
 function LatenciaBit({ dias }) {
@@ -531,7 +532,9 @@ export default function Camadas() {
       const latencia = calcularLatencia(c)
 
       let estado
-      if (c.fecha_destete) {
+      if (c.failure_flag) {
+        estado = 'fallida'
+      } else if (c.fecha_destete) {
         estado = 'completada'
       } else if (c.fecha_nacimiento) {
         estado = 'lactancia'
@@ -616,6 +619,7 @@ export default function Camadas() {
         <FiltroBtn valor="preñez">En preñez</FiltroBtn>
         <FiltroBtn valor="lactancia">Lactancia</FiltroBtn>
         <FiltroBtn valor="completada">Completadas</FiltroBtn>
+        <FiltroBtn valor="fallida">Fallidas</FiltroBtn>
       </div>
 
       {/* Lista */}

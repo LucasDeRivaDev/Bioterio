@@ -43,9 +43,28 @@ function LabInput({ label, sublabel, required, error, children }) {
   )
 }
 
+function normalizarCamada(c) {
+  return {
+    id_madre:        c.id_madre        ?? '',
+    id_padre:        c.id_padre        ?? '',
+    fecha_copula:    c.fecha_copula    ?? '',
+    fecha_separacion: c.fecha_separacion ?? '',
+    fecha_nacimiento: c.fecha_nacimiento ?? '',
+    gestacion_real:  c.gestacion_real  ?? '',
+    total_crias:     c.total_crias     ?? '',
+    crias_machos:    c.crias_machos    ?? '',
+    crias_hembras:   c.crias_hembras   ?? '',
+    total_destetados: c.total_destetados ?? '',
+    fecha_destete:   c.fecha_destete   ?? '',
+    notas:           c.notas           ?? '',
+    failure_flag:    c.failure_flag    ?? false,
+    failure_type:    c.failure_type    ?? '',
+  }
+}
+
 export default function CamadaForm({ camada, onGuardar, onCancelar }) {
   const { animales } = useBioterio()
-  const [form, setForm] = useState(camada ?? vacioCamada)
+  const [form, setForm] = useState(camada ? normalizarCamada(camada) : vacioCamada)
   const [errores, setErrores] = useState({})
   const [modoHistorico, setModoHistorico] = useState(false)
 
