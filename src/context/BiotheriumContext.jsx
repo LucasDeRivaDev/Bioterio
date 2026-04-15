@@ -172,17 +172,29 @@ export function BiotheriumProvider({ children }) {
   async function editarCamada(datos) {
     const antigua = estado.camadas.find((c) => c.id === datos.id)
     dispatch({ type: 'EDITAR_CAMADA', payload: datos })
-    // Solo mandamos las columnas reales de la DB (sin campos computados como rango, latencia, estado, etc.)
-    const { id, id_madre, id_padre, fecha_copula, fecha_separacion,
-            fecha_nacimiento, fecha_destete, gestacion_real,
-            total_crias, crias_machos, crias_hembras, total_destetados,
-            failure_flag, failure_type, notas } = datos
-    const datosDB = { id, id_madre, id_padre, fecha_copula, fecha_separacion,
-                      fecha_nacimiento, fecha_destete, gestacion_real,
-                      total_crias, crias_machos, crias_hembras, total_destetados,
-                      failure_flag, failure_type, notas }
+    // Solo mandamos las columnas reales de la DB (sin id ni campos computados como rango, latencia, estado, etc.)
+    const datosDB = {
+      id_madre: datos.id_madre,
+      id_padre: datos.id_padre,
+      fecha_copula: datos.fecha_copula,
+      fecha_separacion: datos.fecha_separacion ?? null,
+      fecha_nacimiento: datos.fecha_nacimiento ?? null,
+      fecha_destete: datos.fecha_destete ?? null,
+      gestacion_real: datos.gestacion_real ?? null,
+      total_crias: datos.total_crias ?? null,
+      crias_machos: datos.crias_machos ?? null,
+      crias_hembras: datos.crias_hembras ?? null,
+      total_destetados: datos.total_destetados ?? null,
+      failure_flag: datos.failure_flag ?? false,
+      failure_type: datos.failure_type ?? null,
+      notas: datos.notas ?? null,
+    }
     const { error } = await supabase.from('camadas').update(datosDB).eq('id', datos.id)
-    if (error) console.error('Error al editar camada:', error)
+    if (error) {
+      console.error('Error al editar camada en Supabase:', error)
+      if (antigua) dispatch({ type: 'EDITAR_CAMADA', payload: antigua })
+      return
+    }
 
     // Auto-crear jaula inicial cuando se registra el destete por primera vez
     if (datos.fecha_destete && !antigua?.fecha_destete) {
