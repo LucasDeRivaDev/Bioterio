@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
-import { formatFecha } from '../utils/calculos'
+import { formatFecha, hoy } from '../utils/calculos'
 
 const cardStyle = { background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }
 
@@ -12,8 +12,60 @@ const labelCategoria = {
   otro: 'Otro',
 }
 
+const iStyle = {
+  background: 'rgba(5,8,16,0.6)', border: '1px solid rgba(30,51,82,0.8)',
+  color: '#e2e8f0', borderRadius: '0.5rem', padding: '0.3rem 0.5rem',
+  fontSize: '0.8rem', outline: 'none',
+}
+
+function RegistrarFechaRepro({ animal, onGuardar }) {
+  const [editando, setEditando] = useState(false)
+  const [fecha, setFecha]       = useState(hoy())
+  const [guardando, setGuardando] = useState(false)
+
+  async function guardar() {
+    if (!fecha) return
+    setGuardando(true)
+    await onGuardar(animal, fecha)
+    setEditando(false)
+    setGuardando(false)
+  }
+
+  if (!editando) {
+    return (
+      <button
+        onClick={() => setEditando(true)}
+        className="text-xs px-2 py-1 rounded-lg transition-all"
+        style={{ background: 'rgba(206,147,216,0.08)', border: '1px solid rgba(206,147,216,0.25)', color: '#ce93d8' }}
+      >
+        + Registrar fecha
+      </button>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={iStyle} />
+      <button
+        onClick={guardar} disabled={guardando || !fecha}
+        className="text-xs px-2 py-1 rounded-lg font-bold"
+        style={{ background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.3)', color: '#00e676', cursor: guardando ? 'wait' : 'pointer' }}
+      >
+        {guardando ? '...' : '✓'}
+      </button>
+      <button
+        onClick={() => setEditando(false)}
+        className="text-xs px-2 py-1 rounded-lg"
+        style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: '#4a5f7a' }}
+      >
+        ✕
+      </button>
+    </div>
+  )
+}
+
 export default function Sacrificios() {
-  const { animales, camadas, sacrificios, eliminarSacrificio } = useBioterio()
+  const { animales, camadas, sacrificios, eliminarSacrificio, registrarSacrificio } = useBioterio()
 
   // ── Reproductores sacrificados (estado === 'fallecido') ───────────────────
   const reproductoresSacrificados = useMemo(() =>
@@ -34,7 +86,17 @@ export default function Sacrificios() {
       }),
   [sacrificios, camadas, animales])
 
-  const totalSacrificados = sacrificios.reduce((sum, s) => sum + s.cantidad, 0)
+  const totalSacrificados = sacrificios.filter(s => s.categoria !== 'reproductor').reduce((sum, s) => sum + s.cantidad, 0)
+
+  async function registrarFechaRepro(animal, fecha) {
+    await registrarSacrificio({
+      camada_id: null,
+      cantidad: 1,
+      fecha,
+      categoria: 'reproductor',
+      notas: `Reproductor ${animal.codigo}`,
+    })
+  }
 
   return (
     <div className="p-4 md:p-6 space-y-6 min-h-screen" style={{ background: '#050810' }}>
@@ -95,7 +157,7 @@ export default function Sacrificios() {
               <table className="w-full text-sm" style={{ minWidth: '480px' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(30,51,82,0.6)', background: 'rgba(0,0,0,0.1)' }}>
-                    {['Código', 'Sexo', 'Fecha sacrificio', 'Progenitores', 'Notas / Motivo'].map((h) => (
+                    {['Código', 'Sexo', 'Fecha sacrificio', 'Progenitores', 'Notas / Motivo', ''].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest"
                         style={{ color: '#4a5f7a' }}>{h}</th>
                     ))}
@@ -125,6 +187,11 @@ export default function Sacrificios() {
                         </td>
                         <td className="px-4 py-3 text-xs" style={{ color: '#4a5f7a', maxWidth: '200px' }}>
                           {a.motivo_sacrificio ?? a.notas ?? '—'}
+                        </td>
+                        <td className="px-4 py-3">
+                          {!a.fecha_sacrificio && (
+                            <RegistrarFechaRepro animal={a} onGuardar={registrarFechaRepro} />
+                          )}
                         </td>
                       </tr>
                     )
