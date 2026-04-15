@@ -7,6 +7,7 @@ const vacioCamada = {
   gestacion_real: '', total_crias: '', crias_machos: '', crias_hembras: '',
   total_destetados: '', fecha_destete: '', notas: '',
   failure_flag: false, failure_type: '',
+  incluir_en_stock: true,
 }
 
 const TIPOS_FALLA = [
@@ -57,8 +58,9 @@ function normalizarCamada(c) {
     total_destetados: c.total_destetados ?? '',
     fecha_destete:   c.fecha_destete   ?? '',
     notas:           c.notas           ?? '',
-    failure_flag:    c.failure_flag    ?? false,
-    failure_type:    c.failure_type    ?? '',
+    failure_flag:      c.failure_flag      ?? false,
+    failure_type:      c.failure_type      ?? '',
+    incluir_en_stock:  c.incluir_en_stock  ?? true,
   }
 }
 
@@ -312,6 +314,38 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
               />
             </LabInput>
           </div>
+
+          {/* Toggle incluir en stock */}
+          <button
+            type="button"
+            onClick={() => cambiar('incluir_en_stock', !form.incluir_en_stock)}
+            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all"
+            style={
+              form.incluir_en_stock
+                ? { background: 'rgba(0,230,118,0.07)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676' }
+                : { background: 'rgba(255,179,0,0.07)', border: '1px solid rgba(255,179,0,0.3)', color: '#ffb300' }
+            }
+          >
+            <span className="flex items-center gap-2 font-semibold">
+              <span>📦</span>
+              <span>Incluir crías en el stock</span>
+              {!form.incluir_en_stock && (
+                <span className="text-xs font-normal opacity-70">(solo registro histórico)</span>
+              )}
+            </span>
+            <span
+              className="w-9 h-5 rounded-full flex items-center transition-all px-0.5 shrink-0"
+              style={{ background: form.incluir_en_stock ? 'rgba(0,230,118,0.4)' : 'rgba(255,179,0,0.4)' }}
+            >
+              <span
+                className="w-4 h-4 rounded-full transition-all"
+                style={{
+                  background: form.incluir_en_stock ? '#00e676' : '#ffb300',
+                  transform: form.incluir_en_stock ? 'translateX(16px)' : 'translateX(0)',
+                }}
+              />
+            </span>
+          </button>
         </div>
       )}
 

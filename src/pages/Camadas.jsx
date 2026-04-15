@@ -649,6 +649,9 @@ export default function Camadas() {
                           {nombreAnimal(camada.id_padre)}
                         </span>
                         <Badge color={cfg.badge}>{cfg.label}</Badge>
+                        {camada.incluir_en_stock === false && (
+                          <Badge color="amarillo">Sin stock</Badge>
+                        )}
                       </div>
                       <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
                         Cópula: {formatFecha(camada.fecha_copula)}
@@ -829,8 +832,39 @@ export default function Camadas() {
                     animales={animales}
                   />
 
-                  {/* Editor de distribución en jaulas (solo si hay destete registrado) */}
+                  {/* Control de stock */}
                   {camada.fecha_destete && (
+                    <div
+                      className="px-5 py-3 flex items-center justify-between"
+                      style={{ borderTop: '1px solid rgba(30,51,82,0.5)', background: 'rgba(0,0,0,0.15)' }}
+                    >
+                      <span className="text-xs" style={{ color: '#4a5f7a' }}>
+                        {camada.incluir_en_stock === false
+                          ? 'Las crías no están en stock — registro solo para historial y estadísticas.'
+                          : 'Crías incluidas en stock activo.'}
+                      </span>
+                      {camada.incluir_en_stock === false ? (
+                        <button
+                          onClick={() => editarCamada({ ...camada, incluir_en_stock: true })}
+                          className="text-xs font-semibold px-3 py-1.5 rounded-lg shrink-0"
+                          style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.3)', color: '#00e676' }}
+                        >
+                          + Agregar al stock
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => editarCamada({ ...camada, incluir_en_stock: false })}
+                          className="text-xs font-semibold px-3 py-1.5 rounded-lg shrink-0"
+                          style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.3)', color: '#ffb300' }}
+                        >
+                          Remover del stock
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Editor de distribución en jaulas (solo si hay destete y stock activo) */}
+                  {camada.fecha_destete && camada.incluir_en_stock !== false && (
                     <div
                       className="px-5 py-4"
                       style={{ borderTop: '1px solid rgba(0,230,118,0.08)', background: 'rgba(0,0,0,0.2)' }}

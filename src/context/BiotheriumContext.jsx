@@ -189,6 +189,7 @@ export function BiotheriumProvider({ children }) {
       failure_flag: Boolean(datos.failure_flag),
       failure_type: datos.failure_type || null,
       notas: datos.notas || null,
+      incluir_en_stock: datos.incluir_en_stock !== false,
     }
     const { error } = await supabase.from('camadas').update(datosDB).eq('id', datos.id)
     if (error) {
@@ -197,8 +198,21 @@ export function BiotheriumProvider({ children }) {
       return
     }
 
-    // Auto-crear jaula inicial cuando se registra el destete por primera vez
-    if (datos.fecha_destete && !antigua?.fecha_destete) {
+    const stockActivado   = datos.incluir_en_stock !== false && antigua?.incluir_en_stock === false
+    const stockDesactivado = datos.incluir_en_stock === false && antigua?.incluir_en_stock !== false
+
+    // Si se desactiva el stock → eliminar jaulas existentes de esta camada
+    if (stockDesactivado) {
+      const jaulasCamada = estado.jaulas.filter((j) => j.camada_id === datos.id)
+      for (const jaula of jaulasCamada) {
+        await eliminarJaula(jaula.id)
+      }
+    }
+
+    // Auto-crear jaula cuando se registra el destete por primera vez Y stock activo
+    // O cuando se reactiva el stock en una camada que ya tiene destete
+    const desteteNuevo = datos.fecha_destete && !antigua?.fecha_destete
+    if ((desteteNuevo || stockActivado) && datos.incluir_en_stock !== false && datos.fecha_destete) {
       const jaulaExiste = estado.jaulas.some((j) => j.camada_id === datos.id)
       if (!jaulaExiste) {
         const total = datos.total_destetados ?? datos.total_crias ?? 0
