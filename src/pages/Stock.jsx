@@ -4,7 +4,7 @@ import { difDias, parseDate, hoy, formatFecha } from '../utils/calculos'
 import { BIO } from '../utils/constants'
 import Modal from '../components/Modal'
 import {
-  ComposedChart, Area, Bar, XAxis, YAxis, CartesianGrid,
+  ComposedChart, Area, Bar, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, ReferenceLine,
 } from 'recharts'
 
@@ -693,23 +693,31 @@ function GraficoEvolucion({ camadas, sacrificios }) {
     // 1. Recolectar todos los eventos con fecha
     const eventos = []
 
-    camadas.filter(c => c.fecha_nacimiento).forEach(c => {
-      eventos.push({ fecha: c.fecha_nacimiento, nacimientos: c.total_crias ?? 0, sacrificados: 0 })
+    camadas.filter(c => c.fecha_nacimiento && !c.failure_flag).forEach(c => {
+      // Usamos destetados para el stock real; si no hay destete aún, usamos total_crias
+      const destetados = c.fecha_destete ? (c.total_destetados ?? c.total_crias ?? 0) : (c.total_crias ?? 0)
+      const nacidos    = c.total_crias ?? 0
+      const mortalidad = c.fecha_destete ? Math.max(0, nacidos - destetados) : 0
+      const fechaStock = c.fecha_destete ?? c.fecha_nacimiento
+
+      eventos.push({ fecha: fechaStock, nacimientos: destetados, sacrificados: 0, mortalidad })
     })
+
     sacrificios.forEach(s => {
-      if (s.fecha) eventos.push({ fecha: s.fecha, nacimientos: 0, sacrificados: s.cantidad })
+      if (s.fecha) eventos.push({ fecha: s.fecha, nacimientos: 0, sacrificados: s.cantidad, mortalidad: 0 })
     })
 
     if (eventos.length === 0) return []
 
     // 2. Agrupar por mes
     const porMes = {}
-    eventos.forEach(({ fecha, nacimientos, sacrificados }) => {
+    eventos.forEach(({ fecha, nacimientos, sacrificados, mortalidad }) => {
       const mes = mesStr(fecha)
       if (!mes) return
-      if (!porMes[mes]) porMes[mes] = { mes, nacimientos: 0, sacrificados: 0 }
+      if (!porMes[mes]) porMes[mes] = { mes, nacimientos: 0, sacrificados: 0, mortalidad: 0 }
       porMes[mes].nacimientos  += nacimientos
       porMes[mes].sacrificados += sacrificados
+      porMes[mes].mortalidad   += mortalidad
     })
 
     // 3. Ordenar meses cronológicamente
@@ -729,14 +737,13 @@ function GraficoEvolucion({ camadas, sacrificios }) {
       desde = d.toISOString().slice(0, 7)
     }
 
-    // 5. Generar todos los meses del rango (incluso sin eventos) y calcular running total
-    // Primero calculamos el total acumulado ANTES del rango para arrancar desde el valor correcto
+    // 5. Calcular total acumulado ANTES del rango para arrancar desde el valor correcto
     let totalAntes = 0
     meses.filter(m => m < desde).forEach(m => {
       totalAntes += porMes[m].nacimientos - porMes[m].sacrificados
     })
 
-    // Generar secuencia de meses desde 'desde' hasta hoyMes
+    // 6. Generar secuencia completa de meses (incluso sin eventos)
     const resultado = []
     let cursor = new Date(desde + '-01')
     const fin   = new Date(hoyMes + '-01')
@@ -744,14 +751,15 @@ function GraficoEvolucion({ camadas, sacrificios }) {
 
     while (cursor <= fin) {
       const mesKey = cursor.toISOString().slice(0, 7)
-      const d = porMes[mesKey] ?? { nacimientos: 0, sacrificados: 0 }
+      const d = porMes[mesKey] ?? { nacimientos: 0, sacrificados: 0, mortalidad: 0 }
       acumulado = Math.max(0, acumulado + d.nacimientos - d.sacrificados)
       resultado.push({
         mes: mesKey,
         label: cursor.toLocaleDateString('es-AR', { month: 'short', year: '2-digit' }),
         total: acumulado,
-        nacimientos: d.nacimientos,
+        nacimientos:  d.nacimientos,
         sacrificados: d.sacrificados,
+        mortalidad:   d.mortalidad,
       })
       cursor.setMonth(cursor.getMonth() + 1)
     }
@@ -759,12 +767,42 @@ function GraficoEvolucion({ camadas, sacrificios }) {
     return resultado
   }, [camadas, sacrificios, rango])
 
-  const CustomTooltip = ({ active, payload, label }) => {
+  // Estadísticas de resumen derivadas de todas las camadas (sin filtro de rango)
+  const stats = useMemo(() => {
+    const hoyMes = hoy().slice(0, 7)
+    let desde = ''
+    if (rango === '12m') {
+      const d = new Date(hoyMes + '-01'); d.setMonth(d.getMonth() - 11)
+      desde = d.toISOString().slice(0, 7)
+    } else if (rango === '6m') {
+      const d = new Date(hoyMes + '-01'); d.setMonth(d.getMonth() - 5)
+      desde = d.toISOString().slice(0, 7)
+    }
+
+    const enPeriodo = camadas.filter(c =>
+      c.fecha_nacimiento && !c.failure_flag &&
+      (rango === 'todo' || mesStr(c.fecha_nacimiento) >= desde)
+    )
+
+    const conDestete = enPeriodo.filter(c => c.fecha_destete && c.total_crias > 0 && c.total_destetados != null)
+    const tasaSup = conDestete.length > 0
+      ? Math.round(conDestete.reduce((s, c) => s + c.total_destetados / c.total_crias, 0) / conDestete.length * 100)
+      : null
+
+    const conCrias = enPeriodo.filter(c => c.total_crias > 0)
+    const promCrias = conCrias.length > 0
+      ? Math.round(conCrias.reduce((s, c) => s + c.total_crias, 0) / conCrias.length * 10) / 10
+      : null
+
+    return { nCamadas: enPeriodo.length, tasaSup, promCrias }
+  }, [camadas, rango])
+
+  const CustomTooltip = ({ active, payload }) => {
     if (!active || !payload?.length) return null
     const d = payload[0]?.payload
     return (
       <div className="rounded-xl px-4 py-3 space-y-1.5"
-        style={{ background: '#0d1528', border: '1px solid rgba(30,51,82,0.9)', minWidth: 160 }}>
+        style={{ background: '#0d1528', border: '1px solid rgba(30,51,82,0.9)', minWidth: 170 }}>
         <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>{d?.label}</div>
         <div className="flex justify-between gap-4 text-xs">
           <span style={{ color: '#40c4ff' }}>Stock total</span>
@@ -772,7 +810,7 @@ function GraficoEvolucion({ camadas, sacrificios }) {
         </div>
         {d?.nacimientos > 0 && (
           <div className="flex justify-between gap-4 text-xs">
-            <span style={{ color: '#00e676' }}>Nacidos</span>
+            <span style={{ color: '#00e676' }}>Destetados</span>
             <span className="font-mono font-bold" style={{ color: '#00e676' }}>+{d.nacimientos}</span>
           </div>
         )}
@@ -780,6 +818,12 @@ function GraficoEvolucion({ camadas, sacrificios }) {
           <div className="flex justify-between gap-4 text-xs">
             <span style={{ color: '#ff6b80' }}>Sacrificados</span>
             <span className="font-mono font-bold" style={{ color: '#ff6b80' }}>-{d.sacrificados}</span>
+          </div>
+        )}
+        {d?.mortalidad > 0 && (
+          <div className="flex justify-between gap-4 text-xs">
+            <span style={{ color: '#ffb300' }}>Mort. pre-destete</span>
+            <span className="font-mono font-bold" style={{ color: '#ffb300' }}>{d.mortalidad}</span>
           </div>
         )}
       </div>
@@ -806,8 +850,6 @@ function GraficoEvolucion({ camadas, sacrificios }) {
       </div>
     )
   }
-
-  const maxVal = Math.max(...datos.map(d => d.total), ...datos.map(d => d.nacimientos))
 
   return (
     <div className="space-y-5">
@@ -843,42 +885,66 @@ function GraficoEvolucion({ camadas, sacrificios }) {
         </ResponsiveContainer>
       </div>
 
-      {/* Gráfico de entradas y salidas */}
+      {/* Gráfico de entradas y salidas + mortalidad */}
       <div className="rounded-2xl px-4 pt-5 pb-3"
         style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }}>
         <div className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: '#4a5f7a' }}>
-          Nacimientos vs. sacrificios por mes
+          Destetados · Sacrificados · Mortalidad pre-destete
         </div>
-        <ResponsiveContainer width="100%" height={180}>
+        <ResponsiveContainer width="100%" height={200}>
           <ComposedChart data={datos} margin={{ top: 4, right: 8, left: -10, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(30,51,82,0.5)" vertical={false} />
             <XAxis dataKey="label" tick={{ fill: '#4a5f7a', fontSize: 10 }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fill: '#4a5f7a', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
             <Tooltip content={<CustomTooltip />} />
             <Legend
-              formatter={(v) => <span style={{ color: '#8a9bb0', fontSize: 11 }}>{v === 'nacimientos' ? 'Nacidos' : 'Sacrificados'}</span>}
+              formatter={(v) => {
+                const map = { nacimientos: 'Destetados', sacrificados: 'Sacrificados', mortalidad: 'Mort. pre-destete' }
+                return <span style={{ color: '#8a9bb0', fontSize: 11 }}>{map[v] ?? v}</span>
+              }}
               wrapperStyle={{ paddingTop: 8 }}
             />
-            <Bar dataKey="nacimientos"  fill="#00e676" fillOpacity={0.7} radius={[3,3,0,0]} maxBarSize={24} />
-            <Bar dataKey="sacrificados" fill="#ff6b80" fillOpacity={0.7} radius={[3,3,0,0]} maxBarSize={24} />
+            <Bar dataKey="nacimientos"  fill="#00e676" fillOpacity={0.7} radius={[3,3,0,0]} maxBarSize={20} />
+            <Bar dataKey="sacrificados" fill="#ff6b80" fillOpacity={0.7} radius={[3,3,0,0]} maxBarSize={20} />
+            <Line type="monotone" dataKey="mortalidad" stroke="#ffb300" strokeWidth={2}
+              dot={false} activeDot={{ r: 3, fill: '#ffb300' }} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Resumen numérico */}
+      {/* Resumen numérico — 6 cards */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Stock actual', val: datos[datos.length - 1]?.total ?? 0, color: '#40c4ff' },
-          { label: 'Total nacidos', val: datos.reduce((s, d) => s + d.nacimientos, 0), color: '#00e676' },
-          { label: 'Total sacrificados', val: datos.reduce((s, d) => s + d.sacrificados, 0), color: '#ff6b80' },
-        ].map(({ label, val, color }) => (
+          { label: 'Stock actual',        val: datos[datos.length - 1]?.total ?? 0,                               fmt: v => v,          color: '#40c4ff' },
+          { label: 'Total destetados',    val: datos.reduce((s, d) => s + d.nacimientos, 0),                       fmt: v => v,          color: '#00e676' },
+          { label: 'Total sacrificados',  val: datos.reduce((s, d) => s + d.sacrificados, 0),                      fmt: v => v,          color: '#ff6b80' },
+          { label: 'Mort. pre-destete',   val: datos.reduce((s, d) => s + d.mortalidad, 0),                        fmt: v => v,          color: '#ffb300' },
+          { label: 'Prom. crías/camada',  val: stats.promCrias,                                                     fmt: v => v ?? '—',   color: '#ce93d8' },
+          { label: 'Camadas en período',  val: stats.nCamadas,                                                      fmt: v => v,          color: '#80cbc4' },
+        ].map(({ label, val, fmt, color }) => (
           <div key={label} className="rounded-xl px-4 py-3 text-center"
             style={{ background: `${color}08`, border: `1px solid ${color}20` }}>
-            <div className="font-mono font-bold text-2xl" style={{ color }}>{val}</div>
+            <div className="font-mono font-bold text-2xl" style={{ color }}>{fmt(val)}</div>
             <div className="text-xs mt-1" style={{ color: '#4a5f7a' }}>{label}</div>
           </div>
         ))}
       </div>
+
+      {/* Tasa de supervivencia al destete */}
+      {stats.tasaSup != null && (
+        <div className="rounded-xl px-5 py-4 flex items-center justify-between"
+          style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }}>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>Tasa de supervivencia al destete</div>
+            <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>Promedio de crías que llegan al destete sobre el total nacido</div>
+          </div>
+          <div className="text-3xl font-mono font-bold ml-6" style={{
+            color: stats.tasaSup >= 80 ? '#00e676' : stats.tasaSup >= 60 ? '#ffb300' : '#ff6b80'
+          }}>
+            {stats.tasaSup}%
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1040,7 +1106,6 @@ export default function Stock() {
           fecha,
           categoria: b.categoria === 'crias' ? 'cria' : b.categoria === 'jovenes' ? 'joven' : b.categoria === 'adultos' ? 'adulto_nr' : null,
           notas,
-          jaula: b.jaula?.id ?? null,
         })
         if (!b.virtual && b.jaula?.id) {
           const resto = b.jaula.total - cant
