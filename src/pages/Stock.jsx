@@ -702,13 +702,14 @@ function GraficoEvolucion({ camadas, sacrificios, animales }) {
     })
 
     // Todos los sacrificios vienen de la tabla sacrificios
-    // categoria === 'reproductor' → barra repros; resto → barra sacrificados de stock
+    // Si fecha es null, usamos created_at como respaldo (Supabase lo guarda automáticamente)
     sacrificios.forEach(s => {
-      if (!s.fecha) return
+      const fecha = s.fecha || (s.created_at ? s.created_at.slice(0, 10) : null)
+      if (!fecha) return
       if (s.categoria === 'reproductor') {
-        eventos.push({ fecha: s.fecha, nacimientos: 0, sacrificados: 0, mortalidad: 0, repros: s.cantidad })
+        eventos.push({ fecha, nacimientos: 0, sacrificados: 0, mortalidad: 0, repros: s.cantidad })
       } else {
-        eventos.push({ fecha: s.fecha, nacimientos: 0, sacrificados: s.cantidad, mortalidad: 0, repros: 0 })
+        eventos.push({ fecha, nacimientos: 0, sacrificados: s.cantidad, mortalidad: 0, repros: 0 })
       }
     })
 
