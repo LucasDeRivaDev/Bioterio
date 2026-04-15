@@ -11,15 +11,27 @@ function reducer(estado, accion) {
     case 'SET_JAULAS':           return { ...estado, jaulas: accion.payload }
     case 'SET_TEMPERATURAS':     return { ...estado, temperaturas: accion.payload }
 
-    case 'AGREGAR_ANIMAL':  return { ...estado, animales: [...estado.animales, accion.payload] }
+    case 'AGREGAR_ANIMAL': {
+      const lista = [...estado.animales, accion.payload]
+      lista.sort((a, b) => (a.fecha_nacimiento ?? '').localeCompare(b.fecha_nacimiento ?? ''))
+      return { ...estado, animales: lista }
+    }
     case 'EDITAR_ANIMAL':   return { ...estado, animales: estado.animales.map((a) => a.id === accion.payload.id ? accion.payload : a) }
     case 'ELIMINAR_ANIMAL': return { ...estado, animales: estado.animales.filter((a) => a.id !== accion.payload) }
 
-    case 'AGREGAR_CAMADA':  return { ...estado, camadas: [...estado.camadas, accion.payload] }
+    case 'AGREGAR_CAMADA': {
+      const lista = [...estado.camadas, accion.payload]
+      lista.sort((a, b) => (a.fecha_copula ?? '').localeCompare(b.fecha_copula ?? ''))
+      return { ...estado, camadas: lista }
+    }
     case 'EDITAR_CAMADA':   return { ...estado, camadas: estado.camadas.map((c) => c.id === accion.payload.id ? accion.payload : c) }
     case 'ELIMINAR_CAMADA': return { ...estado, camadas: estado.camadas.filter((c) => c.id !== accion.payload) }
 
-    case 'AGREGAR_SACRIFICIO':  return { ...estado, sacrificios: [...estado.sacrificios, accion.payload] }
+    case 'AGREGAR_SACRIFICIO': {
+      const lista = [...estado.sacrificios, accion.payload]
+      lista.sort((a, b) => (a.fecha ?? '').localeCompare(b.fecha ?? ''))
+      return { ...estado, sacrificios: lista }
+    }
     case 'ELIMINAR_SACRIFICIO': return { ...estado, sacrificios: estado.sacrificios.filter((s) => s.id !== accion.payload) }
 
     case 'AGREGAR_JAULA':   return { ...estado, jaulas: [...estado.jaulas, accion.payload] }
@@ -48,9 +60,9 @@ export function BiotheriumProvider({ children }) {
       setError(null)
       try {
         const [{ data: animales, error: errA }, { data: camadas, error: errC }, { data: sacrificios }, { data: jaulas }, { data: temperaturas }] = await Promise.all([
-          supabase.from('animales').select('*').order('created_at', { ascending: true }),
-          supabase.from('camadas').select('*').order('created_at', { ascending: true }),
-          supabase.from('sacrificios').select('*').order('created_at', { ascending: true }),
+          supabase.from('animales').select('*').order('fecha_nacimiento', { ascending: true }),
+          supabase.from('camadas').select('*').order('fecha_copula', { ascending: true }),
+          supabase.from('sacrificios').select('*').order('fecha', { ascending: true }),
           supabase.from('jaulas').select('*').order('created_at', { ascending: true }),
           supabase.from('temperature_logs').select('*').order('date', { ascending: false }).order('time', { ascending: false }),
         ])
