@@ -86,7 +86,8 @@ camadas
   id, id_madre, id_padre, fecha_copula, fecha_separacion,
   fecha_nacimiento, fecha_destete, gestacion_real,
   total_crias, crias_machos, crias_hembras, total_destetados,
-  failure_flag (bool), failure_type (text), notas
+  failure_flag (bool), failure_type (text), notas,
+  incluir_en_stock (bool, default true)
 
 jaulas
   id, camada_id, total, machos, hembras, notas
@@ -141,7 +142,9 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
 - **Scores son calculados en tiempo real** — no se guardan en DB, se derivan de los datos existentes
 - **Temperatura:** la impresión usa `window.print()` con `@media print` CSS para ocultar la UI y mostrar solo la tabla limpia
 - **Jaulas en stock:** `SexoDisplay` muestra 4 variantes según datos disponibles: solo hembras, solo machos, mixto (♂M/♀H), o "X animales — sexo sin registrar" cuando faltan datos. Funciona para jaulas reales y bloques virtuales.
-- **failure_flag en camada:** se muestra como badge rojo en el detalle expandido y alimenta el cálculo de confiabilidad de la hembra
+- **failure_flag en camada:** cuando está activo, la camada muestra estado `fallida` con badge rojo "✕ Parto fallido" en la lista y alimenta el cálculo de confiabilidad de la hembra. Hay filtro "Fallidas" en la barra de filtros.
+- **incluir_en_stock en camada:** controla si las crías se agregan al stock al registrar el destete. Default `true`. Si es `false`, la jaula NO se crea automáticamente y aparece badge amarillo "Sin stock". Botones "Agregar al stock" / "Remover del stock" en el detalle expandido permiten cambiarlo después. Scores y estadísticas no se ven afectados.
+- **normalizarCamada en CamadaForm:** al editar una camada existente, los campos `null` de Supabase se convierten a `''` o `false` para que los inputs React queden siempre controlados y los cambios se capturen correctamente.
 - **AnalisisReproductivo en Camadas:** siempre visible al expandir una camada si hay padres identificados. Si no hay historial previo muestra "Sin camadas previas con parto registrado". No depende de datos históricos para renderizar.
 - **temperature_logs en Supabase:** usa `id uuid` (auto-generado por Supabase). Al insertar, NO se manda el `id` — se deja que Supabase lo genere y luego se reemplaza el registro temporal en el estado local. Las otras tablas usan `id text` generado por `generarId()`.
 
@@ -152,6 +155,9 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
 - **Perfil reproductivo en Animales (14/04/2026):** fila expandible por animal con botón "▼ Perfil". Hembras: 4 scores promedio (velocidad fertiliz., tamaño camada, proporción sexual, supervivencia) + badge de confiabilidad. Machos: score de fertilización + latencia promedio. Calculado en tiempo real con `calcularPerfilHembra`, `calcularConfiabilidadHembra`, `calcularRendimientoMacho`.
 - **Gráficos de evolución de stock (14/04/2026):** nueva tab "📈 Evolución" en Stock. Usa recharts (instalado). Muestra: área de stock total acumulado en el tiempo + barras de nacimientos vs. sacrificios por mes + resumen numérico (stock actual / total nacidos / total sacrificados). Filtros de rango: 6 meses, 12 meses, todo el historial. Construido en tiempo real desde `camadas` y `sacrificios` sin datos extra en DB.
 - **Sacrificio parcial de jaulas (14/04/2026):** en `ModalSacrificio` cada jaula de stock ahora tiene un input editable de cantidad (1 hasta el total). Si sacrificás menos del total, la jaula queda con el resto (se actualiza con `editarJaula`); si sacrificás todo, se elimina. Los machos/hembras se reducen proporcionalmente. Reproductores siempre sacrifican 1 (sin cambio).
+- **Fix edición de parto fallido (15/04/2026):** columnas `failure_flag` y `failure_type` faltaban en la tabla `camadas` de Supabase — se agregaron con ALTER TABLE. `normalizarCamada()` en CamadaForm convierte nulos a vacíos para evitar inputs no controlados.
+- **Estado visual "Parto fallido" (15/04/2026):** camadas con `failure_flag: true` muestran estado `fallida` con badge rojo "✕ Parto fallido" y filtro "Fallidas" en Emparejamientos.
+- **Control de stock para apareamientos históricos (15/04/2026):** toggle "Incluir crías en el stock" en CamadaForm. Si desactivado: no se crea jaula al destetar, badge amarillo "Sin stock" en la lista, botones "Agregar/Remover del stock" en detalle expandido. Columna `incluir_en_stock` en Supabase.
 
 ---
 
