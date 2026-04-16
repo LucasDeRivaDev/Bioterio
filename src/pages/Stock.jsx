@@ -735,13 +735,13 @@ function GraficoEvolucion({ camadas, sacrificios, animales }) {
     const hoyMes = hoy().slice(0, 7)
     let desde = meses[0]
     if (rango === '12m') {
-      const d = new Date(hoyMes + '-01')
+      const d = new Date(hoyMes + '-01T12:00:00')
       d.setMonth(d.getMonth() - 11)
-      desde = d.toISOString().slice(0, 7)
+      desde = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
     } else if (rango === '6m') {
-      const d = new Date(hoyMes + '-01')
+      const d = new Date(hoyMes + '-01T12:00:00')
       d.setMonth(d.getMonth() - 5)
-      desde = d.toISOString().slice(0, 7)
+      desde = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
     }
 
     // 5. Calcular total acumulado ANTES del rango para arrancar desde el valor correcto
@@ -752,12 +752,12 @@ function GraficoEvolucion({ camadas, sacrificios, animales }) {
 
     // 6. Generar secuencia completa de meses (incluso sin eventos)
     const resultado = []
-    let cursor = new Date(desde + '-01')
-    const fin   = new Date(hoyMes + '-01')
+    let cursor = new Date(desde + '-01T12:00:00')
+    const fin   = new Date(hoyMes + '-01T12:00:00')
     let acumulado = totalAntes
 
     while (cursor <= fin) {
-      const mesKey = cursor.toISOString().slice(0, 7)
+      const mesKey = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`
       const d = porMes[mesKey] ?? { nacimientos: 0, sacrificados: 0, mortalidad: 0, repros: 0 }
       acumulado = Math.max(0, acumulado + d.nacimientos - d.sacrificados)
       resultado.push({
@@ -780,11 +780,11 @@ function GraficoEvolucion({ camadas, sacrificios, animales }) {
     const hoyMes = hoy().slice(0, 7)
     let desde = ''
     if (rango === '12m') {
-      const d = new Date(hoyMes + '-01'); d.setMonth(d.getMonth() - 11)
-      desde = d.toISOString().slice(0, 7)
+      const d = new Date(hoyMes + '-01T12:00:00'); d.setMonth(d.getMonth() - 11)
+      desde = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
     } else if (rango === '6m') {
-      const d = new Date(hoyMes + '-01'); d.setMonth(d.getMonth() - 5)
-      desde = d.toISOString().slice(0, 7)
+      const d = new Date(hoyMes + '-01T12:00:00'); d.setMonth(d.getMonth() - 5)
+      desde = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
     }
 
     const enPeriodo = camadas.filter(c =>
