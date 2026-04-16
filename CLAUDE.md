@@ -13,8 +13,9 @@ Sistema web de gestión de una colonia de ratones de laboratorio (*Mus musculus*
 | **Animales** | CRUD de reproductores con filtros por sexo y estado |
 | **Camadas** | Registro de cópulas, seguimiento de preñez, destete, separación de pareja, scores reproductivos, análisis de confiabilidad de hembras y detección de fallos |
 | **Calendario** | Vista mensual con todos los eventos reproductivos coloreados |
-| **Stock** | Bloques visuales por jaula con display de sexo coloreado (♂ azul / ♀ violeta / mixto bicolor), edición/división/movimiento de animales |
+| **Stock** | Bloques visuales por jaula con display de sexo coloreado (♂ azul / ♀ violeta / mixto bicolor), edición/división/movimiento de animales, entrega y sacrificio en masa |
 | **Sacrificios** | Selección múltiple de jaulas desde stock para registrar sacrificios en masa |
+| **Entregas** | Historial de animales entregados a investigadores, con buscador y resumen numérico |
 | **Rendimiento** | Ranking de machos por latencia de fertilización (menor = mejor) con scores |
 | **Temperatura** | Registro diario de temperatura (actual/mín/máx), vista mensual, exportación imprimible y limpieza de datos por mes |
 | **Reportes** | Impresión de datos de la colonia |
@@ -24,7 +25,7 @@ Sistema web de gestión de una colonia de ratones de laboratorio (*Mus musculus*
 **Flujo reproductivo:** Cópula → Estado "en apareamiento" (15d) → Separación → Preñez → Parto → Destete → Stock por jaulas.
 
 **Sistema de scores reproductivos (calculados en tiempo real, sin DB):**
-- Velocidad de reproducción: latencia 1–5d → 10pts / 6–10d → 7pts / 11–15d → 5pts
+- Velocidad de reproducción: latencia **0–5d** → 10pts / 6–10d → 7pts / 11–15d → 5pts (latencia 0 = fecundación el mismo día del apareamiento, es score máximo)
 - Tamaño de camada: ≥10 → 10pts / 8–9 → 7pts / <8 → 5pts
 - Proporción sexual: más hembras → 10pts / igual → 7pts / más machos → 5pts
 - Supervivencia al destete: (destetados/nacidos) × 10
@@ -53,7 +54,7 @@ Sistema web de gestión de una colonia de ratones de laboratorio (*Mus musculus*
 ```
 src/
 ├── App.jsx                          — Router + layout responsive (drawer mobile)
-├── context/BiotheriumContext.jsx    — Estado global (animales, camadas, jaulas, sacrificios, temperaturas)
+├── context/BiotheriumContext.jsx    — Estado global (animales, camadas, jaulas, sacrificios, entregas, temperaturas)
 ├── utils/calculos.js                — Motor predictivo, scores reproductivos, confiabilidad de hembras
 ├── utils/constants.js               — Constantes biológicas (BIO, ESTADO_ANIMAL, TIPO_TAREA)
 ├── components/
@@ -68,6 +69,7 @@ src/
     ├── Calendario.jsx
     ├── Stock.jsx                    — Jaulas con SexoDisplay coloreado
     ├── Sacrificios.jsx
+    ├── Entregas.jsx                 — Historial de entregas con buscador y tarjetas resumen
     ├── Rendimiento.jsx
     ├── Temperatura.jsx              — Registro ambiental diario + exportación mensual
     └── Reportes.jsx
@@ -94,6 +96,10 @@ jaulas
 
 sacrificios
   id, camada_id, cantidad, fecha, categoria, notas
+
+entregas
+  id, camada_id, cantidad, fecha, observaciones, created_at
+  (camada_id es null cuando se entrega un reproductor)
 
 temperature_logs
   id, date, time, current_temp, min_temp, max_temp, created_at
@@ -176,6 +182,14 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
 - **Bloques virtuales respetan incluir_en_stock (15/04/2026):** camadas marcadas como "Sin stock" ya no generan bloque virtual en la vista de jaulas.
 
 - **Registrar fecha de sacrificio en reproductores históricos (15/04/2026):** en Sacrificios → sección Reproductores, cada animal sin fecha muestra botón "+ Registrar fecha" con input inline. Al guardar crea registro en tabla `sacrificios` con `categoria: 'reproductor'` y la fecha correcta → aparece inmediatamente en el gráfico.
+
+- **Fix latencia 0 en score de machos (16/04/2026):** `scorePorLatencia` ahora acepta latencia = 0 (fecundación el mismo día del apareamiento) como score máximo (10 pts). Latencias negativas devuelven `null` como error de datos.
+
+- **Fix timezone en gráfico de evolución (16/04/2026):** `new Date('YYYY-MM-01')` se parseaba como UTC medianoche → en Argentina (UTC-3) caía el día anterior → los labels del eje X mostraban el mes equivocado (abril aparecía como marzo). Solución: usar `T12:00:00` al construir las fechas y `getFullYear()`/`getMonth()` para armar la clave del mes.
+
+- **Acción "Entregar animales" desde selección múltiple (16/04/2026):** en Stock, al seleccionar jaulas aparece botón "📦 Entregar" (amarillo) junto al de sacrificio. Abre `ModalEntrega` con cantidad editable por jaula, fecha y campo observaciones (ej: iniciales de investigador). Stock de crías: se reduce o elimina la jaula igual que en sacrificio. Reproductores: pasan a estado `retirado` en vez de `fallecido`. Todo queda registrado en la tabla `entregas` de Supabase.
+
+- **Página Entregas (16/04/2026):** nueva ruta `/entregas` en sidebar (📦). Lista cronológica de todas las entregas con tarjetas de resumen (total entregas, total animales, últimos 30 días) y buscador por observaciones/código/fecha.
 
 ---
 
