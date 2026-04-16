@@ -636,6 +636,143 @@ function ModalSacrificio({ bloques, onConfirmar, onCerrar }) {
   )
 }
 
+function ModalEntrega({ bloques, onConfirmar, onCerrar }) {
+  const [fecha,        setFecha]        = useState(hoy())
+  const [observaciones, setObservaciones] = useState('')
+  const [guardando,    setGuardando]    = useState(false)
+  const [cantidades,   setCantidades]   = useState(() =>
+    Object.fromEntries(bloques.map((b) => [b.id, b.total]))
+  )
+
+  const total  = bloques.reduce((s, b) => s + (parseInt(cantidades[b.id]) || 0), 0)
+  const cantOk = bloques.every((b) => {
+    const v = parseInt(cantidades[b.id]) || 0
+    return v >= 1 && v <= b.total
+  })
+
+  const iStyle = {
+    background: 'rgba(5,8,16,0.6)', border: '1px solid rgba(30,51,82,0.8)',
+    color: '#e2e8f0', borderRadius: '0.5rem', padding: '0.4rem 0.6rem',
+    fontSize: '0.8125rem', width: '100%', outline: 'none',
+  }
+
+  async function confirmar() {
+    if (!cantOk) return
+    setGuardando(true)
+    try { await onConfirmar(fecha, observaciones || null, cantidades) }
+    finally { setGuardando(false) }
+  }
+
+  return (
+    <Modal titulo="Registrar entrega" onCerrar={onCerrar} ancho="max-w-md">
+      <div className="space-y-4">
+
+        {/* Info */}
+        <div className="flex items-start gap-3 px-4 py-3 rounded-xl"
+          style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.25)' }}>
+          <span className="text-xl shrink-0">📦</span>
+          <div>
+            <div className="font-bold text-sm" style={{ color: '#ffb300' }}>Entrega de animales</div>
+            <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>
+              Los animales se remueven del stock activo. Los reproductores pasan a estado "Retirado".
+            </div>
+          </div>
+        </div>
+
+        {/* Lista con cantidades */}
+        <div>
+          <div className="text-xs uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5f7a' }}>
+            Seleccionados ({bloques.length})
+          </div>
+          <div className="space-y-2 max-h-56 overflow-y-auto">
+            {bloques.map((b) => {
+              const cfg    = CAT[b.categoria]
+              const esRepro = b.tipo === 'reproductor'
+              const cant   = parseInt(cantidades[b.id]) || 0
+              const parcial = !esRepro && cant < b.total && cant > 0
+              const error  = !esRepro && (cant < 1 || cant > b.total)
+              return (
+                <div key={b.id} className="px-3 py-2 rounded-xl"
+                  style={{ background: 'rgba(5,8,16,0.5)', border: `1px solid ${error ? 'rgba(255,61,87,0.5)' : cfg.borde}` }}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span>{cfg.icono}</span>
+                      <div className="min-w-0">
+                        <div className="text-xs font-mono font-semibold truncate" style={{ color: cfg.color }}>
+                          {esRepro
+                            ? `${b.animal.sexo === 'macho' ? '♂' : '♀'} ${b.animal.codigo}`
+                            : `${b.madre?.codigo ?? '?'} × ${b.padre?.codigo ?? '?'}`}
+                        </div>
+                        <div className="text-xs" style={{ color: '#4a5f7a' }}>
+                          {cfg.label}{b.edad != null ? ` · ${b.edad}d` : ''}
+                          {!esRepro && <span> · total: {b.total}</span>}
+                        </div>
+                      </div>
+                    </div>
+                    {esRepro ? (
+                      <div className="font-mono font-bold text-lg" style={{ color: '#ffb300' }}>1</div>
+                    ) : (
+                      <div className="flex flex-col items-end gap-0.5">
+                        <input
+                          type="number" min="1" max={b.total}
+                          value={cantidades[b.id]}
+                          onChange={(e) => setCantidades((prev) => ({ ...prev, [b.id]: e.target.value }))}
+                          style={{ ...iStyle, width: '5rem', textAlign: 'center', color: error ? '#ff6b80' : '#e2e8f0' }}
+                        />
+                        {parcial && <span className="text-xs" style={{ color: '#ffd740' }}>parcial — quedan {b.total - cant}</span>}
+                        {error   && <span className="text-xs" style={{ color: '#ff6b80' }}>1 – {b.total}</span>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <div className="flex justify-between items-center mt-3 px-1">
+            <span className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#4a5f7a' }}>Total a entregar</span>
+            <span className="font-mono font-bold text-xl" style={{ color: '#ffb300' }}>{total} animales</span>
+          </div>
+        </div>
+
+        {/* Fecha */}
+        <div>
+          <label className="text-xs uppercase tracking-widest font-semibold mb-1 block" style={{ color: '#4a5f7a' }}>Fecha de entrega</label>
+          <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={iStyle} />
+        </div>
+
+        {/* Observaciones */}
+        <div>
+          <label className="text-xs uppercase tracking-widest font-semibold mb-1 block" style={{ color: '#4a5f7a' }}>
+            Observaciones <span className="normal-case font-normal opacity-60">(opcional)</span>
+          </label>
+          <input type="text" placeholder="Investigador, protocolo, destino..."
+            value={observaciones} onChange={(e) => setObservaciones(e.target.value)}
+            style={{ ...iStyle, fontFamily: 'monospace' }} />
+        </div>
+
+        {/* Botones */}
+        <div className="flex gap-3">
+          <button onClick={onCerrar} disabled={guardando}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+            style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: '#8a9bb0' }}>
+            Cancelar
+          </button>
+          <button onClick={confirmar} disabled={guardando || !cantOk}
+            className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+            style={{
+              background: (!cantOk || guardando) ? 'rgba(30,51,82,0.3)' : 'rgba(255,179,0,0.15)',
+              border: `1.5px solid ${(!cantOk || guardando) ? 'rgba(30,51,82,0.5)' : 'rgba(255,179,0,0.4)'}`,
+              color: (!cantOk || guardando) ? '#4a5f7a' : '#ffb300',
+              cursor: (!cantOk || guardando) ? 'not-allowed' : 'pointer',
+            }}>
+            {guardando ? 'Registrando...' : `📦 Entregar ${total} animales`}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 // ── Componentes de la vista Resumen (existentes, sin cambios) ─────────────────
 
 function CategoriaCard({ icono, titulo, subtitulo, total, grupos, gruposLabel, machos, hembras, color, descripcion }) {
@@ -970,13 +1107,14 @@ function GraficoEvolucion({ camadas, sacrificios, animales }) {
 // ── Página principal ──────────────────────────────────────────────────────────
 
 export default function Stock() {
-  const { animales, camadas, sacrificios, jaulas, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, registrarSacrificio } = useBioterio()
+  const { animales, camadas, sacrificios, jaulas, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, registrarSacrificio, registrarEntrega, entregarReproductor } = useBioterio()
   const [vista, setVista] = useState('jaulas')
   const [detalle, setDetalle] = useState(null)
   const [filtroCat, setFiltroCat] = useState('todas')
   const [modoSeleccion, setModoSeleccion] = useState(false)
   const [seleccionadas, setSeleccionadas] = useState(new Set())
   const [modalSacrificio, setModalSacrificio] = useState(false)
+  const [modalEntrega, setModalEntrega]       = useState(false)
 
   // ── Bloques de jaulas (reproductores + stock) ─────────────────────────────
   const bloques = useMemo(() => {
@@ -1146,6 +1284,35 @@ export default function Stock() {
       }
     }
     setModalSacrificio(false)
+    salirModoSeleccion()
+  }
+
+  async function ejecutarEntrega(fecha, observaciones, cantidades) {
+    const bloquesSel = bloques.filter((b) => seleccionadas.has(b.id))
+    for (const b of bloquesSel) {
+      if (b.tipo === 'reproductor') {
+        await entregarReproductor(b.animal, fecha, observaciones)
+      } else {
+        const cant = parseInt(cantidades?.[b.id]) || b.total
+        await registrarEntrega({
+          camada_id: b.camada.id,
+          cantidad: cant,
+          fecha,
+          observaciones: observaciones || null,
+        })
+        if (!b.virtual && b.jaula?.id) {
+          const resto = b.jaula.total - cant
+          if (resto <= 0) {
+            await eliminarJaula(b.jaula.id)
+          } else {
+            const nuevosMachos  = b.jaula.machos  != null ? Math.max(0, b.jaula.machos  - Math.round(cant * (b.jaula.machos  / b.jaula.total))) : null
+            const nuevasHembras = b.jaula.hembras != null ? Math.max(0, b.jaula.hembras - Math.round(cant * (b.jaula.hembras / b.jaula.total))) : null
+            await editarJaula({ ...b.jaula, total: resto, machos: nuevosMachos, hembras: nuevasHembras })
+          }
+        }
+      }
+    }
+    setModalEntrega(false)
     salirModoSeleccion()
   }
 
@@ -1343,11 +1510,18 @@ export default function Stock() {
             </div>
             <div style={{ width: '1px', height: '20px', background: 'rgba(30,51,82,0.8)' }} />
             <button
+              onClick={() => setModalEntrega(true)}
+              className="px-4 py-1.5 rounded-xl text-sm font-bold"
+              style={{ background: 'rgba(255,179,0,0.12)', border: '1px solid rgba(255,179,0,0.4)', color: '#ffb300', cursor: 'pointer' }}
+            >
+              📦 Entregar
+            </button>
+            <button
               onClick={() => setModalSacrificio(true)}
               className="px-4 py-1.5 rounded-xl text-sm font-bold"
               style={{ background: 'rgba(255,61,87,0.15)', border: '1px solid rgba(255,61,87,0.5)', color: '#ff6b80', cursor: 'pointer' }}
             >
-              🗡 Sacrificar seleccionados
+              🗡 Sacrificar
             </button>
           </div>
         )
@@ -1372,6 +1546,15 @@ export default function Stock() {
           bloques={bloques.filter((b) => seleccionadas.has(b.id))}
           onConfirmar={ejecutarSacrificio}
           onCerrar={() => setModalSacrificio(false)}
+        />
+      )}
+
+      {/* Modal entrega */}
+      {modalEntrega && (
+        <ModalEntrega
+          bloques={bloques.filter((b) => seleccionadas.has(b.id))}
+          onConfirmar={ejecutarEntrega}
+          onCerrar={() => setModalEntrega(false)}
         />
       )}
     </div>

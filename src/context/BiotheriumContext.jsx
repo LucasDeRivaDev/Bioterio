@@ -8,6 +8,7 @@ function reducer(estado, accion) {
     case 'SET_ANIMALES':         return { ...estado, animales: accion.payload }
     case 'SET_CAMADAS':          return { ...estado, camadas: accion.payload }
     case 'SET_SACRIFICIOS':      return { ...estado, sacrificios: accion.payload }
+    case 'SET_ENTREGAS':         return { ...estado, entregas: accion.payload }
     case 'SET_JAULAS':           return { ...estado, jaulas: accion.payload }
     case 'SET_TEMPERATURAS':     return { ...estado, temperaturas: accion.payload }
 
@@ -34,6 +35,13 @@ function reducer(estado, accion) {
     }
     case 'ELIMINAR_SACRIFICIO': return { ...estado, sacrificios: estado.sacrificios.filter((s) => s.id !== accion.payload) }
 
+    case 'AGREGAR_ENTREGA': {
+      const lista = [...estado.entregas, accion.payload]
+      lista.sort((a, b) => (a.fecha ?? '').localeCompare(b.fecha ?? ''))
+      return { ...estado, entregas: lista }
+    }
+    case 'ELIMINAR_ENTREGA': return { ...estado, entregas: estado.entregas.filter((e) => e.id !== accion.payload) }
+
     case 'AGREGAR_JAULA':   return { ...estado, jaulas: [...estado.jaulas, accion.payload] }
     case 'EDITAR_JAULA':    return { ...estado, jaulas: estado.jaulas.map((j) => j.id === accion.payload.id ? accion.payload : j) }
     case 'ELIMINAR_JAULA':  return { ...estado, jaulas: estado.jaulas.filter((j) => j.id !== accion.payload) }
@@ -49,7 +57,7 @@ function reducer(estado, accion) {
 const BiotheriumCtx = createContext(null)
 
 export function BiotheriumProvider({ children }) {
-  const [estado, dispatch] = useReducer(reducer, { animales: [], camadas: [], sacrificios: [], jaulas: [], temperaturas: [] })
+  const [estado, dispatch] = useReducer(reducer, { animales: [], camadas: [], sacrificios: [], entregas: [], jaulas: [], temperaturas: [] })
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
 
@@ -59,10 +67,11 @@ export function BiotheriumProvider({ children }) {
       setCargando(true)
       setError(null)
       try {
-        const [{ data: animales, error: errA }, { data: camadas, error: errC }, { data: sacrificios }, { data: jaulas }, { data: temperaturas }] = await Promise.all([
+        const [{ data: animales, error: errA }, { data: camadas, error: errC }, { data: sacrificios }, { data: entregas }, { data: jaulas }, { data: temperaturas }] = await Promise.all([
           supabase.from('animales').select('*').order('fecha_nacimiento', { ascending: true }),
           supabase.from('camadas').select('*').order('fecha_copula', { ascending: true }),
           supabase.from('sacrificios').select('*').order('fecha', { ascending: true }),
+          supabase.from('entregas').select('*').order('fecha', { ascending: true }),
           supabase.from('jaulas').select('*').order('created_at', { ascending: true }),
           supabase.from('temperature_logs').select('*').order('date', { ascending: false }).order('time', { ascending: false }),
         ])
@@ -71,6 +80,7 @@ export function BiotheriumProvider({ children }) {
         dispatch({ type: 'SET_ANIMALES', payload: animales ?? [] })
         dispatch({ type: 'SET_CAMADAS', payload: camadas ?? [] })
         dispatch({ type: 'SET_SACRIFICIOS', payload: sacrificios ?? [] })
+        dispatch({ type: 'SET_ENTREGAS', payload: entregas ?? [] })
         dispatch({ type: 'SET_JAULAS', payload: jaulas ?? [] })
         dispatch({ type: 'SET_TEMPERATURAS', payload: temperaturas ?? [] })
       } catch (e) {
@@ -293,6 +303,35 @@ export function BiotheriumProvider({ children }) {
     }
   }
 
+  // ── ENTREGAS ───────────────────────────────────────────────────────────────
+
+  async function registrarEntrega(datos) {
+    const nuevo = { ...datos, id: generarId() }
+    dispatch({ type: 'AGREGAR_ENTREGA', payload: nuevo })
+    const { error } = await supabase.from('entregas').insert(nuevo)
+    if (error) {
+      console.error('Error al registrar entrega:', error)
+      dispatch({ type: 'ELIMINAR_ENTREGA', payload: nuevo.id })
+      throw error
+    }
+  }
+
+  // Entrega de reproductor: pasa a estado 'retirado' y queda registrado en tabla entregas
+  async function entregarReproductor(animal, fecha, observaciones) {
+    const actualizado = { ...animal, estado: 'retirado' }
+    dispatch({ type: 'EDITAR_ANIMAL', payload: actualizado })
+    const { error } = await supabase.from('animales').update({ estado: 'retirado' }).eq('id', animal.id)
+    if (error) console.error('Error al actualizar estado de reproductor:', error)
+
+    const entrega = { id: generarId(), camada_id: null, cantidad: 1, fecha, observaciones: observaciones || null }
+    dispatch({ type: 'AGREGAR_ENTREGA', payload: entrega })
+    const { error: errE } = await supabase.from('entregas').insert(entrega)
+    if (errE) {
+      console.error('Error al registrar entrega de reproductor:', errE)
+      dispatch({ type: 'ELIMINAR_ENTREGA', payload: entrega.id })
+    }
+  }
+
   // ── TEMPERATURAS ──────────────────────────────────────────────────────────
 
   async function agregarTemperatura(datos) {
@@ -327,6 +366,7 @@ export function BiotheriumProvider({ children }) {
       animales: estado.animales,
       camadas: estado.camadas,
       sacrificios: estado.sacrificios,
+      entregas: estado.entregas,
       jaulas: estado.jaulas,
       temperaturas: estado.temperaturas,
       cargando,
@@ -334,6 +374,7 @@ export function BiotheriumProvider({ children }) {
       agregarAnimal, editarAnimal, eliminarAnimal, sacrificarReproductor,
       agregarCamada, editarCamada, eliminarCamada, confirmarSeparacion,
       registrarSacrificio, eliminarSacrificio,
+      registrarEntrega, entregarReproductor,
       agregarJaula, editarJaula, eliminarJaula,
       agregarTemperatura, eliminarTemperaturasMes,
     }}>
