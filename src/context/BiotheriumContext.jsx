@@ -323,12 +323,43 @@ export function BiotheriumProvider({ children }) {
     const { error } = await supabase.from('animales').update({ estado: 'retirado' }).eq('id', animal.id)
     if (error) console.error('Error al actualizar estado de reproductor:', error)
 
-    const entrega = { id: generarId(), camada_id: null, cantidad: 1, fecha, observaciones: observaciones || null }
+    const entrega = { id: generarId(), camada_id: null, animal_id: animal.id, cantidad: 1, fecha, observaciones: observaciones || null }
     dispatch({ type: 'AGREGAR_ENTREGA', payload: entrega })
     const { error: errE } = await supabase.from('entregas').insert(entrega)
     if (errE) {
       console.error('Error al registrar entrega de reproductor:', errE)
       dispatch({ type: 'ELIMINAR_ENTREGA', payload: entrega.id })
+    }
+  }
+
+  // Devolver entrega al stock
+  // mantenerHistorial = true → restaura stock pero NO borra la entrega
+  // mantenerHistorial = false → restaura stock Y borra la entrega del historial
+  async function devolverEntrega(entrega, mantenerHistorial) {
+    if (entrega.camada_id) {
+      // Crías → recrear jaula con la cantidad devuelta
+      await agregarJaula({
+        camada_id: entrega.camada_id,
+        total: entrega.cantidad,
+        machos: null,
+        hembras: null,
+        notas: 'Devuelto',
+      })
+    } else if (entrega.animal_id) {
+      // Reproductor → restaurar estado a 'activo'
+      const animal = estado.animales.find((a) => a.id === entrega.animal_id)
+      if (animal) {
+        const restaurado = { ...animal, estado: 'activo' }
+        dispatch({ type: 'EDITAR_ANIMAL', payload: restaurado })
+        const { error } = await supabase.from('animales').update({ estado: 'activo' }).eq('id', entrega.animal_id)
+        if (error) console.error('Error al restaurar reproductor:', error)
+      }
+    }
+
+    if (!mantenerHistorial) {
+      dispatch({ type: 'ELIMINAR_ENTREGA', payload: entrega.id })
+      const { error } = await supabase.from('entregas').delete().eq('id', entrega.id)
+      if (error) console.error('Error al eliminar entrega del historial:', error)
     }
   }
 
@@ -374,7 +405,7 @@ export function BiotheriumProvider({ children }) {
       agregarAnimal, editarAnimal, eliminarAnimal, sacrificarReproductor,
       agregarCamada, editarCamada, eliminarCamada, confirmarSeparacion,
       registrarSacrificio, eliminarSacrificio,
-      registrarEntrega, entregarReproductor,
+      registrarEntrega, entregarReproductor, devolverEntrega,
       agregarJaula, editarJaula, eliminarJaula,
       agregarTemperatura, eliminarTemperaturasMes,
     }}>

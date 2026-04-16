@@ -3,8 +3,10 @@ import { useBioterio } from '../context/BiotheriumContext'
 import { formatFecha } from '../utils/calculos'
 
 export default function Entregas() {
-  const { entregas, camadas, animales } = useBioterio()
+  const { entregas, camadas, animales, devolverEntrega } = useBioterio()
   const [busqueda, setBusqueda] = useState('')
+  const [menuAbierto, setMenuAbierto] = useState(null)   // id de la entrega con menú visible
+  const [cargando, setCargando] = useState(null)          // id de la entrega en proceso
 
   const lista = useMemo(() => {
     return [...entregas]
@@ -27,6 +29,16 @@ export default function Entregas() {
 
   const totalAnimales = entregas.reduce((s, e) => s + (e.cantidad ?? 0), 0)
 
+  async function handleDevolver(entrega, mantenerHistorial) {
+    setCargando(entrega.id)
+    setMenuAbierto(null)
+    try {
+      await devolverEntrega(entrega, mantenerHistorial)
+    } finally {
+      setCargando(null)
+    }
+  }
+
   const iStyle = {
     background: 'rgba(5,8,16,0.6)', border: '1px solid rgba(30,51,82,0.8)',
     color: '#e2e8f0', borderRadius: '0.6rem', padding: '0.45rem 0.75rem',
@@ -34,7 +46,11 @@ export default function Entregas() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-5 min-h-screen" style={{ background: '#050810' }}>
+    <div
+      className="p-4 md:p-6 space-y-5 min-h-screen"
+      style={{ background: '#050810' }}
+      onClick={() => setMenuAbierto(null)}
+    >
 
       {/* Header */}
       <div className="flex items-center gap-3">
@@ -89,12 +105,13 @@ export default function Entregas() {
             const madre  = camada ? animales.find((a) => a.id === camada.id_madre) : null
             const padre  = camada ? animales.find((a) => a.id === camada.id_padre) : null
             const esRepro = !e.camada_id
+            const estaEnProceso = cargando === e.id
 
             return (
               <div
                 key={e.id}
                 className="rounded-xl px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-1"
-                style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }}
+                style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)', opacity: estaEnProceso ? 0.5 : 1 }}
               >
                 {/* Fecha */}
                 <div className="font-mono text-sm font-semibold" style={{ color: '#ffb300', minWidth: '90px' }}>
@@ -120,6 +137,60 @@ export default function Entregas() {
                 {/* Cantidad */}
                 <div className="font-mono font-bold text-base" style={{ color: '#ffb300' }}>
                   {e.cantidad} {e.cantidad === 1 ? 'animal' : 'animales'}
+                </div>
+
+                {/* Botón devolver */}
+                <div className="relative" onClick={(ev) => ev.stopPropagation()}>
+                  <button
+                    disabled={estaEnProceso}
+                    onClick={() => setMenuAbierto(menuAbierto === e.id ? null : e.id)}
+                    className="px-3 py-1 rounded-lg text-xs font-semibold"
+                    style={{
+                      background: 'rgba(64,196,255,0.08)',
+                      border: '1px solid rgba(64,196,255,0.3)',
+                      color: '#40c4ff',
+                      cursor: estaEnProceso ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {estaEnProceso ? '...' : '↩ Devolver'}
+                  </button>
+
+                  {menuAbierto === e.id && (
+                    <div
+                      className="absolute right-0 z-50 rounded-xl overflow-hidden"
+                      style={{
+                        top: 'calc(100% + 6px)',
+                        minWidth: '220px',
+                        background: '#0d1528',
+                        border: '1px solid rgba(64,196,255,0.25)',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                      }}
+                    >
+                      {/* Opción 1: mantener historial */}
+                      <button
+                        onClick={() => handleDevolver(e, true)}
+                        className="w-full text-left px-4 py-3 text-sm"
+                        style={{ color: '#e2e8f0', borderBottom: '1px solid rgba(30,51,82,0.8)', cursor: 'pointer', background: 'transparent' }}
+                        onMouseEnter={(ev) => ev.currentTarget.style.background = 'rgba(64,196,255,0.08)'}
+                        onMouseLeave={(ev) => ev.currentTarget.style.background = 'transparent'}
+                      >
+                        <div className="font-semibold" style={{ color: '#40c4ff' }}>↩ Devolver al stock</div>
+                        <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>Mantiene el registro en el historial</div>
+                      </button>
+
+                      {/* Opción 2: borrar historial */}
+                      <button
+                        onClick={() => handleDevolver(e, false)}
+                        className="w-full text-left px-4 py-3 text-sm"
+                        style={{ color: '#e2e8f0', cursor: 'pointer', background: 'transparent' }}
+                        onMouseEnter={(ev) => ev.currentTarget.style.background = 'rgba(255,82,82,0.08)'}
+                        onMouseLeave={(ev) => ev.currentTarget.style.background = 'transparent'}
+                      >
+                        <div className="font-semibold" style={{ color: '#ff5252' }}>↩ Devolver y borrar del historial</div>
+                        <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>Como si la entrega no hubiera existido</div>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )
