@@ -98,8 +98,9 @@ sacrificios
   id, camada_id, cantidad, fecha, categoria, notas
 
 entregas
-  id, camada_id, cantidad, fecha, observaciones, created_at
+  id, camada_id, animal_id, cantidad, fecha, observaciones, created_at
   (camada_id es null cuando se entrega un reproductor)
+  (animal_id guarda el id del reproductor entregado, para poder revertir la entrega)
 
 temperature_logs
   id, date, time, current_temp, min_temp, max_temp, created_at
@@ -190,6 +191,14 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
 - **Acción "Entregar animales" desde selección múltiple (16/04/2026):** en Stock, al seleccionar jaulas aparece botón "📦 Entregar" (amarillo) junto al de sacrificio. Abre `ModalEntrega` con cantidad editable por jaula, fecha y campo observaciones (ej: iniciales de investigador). Stock de crías: se reduce o elimina la jaula igual que en sacrificio. Reproductores: pasan a estado `retirado` en vez de `fallecido`. Todo queda registrado en la tabla `entregas` de Supabase.
 
 - **Página Entregas (16/04/2026):** nueva ruta `/entregas` en sidebar (📦). Lista cronológica de todas las entregas con tarjetas de resumen (total entregas, total animales, últimos 30 días) y buscador por observaciones/código/fecha.
+
+- **Botón "Devolver" en historial de entregas (17/04/2026):** cada registro del historial tiene un botón "↩ Devolver" que abre un menú con 2 opciones:
+  - **"Devolver al stock"** → restaura la jaula/animal y mantiene el registro en el historial
+  - **"Devolver y borrar del historial"** → restaura la jaula/animal y elimina el registro como si nunca hubiera existido
+  - Crías: se recrea la jaula con la cantidad devuelta (machos/hembras sin registrar)
+  - Reproductores: el animal vuelve a estado `activo` (requiere columna `animal_id` en tabla `entregas`)
+  - ⚠️ Requiere ejecutar en Supabase: `ALTER TABLE entregas ADD COLUMN animal_id text;`
+  - Entregas de reproductores anteriores a este cambio no tienen `animal_id`, por lo que no pueden restaurar el estado del animal automáticamente
 
 ---
 
