@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
-import { difDias, parseDate, hoy, formatFecha } from '../utils/calculos'
+import { difDias, parseDate, hoy, formatFecha, calcularPerfilHembra, calcularRendimientoMacho } from '../utils/calculos'
 import { BIO } from '../utils/constants'
 import Modal from '../components/Modal'
 import {
@@ -337,6 +337,21 @@ function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, 
             ) : (
               <>
                 <Row label="Progenitores" valor={`${bloque.madre?.codigo ?? '?'} × ${bloque.padre?.codigo ?? '?'}`} color={cfg.color} />
+                {/* Calidad de los padres */}
+                {bloque.madre && (
+                  <CalidadBadge
+                    sexo="hembra"
+                    codigo={bloque.madre.codigo}
+                    calidad={calidadHembra(bloque.madre.id, camadas)}
+                  />
+                )}
+                {bloque.padre && (
+                  <CalidadBadge
+                    sexo="macho"
+                    codigo={bloque.padre.codigo}
+                    calidad={calidadMacho(bloque.padre.id, camadas)}
+                  />
+                )}
                 <Row label="Total"      valor={`${bloque.total} animales`} color={cfg.color} />
                 {bloque.machos  != null && <Row label="Machos"  valor={`♂ ${bloque.machos}`}  color="#40c4ff" />}
                 {bloque.hembras != null && <Row label="Hembras" valor={`♀ ${bloque.hembras}`} color="#ce93d8" />}
@@ -476,6 +491,63 @@ function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, 
 
       </div>
     </Modal>
+  )
+}
+
+// ── Calidad reproductiva ─────────────────────────────────────────────────────
+
+function calidadHembra(hembraId, camadas) {
+  const perfil = calcularPerfilHembra(hembraId, camadas)
+  if (!perfil) return null
+  const vals = [
+    perfil.avg_time_score,
+    perfil.avg_litter_size_score,
+    perfil.avg_sex_ratio_score,
+    perfil.avg_survival_score,
+  ].filter((v) => v != null)
+  if (!vals.length) return null
+  const promedio = vals.reduce((a, b) => a + b, 0) / vals.length
+  return { score: Math.round(promedio * 10) / 10, camadas: perfil.total_camadas }
+}
+
+function calidadMacho(machoId, camadas) {
+  const rend = calcularRendimientoMacho(machoId, camadas)
+  if (rend.score_promedio === null) return null
+  return { score: rend.score_promedio, camadas: rend.total_camadas }
+}
+
+function nivelCalidad(score) {
+  if (score >= 8) return { label: 'Alta',  color: '#00e676', bg: 'rgba(0,230,118,0.12)',  borde: 'rgba(0,230,118,0.3)' }
+  if (score >= 6) return { label: 'Media', color: '#ffb300', bg: 'rgba(255,179,0,0.12)',  borde: 'rgba(255,179,0,0.3)' }
+  return            { label: 'Baja',  color: '#ff6b80', bg: 'rgba(255,61,87,0.12)',   borde: 'rgba(255,61,87,0.3)' }
+}
+
+function CalidadBadge({ sexo, codigo, calidad }) {
+  const sinDatos = calidad === null
+  const nivel    = sinDatos ? null : nivelCalidad(calidad.score)
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#4a5f7a' }}>
+        Calidad {sexo === 'macho' ? '♂' : '♀'} {codigo}
+      </span>
+      {sinDatos ? (
+        <span className="text-xs font-mono px-2 py-0.5 rounded-lg" style={{ color: '#4a5f7a', background: 'rgba(30,51,82,0.4)' }}>
+          Sin datos
+        </span>
+      ) : (
+        <div className="flex items-center gap-1.5">
+          <span
+            className="text-xs font-bold px-2 py-0.5 rounded-lg"
+            style={{ color: nivel.color, background: nivel.bg, border: `1px solid ${nivel.borde}` }}
+          >
+            {nivel.label}
+          </span>
+          <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+            {calidad.score}/10 · {calidad.camadas}c
+          </span>
+        </div>
+      )}
+    </div>
   )
 }
 
