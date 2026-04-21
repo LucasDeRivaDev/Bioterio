@@ -80,9 +80,19 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
   const padreSelec = animales.find((a) => a.id === form.id_padre)
   const fechaEsPasada = form.fecha_copula && form.fecha_copula < hoy()
 
+  // Detección de consanguinidad directa
+  const consanguinidad = (() => {
+    if (!madreSelec || !padreSelec) return null
+    if (padreSelec.id === madreSelec.id_padre) return 'padre-hija' // el macho es el padre de la hembra
+    if (madreSelec.id === padreSelec.id_madre) return 'madre-hijo' // la hembra es la madre del macho
+    return null
+  })()
+  const [confirmarConsanguinidad, setConfirmarConsanguinidad] = useState(false)
+
   function cambiar(campo, valor) {
     setForm((prev) => ({ ...prev, [campo]: valor }))
     setErrores((prev) => ({ ...prev, [campo]: '' }))
+    if (campo === 'id_madre' || campo === 'id_padre') setConfirmarConsanguinidad(false)
   }
 
   function validar() {
@@ -95,6 +105,11 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
     if (form.fecha_copula && form.fecha_copula >= hoy()) {
       if (esInactivo(madreSelec)) nuevos.id_madre = 'No se puede asignar una hembra inactiva a un apareamiento futuro'
       if (esInactivo(padreSelec)) nuevos.id_padre = 'No se puede asignar un macho inactivo a un apareamiento futuro'
+    }
+
+    // Consanguinidad directa sin confirmación
+    if (consanguinidad && !confirmarConsanguinidad) {
+      nuevos._consanguinidad = 'Confirmá el apareamiento consanguíneo antes de guardar'
     }
 
     setErrores(nuevos)
@@ -199,6 +214,54 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
           )}
         </LabInput>
       </div>
+
+      {/* Alerta de consanguinidad */}
+      {consanguinidad && (
+        <div
+          className="rounded-xl overflow-hidden"
+          style={{ border: '1.5px solid rgba(255,61,87,0.5)', background: 'rgba(255,61,87,0.06)' }}
+        >
+          <div className="px-4 py-3 flex items-start gap-3">
+            <span className="text-xl mt-0.5">🧬</span>
+            <div className="flex-1">
+              <p className="text-sm font-bold mb-0.5" style={{ color: '#ff6b80' }}>
+                Consanguinidad detectada
+              </p>
+              <p className="text-xs" style={{ color: '#ff9aaa' }}>
+                {consanguinidad === 'padre-hija'
+                  ? `${padreSelec.codigo} es el padre de ${madreSelec.codigo}.`
+                  : `${madreSelec.codigo} es la madre de ${padreSelec.codigo}.`}
+                {' '}Relación padre-hija o madre-hijo. Apareamiento no recomendado.
+              </p>
+            </div>
+          </div>
+          {/* Confirmación explícita */}
+          <button
+            type="button"
+            onClick={() => setConfirmarConsanguinidad((v) => !v)}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-all"
+            style={{
+              borderTop: '1px solid rgba(255,61,87,0.25)',
+              background: confirmarConsanguinidad ? 'rgba(255,61,87,0.12)' : 'rgba(255,61,87,0.04)',
+              color: confirmarConsanguinidad ? '#ff6b80' : '#a04050',
+            }}
+          >
+            <span
+              className="w-4 h-4 rounded flex items-center justify-center shrink-0 transition-all"
+              style={{
+                border: confirmarConsanguinidad ? '1.5px solid #ff6b80' : '1.5px solid rgba(255,61,87,0.4)',
+                background: confirmarConsanguinidad ? 'rgba(255,61,87,0.25)' : 'transparent',
+              }}
+            >
+              {confirmarConsanguinidad && <span style={{ color: '#ff6b80', fontSize: '10px', fontWeight: 'bold' }}>✓</span>}
+            </span>
+            <span>Entiendo el riesgo genético y quiero continuar</span>
+          </button>
+          {errores._consanguinidad && (
+            <p className="text-xs px-4 pb-2" style={{ color: '#ff6b80' }}>{errores._consanguinidad}</p>
+          )}
+        </div>
+      )}
 
       {/* Fecha cópula */}
       <LabInput label="Fecha de cópula" required error={errores.fecha_copula}>
