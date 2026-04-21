@@ -13,6 +13,7 @@ import Stock from './pages/Stock'
 import Sacrificios from './pages/Sacrificios'
 import Entregas from './pages/Entregas'
 import Temperatura from './pages/Temperatura'
+import Estadisticas from './pages/Estadisticas'
 import Login from './pages/Login'
 
 // ── Pantalla de carga mientras verifica la sesión ────────────────────────────
@@ -127,7 +128,8 @@ function AppLayout() {
               <Route path="/stock"       element={<Stock />} />
               <Route path="/sacrificios"  element={<Sacrificios />} />
               <Route path="/entregas"     element={<Entregas />} />
-              <Route path="/temperatura"  element={<Temperatura />} />
+              <Route path="/temperatura"   element={<Temperatura />} />
+              <Route path="/estadisticas" element={<Estadisticas />} />
               <Route path="/reportes"     element={<Reportes />} />
               <Route path="*"            element={<Navigate to="/" replace />} />
             </Routes>
