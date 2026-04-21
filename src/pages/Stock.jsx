@@ -137,9 +137,36 @@ function SexoDisplay({ bloque, cfg }) {
   )
 }
 
-function BloqueJaula({ bloque, onClick, modoSeleccion = false, seleccionada = false }) {
+function MiniCalidad({ icono, codigo, calidad }) {
+  if (!calidad) return (
+    <div className="flex items-center justify-between">
+      <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{icono} {codigo}</span>
+      <span className="text-xs" style={{ color: '#2a3a50' }}>—</span>
+    </div>
+  )
+  const nivel = nivelCalidad(calidad.score)
+  return (
+    <div className="flex items-center justify-between gap-1">
+      <span className="text-xs font-mono" style={{ color: '#6a7f95' }}>{icono} {codigo}</span>
+      <span
+        className="text-xs font-bold px-1.5 py-0.5 rounded"
+        style={{ color: nivel.color, background: nivel.bg }}
+      >
+        {nivel.label}
+      </span>
+    </div>
+  )
+}
+
+function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccionada = false }) {
   const cfg = CAT[bloque.categoria]
   const esSeleccionable = modoSeleccion && !bloque.virtual
+  const esStock = bloque.tipo === 'stock'
+
+  const calMadre = esStock && bloque.madre && camadas ? calidadHembra(bloque.madre.id, camadas) : null
+  const calPadre = esStock && bloque.padre && camadas ? calidadMacho(bloque.padre.id, camadas)  : null
+  const mostrarCalidad = esStock && (bloque.madre || bloque.padre)
+
   return (
     <button
       onClick={() => onClick(bloque)}
@@ -192,6 +219,17 @@ function BloqueJaula({ bloque, onClick, modoSeleccion = false, seleccionada = fa
         <div className="text-xs" style={{ color: '#4a5f7a' }}>
           {bloque.edad != null ? `${formatEdad(bloque.edad)} · ${bloque.edad}d` : '—'}
         </div>
+
+        {/* Mini calidad de padres */}
+        {mostrarCalidad && (
+          <div
+            className="mt-1 pt-1.5 space-y-0.5"
+            style={{ borderTop: '1px solid rgba(30,51,82,0.5)' }}
+          >
+            {bloque.madre && <MiniCalidad icono="♀" codigo={bloque.madre.codigo} calidad={calMadre} />}
+            {bloque.padre && <MiniCalidad icono="♂" codigo={bloque.padre.codigo} calidad={calPadre} />}
+          </div>
+        )}
       </div>
     </button>
   )
@@ -1488,6 +1526,7 @@ export default function Stock() {
                 <BloqueJaula
                   key={b.id}
                   bloque={b}
+                  camadas={camadas}
                   onClick={modoSeleccion ? toggleSeleccion : setDetalle}
                   modoSeleccion={modoSeleccion}
                   seleccionada={seleccionadas.has(b.id)}
