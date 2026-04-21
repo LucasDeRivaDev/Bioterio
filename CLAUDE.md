@@ -13,10 +13,11 @@ Sistema web de gestión de una colonia de ratones de laboratorio (*Mus musculus*
 | **Animales** | CRUD de reproductores con filtros por sexo y estado |
 | **Camadas** | Registro de cópulas, seguimiento de preñez, destete, separación de pareja, scores reproductivos, análisis de confiabilidad de hembras y detección de fallos |
 | **Calendario** | Vista mensual con todos los eventos reproductivos coloreados |
-| **Stock** | Bloques visuales por jaula con display de sexo coloreado (♂ azul / ♀ violeta / mixto bicolor), edición/división/movimiento de animales, entrega y sacrificio en masa |
+| **Stock** | Bloques visuales por jaula con display de sexo coloreado (♂ azul / ♀ violeta / mixto bicolor), edición/división/movimiento de animales, entrega y sacrificio en masa. Cada bloque muestra calidad de padres (Alta/Media/Baja) sin necesidad de abrir el modal |
 | **Sacrificios** | Selección múltiple de jaulas desde stock para registrar sacrificios en masa |
 | **Entregas** | Historial de animales entregados a investigadores, con buscador y resumen numérico |
 | **Rendimiento** | Ranking de machos por latencia de fertilización (menor = mejor) con scores |
+| **Estadísticas** | Dashboard visual con 4 gráficos: partos vs fallas, calidad de madres, supervivencia de camadas, eficiencia de apareamiento. KPIs resumen + filtros por fecha y reproductor |
 | **Temperatura** | Registro diario de temperatura (actual/mín/máx), vista mensual, exportación imprimible y limpieza de datos por mes |
 | **Reportes** | Impresión de datos de la colonia |
 
@@ -67,10 +68,11 @@ src/
     ├── Animales.jsx
     ├── Camadas.jsx                  — Lista + detalle expandible + AnalisisReproductivo
     ├── Calendario.jsx
-    ├── Stock.jsx                    — Jaulas con SexoDisplay coloreado
+    ├── Stock.jsx                    — Jaulas con SexoDisplay coloreado + calidad de padres en cada bloque
     ├── Sacrificios.jsx
     ├── Entregas.jsx                 — Historial de entregas con buscador y tarjetas resumen
     ├── Rendimiento.jsx
+    ├── Estadisticas.jsx             — Dashboard visual: 4 gráficos reproductivos + KPIs + filtros
     ├── Temperatura.jsx              — Registro ambiental diario + exportación mensual
     └── Reportes.jsx
 ```
@@ -199,6 +201,22 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
   - Reproductores: el animal vuelve a estado `activo` (requiere columna `animal_id` en tabla `entregas`)
   - ⚠️ Requiere ejecutar en Supabase: `ALTER TABLE entregas ADD COLUMN animal_id text;`
   - Entregas de reproductores anteriores a este cambio no tienen `animal_id`, por lo que no pueden restaurar el estado del animal automáticamente
+
+- **Prevención de consanguinidad directa (21/04/2026):** en `CamadaForm`, al seleccionar la pareja se detecta automáticamente si hay relación padre-hija o madre-hijo (usando `id_madre`/`id_padre` del animal). Si se detecta: aparece un banner rojo 🧬 con los códigos involucrados y un checkbox de confirmación explícita. El botón guardar se bloquea hasta que el usuario confirme el riesgo. Si se cambia la pareja, la confirmación se resetea. Solo detecta relaciones si los progenitores están registrados en el animal.
+
+- **Calidad de padres en modal de jaula (21/04/2026):** en Stock → modal de jaula → pestaña "Ver", se muestran dos filas de calidad debajo de "Progenitores". Hembra: promedio de los 4 scores históricos (`calcularPerfilHembra`). Macho: score de latencia (`calcularRendimientoMacho`). Badge de color verde/amarillo/rojo (Alta/Media/Baja) con score numérico y cantidad de camadas en que se basa.
+
+- **Calidad de padres visible en cada bloque de jaula (21/04/2026):** sin necesidad de abrir el modal, cada bloque de stock muestra al pie dos filas: `♀ H12 Alta` / `♂ M5 Media`. Implementado en el componente `BloqueJaula` con el sub-componente `MiniCalidad`. Si el animal no tiene historial, muestra `—`. Solo aparece en bloques de tipo stock (no en reproductores sueltos).
+
+- **Página de Estadísticas visuales (21/04/2026):** nueva ruta `/estadisticas` (📈 en sidebar). 4 KPIs + 4 gráficos con recharts:
+  - **Partos vs Fallas** (torta): efectivos / fallidos / en curso
+  - **Calidad de Madres** (barras): cantidad de madres Alta / Media / Baja / Sin datos
+  - **Supervivencia de Camadas** (torta): 100% destetados vs. con pérdidas
+  - **Eficiencia de Apareamiento** (barras): latencia 0–5d / 6–10d / >10d
+  - Filtros: rango de fechas (desde/hasta) + madre específica + padre específico
+  - La calidad de madres usa historial completo del animal (no solo el rango filtrado)
+
+- **Eliminación de tab Evolución en Stock (21/04/2026):** la sección "📈 Evolución" fue removida de Stock ya que la página de Estadísticas cubre esa función. Se eliminaron `GraficoEvolucion`, `mesStr` y los imports de recharts de Stock.jsx (−298 líneas).
 
 ---
 
