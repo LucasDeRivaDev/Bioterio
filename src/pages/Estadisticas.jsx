@@ -229,9 +229,8 @@ export default function Estadisticas() {
 
   // ── 4. Eficiencia de Apareamiento ─────────────────────────────────────────
   const dataEficiencia = useMemo(() => {
-    const conNacimiento = camadasFiltradas.filter((c) => c.fecha_nacimiento)
     const grupos = { '0–5d': 0, '6–10d': 0, '>10d': 0, 'Sin dato': 0 }
-    conNacimiento.forEach((c) => {
+    camadasFiltradas.forEach((c) => {
       const lat = calcularLatencia(c)
       if (lat === null)       grupos['Sin dato']++
       else if (lat <= 5)      grupos['0–5d']++
