@@ -19,7 +19,11 @@ const C = {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function scorePromedioHembra(id, camadas) {
   const perfil = calcularPerfilHembra(id, camadas)
-  if (!perfil) return null
+  if (!perfil) {
+    // Sin partos exitosos — si hay fallos registrados la calidad es Baja, no "Sin datos"
+    const tieneFallos = camadas.some((c) => c.id_madre === id && c.failure_flag)
+    return tieneFallos ? 0 : null
+  }
   const vals = [
     perfil.avg_time_score,
     perfil.avg_litter_size_score,
