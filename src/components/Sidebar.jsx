@@ -37,7 +37,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
 
   return (
     <aside
-      className="w-64 h-full min-h-screen flex flex-col shrink-0 overflow-y-auto"
+      className="w-64 h-full flex flex-col shrink-0"
       style={{
         background: 'linear-gradient(180deg, #080d1a 0%, #050810 100%)',
         borderRight: '1px solid rgba(0,230,118,0.12)',
@@ -90,7 +90,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
         </div>
       </div>
 
-      <nav className="flex-1 px-3 pb-3 space-y-1">
+      <nav className="flex-1 overflow-y-auto px-3 pb-3 space-y-1">
         {links.map(({ to, label, icon }) => (
           <NavLink
             key={to}
