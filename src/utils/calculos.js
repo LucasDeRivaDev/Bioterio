@@ -353,7 +353,7 @@ export function scoreProporcionSexual(machos, hembras) {
 export function scoreSupervivencia(totalCrias, totalDestetados) {
   if (totalCrias == null || totalCrias === 0 || totalDestetados == null) return null
   const rate = totalDestetados / totalCrias
-  return Math.round(rate * 100) / 10
+  return Math.min(10, Math.round(rate * 100) / 10)
 }
 
 /**

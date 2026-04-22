@@ -31,8 +31,8 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
   const { sesion } = useAuth()
   const emailUsuario = sesion?.user?.email ?? ''
 
-  const hembrasActivas = animales.filter((a) => a.sexo === 'hembra' && (a.estado === 'activo' || a.estado === 'en_cria')).length
-  const machosActivos  = animales.filter((a) => a.sexo === 'macho'  && (a.estado === 'activo' || a.estado === 'en_cria')).length
+  const hembrasActivas = animales.filter((a) => a.sexo === 'hembra' && (a.estado === 'activo' || a.estado === 'en_apareamiento' || a.estado === 'en_cria')).length
+  const machosActivos  = animales.filter((a) => a.sexo === 'macho'  && (a.estado === 'activo' || a.estado === 'en_apareamiento' || a.estado === 'en_cria')).length
   const prenadas       = camadas.filter((c) => c.fecha_copula && !c.fecha_nacimiento).length
 
   return (

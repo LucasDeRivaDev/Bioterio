@@ -204,13 +204,13 @@ export default function Dashboard() {
   const hoyDate        = parseDate(hoy())
 
   const enApareamiento = camadas.filter((c) => {
-    if (c.fecha_nacimiento || c.fecha_destete || c.fecha_separacion) return false
+    if (c.fecha_nacimiento || c.fecha_destete || c.fecha_separacion || c.failure_flag) return false
     if (!c.fecha_copula) return false
     return difDias(parseDate(c.fecha_copula), hoyDate) < 15
   }).length
 
   const enPreñez = camadas.filter((c) => {
-    if (c.fecha_nacimiento || c.fecha_destete) return false
+    if (c.fecha_nacimiento || c.fecha_destete || c.failure_flag) return false
     if (!c.fecha_copula) return false
     if (c.fecha_separacion) return true
     return difDias(parseDate(c.fecha_copula), hoyDate) >= 15

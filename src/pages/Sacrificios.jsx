@@ -77,6 +77,7 @@ export default function Sacrificios() {
   // ── Historial de camadas sacrificadas ─────────────────────────────────────
   const listaEnriquecida = useMemo(() =>
     [...sacrificios]
+      .filter((s) => s.categoria !== 'reproductor')
       .sort((a, b) => (b.fecha ?? '').localeCompare(a.fecha ?? ''))
       .map((s) => {
         const camada = camadas.find((c) => c.id === s.camada_id)

@@ -180,8 +180,8 @@ export default function Estadisticas() {
       fallidos,
       enCurso,
       total: camadasFiltradas.length,
-      tasaExito: camadasFiltradas.length > 0
-        ? Math.round((efectivos / camadasFiltradas.length) * 100)
+      tasaExito: (efectivos + fallidos) > 0
+        ? Math.round((efectivos / (efectivos + fallidos)) * 100)
         : null,
     }
   }, [camadasFiltradas])

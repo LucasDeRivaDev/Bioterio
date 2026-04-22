@@ -11,12 +11,15 @@ function edadDias(fechaNacimiento) {
   return difDias(parseDate(fechaNacimiento), parseDate(hoy()))
 }
 
-function stockCamada(camada, sacrificios) {
+function stockCamada(camada, sacrificios, entregas) {
   const sacCount = sacrificios
     .filter((s) => s.camada_id === camada.id)
     .reduce((sum, s) => sum + s.cantidad, 0)
+  const entCount = entregas
+    .filter((e) => e.camada_id === camada.id)
+    .reduce((sum, e) => sum + e.cantidad, 0)
   const base = camada.total_destetados ?? camada.total_crias ?? 0
-  return Math.max(0, base - sacCount)
+  return Math.max(0, base - sacCount - entCount)
 }
 
 function formatEdad(dias) {
@@ -926,7 +929,7 @@ function CategoriaCard({ icono, titulo, subtitulo, total, grupos, gruposLabel, m
 
 
 export default function Stock() {
-  const { animales, camadas, sacrificios, jaulas, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, registrarSacrificio, registrarEntrega, entregarReproductor } = useBioterio()
+  const { animales, camadas, sacrificios, entregas, jaulas, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, registrarSacrificio, registrarEntrega, entregarReproductor } = useBioterio()
   const [vista, setVista] = useState('jaulas')
   const [detalle, setDetalle] = useState(null)
   const [filtroCat, setFiltroCat] = useState('todas')
@@ -980,7 +983,7 @@ export default function Stock() {
       if (!camada.fecha_nacimiento || !camada.fecha_destete) return
       if (camada.incluir_en_stock === false) return
       if (jaulas.some((j) => j.camada_id === camada.id)) return
-      const stock = stockCamada(camada, sacrificios)
+      const stock = stockCamada(camada, sacrificios, entregas)
       if (stock <= 0) return
       const edad = edadDias(camada.fecha_nacimiento)
       const madre = animales.find((a) => a.id === camada.id_madre)
