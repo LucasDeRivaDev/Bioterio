@@ -14,6 +14,7 @@ const links = [
   { to: '/sacrificios', label: 'Sacrificios', icon: '🗡️' },
   { to: '/entregas',   label: 'Entregas',    icon: '📦' },
   { to: '/temperatura', label: 'Temperatura', icon: '🌡️' },
+  { to: '/incidentes', label: 'Incidentes', icon: '📝' },
   { to: '/reportes', label: 'Reportes e impresión', icon: '🖨️' },
 ]
 
