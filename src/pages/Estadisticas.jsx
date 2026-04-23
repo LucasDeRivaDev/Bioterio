@@ -193,16 +193,17 @@ export default function Estadisticas() {
   // ── 2. Calidad de Madres ───────────────────────────────────────────────────
   const dataCalidad = useMemo(() => {
     const idsMadres = [...new Set(camadasFiltradas.map((c) => c.id_madre).filter(Boolean))]
-    const niveles = { Alta: 0, Media: 0, Baja: 0, 'Sin datos': 0 }
+    const niveles = { Alta: 0, Media: 0, Baja: 0, 'En proceso': 0 }
     idsMadres.forEach((id) => {
       const s = scorePromedioHembra(id, camadas) // score histórico completo
-      niveles[nivelScore(s)]++
+      const nivel = nivelScore(s)
+      niveles[nivel === 'Sin datos' ? 'En proceso' : nivel]++
     })
     return [
-      { name: 'Alta',      value: niveles['Alta'],      fill: C.verde    },
-      { name: 'Media',     value: niveles['Media'],     fill: C.amarillo },
-      { name: 'Baja',      value: niveles['Baja'],      fill: C.rojo     },
-      { name: 'Sin datos', value: niveles['Sin datos'], fill: C.gris     },
+      { name: 'Alta',       value: niveles['Alta'],       fill: C.verde    },
+      { name: 'Media',      value: niveles['Media'],      fill: C.amarillo },
+      { name: 'Baja',       value: niveles['Baja'],       fill: C.rojo     },
+      { name: 'En proceso', value: niveles['En proceso'], fill: C.gris     },
     ].filter((d) => d.value > 0)
   }, [camadasFiltradas, camadas])
 
