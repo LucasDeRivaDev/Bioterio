@@ -1,578 +1,604 @@
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
-import {
-  formatFecha, calcularLatencia, interpretarLatencia,
-  calcularDestete, calcularMadurez, difDias, parseDate,
-} from '../utils/calculos'
+import { formatFecha, calcularLatencia } from '../utils/calculos'
 
-const MESES_NOMBRE = [
-  'Enero','Febrero','Marzo','Abril','Mayo','Junio',
-  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre',
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+
+const SECCIONES = [
+  { key: 'estadisticas',    label: 'Estadísticas',    icon: '📈', color: '#ffb300', rgb: '255,179,0',   printBg: '#fefae8', printBorder: '#b8860b' },
+  { key: 'reproductores',   label: 'Reproductores',   icon: '🐀', color: '#ce93d8', rgb: '206,147,216', printBg: '#f5f0ff', printBorder: '#9d4edd' },
+  { key: 'emparejamientos', label: 'Emparejamientos', icon: '🪺', color: '#40c4ff', rgb: '64,196,255',  printBg: '#e8f4fd', printBorder: '#0277bd' },
+  { key: 'rendimiento',     label: 'Rendimiento',     icon: '📊', color: '#00e676', rgb: '0,230,118',   printBg: '#e8f8f0', printBorder: '#2e7d52' },
+  { key: 'stock',           label: 'Stock',           icon: '📦', color: '#00e676', rgb: '0,230,118',   printBg: '#e8f8f0', printBorder: '#2e7d52' },
+  { key: 'sacrificios',     label: 'Sacrificios',     icon: '🗡️', color: '#ff6b80', rgb: '255,107,128', printBg: '#fde8ec', printBorder: '#c62828' },
+  { key: 'entregas',        label: 'Entregas',        icon: '📤', color: '#ffb300', rgb: '255,179,0',   printBg: '#fefae8', printBorder: '#b8860b' },
+  { key: 'temperaturas',    label: 'Temperaturas',    icon: '🌡️', color: '#40c4ff', rgb: '64,196,255',  printBg: '#e8f4fd', printBorder: '#0277bd' },
+  { key: 'incidentes',      label: 'Incidentes',      icon: '📝', color: '#ce93d8', rgb: '206,147,216', printBg: '#f5f0ff', printBorder: '#9d4edd' },
 ]
+
+function inicioSemana() {
+  const d = new Date()
+  const day = d.getDay()
+  const lunes = new Date(d)
+  lunes.setDate(d.getDate() - day + (day === 0 ? -6 : 1))
+  return lunes.toISOString().split('T')[0]
+}
 
 const cardStyle = { background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
-
-function dentroDelMes(fechaStr, anio, mes) {
-  if (!fechaStr) return false
-  const [y, m] = fechaStr.split('-').map(Number)
-  return y === anio && m === mes + 1
-}
-
-function dentroDelAnio(fechaStr, anio) {
-  if (!fechaStr) return false
-  return parseInt(fechaStr.split('-')[0]) === anio
-}
-
-// ── Componente principal ─────────────────────────────────────────────────────
-
 export default function Reportes() {
-  const { animales, camadas } = useBioterio()
-  const hoy = new Date()
+  const { animales, camadas, jaulas, sacrificios, entregas, temperaturas, incidentes } = useBioterio()
+  const hoyDate = new Date()
 
-  const [anio, setAnio]       = useState(hoy.getFullYear())
-  const [mes, setMes]         = useState(hoy.getMonth())
-  const [modo, setModo]       = useState('mensual')   // 'mensual' | 'personalizado'
-  const [secciones, setSecciones] = useState({
-    resumen: true,
-    animales: true,
-    camadas: true,
-    latencias: true,
-    tareas: true,
-  })
-  // Filtros personalizados
-  const [filtSexo, setFiltSexo]     = useState('todos')
-  const [filtEstado, setFiltEstado] = useState('todos')
-  const [filtCEstado, setFiltCEstado] = useState('todas')
+  const [periodo, setPeriodo]   = useState('mensual')
+  const [anio, setAnio]         = useState(hoyDate.getFullYear())
+  const [mes, setMes]           = useState(hoyDate.getMonth())
+  const [semDesde, setSemDesde] = useState(inicioSemana)
+  const [secciones, setSecciones] = useState(
+    () => Object.fromEntries(SECCIONES.map(s => [s.key, true]))
+  )
 
-  const printRef = useRef()
+  function toggleSec(key) { setSecciones(p => ({ ...p, [key]: !p[key] })) }
 
-  // ── Datos filtrados para el reporte ────────────────────────────────────────
-
-  const datosReporte = useMemo(() => {
-    // Animales del reporte
-    let aniReporte = animales
-    if (modo === 'personalizado') {
-      if (filtSexo !== 'todos') aniReporte = aniReporte.filter((a) => a.sexo === filtSexo)
-      if (filtEstado !== 'todos') aniReporte = aniReporte.filter((a) => a.estado === filtEstado)
-    }
-
-    // Camadas del periodo
-    let camReporte = camadas
-    if (modo === 'mensual') {
-      camReporte = camadas.filter((c) =>
-        dentroDelMes(c.fecha_copula, anio, mes) ||
-        dentroDelMes(c.fecha_nacimiento, anio, mes) ||
-        dentroDelMes(c.fecha_destete, anio, mes)
-      )
-    } else {
-      if (filtCEstado !== 'todas') {
-        camReporte = camadas.filter((c) => {
-          if (filtCEstado === 'preñez') return c.fecha_copula && !c.fecha_nacimiento
-          if (filtCEstado === 'lactancia') return c.fecha_nacimiento && !c.fecha_destete
-          if (filtCEstado === 'completada') return !!c.fecha_destete
-          return true
-        })
+  const datos = useMemo(() => {
+    function enPeriodo(fechaStr) {
+      if (!fechaStr) return false
+      if (periodo === 'mensual') {
+        const [y, m] = fechaStr.split('-').map(Number)
+        return y === anio && m === mes + 1
       }
+      const [yS, mS, dS] = semDesde.split('-').map(Number)
+      const inicio = new Date(yS, mS - 1, dS)
+      const fin    = new Date(yS, mS - 1, dS + 6, 23, 59, 59)
+      const [yF, mF, dF] = fechaStr.split('-').map(Number)
+      return new Date(yF, mF - 1, dF) >= inicio && new Date(yF, mF - 1, dF) <= fin
     }
 
-    // Enriquecer camadas
-    const camEnriq = camReporte.map((c) => {
-      const madre = animales.find((a) => a.id === c.id_madre)
-      const padre = animales.find((a) => a.id === c.id_padre)
-      const lat = calcularLatencia(c)
-      const destEst = c.fecha_nacimiento ? calcularDestete(c.fecha_nacimiento) : null
-      const madEst = c.fecha_nacimiento ? calcularMadurez(c.fecha_nacimiento) : null
-      let estado = 'preñez'
-      if (c.fecha_destete) estado = 'completada'
-      else if (c.fecha_nacimiento) estado = 'lactancia'
-      return { ...c, madre, padre, lat, destEst, madEst, estado }
-    })
+    const camPeriodo = camadas.filter(c =>
+      enPeriodo(c.fecha_copula) || enPeriodo(c.fecha_nacimiento) || enPeriodo(c.fecha_destete)
+    )
 
-    // Estadísticas resumen
-    const totalCrias = camEnriq.reduce((s, c) => s + (c.total_crias ?? 0), 0)
-    const totalDestetados = camEnriq.reduce((s, c) => s + (c.total_destetados ?? 0), 0)
-    const latsValidas = camEnriq.map((c) => c.lat).filter((l) => l !== null)
-    const latProm = latsValidas.length
-      ? Math.round(latsValidas.reduce((a, b) => a + b, 0) / latsValidas.length * 10) / 10
-      : null
+    const reproducPeriodo = animales.filter(a =>
+      ['activo','en_apareamiento','en_cria'].includes(a.estado) ||
+      enPeriodo(a.fecha_nacimiento) || enPeriodo(a.fecha_sacrificio)
+    )
 
-    // Ranking machos para el periodo
-    const machoStats = animales
-      .filter((a) => a.sexo === 'macho')
-      .map((m) => {
-        const sus = camEnriq.filter((c) => c.id_padre === m.id && c.lat !== null)
-        if (!sus.length) return null
-        const lats = sus.map((c) => c.lat)
-        return {
-          codigo: m.codigo,
-          camadas: sus.length,
-          prom: Math.round(lats.reduce((a, b) => a + b, 0) / lats.length * 10) / 10,
-          min: Math.min(...lats),
-          max: Math.max(...lats),
-        }
+    const machoRanking = animales
+      .filter(a => a.sexo === 'macho')
+      .flatMap(m => {
+        const sus = camPeriodo.filter(c => c.id_padre === m.id)
+        const lats = sus.map(c => calcularLatencia(c)).filter(l => l !== null && l >= 0)
+        if (!lats.length) return []
+        return [{ codigo: m.codigo, camadas: sus.length,
+          latProm: Math.round(lats.reduce((a,b)=>a+b,0)/lats.length*10)/10,
+          latMin: Math.min(...lats), latMax: Math.max(...lats) }]
       })
-      .filter(Boolean)
-      .sort((a, b) => a.prom - b.prom)
+      .sort((a,b) => a.latProm - b.latProm)
 
-    return { aniReporte, camEnriq, totalCrias, totalDestetados, latProm, machoStats }
-  }, [animales, camadas, anio, mes, modo, filtSexo, filtEstado, filtCEstado])
+    const efectivos  = camPeriodo.filter(c => c.fecha_nacimiento && !c.failure_flag).length
+    const fallidos   = camPeriodo.filter(c => c.failure_flag).length
+    const enCurso    = camPeriodo.filter(c => !c.fecha_nacimiento && !c.failure_flag).length
+    const totalCrias = camPeriodo.reduce((s,c) => s + (c.total_crias ?? 0), 0)
+    const totalDest  = camPeriodo.reduce((s,c) => s + (c.total_destetados ?? 0), 0)
+    const supervRate = totalCrias > 0 ? Math.round(totalDest / totalCrias * 100) : null
 
-  // ── Imprimir ────────────────────────────────────────────────────────────────
+    return {
+      reproducPeriodo, camPeriodo, machoRanking,
+      efectivos, fallidos, enCurso, totalCrias, totalDest, supervRate,
+      stockActual:  jaulas,
+      sacrPeriodo:  sacrificios.filter(s => enPeriodo(s.fecha)),
+      entPeriodo:   entregas.filter(e => enPeriodo(e.fecha)),
+      tempPeriodo:  temperaturas.filter(t => enPeriodo(t.date)).sort((a,b) => a.date.localeCompare(b.date)),
+      incPeriodo:   incidentes.filter(i => enPeriodo(i.fecha)),
+    }
+  }, [animales, camadas, jaulas, sacrificios, entregas, temperaturas, incidentes, periodo, anio, mes, semDesde])
 
-  function imprimir() {
-    window.print()
-  }
+  const tituloPeriodo = periodo === 'mensual'
+    ? `${MESES[mes]} ${anio}`
+    : (() => {
+        const [y,m,d] = semDesde.split('-').map(Number)
+        const fin = new Date(y, m-1, d+6)
+        const dd = n => String(n).padStart(2,'0')
+        return `Semana ${dd(d)}/${dd(m)} — ${dd(fin.getDate())}/${dd(fin.getMonth()+1)}/${fin.getFullYear()}`
+      })()
 
-  const tituloReporte = modo === 'mensual'
-    ? `Reporte mensual — ${MESES_NOMBRE[mes]} ${anio}`
-    : 'Reporte personalizado'
+  const secActivas = SECCIONES.filter(s => secciones[s.key]).length
 
-  const { aniReporte, camEnriq, totalCrias, totalDestetados, latProm, machoStats } = datosReporte
-
-  // ── UI de configuración (no se imprime) ────────────────────────────────────
   return (
     <div className="min-h-screen" style={{ background: '#050810' }}>
 
-      {/* ── Panel de configuración (no se imprime) ─────── */}
-      <div className="no-print p-6 space-y-5">
+      {/* ── CSS de impresión ── */}
+      <style>{`
+        @media screen { .rpt-printzone { display: none !important; } }
+        @media print {
+          @page { size: A4 portrait; margin: 14mm 12mm 12mm 14mm; }
+          * { visibility: hidden !important; }
+          .rpt-printzone, .rpt-printzone * { visibility: visible !important; }
+          .rpt-printzone { position: absolute; top: 0; left: 0; width: 100%; }
+        }
+        .rpt-table { width: 100%; border-collapse: collapse; font-size: 8pt; color: #111; }
+        .rpt-table th { background: #efefef; padding: 3pt 5pt; text-align: left; font-weight: 700; font-size: 7.5pt; border-bottom: 1.5pt solid #999; color: #222; }
+        .rpt-table td { padding: 2.5pt 5pt; border-bottom: 0.5pt solid #e0e0e0; vertical-align: top; color: #222; font-size: 8pt; }
+        .rpt-table tr:nth-child(even) td { background: #f8f8f8; }
+        .rpt-kpi-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 5pt; margin: 5pt 0 8pt; }
+        .rpt-kpi-box { border: 1pt solid #ddd; border-radius: 3pt; padding: 5pt 4pt; text-align: center; background: #fafafa; }
+        .rpt-kpi-box .v { font-size: 14pt; font-weight: 800; color: #111; line-height: 1.1; }
+        .rpt-kpi-box .l { font-size: 6.5pt; color: #666; margin-top: 2pt; text-transform: uppercase; letter-spacing: 0.3pt; }
+        .rpt-empty { font-size: 8pt; color: #888; padding: 3pt 0 4pt; font-style: italic; }
+        .rpt-ok  { color: #166534; font-weight: 700; }
+        .rpt-err { color: #991b1b; font-weight: 700; }
+        .rpt-wrn { color: #92400e; font-weight: 700; }
+      `}</style>
+
+      {/* ── PANEL DE CONTROL ── */}
+      <div className="no-print p-6 space-y-6">
+
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <div className="w-1.5 h-7 rounded-full" style={{ background: '#00e676', boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
             <div>
-              <h1 className="text-xl font-bold text-white">Reportes e impresión</h1>
+              <h1 className="text-xl font-bold text-white">Informes e Impresión</h1>
               <p className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
-                Generá reportes para imprimir o guardar
+                {secActivas}/{SECCIONES.length} secciones activas · {tituloPeriodo}
               </p>
             </div>
           </div>
           <button
-            onClick={imprimir}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all"
-            style={{
-              background: 'rgba(0,230,118,0.15)',
-              border: '1.5px solid rgba(0,230,118,0.4)',
-              color: '#00e676',
-              boxShadow: '0 0 20px rgba(0,230,118,0.1)',
-            }}
+            onClick={() => window.print()}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold"
+            style={{ background: 'rgba(0,230,118,0.15)', border: '1.5px solid rgba(0,230,118,0.4)', color: '#00e676', boxShadow: '0 0 20px rgba(0,230,118,0.1)' }}
           >
-            🖨️ Imprimir / Guardar PDF
+            🖨️ Imprimir / PDF
           </button>
         </div>
 
-        {/* Tipo de reporte */}
-        <div className="flex gap-3">
+        {/* Período */}
+        <div className="rounded-2xl p-5 space-y-4" style={cardStyle}>
+          <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>Período del informe</div>
+          <div className="flex gap-2">
+            {[{ val:'mensual', label:'📅 Por mes' },{ val:'semanal', label:'🗓 Por semana' }].map(({ val, label }) => (
+              <button key={val} onClick={() => setPeriodo(val)}
+                className="px-4 py-2 rounded-xl text-sm font-semibold"
+                style={periodo === val
+                  ? { background: 'rgba(0,230,118,0.12)', border: '1.5px solid rgba(0,230,118,0.4)', color: '#00e676' }
+                  : { background: 'rgba(30,51,82,0.3)', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }
+                }>{label}</button>
+            ))}
+          </div>
+
+          {periodo === 'mensual' ? (
+            <div className="flex gap-3 flex-wrap items-end">
+              <div>
+                <label className="block text-xs uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5f7a' }}>Mes</label>
+                <select value={mes} onChange={e => setMes(Number(e.target.value))}
+                  className="px-3 py-2 text-sm rounded-xl focus:outline-none"
+                  style={{ background: 'rgba(8,13,26,0.8)', border: '1px solid rgba(30,51,82,0.8)', color: '#c9d4e0' }}>
+                  {MESES.map((m,i) => <option key={i} value={i}>{m}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5f7a' }}>Año</label>
+                <input type="number" value={anio} onChange={e => setAnio(Number(e.target.value))}
+                  className="px-3 py-2 text-sm rounded-xl focus:outline-none w-28 font-mono"
+                  style={{ background: 'rgba(8,13,26,0.8)', border: '1px solid rgba(30,51,82,0.8)', color: '#c9d4e0' }} />
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-xs uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5f7a' }}>Inicio de semana</label>
+              <div className="flex items-center gap-3 flex-wrap">
+                <input type="date" value={semDesde} onChange={e => setSemDesde(e.target.value)}
+                  className="px-3 py-2 text-sm rounded-xl focus:outline-none font-mono"
+                  style={{ background: 'rgba(8,13,26,0.8)', border: '1px solid rgba(30,51,82,0.8)', color: '#c9d4e0' }} />
+                <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>→ {tituloPeriodo}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Secciones toggle */}
+        <div className="rounded-2xl p-5 space-y-4" style={cardStyle}>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>Secciones a imprimir</div>
+            <div className="flex gap-2">
+              <button onClick={() => setSecciones(Object.fromEntries(SECCIONES.map(s=>[s.key,true])))}
+                className="text-xs px-3 py-1.5 rounded-lg font-semibold"
+                style={{ color: '#00e676', background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)' }}>
+                ✓ Todo
+              </button>
+              <button onClick={() => setSecciones(Object.fromEntries(SECCIONES.map(s=>[s.key,false])))}
+                className="text-xs px-3 py-1.5 rounded-lg font-semibold"
+                style={{ color: '#ff6b80', background: 'rgba(255,107,128,0.08)', border: '1px solid rgba(255,107,128,0.25)' }}>
+                ✕ Ninguno
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {SECCIONES.map(({ key, label, icon, color, rgb }) => (
+              <button key={key} onClick={() => toggleSec(key)}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-left"
+                style={secciones[key]
+                  ? { background: `rgba(${rgb},0.1)`, border: `1.5px solid rgba(${rgb},0.5)`, color }
+                  : { background: 'rgba(30,51,82,0.2)', border: '1px solid rgba(30,51,82,0.4)', color: '#4a5f7a' }
+                }>
+                <span style={{ fontSize: '12px' }}>{secciones[key] ? '✓' : '○'}</span>
+                <span>{icon}</span>
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Resumen rápido */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { val: 'mensual', label: '📅 Reporte mensual', sub: 'Todos los datos del mes seleccionado' },
-            { val: 'personalizado', label: '🔧 Personalizado', sub: 'Elegí qué incluir manualmente' },
-          ].map(({ val, label, sub }) => (
-            <button
-              key={val}
-              onClick={() => setModo(val)}
-              className="flex-1 p-4 rounded-xl text-left transition-all"
-              style={
-                modo === val
-                  ? { background: 'rgba(0,230,118,0.1)', border: '1.5px solid rgba(0,230,118,0.35)', color: '#00e676' }
-                  : { ...cardStyle, color: '#4a5f7a' }
-              }
-            >
-              <div className="font-semibold text-sm">{label}</div>
-              <div className="text-xs mt-0.5 opacity-70">{sub}</div>
-            </button>
+            { label: 'Reproductores',    val: datos.reproducPeriodo.length,                                 color: '#ce93d8' },
+            { label: 'Emparejamientos',  val: datos.camPeriodo.length,                                      color: '#40c4ff' },
+            { label: 'Sacrificios',      val: datos.sacrPeriodo.reduce((s,x) => s + (x.cantidad || 1), 0), color: '#ff6b80' },
+            { label: 'Temp. registradas',val: datos.tempPeriodo.length,                                     color: '#ffb300' },
+          ].map(({ label, val, color }) => (
+            <div key={label} className="rounded-xl p-4 text-center" style={cardStyle}>
+              <div className="text-2xl font-bold font-mono" style={{ color }}>{val}</div>
+              <div className="text-xs mt-1" style={{ color: '#4a5f7a' }}>{label}</div>
+            </div>
           ))}
         </div>
 
-        {/* Config mensual */}
-        {modo === 'mensual' && (
-          <div className="flex gap-3 p-4 rounded-xl" style={cardStyle}>
-            <div>
-              <label className="block text-xs uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5f7a' }}>Mes</label>
-              <select
-                value={mes}
-                onChange={(e) => setMes(Number(e.target.value))}
-                className="px-3 py-2 text-sm focus:outline-none rounded-xl"
-                style={{ background: 'rgba(8,13,26,0.8)', border: '1px solid rgba(30,51,82,0.8)', color: '#c9d4e0' }}
-              >
-                {MESES_NOMBRE.map((m, i) => <option key={i} value={i}>{m}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5f7a' }}>Año</label>
-              <input
-                type="number"
-                value={anio}
-                onChange={(e) => setAnio(Number(e.target.value))}
-                className="px-3 py-2 text-sm focus:outline-none rounded-xl w-28 font-mono"
-                style={{ background: 'rgba(8,13,26,0.8)', border: '1px solid rgba(30,51,82,0.8)', color: '#c9d4e0' }}
-              />
-            </div>
-            <div className="ml-auto flex flex-col justify-end">
-              <div
-                className="px-4 py-2 rounded-xl text-sm font-mono"
-                style={{ background: 'rgba(0,230,118,0.07)', border: '1px solid rgba(0,230,118,0.15)', color: '#00e676' }}
-              >
-                {camEnriq.length} camadas · {aniReporte.length} animales
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Config personalizado */}
-        {modo === 'personalizado' && (
-          <div className="p-4 rounded-xl space-y-4" style={cardStyle}>
-            <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>
-              Filtros de animales
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <div>
-                <label className="block text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5f7a' }}>Sexo</label>
-                <select value={filtSexo} onChange={(e) => setFiltSexo(e.target.value)}
-                  className="px-3 py-1.5 text-sm focus:outline-none rounded-lg"
-                  style={{ background: 'rgba(8,13,26,0.8)', border: '1px solid rgba(30,51,82,0.8)', color: '#c9d4e0' }}>
-                  <option value="todos">Todos</option>
-                  <option value="hembra">Hembras</option>
-                  <option value="macho">Machos</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5f7a' }}>Estado animal</label>
-                <select value={filtEstado} onChange={(e) => setFiltEstado(e.target.value)}
-                  className="px-3 py-1.5 text-sm focus:outline-none rounded-lg"
-                  style={{ background: 'rgba(8,13,26,0.8)', border: '1px solid rgba(30,51,82,0.8)', color: '#c9d4e0' }}>
-                  <option value="todos">Todos</option>
-                  <option value="activo">Activos</option>
-                  <option value="en_cria">En cría</option>
-                  <option value="retirado">Retirados</option>
-                  <option value="fallecido">Fallecidos</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5f7a' }}>Estado camada</label>
-                <select value={filtCEstado} onChange={(e) => setFiltCEstado(e.target.value)}
-                  className="px-3 py-1.5 text-sm focus:outline-none rounded-lg"
-                  style={{ background: 'rgba(8,13,26,0.8)', border: '1px solid rgba(30,51,82,0.8)', color: '#c9d4e0' }}>
-                  <option value="todas">Todas</option>
-                  <option value="preñez">En preñez</option>
-                  <option value="lactancia">Lactancia</option>
-                  <option value="completada">Completadas</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Secciones a incluir */}
-            <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>
-              Secciones a incluir
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { key: 'resumen', label: 'Resumen' },
-                { key: 'animales', label: 'Lista de animales' },
-                { key: 'camadas', label: 'Camadas' },
-                { key: 'latencias', label: 'Rendimiento machos' },
-                { key: 'tareas', label: 'Observaciones' },
-              ].map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => setSecciones((prev) => ({ ...prev, [key]: !prev[key] }))}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                  style={
-                    secciones[key]
-                      ? { background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.3)', color: '#00e676' }
-                      : { background: 'rgba(30,51,82,0.3)', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }
-                  }
-                >
-                  {secciones[key] ? '✓ ' : ''}{label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Vista previa del reporte */}
-        <div
-          className="rounded-xl p-4"
-          style={{ background: 'rgba(0,230,118,0.04)', border: '1px dashed rgba(0,230,118,0.2)' }}
-        >
-          <div className="flex items-center gap-2 mb-3">
-            <span style={{ color: '#00e676' }}>👁</span>
-            <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>
-              Vista previa del reporte
-            </span>
-          </div>
-          <div className="space-y-1 text-xs font-mono" style={{ color: '#4a5f7a' }}>
-            <div>📄 {tituloReporte}</div>
-            <div>🐀 {aniReporte.length} animales</div>
-            <div>🪺 {camEnriq.length} camadas</div>
-            <div>👶 {totalCrias} crías registradas</div>
-            {latProm !== null && <div>⏱ Latencia promedio: {latProm} días</div>}
-          </div>
-        </div>
-
-        <div className="text-xs" style={{ color: '#4a5f7a' }}>
-          💡 Al hacer clic en <strong style={{ color: '#00e676' }}>Imprimir / Guardar PDF</strong>, el navegador abre el diálogo de impresión.
-          Podés elegir "Guardar como PDF" para tener un archivo digital.
-        </div>
+        <p className="text-xs" style={{ color: '#4a5f7a' }}>
+          💡 En el diálogo de impresión seleccioná <strong style={{ color: '#c9d4e0' }}>"Guardar como PDF"</strong> y tamaño <strong style={{ color: '#c9d4e0' }}>A4</strong>.
+        </p>
       </div>
 
-      {/* ── ÁREA DE IMPRESIÓN (siempre renderizada, visible en print) ──────── */}
-      <div ref={printRef} className="print-area" style={{ display: 'none' }}>
-        <ReporteImprimible
-          titulo={tituloReporte}
-          animales={aniReporte}
-          camadas={camEnriq}
-          machoStats={machoStats}
-          totalCrias={totalCrias}
-          totalDestetados={totalDestetados}
-          latProm={latProm}
-          secciones={modo === 'mensual' ? { resumen:true, animales:true, camadas:true, latencias:true, tareas:true } : secciones}
-          modo={modo}
-          mes={mes}
-          anio={anio}
+      {/* ── ZONA DE IMPRESIÓN ── */}
+      <div className="rpt-printzone">
+        <DocImprimible
+          tituloPeriodo={tituloPeriodo}
+          datos={datos}
+          animales={animales}
+          camadas={camadas}
+          secciones={secciones}
         />
       </div>
-
-      {/* Este div SÍ se imprime, el de arriba no */}
-      <style>{`
-        @media print {
-          .print-area { display: block !important; }
-          .no-print { display: none !important; }
-        }
-      `}</style>
-
-      <ReporteImprimible
-        titulo={tituloReporte}
-        animales={aniReporte}
-        camadas={camEnriq}
-        machoStats={machoStats}
-        totalCrias={totalCrias}
-        totalDestetados={totalDestetados}
-        latProm={latProm}
-        secciones={modo === 'mensual' ? { resumen:true, animales:true, camadas:true, latencias:true, tareas:true } : secciones}
-        modo={modo}
-        mes={mes}
-        anio={anio}
-        soloImpresion
-      />
     </div>
   )
 }
 
-// ── Componente del reporte (se renderiza invisible y se muestra al imprimir) ──
+// ─────────────────────────────────────────────────────────────────────────────
+// Documento imprimible
+// ─────────────────────────────────────────────────────────────────────────────
 
-function ReporteImprimible({ titulo, animales, camadas, machoStats, totalCrias, totalDestetados, latProm, secciones, modo, mes, anio, soloImpresion }) {
-  const fechaGeneracion = new Date().toLocaleDateString('es-AR', {
+function DocImprimible({ tituloPeriodo, datos, animales, camadas, secciones }) {
+  const ahora = new Date().toLocaleDateString('es-AR', {
     day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
   })
 
-  const labelEstado = { activo:'Activo', en_cria:'En cría', retirado:'Retirado', fallecido:'Fallecido' }
-  const labelCamada = { preñez:'En preñez', lactancia:'Lactancia', completada:'Completada' }
+  const { reproducPeriodo, camPeriodo, machoRanking, efectivos, fallidos, enCurso,
+          totalCrias, totalDest, supervRate, stockActual,
+          sacrPeriodo, entPeriodo, tempPeriodo, incPeriodo } = datos
 
-  const hembras = animales.filter((a) => a.sexo === 'hembra')
-  const machos  = animales.filter((a) => a.sexo === 'macho')
+  function codigoAnimal(id) { return animales.find(a => a.id === id)?.codigo ?? '—' }
+  function parejaStr(camada_id) {
+    const c = camadas.find(x => x.id === camada_id)
+    return c ? `${codigoAnimal(c.id_madre)} × ${codigoAnimal(c.id_padre)}` : '—'
+  }
+
+  const LABEL_EST = { activo:'Activo', en_apareamiento:'Apareamiento', en_cria:'En cría', retirado:'Retirado', fallecido:'Fallecido' }
+  const S = (k) => secciones[k] ?? false
+  const secActivas = SECCIONES.filter(s => secciones[s.key])
+
+  const base = { fontFamily: "'Segoe UI', Arial, sans-serif", color: '#111', background: '#fff', fontSize: '9pt', lineHeight: 1.45 }
 
   return (
-    <div
-      className={soloImpresion ? 'print-area' : ''}
-      style={soloImpresion ? { display: 'none' } : {}}
-    >
-      {/* Encabezado del reporte */}
-      <div className="print-header">
-        <h1>🐀 BIOTERIO — {titulo.toUpperCase()}</h1>
-        <p>Generado: {fechaGeneracion} · Sistema de Gestión de Colonia</p>
-      </div>
+    <div style={{ ...base, padding: '0' }}>
 
-      {/* Resumen estadístico */}
-      {secciones.resumen && (
-        <div className="print-section">
-          <h2>Resumen del periodo</h2>
-          <div className="print-stat-grid">
-            <div className="print-stat-box">
-              <div className="val">{animales.length}</div>
-              <div className="lbl">Animales</div>
-            </div>
-            <div className="print-stat-box">
-              <div className="val">{camadas.length}</div>
-              <div className="lbl">Camadas</div>
-            </div>
-            <div className="print-stat-box">
-              <div className="val">{totalCrias}</div>
-              <div className="lbl">Crías registradas</div>
-            </div>
-            <div className="print-stat-box">
-              <div className="val">{latProm !== null ? `${latProm}d` : '—'}</div>
-              <div className="lbl">Latencia promedio</div>
-            </div>
+      {/* ── Encabezado del documento ── */}
+      <div style={{ borderBottom: '2pt solid #111', paddingBottom: '10pt', marginBottom: '12pt', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <div style={{ fontSize: '7pt', color: '#666', fontFamily: 'monospace', marginBottom: '3pt', letterSpacing: '0.5pt' }}>
+            BIOTERIO · SISTEMA DE GESTIÓN DE COLONIA · Mus musculus
           </div>
-          <table className="print-table">
-            <tbody>
-              <tr>
-                <td><strong>Hembras:</strong> {hembras.length}</td>
-                <td><strong>Machos:</strong> {machos.length}</td>
-                <td><strong>Preñeces activas:</strong> {camadas.filter((c) => c.estado === 'preñez').length}</td>
-                <td><strong>Destetados:</strong> {totalDestetados}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Lista de animales */}
-      {secciones.animales && animales.length > 0 && (
-        <div className="print-section">
-          <h2>Registro de animales ({animales.length})</h2>
-          <table className="print-table">
-            <thead>
-              <tr>
-                <th>Código</th>
-                <th>Sexo</th>
-                <th>Nacimiento</th>
-                <th>Madre</th>
-                <th>Padre</th>
-                <th>Estado</th>
-                <th>Notas</th>
-              </tr>
-            </thead>
-            <tbody>
-              {animales.map((a) => (
-                <tr key={a.id}>
-                  <td><strong>{a.codigo}</strong></td>
-                  <td>{a.sexo === 'hembra' ? '♀ Hembra' : '♂ Macho'}</td>
-                  <td>{formatFecha(a.fecha_nacimiento)}</td>
-                  <td>{a.id_madre ? (animales.find((x) => x.id === a.id_madre)?.codigo ?? '?') : '—'}</td>
-                  <td>{a.id_padre ? (animales.find((x) => x.id === a.id_padre)?.codigo ?? '?') : '—'}</td>
-                  <td>{labelEstado[a.estado] ?? a.estado}</td>
-                  <td>{a.notas || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Camadas */}
-      {secciones.camadas && camadas.length > 0 && (
-        <div className="print-section">
-          <h2>Registro de camadas ({camadas.length})</h2>
-          <table className="print-table">
-            <thead>
-              <tr>
-                <th>Madre</th>
-                <th>Padre</th>
-                <th>Cópula</th>
-                <th>Nacimiento</th>
-                <th>Crías</th>
-                <th>♂</th>
-                <th>♀</th>
-                <th>Destetados</th>
-                <th>Destete</th>
-                <th>Latencia</th>
-                <th>Estado</th>
-                <th>Notas</th>
-              </tr>
-            </thead>
-            <tbody>
-              {camadas.map((c) => (
-                <tr key={c.id}>
-                  <td><strong>{c.madre?.codigo ?? '?'}</strong></td>
-                  <td>{c.padre?.codigo ?? '?'}</td>
-                  <td>{formatFecha(c.fecha_copula)}</td>
-                  <td>{c.fecha_nacimiento ? formatFecha(c.fecha_nacimiento) : 'Pendiente'}</td>
-                  <td>{c.total_crias ?? '—'}</td>
-                  <td>{c.crias_machos ?? '—'}</td>
-                  <td>{c.crias_hembras ?? '—'}</td>
-                  <td>{c.total_destetados ?? '—'}</td>
-                  <td>{c.fecha_destete ? formatFecha(c.fecha_destete) : (c.destEst ? `Est. ${formatFecha(c.destEst)}` : '—')}</td>
-                  <td>{c.lat !== null ? `${c.lat}d` : '—'}</td>
-                  <td>{labelCamada[c.estado] ?? c.estado}</td>
-                  <td>{c.notas || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Rendimiento machos */}
-      {secciones.latencias && machoStats.length > 0 && (
-        <div className="print-section">
-          <h2>Rendimiento de machos</h2>
-          <table className="print-table">
-            <thead>
-              <tr>
-                <th>Pos.</th>
-                <th>Código</th>
-                <th>Camadas</th>
-                <th>Lat. promedio</th>
-                <th>Lat. mínima</th>
-                <th>Lat. máxima</th>
-                <th>Calificación</th>
-              </tr>
-            </thead>
-            <tbody>
-              {machoStats.map((m, i) => {
-                const score = Math.max(0, 10 - m.prom)
-                const cal = score >= 8 ? 'Excelente' : score >= 6 ? 'Bueno' : score >= 4 ? 'Regular' : 'Lento'
-                return (
-                  <tr key={m.codigo}>
-                    <td>#{i + 1}</td>
-                    <td><strong>{m.codigo}</strong></td>
-                    <td>{m.camadas}</td>
-                    <td>{m.prom}d</td>
-                    <td>{m.min}d</td>
-                    <td>{m.max}d</td>
-                    <td>{cal}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-          <p style={{ fontSize: '8pt', color: '#666', marginTop: '4pt' }}>
-            * Latencia = días desde cópula hasta concepción estimada (nac. − 23d). Menor = mejor.
-          </p>
-        </div>
-      )}
-
-      {/* Sección de observaciones */}
-      {secciones.tareas && (
-        <div className="print-section">
-          <h2>Observaciones y notas del periodo</h2>
-          {camadas.filter((c) => c.notas).length === 0 ? (
-            <p style={{ color: '#666', fontSize: '10pt' }}>Sin observaciones registradas para este periodo.</p>
-          ) : (
-            <table className="print-table">
-              <thead>
-                <tr><th>Pareja</th><th>Observaciones</th></tr>
-              </thead>
-              <tbody>
-                {camadas.filter((c) => c.notas).map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.madre?.codigo ?? '?'} × {c.padre?.codigo ?? '?'}</td>
-                    <td>{c.notas}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-          {/* Espacio para anotaciones manuales */}
-          <div style={{ marginTop: '12pt' }}>
-            <strong style={{ fontSize: '10pt' }}>Anotaciones adicionales:</strong>
-            <div style={{
-              marginTop: '6pt', border: '1px solid #ccc', minHeight: '60pt',
-              padding: '6pt', fontSize: '10pt', color: '#aaa',
-            }}>
-              &nbsp;
-            </div>
+          <div style={{ fontSize: '15pt', fontWeight: 900, color: '#111', letterSpacing: '-0.3pt', marginBottom: '2pt' }}>
+            INFORME DE COLONIA — {tituloPeriodo.toUpperCase()}
+          </div>
+          <div style={{ fontSize: '7.5pt', color: '#555', fontFamily: 'monospace' }}>
+            Generado: {ahora} &nbsp;·&nbsp; Secciones: {secActivas.map(s => s.label).join(' · ')}
           </div>
         </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: '16pt', fontWeight: 900, color: '#111', letterSpacing: '-0.5pt' }}>
+            Gen<span style={{ color: '#2e7d52' }}>E</span>R<span style={{ color: '#0277bd' }}>ats</span>
+          </div>
+          <div style={{ fontSize: '7pt', color: '#666' }}>Sistema de Bioterio</div>
+        </div>
+      </div>
+
+      {/* ── Estadísticas ── */}
+      {S('estadisticas') && (
+        <Seccion title={`Estadísticas del Período`} icon="📈" printBg="#fefae8" printBorder="#b8860b">
+          <div className="rpt-kpi-grid">
+            {[
+              { v: camPeriodo.length,                              l: 'Apareamientos' },
+              { v: efectivos,                                      l: 'Partos exitosos' },
+              { v: fallidos,                                       l: 'Fallos reproductivos' },
+              { v: enCurso,                                        l: 'En curso' },
+              { v: totalCrias,                                     l: 'Crías registradas' },
+              { v: totalDest,                                      l: 'Destetados' },
+              { v: supervRate !== null ? `${supervRate}%` : '—',  l: 'Tasa supervivencia' },
+              { v: machoRanking.length > 0 ? `${machoRanking[0].latProm}d` : '—', l: 'Mejor latencia' },
+            ].map(({ v, l }) => (
+              <div key={l} className="rpt-kpi-box">
+                <div className="v">{v}</div>
+                <div className="l">{l}</div>
+              </div>
+            ))}
+          </div>
+        </Seccion>
       )}
 
-      {/* Footer del reporte */}
-      <div className="print-footer">
-        <strong>BIOTERIO — Sistema de Gestión de Colonia</strong> · {fechaGeneracion}<br />
-        Mus musculus (Ratón doméstico) · Este documento es de uso interno del laboratorio.
+      {/* ── Reproductores ── */}
+      {S('reproductores') && (
+        <Seccion title={`Reproductores (${reproducPeriodo.length})`} icon="🐀" printBg="#f5f0ff" printBorder="#9d4edd">
+          {reproducPeriodo.length === 0
+            ? <p className="rpt-empty">Sin reproductores activos o con actividad en el período.</p>
+            : (
+              <table className="rpt-table">
+                <thead><tr>
+                  <th>Código</th><th>Sexo</th><th>Estado</th><th>Nacimiento</th><th>Madre</th><th>Padre</th><th>Notas</th>
+                </tr></thead>
+                <tbody>
+                  {reproducPeriodo.map(a => (
+                    <tr key={a.id}>
+                      <td><strong>{a.codigo}</strong></td>
+                      <td>{a.sexo === 'hembra' ? '♀ Hembra' : '♂ Macho'}</td>
+                      <td className={['fallecido','retirado'].includes(a.estado) ? 'rpt-err' : 'rpt-ok'}>
+                        {LABEL_EST[a.estado] ?? a.estado}
+                      </td>
+                      <td>{formatFecha(a.fecha_nacimiento) || '—'}</td>
+                      <td>{codigoAnimal(a.id_madre)}</td>
+                      <td>{codigoAnimal(a.id_padre)}</td>
+                      <td>{a.notas || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
+          }
+        </Seccion>
+      )}
+
+      {/* ── Emparejamientos ── */}
+      {S('emparejamientos') && (
+        <Seccion title={`Emparejamientos (${camPeriodo.length})`} icon="🪺" printBg="#e8f4fd" printBorder="#0277bd">
+          {camPeriodo.length === 0
+            ? <p className="rpt-empty">Sin emparejamientos en el período.</p>
+            : (
+              <table className="rpt-table">
+                <thead><tr>
+                  <th>Madre</th><th>Padre</th><th>Cópula</th><th>Nacimiento</th>
+                  <th>Crías</th><th>♂</th><th>♀</th><th>Destetados</th><th>Destete</th><th>Estado</th><th>Notas</th>
+                </tr></thead>
+                <tbody>
+                  {camPeriodo.map(c => {
+                    const est = c.failure_flag ? '✕ Fallido' : c.fecha_destete ? 'Completada' : c.fecha_nacimiento ? 'Lactancia' : 'En curso'
+                    return (
+                      <tr key={c.id}>
+                        <td><strong>{codigoAnimal(c.id_madre)}</strong></td>
+                        <td>{codigoAnimal(c.id_padre)}</td>
+                        <td>{formatFecha(c.fecha_copula)||'—'}</td>
+                        <td>{formatFecha(c.fecha_nacimiento)||'—'}</td>
+                        <td>{c.total_crias??'—'}</td>
+                        <td>{c.crias_machos??'—'}</td>
+                        <td>{c.crias_hembras??'—'}</td>
+                        <td>{c.total_destetados??'—'}</td>
+                        <td>{formatFecha(c.fecha_destete)||'—'}</td>
+                        <td className={c.failure_flag ? 'rpt-err' : ''}>{est}</td>
+                        <td>{c.notas||'—'}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )
+          }
+        </Seccion>
+      )}
+
+      {/* ── Rendimiento ── */}
+      {S('rendimiento') && (
+        <Seccion title="Rendimiento de Reproductores" icon="📊" printBg="#e8f8f0" printBorder="#2e7d52">
+          {machoRanking.length === 0
+            ? <p className="rpt-empty">Sin datos de rendimiento para el período.</p>
+            : (
+              <>
+                <table className="rpt-table">
+                  <thead><tr>
+                    <th>#</th><th>Código</th><th>Camadas</th>
+                    <th>Lat. promedio</th><th>Lat. mín.</th><th>Lat. máx.</th><th>Calificación</th>
+                  </tr></thead>
+                  <tbody>
+                    {machoRanking.map((m, i) => {
+                      const cal = m.latProm <= 5 ? 'Excelente' : m.latProm <= 10 ? 'Bueno' : 'Regular'
+                      const cls = m.latProm <= 5 ? 'rpt-ok' : m.latProm <= 10 ? 'rpt-wrn' : 'rpt-err'
+                      return (
+                        <tr key={m.codigo}>
+                          <td>#{i+1}</td><td><strong>{m.codigo}</strong></td><td>{m.camadas}</td>
+                          <td>{m.latProm}d</td><td>{m.latMin}d</td><td>{m.latMax}d</td>
+                          <td className={cls}>{cal}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+                <p style={{ fontSize: '7pt', color: '#888', marginTop: '3pt' }}>
+                  * Latencia = días entre cópula y concepción estimada (nac. − 23d). Menor = mejor fertilización.
+                </p>
+              </>
+            )
+          }
+        </Seccion>
+      )}
+
+      {/* ── Stock ── */}
+      {S('stock') && (
+        <Seccion title={`Stock actual (${stockActual.length} jaulas)`} icon="📦" printBg="#e8f8f0" printBorder="#2e7d52">
+          {stockActual.length === 0
+            ? <p className="rpt-empty">Sin jaulas en stock.</p>
+            : (
+              <table className="rpt-table">
+                <thead><tr>
+                  <th>Jaula</th><th>Progenitores</th><th>Total</th><th>♂ Machos</th><th>♀ Hembras</th><th>Notas</th>
+                </tr></thead>
+                <tbody>
+                  {stockActual.map(j => (
+                    <tr key={j.id}>
+                      <td><strong>{j.id.slice(-6).toUpperCase()}</strong></td>
+                      <td>{j.camada_id ? parejaStr(j.camada_id) : '—'}</td>
+                      <td>{j.total ?? '—'}</td>
+                      <td>{j.machos != null ? j.machos : '—'}</td>
+                      <td>{j.hembras != null ? j.hembras : '—'}</td>
+                      <td>{j.notas || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
+          }
+        </Seccion>
+      )}
+
+      {/* ── Sacrificios ── */}
+      {S('sacrificios') && (
+        <Seccion title={`Sacrificios (${sacrPeriodo.length} registros)`} icon="🗡️" printBg="#fde8ec" printBorder="#c62828">
+          {sacrPeriodo.length === 0
+            ? <p className="rpt-empty">Sin sacrificios en el período.</p>
+            : (
+              <table className="rpt-table">
+                <thead><tr>
+                  <th>Fecha</th><th>Categoría</th><th>Cantidad</th><th>Animal / Camada</th><th>Notas</th>
+                </tr></thead>
+                <tbody>
+                  {sacrPeriodo.map(s => (
+                    <tr key={s.id}>
+                      <td>{formatFecha(s.fecha)||'—'}</td>
+                      <td>{s.categoria === 'reproductor' ? 'Reproductor' : 'Stock'}</td>
+                      <td>{s.cantidad ?? '—'}</td>
+                      <td>{s.camada_id ? parejaStr(s.camada_id) : '—'}</td>
+                      <td>{s.notas || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
+          }
+        </Seccion>
+      )}
+
+      {/* ── Entregas ── */}
+      {S('entregas') && (
+        <Seccion title={`Entregas (${entPeriodo.length} registros)`} icon="📤" printBg="#fefae8" printBorder="#b8860b">
+          {entPeriodo.length === 0
+            ? <p className="rpt-empty">Sin entregas en el período.</p>
+            : (
+              <table className="rpt-table">
+                <thead><tr>
+                  <th>Fecha</th><th>Tipo</th><th>Cant.</th><th>Animal / Camada</th><th>Observaciones</th>
+                </tr></thead>
+                <tbody>
+                  {entPeriodo.map(e => (
+                    <tr key={e.id}>
+                      <td>{formatFecha(e.fecha)||'—'}</td>
+                      <td>{e.animal_id ? 'Reproductor' : 'Stock'}</td>
+                      <td>{e.cantidad ?? '1'}</td>
+                      <td>{e.camada_id
+                        ? parejaStr(e.camada_id)
+                        : e.animal_id
+                          ? (animales.find(a => a.id === e.animal_id)?.codigo ?? '—')
+                          : '—'
+                      }</td>
+                      <td>{e.observaciones || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
+          }
+        </Seccion>
+      )}
+
+      {/* ── Temperaturas ── */}
+      {S('temperaturas') && (
+        <Seccion title={`Temperaturas (${tempPeriodo.length} registros)`} icon="🌡️" printBg="#e8f4fd" printBorder="#0277bd">
+          {tempPeriodo.length === 0
+            ? <p className="rpt-empty">Sin registros de temperatura en el período.</p>
+            : (
+              <table className="rpt-table">
+                <thead><tr>
+                  <th>Fecha</th><th>Hora</th><th>Actual (°C)</th><th>Mín (°C)</th><th>Máx (°C)</th>
+                </tr></thead>
+                <tbody>
+                  {tempPeriodo.map(t => (
+                    <tr key={t.id}>
+                      <td>{formatFecha(t.date)||'—'}</td>
+                      <td>{t.time||'—'}</td>
+                      <td><strong>{t.current_temp??'—'}</strong></td>
+                      <td>{t.min_temp??'—'}</td>
+                      <td>{t.max_temp??'—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
+          }
+        </Seccion>
+      )}
+
+      {/* ── Incidentes ── */}
+      {S('incidentes') && (
+        <Seccion title={`Incidentes (${incPeriodo.length} registros)`} icon="📝" printBg="#f5f0ff" printBorder="#9d4edd">
+          {incPeriodo.length === 0
+            ? <p className="rpt-empty">Sin incidentes en el período.</p>
+            : (
+              <table className="rpt-table">
+                <thead><tr><th style={{ width: '75pt' }}>Fecha</th><th>Descripción</th></tr></thead>
+                <tbody>
+                  {incPeriodo.map(i => (
+                    <tr key={i.id}>
+                      <td style={{ whiteSpace: 'nowrap' }}>{formatFecha(i.fecha)||'—'}</td>
+                      <td>{i.descripcion}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
+          }
+        </Seccion>
+      )}
+
+      {/* Footer */}
+      <div style={{ borderTop: '0.5pt solid #bbb', marginTop: '16pt', paddingTop: '5pt', fontSize: '7pt', color: '#888', display: 'flex', justifyContent: 'space-between' }}>
+        <span>BIOTERIO — Sistema de Gestión de Colonia · GenERats</span>
+        <span>Mus musculus (Ratón doméstico) · Documento de uso interno</span>
+        <span>{ahora}</span>
       </div>
+    </div>
+  )
+}
+
+// ─── Helper: sección del documento imprimible ─────────────────────────────────
+function Seccion({ title, icon, printBg, printBorder, children }) {
+  return (
+    <div style={{ marginBottom: '12pt' }}>
+      <div style={{
+        fontSize: '9pt', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.7pt',
+        color: '#111', background: printBg, padding: '4pt 8pt',
+        borderLeft: `4pt solid ${printBorder}`, display: 'flex', alignItems: 'center', gap: '4pt',
+        marginBottom: '0',
+      }}>
+        <span>{icon}</span>
+        <span>{title}</span>
+      </div>
+      <div style={{ paddingTop: '4pt' }}>{children}</div>
     </div>
   )
 }
