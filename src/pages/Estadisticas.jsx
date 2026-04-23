@@ -213,6 +213,7 @@ export default function Estadisticas() {
     )
     const sinPerdida  = conDatos.filter((c) => c.total_destetados >= c.total_crias).length
     const conPerdida  = conDatos.filter((c) => c.total_destetados < c.total_crias).length
+    const sinDatos    = camadasFiltradas.length - conDatos.length
     const tasaPromedio = conDatos.length > 0
       ? Math.round(
           conDatos.reduce((s, c) => s + (c.total_destetados / c.total_crias), 0)
@@ -221,8 +222,9 @@ export default function Estadisticas() {
       : null
     return {
       pie: [
-        { name: '100% destetados', value: sinPerdida, color: C.verde },
-        { name: 'Con pérdidas',    value: conPerdida, color: C.rojo  },
+        { name: '100% destetados',              value: sinPerdida, color: C.verde   },
+        { name: 'Con pérdidas',                 value: conPerdida, color: C.rojo    },
+        { name: 'Parto fallido/En proceso/Lactancia', value: sinDatos,   color: C.gris    },
       ].filter((d) => d.value > 0),
       sinPerdida,
       conPerdida,
@@ -233,19 +235,19 @@ export default function Estadisticas() {
 
   // ── 4. Eficiencia de Apareamiento ─────────────────────────────────────────
   const dataEficiencia = useMemo(() => {
-    const grupos = { '0–5d': 0, '6–10d': 0, '>10d': 0, 'Sin dato': 0 }
+    const grupos = { '0–5d': 0, '6–10d': 0, '>10d': 0, 'En proceso/Parto fallido': 0 }
     camadasFiltradas.forEach((c) => {
       const lat = calcularLatencia(c)
-      if (lat === null)       grupos['Sin dato']++
+      if (lat === null)       grupos['En proceso/Parto fallido']++
       else if (lat <= 5)      grupos['0–5d']++
       else if (lat <= 10)     grupos['6–10d']++
       else                    grupos['>10d']++
     })
     return [
-      { name: '0–5d (óptimo)',  value: grupos['0–5d'],   fill: C.verde    },
-      { name: '6–10d (normal)', value: grupos['6–10d'],  fill: C.amarillo },
-      { name: '>10d (lento)',   value: grupos['>10d'],   fill: C.rojo     },
-      { name: 'Sin dato',       value: grupos['Sin dato'], fill: C.gris   },
+      { name: '0–5d (óptimo)',          value: grupos['0–5d'],                    fill: C.verde    },
+      { name: '6–10d (normal)',          value: grupos['6–10d'],                   fill: C.amarillo },
+      { name: '>10d (lento)',            value: grupos['>10d'],                    fill: C.rojo     },
+      { name: 'En proceso/Parto fallido', value: grupos['En proceso/Parto fallido'], fill: C.gris  },
     ].filter((d) => d.value > 0)
   }, [camadasFiltradas])
 
