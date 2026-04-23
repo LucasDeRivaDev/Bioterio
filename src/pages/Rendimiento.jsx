@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import {
   calcularRendimientoMacho, calcularLatencia, interpretarLatencia,
@@ -94,20 +94,32 @@ const CONF_CONFIG = {
   critica:  { color: '#ff1744', label: 'Crítica' },
 }
 
+const ESTADOS_ACTIVOS = new Set(['activo', 'en_apareamiento', 'en_cria'])
+
 export default function Rendimiento() {
   const { animales, camadas } = useBioterio()
-  const machos = animales.filter((a) => a.sexo === 'macho')
+  const [vista, setVista] = useState('activos')
 
-  const ranking = useMemo(() =>
-    machos
+  const esActivo = (a) => ESTADOS_ACTIVOS.has(a.estado)
+
+  // ── Machos ──────────────────────────────────────────────────────────────────
+  const machosHistorico = animales.filter((a) => a.sexo === 'macho')
+  const machosActivos   = machosHistorico.filter(esActivo)
+
+  function buildRankingMachos(lista) {
+    return lista
       .map((macho) => ({ macho, m: calcularRendimientoMacho(macho.id, camadas) }))
       .sort((a, b) => {
         if (a.m.promedio_latencia === null && b.m.promedio_latencia === null) return 0
         if (a.m.promedio_latencia === null) return 1
         if (b.m.promedio_latencia === null) return -1
         return a.m.promedio_latencia - b.m.promedio_latencia
-      }),
-  [machos, camadas])
+      })
+  }
+
+  const rankingHistorico = useMemo(() => buildRankingMachos(machosHistorico), [machosHistorico, camadas])
+  const rankingActivos   = useMemo(() => buildRankingMachos(machosActivos),   [machosActivos,   camadas])
+  const ranking = vista === 'activos' ? rankingActivos : rankingHistorico
 
   const maxLat = useMemo(() => {
     const vals = ranking.map((r) => r.m.promedio_latencia).filter(Boolean)
@@ -121,8 +133,9 @@ export default function Rendimiento() {
       .sort((a, b) => (a.fecha_copula ?? '').localeCompare(b.fecha_copula ?? ''))
   }
 
-  const hembraStats = useMemo(() =>
-    animales.filter((a) => a.sexo === 'hembra')
+  // ── Hembras ─────────────────────────────────────────────────────────────────
+  function buildHembraStats(lista) {
+    return lista
       .map((h) => {
         const sus    = camadas.filter((c) => c.id_madre === h.id && c.fecha_nacimiento)
         const perfil = calcularPerfilHembra(h.id, camadas)
@@ -132,26 +145,83 @@ export default function Rendimiento() {
       })
       .filter((x) => x.total > 0)
       .sort((a, b) => {
-        // Ordenar por promedio de scores (mejor primero) o por nombre si no hay datos
         const avgA = a.perfil ? [a.perfil.avg_time_score, a.perfil.avg_litter_size_score, a.perfil.avg_survival_score].filter(Boolean) : []
         const avgB = b.perfil ? [b.perfil.avg_time_score, b.perfil.avg_litter_size_score, b.perfil.avg_survival_score].filter(Boolean) : []
         const scoreA = avgA.length ? avgA.reduce((s,v) => s+v, 0) / avgA.length : 0
         const scoreB = avgB.length ? avgB.reduce((s,v) => s+v, 0) / avgB.length : 0
         return scoreB - scoreA
-      }),
+      })
+  }
+
+  const hembraStatsHistorico = useMemo(() =>
+    buildHembraStats(animales.filter((a) => a.sexo === 'hembra')),
   [animales, camadas])
+
+  const hembraStatsActivos = useMemo(() =>
+    buildHembraStats(animales.filter((a) => a.sexo === 'hembra' && esActivo(a))),
+  [animales, camadas])
+
+  const hembraStats = vista === 'activos' ? hembraStatsActivos : hembraStatsHistorico
 
   return (
     <div className="p-6 space-y-6 min-h-screen" style={{ background: '#050810' }}>
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-1.5 h-7 rounded-full" style={{ background: '#00e676', boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
-        <div>
-          <h1 className="text-xl font-bold text-white">Rendimiento reproductivo</h1>
-          <p className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>
-            Menor latencia = mejor desempeño del macho
-          </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="w-1.5 h-7 rounded-full" style={{ background: '#00e676', boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
+          <div>
+            <h1 className="text-xl font-bold text-white">Rendimiento reproductivo</h1>
+            <p className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>
+              Menor latencia = mejor desempeño del macho
+            </p>
+          </div>
         </div>
+
+        {/* Toggle Activos / Histórico */}
+        <div
+          className="flex rounded-xl overflow-hidden text-xs font-bold"
+          style={{ border: '1px solid rgba(30,51,82,0.8)', background: 'rgba(8,13,26,0.8)' }}
+        >
+          <button
+            onClick={() => setVista('activos')}
+            className="px-4 py-2 transition-all"
+            style={
+              vista === 'activos'
+                ? { background: 'rgba(0,230,118,0.15)', color: '#00e676', borderRight: '1px solid rgba(30,51,82,0.8)' }
+                : { background: 'transparent', color: '#4a5f7a', borderRight: '1px solid rgba(30,51,82,0.8)' }
+            }
+          >
+            ✦ Activos
+          </button>
+          <button
+            onClick={() => setVista('historico')}
+            className="px-4 py-2 transition-all"
+            style={
+              vista === 'historico'
+                ? { background: 'rgba(64,196,255,0.12)', color: '#40c4ff' }
+                : { background: 'transparent', color: '#4a5f7a' }
+            }
+          >
+            📜 Histórico
+          </button>
+        </div>
+      </div>
+
+      {/* Indicador de vista */}
+      <div
+        className="rounded-xl px-4 py-2.5 flex items-center gap-2"
+        style={
+          vista === 'activos'
+            ? { background: 'rgba(0,230,118,0.05)', border: '1px solid rgba(0,230,118,0.15)' }
+            : { background: 'rgba(64,196,255,0.05)', border: '1px solid rgba(64,196,255,0.12)' }
+        }
+      >
+        <span className="text-sm">{vista === 'activos' ? '✦' : '📜'}</span>
+        <span className="text-xs font-semibold" style={{ color: vista === 'activos' ? '#00e676' : '#40c4ff' }}>
+          {vista === 'activos'
+            ? 'Mostrando solo animales activos (no sacrificados ni retirados)'
+            : 'Mostrando historial completo — incluye animales retirados y fallecidos'}
+        </span>
       </div>
 
       {/* Explicación del cálculo */}
@@ -182,7 +252,8 @@ export default function Rendimiento() {
       {/* Ranking machos */}
       <div>
         <div className="text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: '#4a5f7a' }}>
-          <span>🏆</span> Ranking de machos reproductores
+          <span>🏆</span>
+          {vista === 'activos' ? 'Ranking de machos — solo activos' : 'Ranking histórico de machos'}
         </div>
 
         {ranking.length === 0 ? (
@@ -202,11 +273,16 @@ export default function Rendimiento() {
                       <Medalla pos={idx + 1} />
                     </div>
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className="font-mono font-bold text-lg" style={{ color: '#40c4ff' }}>
                           {macho.codigo}
                         </span>
                         <ScoreBadge score={m.score} />
+                        {vista === 'historico' && !esActivo(macho) && (
+                          <Badge color={macho.estado === 'fallecido' ? 'rojo' : 'gris'}>
+                            {macho.estado === 'fallecido' ? 'Fallecido' : 'Retirado'}
+                          </Badge>
+                        )}
                       </div>
                       <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
                         {m.total_camadas} apareamiento{m.total_camadas !== 1 ? 's' : ''} con resultado
@@ -291,7 +367,8 @@ export default function Rendimiento() {
       {hembraStats.length > 0 && (
         <div>
           <div className="text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: '#4a5f7a' }}>
-            <span>♀</span> Perfil reproductivo de hembras
+            <span>♀</span>
+            {vista === 'activos' ? 'Perfil de hembras — solo activas' : 'Perfil histórico de hembras'}
           </div>
           <div className="space-y-3">
             {hembraStats.map(({ h, total, crias, perfil, conf }, idx) => {
@@ -314,6 +391,11 @@ export default function Rendimiento() {
                           >
                             {conf.nivel !== 'ok' ? `⚠ ${confCfg.label}` : `✓ ${confCfg.label}`}
                           </span>
+                        )}
+                        {vista === 'historico' && !esActivo(h) && (
+                          <Badge color={h.estado === 'fallecido' ? 'rojo' : 'gris'}>
+                            {h.estado === 'fallecido' ? 'Fallecida' : 'Retirada'}
+                          </Badge>
                         )}
                       </div>
                       <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
