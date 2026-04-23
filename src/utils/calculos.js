@@ -355,8 +355,8 @@ export function scoreTamanoCamada(totalCrias) {
  */
 export function scoreProporcionSexual(machos, hembras) {
   if (machos == null || hembras == null) return null
-  if (hembras > machos) return 10
-  if (hembras === machos) return 7
+  if (hembras === machos) return 10
+  if (hembras > machos) return 8
   return 5
 }
 
