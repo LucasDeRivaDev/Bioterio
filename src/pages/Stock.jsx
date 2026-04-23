@@ -233,7 +233,12 @@ function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccio
           )}
         </div>
 
-        {/* Nota visible en la tarjeta (solo reproductores) */}
+        <SexoDisplay bloque={bloque} cfg={cfg} />
+        <div className="text-xs" style={{ color: '#4a5f7a' }}>
+          {bloque.edad != null ? `${formatEdad(bloque.edad)} · ${bloque.edad}d` : '—'}
+        </div>
+
+        {/* Nota visible directamente en la tarjeta */}
         {bloque.tipo === 'reproductor' && bloque.animal.notas && (
           <div
             className="text-xs leading-snug px-2 py-1 rounded-lg"
@@ -246,11 +251,18 @@ function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccio
             {bloque.animal.notas.length > 60 ? bloque.animal.notas.slice(0, 60) + '…' : bloque.animal.notas}
           </div>
         )}
-
-        <SexoDisplay bloque={bloque} cfg={cfg} />
-        <div className="text-xs" style={{ color: '#4a5f7a' }}>
-          {bloque.edad != null ? `${formatEdad(bloque.edad)} · ${bloque.edad}d` : '—'}
-        </div>
+        {bloque.tipo === 'stock' && bloque.jaula?.notas && (
+          <div
+            className="text-xs leading-snug px-2 py-1 rounded-lg"
+            style={{
+              background: 'rgba(138,155,176,0.07)',
+              border: '1px solid rgba(138,155,176,0.2)',
+              color: '#8a9bb0',
+            }}
+          >
+            {bloque.jaula.notas.length > 60 ? bloque.jaula.notas.slice(0, 60) + '…' : bloque.jaula.notas}
+          </div>
+        )}
 
         {/* Mini calidad de padres */}
         {mostrarCalidad && (
