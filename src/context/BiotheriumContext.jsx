@@ -305,13 +305,24 @@ export function BiotheriumProvider({ children }) {
     if (error) console.error('Error al actualizar estado de reproductor:', error)
   }
 
-  async function eliminarSacrificio(id) {
+  // restaurar = true → además de borrar el registro, recrea la jaula con los animales sacrificados
+  async function eliminarSacrificio(id, restaurar = false) {
     const respaldo = estado.sacrificios.find((s) => s.id === id)
     dispatch({ type: 'ELIMINAR_SACRIFICIO', payload: id })
     const { error } = await supabase.from('sacrificios').delete().eq('id', id)
     if (error) {
       console.error('Error al eliminar sacrificio:', error)
       if (respaldo) dispatch({ type: 'AGREGAR_SACRIFICIO', payload: respaldo })
+      return
+    }
+    if (restaurar && respaldo?.camada_id) {
+      await agregarJaula({
+        camada_id: respaldo.camada_id,
+        total: respaldo.cantidad,
+        machos: null,
+        hembras: null,
+        notas: 'Sacrificio revertido',
+      })
     }
   }
 

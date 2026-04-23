@@ -70,7 +70,8 @@ export default function Sacrificios() {
     editarAnimal, eliminarSacrificio, registrarSacrificio, eliminarSacrificioReproductor,
   } = useBioterio()
 
-  const [confirmarEliminar, setConfirmarEliminar] = useState(null) // animal a eliminar
+  const [confirmarEliminar, setConfirmarEliminar]         = useState(null) // animal reproductor
+  const [confirmarEliminarStock, setConfirmarEliminarStock] = useState(null) // sacrificio de stock
 
   // ── Reproductores sacrificados (estado === 'fallecido') ───────────────────
   const reproductoresSacrificados = useMemo(() =>
@@ -289,14 +290,12 @@ export default function Sacrificios() {
                       </td>
                       <td className="px-4 py-3">
                         <button
-                          onClick={() => {
-                            if (window.confirm(`¿Eliminar este registro de ${s.cantidad} sacrificios? Esto restaurará el stock de la camada.`))
-                              eliminarSacrificio(s.id)
-                          }}
-                          className="text-xs px-2 py-1 rounded-lg transition-all"
-                          style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.2)', color: '#ff6b80' }}
+                          onClick={() => setConfirmarEliminarStock(s)}
+                          title="Eliminar este sacrificio"
+                          className="flex items-center justify-center w-7 h-7 rounded-lg text-xs font-bold transition-all"
+                          style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)', color: '#ff6b80' }}
                         >
-                          Eliminar
+                          ✕
                         </button>
                       </td>
                     </tr>
@@ -307,6 +306,73 @@ export default function Sacrificios() {
           </div>
         )}
       </div>
+
+      {/* ── MODAL: Confirmar eliminación de sacrificio de stock ─────────────── */}
+      {confirmarEliminarStock && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.75)' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setConfirmarEliminarStock(null) }}
+        >
+          <div
+            className="rounded-2xl p-6 space-y-5 w-full max-w-sm"
+            style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(255,61,87,0.35)', boxShadow: '0 0 40px rgba(255,61,87,0.15)' }}
+          >
+            <div className="text-center space-y-2">
+              <div className="text-3xl">⚠️</div>
+              <div className="font-bold text-white">
+                Eliminar sacrificio de{' '}
+                <span className="font-mono" style={{ color: '#ff6b80' }}>{confirmarEliminarStock.cantidad}</span>
+                {' '}animal{confirmarEliminarStock.cantidad !== 1 ? 'es' : ''}
+              </div>
+              {(confirmarEliminarStock.madre || confirmarEliminarStock.padre) && (
+                <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                  <span style={{ color: '#ce93d8' }}>{confirmarEliminarStock.madre?.codigo ?? '?'}</span>
+                  {' × '}
+                  <span style={{ color: '#40c4ff' }}>{confirmarEliminarStock.padre?.codigo ?? '?'}</span>
+                </div>
+              )}
+              <p className="text-xs leading-relaxed" style={{ color: '#8a9bb0' }}>
+                ¿Querés devolver esos animales al stock también?
+              </p>
+            </div>
+
+            <div className="space-y-2.5">
+              <button
+                onClick={async () => {
+                  await eliminarSacrificio(confirmarEliminarStock.id, true)
+                  setConfirmarEliminarStock(null)
+                }}
+                className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all"
+                style={{ background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.35)', color: '#00e676' }}
+              >
+                ✓ Sí, devolver al stock
+                <span className="text-xs font-normal opacity-70">(restaurar jaula)</span>
+              </button>
+
+              <button
+                onClick={async () => {
+                  await eliminarSacrificio(confirmarEliminarStock.id, false)
+                  setConfirmarEliminarStock(null)
+                }}
+                className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all"
+                style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.3)', color: '#ff6b80' }}
+              >
+                ✕ No, solo eliminar registro
+                <span className="text-xs font-normal opacity-70">(sin restaurar)</span>
+              </button>
+
+              <button
+                onClick={() => setConfirmarEliminarStock(null)}
+                className="w-full py-2 rounded-xl text-sm"
+                style={{ color: '#4a5f7a' }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── MODAL: Confirmar eliminación de sacrificio de reproductor ─────────── */}
       {confirmarEliminar && (
