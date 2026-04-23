@@ -51,7 +51,7 @@ const ICONO_TIPO = {
 
 // ── Tarjeta de tarea con acción inline para separaciones ─────────────────────
 
-function TarjetaTarea({ tarea, onConfirmarSeparacion }) {
+function TarjetaTarea({ tarea, onConfirmarSeparacion, onDescartar }) {
   const est          = PRIORIDAD[tarea.prioridad]
   const esSeparacion = tarea.tipo === 'separacion'
 
@@ -64,7 +64,6 @@ function TarjetaTarea({ tarea, onConfirmarSeparacion }) {
     setGuardando(true)
     try {
       await onConfirmarSeparacion(tarea.camadaId, fechaSep)
-      // La tarea desaparece sola porque generarTareas la filtra cuando fecha_separacion está seteada
     } finally {
       setGuardando(false)
       setConfirmando(false)
@@ -80,11 +79,11 @@ function TarjetaTarea({ tarea, onConfirmarSeparacion }) {
         boxShadow: `0 0 16px ${est.glow}`,
       }}
     >
-      {/* Fila principal: icono + texto + badge */}
+      {/* Fila principal: icono + texto + badge + ✕ */}
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <span className="text-xl mt-0.5">{ICONO_TIPO[tarea.tipo]}</span>
-          <div>
+        <div className="flex items-start gap-3 min-w-0">
+          <span className="text-xl mt-0.5 shrink-0">{ICONO_TIPO[tarea.tipo]}</span>
+          <div className="min-w-0">
             <div className="font-semibold text-sm" style={{ color: est.titulo }}>{tarea.descripcion}</div>
             <div className="text-xs mt-0.5 opacity-70" style={{ color: est.titulo }}>{tarea.detalle}</div>
             <div className="text-xs mt-1 font-mono" style={{ color: 'rgba(138,155,176,0.5)' }}>
@@ -92,14 +91,27 @@ function TarjetaTarea({ tarea, onConfirmarSeparacion }) {
             </div>
           </div>
         </div>
-        <Badge color={est.badge} size="sm">{est.label}</Badge>
+        <div className="flex items-center gap-2 shrink-0">
+          <Badge color={est.badge} size="sm">{est.label}</Badge>
+          <button
+            onClick={() => onDescartar(tarea.id)}
+            title="Marcar como completada / descartar"
+            className="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold transition-all"
+            style={{
+              background: 'rgba(74,95,122,0.12)',
+              border: '1px solid rgba(74,95,122,0.25)',
+              color: '#4a5f7a',
+            }}
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       {/* Fila de acción — solo para separaciones */}
       {esSeparacion && (
         <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${est.border}` }}>
           {confirmando ? (
-            // UI inline: selector de fecha + confirmar + cancelar
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-semibold" style={{ color: est.titulo }}>
                 Fecha real de separación:
@@ -138,7 +150,6 @@ function TarjetaTarea({ tarea, onConfirmarSeparacion }) {
               </button>
             </div>
           ) : (
-            // Botón principal de acción
             <button
               onClick={() => { setFechaSep(hoy()); setConfirmando(true) }}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
@@ -191,10 +202,40 @@ function StatCard({ valor, label, icono, color }) {
 
 // ── Dashboard principal ───────────────────────────────────────────────────────
 
+// Clave de localStorage para las tareas descartadas hoy
+const LS_KEY = 'appMosca_tareas_descartadas'
+
+function cargarDescartadas() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LS_KEY) || '{}')
+    // Si el día guardado no es hoy, limpiamos — la tarea puede volver mañana
+    if (raw.fecha === new Date().toISOString().split('T')[0]) {
+      return new Set(raw.ids ?? [])
+    }
+  } catch {}
+  return new Set()
+}
+
 export default function Dashboard() {
   const { animales, camadas, confirmarSeparacion } = useBioterio()
 
-  const tareas   = useMemo(() => generarTareas(camadas, animales), [camadas, animales])
+  // IDs de tareas descartadas por el usuario hoy (se resetean el día siguiente)
+  const [descartadas, setDescartadas] = useState(() => cargarDescartadas())
+
+  function descartarTarea(id) {
+    setDescartadas((prev) => {
+      const nuevo = new Set(prev)
+      nuevo.add(id)
+      localStorage.setItem(LS_KEY, JSON.stringify({
+        fecha: new Date().toISOString().split('T')[0],
+        ids: [...nuevo],
+      }))
+      return nuevo
+    })
+  }
+
+  const todasTareas = useMemo(() => generarTareas(camadas, animales), [camadas, animales])
+  const tareas   = todasTareas.filter((t) => !descartadas.has(t.id))
   const vencidas = tareas.filter((t) => t.prioridad === 'vencida')
   const deHoy    = tareas.filter((t) => t.prioridad === 'hoy')
   const proximas = tareas.filter((t) => t.prioridad === 'proxima')
@@ -280,10 +321,10 @@ export default function Dashboard() {
           </div>
           <div className="space-y-2">
             {vencidas.map((t) => (
-              <TarjetaTarea key={t.id} tarea={t} onConfirmarSeparacion={confirmarSeparacion} />
+              <TarjetaTarea key={t.id} tarea={t} onConfirmarSeparacion={confirmarSeparacion} onDescartar={descartarTarea} />
             ))}
             {deHoy.map((t) => (
-              <TarjetaTarea key={t.id} tarea={t} onConfirmarSeparacion={confirmarSeparacion} />
+              <TarjetaTarea key={t.id} tarea={t} onConfirmarSeparacion={confirmarSeparacion} onDescartar={descartarTarea} />
             ))}
           </div>
         </div>
@@ -309,7 +350,7 @@ export default function Dashboard() {
           </div>
           <div className="space-y-2">
             {proximas.map((t) => (
-              <TarjetaTarea key={t.id} tarea={t} onConfirmarSeparacion={confirmarSeparacion} />
+              <TarjetaTarea key={t.id} tarea={t} onConfirmarSeparacion={confirmarSeparacion} onDescartar={descartarTarea} />
             ))}
           </div>
         </div>
