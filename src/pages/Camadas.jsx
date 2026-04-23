@@ -534,6 +534,24 @@ export default function Camadas() {
     return animales.find((a) => a.id === id)?.codigo ?? '?'
   }
 
+  function animalObj(id) {
+    return animales.find((a) => a.id === id) ?? null
+  }
+
+  function CodigoAnimal({ id, color }) {
+    const a = animalObj(id)
+    return (
+      <>
+        <span style={{ color: a?.notas && a.nota_tipo === 'critica' ? '#ff6b80' : color }}>
+          {a?.codigo ?? '?'}
+        </span>
+        {a?.notas && (
+          <span title={a.notas} style={{ color: a.nota_tipo === 'critica' ? '#ff1744' : '#ffb300', marginLeft: '3px', cursor: 'help' }}>⚠</span>
+        )}
+      </>
+    )
+  }
+
   const camadasEnriquecidas = useMemo(() => {
     return camadas.map((c) => {
       const rango = c.fecha_copula && !c.fecha_nacimiento ? calcularRangoParto(c.fecha_copula) : null
@@ -657,12 +675,12 @@ export default function Camadas() {
                     <span className="text-2xl">{cfg.icono}</span>
                     <div>
                       <div className="flex items-center gap-2 mb-0.5">
-                        <span className="font-mono font-bold" style={{ color: '#ce93d8' }}>
-                          {nombreAnimal(camada.id_madre)}
+                        <span className="font-mono font-bold">
+                          <CodigoAnimal id={camada.id_madre} color="#ce93d8" />
                         </span>
                         <span style={{ color: '#4a5f7a' }}>×</span>
-                        <span className="font-mono font-bold" style={{ color: '#40c4ff' }}>
-                          {nombreAnimal(camada.id_padre)}
+                        <span className="font-mono font-bold">
+                          <CodigoAnimal id={camada.id_padre} color="#40c4ff" />
                         </span>
                         <Badge color={cfg.badge}>{cfg.label}</Badge>
                         {camada.incluir_en_stock === false && (

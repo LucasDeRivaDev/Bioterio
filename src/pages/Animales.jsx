@@ -223,8 +223,16 @@ export default function Animales() {
                     style={{ borderBottom: '1px solid rgba(30,51,82,0.4)' }}
                     className="transition-colors hover:bg-white/[0.01]"
                   >
-                    <td className="px-4 py-3 font-mono font-bold" style={{ color: '#c9d4e0' }}>
-                      {animal.codigo}
+                    <td className="px-4 py-3 font-mono font-bold">
+                      <span style={{ color: animal.notas && animal.nota_tipo === 'critica' ? '#ff6b80' : '#c9d4e0' }}>
+                        {animal.codigo}
+                      </span>
+                      {animal.notas && (
+                        <span
+                          title={animal.notas}
+                          style={{ color: animal.nota_tipo === 'critica' ? '#ff1744' : '#ffb300', marginLeft: '5px', cursor: 'help' }}
+                        >⚠</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 font-medium text-xs">
                       <span style={{ color: animal.sexo === 'hembra' ? '#ce93d8' : '#40c4ff' }}>
@@ -273,8 +281,27 @@ export default function Animales() {
                   </tr>
                   {expandido === animal.id && (
                     <tr style={{ borderBottom: '1px solid rgba(30,51,82,0.4)', background: 'rgba(8,13,26,0.6)' }}>
-                      <td colSpan={8} className="px-6 py-4">
-                        <div className="text-xs font-semibold mb-3 uppercase tracking-widest" style={{ color: '#ffd740' }}>
+                      <td colSpan={8} className="px-6 py-4 space-y-4">
+                        {/* Nota del animal */}
+                        {animal.notas && (
+                          <div
+                            className="rounded-xl px-4 py-3 flex items-start gap-3"
+                            style={{
+                              background: animal.nota_tipo === 'critica' ? 'rgba(255,23,68,0.07)' : 'rgba(255,179,0,0.06)',
+                              border: animal.nota_tipo === 'critica' ? '1px solid rgba(255,23,68,0.35)' : '1px solid rgba(255,179,0,0.25)',
+                            }}
+                          >
+                            <span style={{ color: animal.nota_tipo === 'critica' ? '#ff1744' : '#ffb300', fontSize: '16px' }}>⚠</span>
+                            <div>
+                              <div className="text-xs font-bold uppercase tracking-widest mb-1"
+                                style={{ color: animal.nota_tipo === 'critica' ? '#ff1744' : '#ffb300' }}>
+                                {animal.nota_tipo === 'critica' ? 'Observación crítica' : 'Observación'}
+                              </div>
+                              <div className="text-sm leading-relaxed" style={{ color: '#c9d4e0' }}>{animal.notas}</div>
+                            </div>
+                          </div>
+                        )}
+                        <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#ffd740' }}>
                           Perfil reproductivo — {animal.codigo}
                         </div>
                         <PerfilAnimal animal={animal} />

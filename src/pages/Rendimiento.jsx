@@ -282,9 +282,12 @@ export default function Rendimiento() {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="font-mono font-bold text-lg" style={{ color: '#40c4ff' }}>
+                        <span className="font-mono font-bold text-lg" style={{ color: macho.notas && macho.nota_tipo === 'critica' ? '#ff6b80' : '#40c4ff' }}>
                           {macho.codigo}
                         </span>
+                        {macho.notas && (
+                          <span title={macho.notas} style={{ color: macho.nota_tipo === 'critica' ? '#ff1744' : '#ffb300', cursor: 'help' }}>⚠</span>
+                        )}
                         <ScoreBadge score={m.score} />
                         {vista === 'historico' && !esActivo(macho) && (
                           <Badge color={macho.estado === 'fallecido' ? 'rojo' : 'gris'}>
@@ -403,7 +406,10 @@ export default function Rendimiento() {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono font-bold text-lg" style={{ color: '#ce93d8' }}>{h.codigo}</span>
+                        <span className="font-mono font-bold text-lg" style={{ color: h.notas && h.nota_tipo === 'critica' ? '#ff6b80' : '#ce93d8' }}>{h.codigo}</span>
+                        {h.notas && (
+                          <span title={h.notas} style={{ color: h.nota_tipo === 'critica' ? '#ff1744' : '#ffb300', cursor: 'help' }}>⚠</span>
+                        )}
                         {confCfg && (
                           <span
                             className="text-xs font-bold px-2 py-0.5 rounded-full"

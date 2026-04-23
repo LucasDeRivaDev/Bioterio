@@ -136,17 +136,24 @@ function SexoDisplay({ bloque, cfg }) {
   )
 }
 
-function MiniCalidad({ icono, codigo, calidad }) {
+function MiniCalidad({ icono, codigo, calidad, animal }) {
+  const alertaColor = animal?.notas ? (animal.nota_tipo === 'critica' ? '#ff1744' : '#ffb300') : null
   if (!calidad) return (
     <div className="flex items-center justify-between">
-      <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{icono} {codigo}</span>
+      <span className="text-xs font-mono" style={{ color: alertaColor ?? '#4a5f7a' }}>
+        {icono} {codigo}
+        {alertaColor && <span title={animal.notas} style={{ color: alertaColor, marginLeft: '3px', cursor: 'help' }}>⚠</span>}
+      </span>
       <span className="text-xs" style={{ color: '#2a3a50' }}>—</span>
     </div>
   )
   const nivel = nivelCalidad(calidad.score)
   return (
     <div className="flex items-center justify-between gap-1">
-      <span className="text-xs font-mono" style={{ color: '#6a7f95' }}>{icono} {codigo}</span>
+      <span className="text-xs font-mono" style={{ color: alertaColor ?? '#6a7f95' }}>
+        {icono} {codigo}
+        {alertaColor && <span title={animal.notas} style={{ color: alertaColor, marginLeft: '3px', cursor: 'help' }}>⚠</span>}
+      </span>
       <span
         className="text-xs font-bold px-1.5 py-0.5 rounded"
         style={{ color: nivel.color, background: nivel.bg }}
@@ -209,10 +216,21 @@ function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccio
 
       {/* Cuerpo */}
       <div className="px-3 py-3 space-y-1.5">
-        <div className="font-mono font-bold text-sm text-white">
-          {bloque.tipo === 'reproductor'
-            ? bloque.animal.codigo
-            : `${bloque.madre?.codigo ?? '?'} × ${bloque.padre?.codigo ?? '?'}`}
+        <div className="font-mono font-bold text-sm flex items-center gap-1 flex-wrap">
+          {bloque.tipo === 'reproductor' ? (
+            <>
+              <span style={{ color: bloque.animal.notas && bloque.animal.nota_tipo === 'critica' ? '#ff6b80' : 'white' }}>
+                {bloque.animal.codigo}
+              </span>
+              {bloque.animal.notas && (
+                <span title={bloque.animal.notas} style={{ color: bloque.animal.nota_tipo === 'critica' ? '#ff1744' : '#ffb300', cursor: 'help' }}>⚠</span>
+              )}
+            </>
+          ) : (
+            <span className="text-white">
+              {bloque.madre?.codigo ?? '?'} × {bloque.padre?.codigo ?? '?'}
+            </span>
+          )}
         </div>
         <SexoDisplay bloque={bloque} cfg={cfg} />
         <div className="text-xs" style={{ color: '#4a5f7a' }}>
@@ -225,8 +243,8 @@ function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccio
             className="mt-1 pt-1.5 space-y-0.5"
             style={{ borderTop: '1px solid rgba(30,51,82,0.5)' }}
           >
-            {bloque.madre && <MiniCalidad icono="♀" codigo={bloque.madre.codigo} calidad={calMadre} />}
-            {bloque.padre && <MiniCalidad icono="♂" codigo={bloque.padre.codigo} calidad={calPadre} />}
+            {bloque.madre && <MiniCalidad icono="♀" codigo={bloque.madre.codigo} calidad={calMadre} animal={bloque.madre} />}
+            {bloque.padre && <MiniCalidad icono="♂" codigo={bloque.padre.codigo} calidad={calPadre} animal={bloque.padre} />}
           </div>
         )}
       </div>
@@ -380,6 +398,7 @@ function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, 
                     sexo="hembra"
                     codigo={bloque.madre.codigo}
                     calidad={calidadHembra(bloque.madre.id, camadas)}
+                    animal={bloque.madre}
                   />
                 )}
                 {bloque.padre && (
@@ -387,6 +406,7 @@ function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, 
                     sexo="macho"
                     codigo={bloque.padre.codigo}
                     calidad={calidadMacho(bloque.padre.id, camadas)}
+                    animal={bloque.padre}
                   />
                 )}
                 <Row label="Total"      valor={`${bloque.total} animales`} color={cfg.color} />
@@ -559,13 +579,16 @@ function nivelCalidad(score) {
   return            { label: 'Baja',  color: '#ff6b80', bg: 'rgba(255,61,87,0.12)',   borde: 'rgba(255,61,87,0.3)' }
 }
 
-function CalidadBadge({ sexo, codigo, calidad }) {
+function CalidadBadge({ sexo, codigo, calidad, animal }) {
   const sinDatos = calidad === null
   const nivel    = sinDatos ? null : nivelCalidad(calidad.score)
+  const alertaColor = animal?.notas ? (animal.nota_tipo === 'critica' ? '#ff1744' : '#ffb300') : null
   return (
+    <div className="space-y-1">
     <div className="flex items-center justify-between text-sm">
-      <span className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#4a5f7a' }}>
+      <span className="text-xs uppercase tracking-widest font-semibold flex items-center gap-1" style={{ color: '#4a5f7a' }}>
         Calidad {sexo === 'macho' ? '♂' : '♀'} {codigo}
+        {alertaColor && <span title={animal.notas} style={{ color: alertaColor, cursor: 'help' }}>⚠</span>}
       </span>
       {sinDatos ? (
         <span className="text-xs font-mono px-2 py-0.5 rounded-lg" style={{ color: '#4a5f7a', background: 'rgba(30,51,82,0.4)' }}>
@@ -584,6 +607,13 @@ function CalidadBadge({ sexo, codigo, calidad }) {
           </span>
         </div>
       )}
+    </div>
+    {alertaColor && animal?.notas && (
+      <div className="text-xs px-2 py-1 rounded-lg leading-snug"
+        style={{ background: alertaColor === '#ff1744' ? 'rgba(255,23,68,0.07)' : 'rgba(255,179,0,0.07)', color: alertaColor }}>
+        {animal.notas}
+      </div>
+    )}
     </div>
   )
 }
