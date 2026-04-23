@@ -93,18 +93,20 @@ function TarjetaTarea({ tarea, onConfirmarSeparacion, onDescartar }) {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Badge color={est.badge} size="sm">{est.label}</Badge>
-          <button
-            onClick={() => onDescartar(tarea.id)}
-            title="Marcar como completada / descartar"
-            className="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold transition-all"
-            style={{
-              background: 'rgba(74,95,122,0.12)',
-              border: '1px solid rgba(74,95,122,0.25)',
-              color: '#4a5f7a',
-            }}
-          >
-            ✕
-          </button>
+          {onDescartar && (
+            <button
+              onClick={() => onDescartar(tarea.id)}
+              title="Marcar como completada / descartar"
+              className="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold transition-all"
+              style={{
+                background: 'rgba(74,95,122,0.12)',
+                border: '1px solid rgba(74,95,122,0.25)',
+                color: '#4a5f7a',
+              }}
+            >
+              ✕
+            </button>
+          )}
         </div>
       </div>
 
@@ -350,7 +352,7 @@ export default function Dashboard() {
           </div>
           <div className="space-y-2">
             {proximas.map((t) => (
-              <TarjetaTarea key={t.id} tarea={t} onConfirmarSeparacion={confirmarSeparacion} onDescartar={descartarTarea} />
+              <TarjetaTarea key={t.id} tarea={t} onConfirmarSeparacion={confirmarSeparacion} />
             ))}
           </div>
         </div>
