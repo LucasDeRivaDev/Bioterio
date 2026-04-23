@@ -218,6 +218,37 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
 
 - **Eliminación de tab Evolución en Stock (21/04/2026):** la sección "📈 Evolución" fue removida de Stock ya que la página de Estadísticas cubre esa función. Se eliminaron `GraficoEvolucion`, `mesStr` y los imports de recharts de Stock.jsx (−298 líneas).
 
+- **Fix sidebar — sección Ratón doméstico no visible (22/04/2026):** el `nav` tenía `flex-1` sin `overflow-y-auto`, por lo que los links se desbordaban visualmente y tapaban la ficha biológica. Fix: `nav` scrollea internamente con `overflow-y-auto`; se eliminaron `min-h-screen` y `overflow-y-auto` del `aside` que eran redundantes.
+
+- **RLS activado en tablas sacrificios y entregas (22/04/2026):** Supabase Security Advisor reportaba RLS desactivado en esas dos tablas. Se ejecutaron `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` + políticas `FOR ALL TO authenticated` en el SQL Editor de Supabase.
+
+- **Corrección de 6 bugs de coherencia de datos (22/04/2026):**
+  - **Sidebar vs Dashboard:** sidebar ahora incluye `en_apareamiento` en el conteo de hembras/machos activos — mismo criterio que el Dashboard.
+  - **Sacrificios page:** la tabla "Sacrificios de stock" filtra `categoria = 'reproductor'`, ya no muestra filas en blanco mezcladas con el stock.
+  - **stockCamada en bloques virtuales:** ahora descuenta entregas además de sacrificios — antes mostraba animales ya entregados como disponibles.
+  - **scoreSupervivencia capeado a 10:** evita scores imposibles si por error de datos `total_destetados > total_crias`.
+  - **Tasa de éxito en Estadísticas:** el denominador es ahora `efectivos + fallidos` (solo camadas completadas) en lugar del total que incluye las "en curso".
+  - **Dashboard "Preñadas" / "En apareamiento":** ahora excluyen camadas con `failure_flag: true` para no inflar esos contadores.
+
+- **Fix eficiencia de apareamiento — totales no cuadraban (22/04/2026):** el gráfico filtraba solo camadas con `fecha_nacimiento`, dejando afuera las en curso o fallidas sin parto. Ahora itera todas las camadas del período; las sin nacimiento van al segmento "En proceso/Parto fallido", haciendo que la suma coincida con el KPI total de apareamientos.
+
+- **Fix calidad de madres — fallos sin partos exitosos (22/04/2026):** `scorePromedioHembra` devolvía `null` (→ "En proceso") para madres que solo tenían `failure_flag` sin ningún parto exitoso. Ahora devuelve score `0` (→ "Baja") cuando hay fallos registrados pero ninguna camada con `fecha_nacimiento`.
+
+- **Etiquetas de estadísticas renombradas (22/04/2026):**
+  - Eficiencia de apareamiento: "Sin dato" → "En proceso/Parto fallido"
+  - Supervivencia de camadas: agrega segmento "Parto fallido/En proceso/Lactancia" para camadas sin datos de destete completos
+  - Calidad de madres: "Sin datos" → "En proceso"
+
+---
+
+## Comportamientos de datos importantes
+
+- **scoreSupervivencia** tiene tope en 10 — si `total_destetados > total_crias` por error de carga, no genera scores imposibles.
+- **stockCamada (bloques virtuales)** descuenta tanto `sacrificios` como `entregas` de la misma `camada_id`.
+- **Tasa de éxito** en Estadísticas se calcula sobre `efectivos / (efectivos + fallidos)`, excluyendo apareamientos en curso del denominador.
+- **Madres con solo fallos** (sin ningún parto exitoso) aparecen como calidad "Baja" en el gráfico, no como "En proceso".
+- **Conteo de animales activos** en sidebar y Dashboard usa el mismo criterio: `activo | en_apareamiento | en_cria`.
+
 ---
 
 ## Qué falta / pendiente
