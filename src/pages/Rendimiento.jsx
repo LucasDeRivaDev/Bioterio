@@ -108,7 +108,13 @@ export default function Rendimiento() {
 
   function buildRankingMachos(lista) {
     return lista
-      .map((macho) => ({ macho, m: calcularRendimientoMacho(macho.id, camadas) }))
+      .map((macho) => {
+        const m = calcularRendimientoMacho(macho.id, camadas)
+        const camadasMacho = camadas.filter((c) => c.id_padre === macho.id && c.fecha_nacimiento)
+        const totalMachos  = camadasMacho.reduce((s, c) => s + (c.crias_machos  ?? 0), 0)
+        const totalHembras = camadasMacho.reduce((s, c) => s + (c.crias_hembras ?? 0), 0)
+        return { macho, m, totalMachos, totalHembras }
+      })
       .sort((a, b) => {
         if (a.m.promedio_latencia === null && b.m.promedio_latencia === null) return 0
         if (a.m.promedio_latencia === null) return 1
@@ -140,8 +146,10 @@ export default function Rendimiento() {
         const sus    = camadas.filter((c) => c.id_madre === h.id && c.fecha_nacimiento)
         const perfil = calcularPerfilHembra(h.id, camadas)
         const conf   = calcularConfiabilidadHembra(h.id, camadas)
-        const crias  = sus.reduce((s, c) => s + (c.total_crias ?? 0), 0)
-        return { h, total: sus.length, crias, perfil, conf }
+        const crias        = sus.reduce((s, c) => s + (c.total_crias   ?? 0), 0)
+        const criasMachos  = sus.reduce((s, c) => s + (c.crias_machos  ?? 0), 0)
+        const criasHembras = sus.reduce((s, c) => s + (c.crias_hembras ?? 0), 0)
+        return { h, total: sus.length, crias, criasMachos, criasHembras, perfil, conf }
       })
       .filter((x) => x.total > 0)
       .sort((a, b) => {
@@ -263,7 +271,7 @@ export default function Rendimiento() {
           </div>
         ) : (
           <div className="space-y-3">
-            {ranking.map(({ macho, m }, idx) => {
+            {ranking.map(({ macho, m, totalMachos, totalHembras }, idx) => {
               const hist = historial(macho.id)
               return (
                 <div key={macho.id} className="rounded-xl overflow-hidden" style={cardStyle}>
@@ -286,6 +294,14 @@ export default function Rendimiento() {
                       </div>
                       <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
                         {m.total_camadas} apareamiento{m.total_camadas !== 1 ? 's' : ''} con resultado
+                        {m.total_camadas > 0 && (
+                          <span className="ml-2">
+                            ·{' '}
+                            <span style={{ color: '#40c4ff' }}>{totalMachos}♂</span>
+                            {' / '}
+                            <span style={{ color: '#ce93d8' }}>{totalHembras}♀</span>
+                          </span>
+                        )}
                       </div>
                     </div>
                     {/* Métricas numéricas */}
@@ -321,7 +337,7 @@ export default function Rendimiento() {
                             <th className="text-left pb-1.5 font-medium">Hembra</th>
                             <th className="text-left pb-1.5 font-medium">Cópula</th>
                             <th className="text-left pb-1.5 font-medium">Nacimiento</th>
-                            <th className="text-left pb-1.5 font-medium">Crías</th>
+                            <th className="text-left pb-1.5 font-medium">Crías (♂ / ♀)</th>
                             <th className="text-left pb-1.5 font-medium">Latencia</th>
                             <th className="text-left pb-1.5 font-medium">Score</th>
                             <th className="text-left pb-1.5 font-medium">Interpretación</th>
@@ -343,7 +359,11 @@ export default function Rendimiento() {
                                 <td className="py-1.5 font-mono" style={{ color: c.fecha_nacimiento ? '#8a9bb0' : '#ffb300' }}>
                                   {c.fecha_nacimiento ? formatFecha(c.fecha_nacimiento) : 'Pendiente'}
                                 </td>
-                                <td className="py-1.5 font-mono" style={{ color: '#8a9bb0' }}>{c.total_crias ?? '?'}</td>
+                                <td className="py-1.5 font-mono" style={{ color: '#8a9bb0' }}>
+                                  {c.crias_machos != null || c.crias_hembras != null
+                                    ? <><span style={{ color: '#40c4ff' }}>{c.crias_machos ?? '?'}♂</span>{' / '}<span style={{ color: '#ce93d8' }}>{c.crias_hembras ?? '?'}♀</span></>
+                                    : (c.total_crias ?? '?')}
+                                </td>
                                 <td className="py-1.5 font-mono font-bold" style={{ color: latColor }}>
                                   {c.lat !== null ? `${c.lat}d` : '—'}
                                 </td>
@@ -371,7 +391,7 @@ export default function Rendimiento() {
             {vista === 'activos' ? 'Perfil de hembras — solo activas' : 'Perfil histórico de hembras'}
           </div>
           <div className="space-y-3">
-            {hembraStats.map(({ h, total, crias, perfil, conf }, idx) => {
+            {hembraStats.map(({ h, total, crias, criasMachos, criasHembras, perfil, conf }, idx) => {
               const confCfg = conf ? CONF_CONFIG[conf.nivel] : null
               return (
                 <div key={h.id} className="rounded-xl overflow-hidden" style={cardStyle}>
@@ -399,7 +419,14 @@ export default function Rendimiento() {
                         )}
                       </div>
                       <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
-                        {total} parto{total !== 1 ? 's' : ''} · {crias} crías totales
+                        {total} parto{total !== 1 ? 's' : ''} · {crias} crías
+                        {crias > 0 && (
+                          <span className="ml-1">
+                            (<span style={{ color: '#40c4ff' }}>{criasMachos}♂</span>
+                            {' / '}
+                            <span style={{ color: '#ce93d8' }}>{criasHembras}♀</span>)
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
