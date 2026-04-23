@@ -279,8 +279,16 @@ export function BiotheriumProvider({ children }) {
     const actualizado = { ...animal, estado: 'fallecido', fecha_sacrificio: fecha, motivo_sacrificio: motivo || null }
     dispatch({ type: 'EDITAR_ANIMAL', payload: actualizado })
 
-    // Grabar en tabla sacrificios — así aparece en el gráfico y en el historial
-    const sacrificioRepro = { id: generarId(), camada_id: null, cantidad: 1, fecha, categoria: 'reproductor', notas: motivo || null }
+    // Grabar en tabla sacrificios con animal_id para poder vincularlo después
+    const sacrificioRepro = {
+      id: generarId(),
+      camada_id: null,
+      animal_id: animal.id,
+      cantidad: 1,
+      fecha,
+      categoria: 'reproductor',
+      notas: motivo || null,
+    }
     dispatch({ type: 'AGREGAR_SACRIFICIO', payload: sacrificioRepro })
     const { error: errSac } = await supabase.from('sacrificios').insert(sacrificioRepro)
     if (errSac) {
@@ -288,8 +296,12 @@ export function BiotheriumProvider({ children }) {
       dispatch({ type: 'ELIMINAR_SACRIFICIO', payload: sacrificioRepro.id })
     }
 
-    // Actualizar estado del animal (el update con fecha_sacrificio es opcional, ya tenemos el sacrificio arriba)
-    const { error } = await supabase.from('animales').update({ estado: 'fallecido' }).eq('id', animal.id)
+    // Guardar fecha_sacrificio y motivo en la tabla animales también
+    const { error } = await supabase.from('animales').update({
+      estado: 'fallecido',
+      fecha_sacrificio: fecha,
+      motivo_sacrificio: motivo || null,
+    }).eq('id', animal.id)
     if (error) console.error('Error al actualizar estado de reproductor:', error)
   }
 
@@ -300,6 +312,49 @@ export function BiotheriumProvider({ children }) {
     if (error) {
       console.error('Error al eliminar sacrificio:', error)
       if (respaldo) dispatch({ type: 'AGREGAR_SACRIFICIO', payload: respaldo })
+    }
+  }
+
+  // Eliminar sacrificio de un reproductor con opción de devolverlo como vivo
+  // restaurar = true  → animal vuelve a 'activo', se limpia fecha y motivo
+  // restaurar = false → solo se borra el registro, animal sigue 'fallecido' pero sin fecha (puede re-registrarse)
+  async function eliminarSacrificioReproductor(animal, restaurar) {
+    // Buscar el registro de sacrificio asociado a este animal
+    const sacRepro = estado.sacrificios.find(
+      (s) => s.categoria === 'reproductor' && (
+        s.animal_id === animal.id ||
+        s.notas === `Reproductor ${animal.codigo}`
+      )
+    )
+
+    if (sacRepro) {
+      dispatch({ type: 'ELIMINAR_SACRIFICIO', payload: sacRepro.id })
+      const { error: errS } = await supabase.from('sacrificios').delete().eq('id', sacRepro.id)
+      if (errS) {
+        console.error('Error al eliminar sacrificio de reproductor:', errS)
+        dispatch({ type: 'AGREGAR_SACRIFICIO', payload: sacRepro })
+      }
+    }
+
+    if (restaurar) {
+      // Devolver vivo: activo + limpiar fecha y motivo
+      const restaurado = { ...animal, estado: 'activo', fecha_sacrificio: null, motivo_sacrificio: null }
+      dispatch({ type: 'EDITAR_ANIMAL', payload: restaurado })
+      const { error } = await supabase.from('animales').update({
+        estado: 'activo',
+        fecha_sacrificio: null,
+        motivo_sacrificio: null,
+      }).eq('id', animal.id)
+      if (error) console.error('Error al restaurar reproductor:', error)
+    } else {
+      // Mantener fallecido pero limpiar fecha para poder re-registrar correctamente
+      const limpiado = { ...animal, fecha_sacrificio: null, motivo_sacrificio: null }
+      dispatch({ type: 'EDITAR_ANIMAL', payload: limpiado })
+      const { error } = await supabase.from('animales').update({
+        fecha_sacrificio: null,
+        motivo_sacrificio: null,
+      }).eq('id', animal.id)
+      if (error) console.error('Error al limpiar fecha de sacrificio:', error)
     }
   }
 
@@ -404,7 +459,7 @@ export function BiotheriumProvider({ children }) {
       error,
       agregarAnimal, editarAnimal, eliminarAnimal, sacrificarReproductor,
       agregarCamada, editarCamada, eliminarCamada, confirmarSeparacion,
-      registrarSacrificio, eliminarSacrificio,
+      registrarSacrificio, eliminarSacrificio, eliminarSacrificioReproductor,
       registrarEntrega, entregarReproductor, devolverEntrega,
       agregarJaula, editarJaula, eliminarJaula,
       agregarTemperatura, eliminarTemperaturasMes,

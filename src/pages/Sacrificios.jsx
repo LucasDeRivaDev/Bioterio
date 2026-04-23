@@ -65,7 +65,12 @@ function RegistrarFechaRepro({ animal, onGuardar }) {
 }
 
 export default function Sacrificios() {
-  const { animales, camadas, sacrificios, eliminarSacrificio, registrarSacrificio } = useBioterio()
+  const {
+    animales, camadas, sacrificios,
+    editarAnimal, eliminarSacrificio, registrarSacrificio, eliminarSacrificioReproductor,
+  } = useBioterio()
+
+  const [confirmarEliminar, setConfirmarEliminar] = useState(null) // animal a eliminar
 
   // ── Reproductores sacrificados (estado === 'fallecido') ───────────────────
   const reproductoresSacrificados = useMemo(() =>
@@ -90,13 +95,17 @@ export default function Sacrificios() {
   const totalSacrificados = sacrificios.filter(s => s.categoria !== 'reproductor').reduce((sum, s) => sum + s.cantidad, 0)
 
   async function registrarFechaRepro(animal, fecha) {
+    // Crear registro en sacrificios vinculado al animal
     await registrarSacrificio({
       camada_id: null,
+      animal_id: animal.id,
       cantidad: 1,
       fecha,
       categoria: 'reproductor',
       notas: `Reproductor ${animal.codigo}`,
     })
+    // También guardar fecha_sacrificio en el animal para que no reaparezca el botón al recargar
+    await editarAnimal({ ...animal, fecha_sacrificio: fecha })
   }
 
   return (
@@ -158,7 +167,7 @@ export default function Sacrificios() {
               <table className="w-full text-sm" style={{ minWidth: '480px' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(30,51,82,0.6)', background: 'rgba(0,0,0,0.1)' }}>
-                    {['Código', 'Sexo', 'Fecha sacrificio', 'Progenitores', 'Notas / Motivo', ''].map((h) => (
+                    {['Código', 'Sexo', 'Fecha sacrificio', 'Progenitores', 'Notas / Motivo', 'Acciones'].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest"
                         style={{ color: '#4a5f7a' }}>{h}</th>
                     ))}
@@ -190,9 +199,19 @@ export default function Sacrificios() {
                           {a.motivo_sacrificio ?? a.notas ?? '—'}
                         </td>
                         <td className="px-4 py-3">
-                          {!a.fecha_sacrificio && (
-                            <RegistrarFechaRepro animal={a} onGuardar={registrarFechaRepro} />
-                          )}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {!a.fecha_sacrificio && (
+                              <RegistrarFechaRepro animal={a} onGuardar={registrarFechaRepro} />
+                            )}
+                            <button
+                              onClick={() => setConfirmarEliminar(a)}
+                              title="Eliminar este sacrificio"
+                              className="flex items-center justify-center w-7 h-7 rounded-lg text-xs font-bold transition-all"
+                              style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)', color: '#ff6b80' }}
+                            >
+                              ✕
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     )
@@ -288,6 +307,68 @@ export default function Sacrificios() {
           </div>
         )}
       </div>
+
+      {/* ── MODAL: Confirmar eliminación de sacrificio de reproductor ─────────── */}
+      {confirmarEliminar && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.75)' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setConfirmarEliminar(null) }}
+        >
+          <div
+            className="rounded-2xl p-6 space-y-5 w-full max-w-sm"
+            style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(255,61,87,0.35)', boxShadow: '0 0 40px rgba(255,61,87,0.15)' }}
+          >
+            <div className="text-center space-y-2">
+              <div className="text-3xl">⚠️</div>
+              <div className="font-bold text-white">
+                Eliminar sacrificio de{' '}
+                <span className="font-mono" style={{ color: confirmarEliminar.sexo === 'hembra' ? '#ce93d8' : '#40c4ff' }}>
+                  {confirmarEliminar.codigo}
+                </span>
+              </div>
+              <p className="text-xs leading-relaxed" style={{ color: '#8a9bb0' }}>
+                Esto borrará el registro de sacrificio.{' '}
+                ¿Querés devolver al animal como vivo también?
+              </p>
+            </div>
+
+            <div className="space-y-2.5">
+              <button
+                onClick={async () => {
+                  await eliminarSacrificioReproductor(confirmarEliminar, true)
+                  setConfirmarEliminar(null)
+                }}
+                className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all"
+                style={{ background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.35)', color: '#00e676' }}
+              >
+                ✓ Sí, devolver como activo
+                <span className="text-xs font-normal opacity-70">(restaurar animal)</span>
+              </button>
+
+              <button
+                onClick={async () => {
+                  await eliminarSacrificioReproductor(confirmarEliminar, false)
+                  setConfirmarEliminar(null)
+                }}
+                className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all"
+                style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.3)', color: '#ff6b80' }}
+              >
+                ✕ No, mantener fallecido
+                <span className="text-xs font-normal opacity-70">(solo borrar registro)</span>
+              </button>
+
+              <button
+                onClick={() => setConfirmarEliminar(null)}
+                className="w-full py-2 rounded-xl text-sm"
+                style={{ color: '#4a5f7a' }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
