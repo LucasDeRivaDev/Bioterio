@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { calcularRangoParto, calcularDestete, formatFecha, hoy, difDias, parseDate } from '../utils/calculos'
+import { MAX_APAREAMIENTOS } from '../utils/constants'
 
 const vacioCamada = {
   id_madre: '', id_padre: '', fecha_copula: '', fecha_nacimiento: '',
@@ -85,6 +86,12 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
     if (modoHistorico) return { ok: true }
     if (!ESTADOS_ACTIVOS.includes(a.estado))
       return { ok: false, motivo: etiquetaEstado[a.estado] ?? a.estado }
+
+    // Límite de apareamientos
+    const totalApareaminetos = camadas.filter((c) => c.id_madre === a.id).length
+    if (totalApareaminetos >= MAX_APAREAMIENTOS)
+      return { ok: false, motivo: `Máximo de apareamientos alcanzado (${MAX_APAREAMIENTOS})` }
+
     if (a.estado === 'en_apareamiento')
       return { ok: false, motivo: 'En pareja activa' }
     if (a.estado === 'en_cria') {

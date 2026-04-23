@@ -9,6 +9,9 @@ export const BIO = {
   DURACION_APAREAMIENTO_DIAS: 15,   // días de convivencia antes de separar la pareja
 }
 
+// Máximo de apareamientos permitidos por hembra antes del descarte
+export const MAX_APAREAMIENTOS = 3
+
 export const ESTADO_ANIMAL = {
   ACTIVO: 'activo',
   EN_APAREAMIENTO: 'en_apareamiento', // conviviendo con el macho, aún no confirmada preñez
@@ -23,7 +26,8 @@ export const TIPO_TAREA = {
   DESTETE: 'destete',
   MADUREZ: 'madurez',
   REVISION: 'revision',
-  EVALUAR_HEMBRA: 'evaluar_hembra', // camada < 8 crías → score CRÍTICO
+  EVALUAR_HEMBRA: 'evaluar_hembra', // camada < 8 crías o supervivencia crítica
+  FIN_CICLO: 'fin_ciclo',           // 3er apareamiento completado → recomendar descarte
 }
 
 export const PRIORIDAD = {

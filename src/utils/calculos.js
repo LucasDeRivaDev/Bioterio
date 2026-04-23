@@ -1,4 +1,4 @@
-import { BIO } from './constants'
+import { BIO, MAX_APAREAMIENTOS } from './constants'
 
 // Sumar días a una fecha (retorna Date)
 export function sumarDias(fecha, dias) {
@@ -346,6 +346,34 @@ export function generarTareas(camadas, animales) {
         })
       }
     }
+  })
+
+  // 6. Fin de ciclo reproductivo: hembra con MAX_APAREAMIENTOS apareamientos y último ya destetado
+  const hembraIds = [...new Set(camadas.filter((c) => c.id_madre).map((c) => c.id_madre))]
+  hembraIds.forEach((hembraId) => {
+    const madre = animales.find((a) => a.id === hembraId)
+    // Solo hembras todavía activas (no sacrificadas/retiradas)
+    if (!madre || madre.estado === 'fallecido' || madre.estado === 'retirado') return
+
+    const camadasMadre = camadas.filter((c) => c.id_madre === hembraId)
+    if (camadasMadre.length < MAX_APAREAMIENTOS) return
+
+    // La última camada debe estar destetada para que el ciclo esté "completo"
+    const ultimaDestetada = camadasMadre
+      .filter((c) => c.fecha_destete)
+      .sort((a, b) => b.fecha_destete.localeCompare(a.fecha_destete))[0]
+    if (!ultimaDestetada) return
+
+    const nombreMadre = madre.codigo
+    tareas.push({
+      id: `fin-ciclo-${hembraId}`,
+      tipo: 'fin_ciclo',
+      prioridad: 'vencida',
+      fecha: ultimaDestetada.fecha_destete,
+      descripcion: `Fin de ciclo reproductivo — ${nombreMadre}`,
+      detalle: `${camadasMadre.length} apareamientos completados (máx. ${MAX_APAREAMIENTOS}). Recomendada para sacrificio.`,
+      madreId: hembraId,
+    })
   })
 
   // Ordenar: vencidas primero, luego hoy, luego próximas; dentro de cada grupo por fecha

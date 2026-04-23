@@ -47,6 +47,7 @@ const ICONO_TIPO = {
   madurez:        '🐀',
   revision:       '🔬',
   evaluar_hembra: '🔴',
+  fin_ciclo:      '🔚',
 }
 
 // ── Tarjeta de tarea con acción inline para separaciones ─────────────────────

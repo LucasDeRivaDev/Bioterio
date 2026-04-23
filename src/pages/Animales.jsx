@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { formatFecha, difDias, parseDate, hoy, calcularPerfilHembra, calcularConfiabilidadHembra, calcularRendimientoMacho } from '../utils/calculos'
+import { MAX_APAREAMIENTOS } from '../utils/constants'
 import Modal from '../components/Modal'
 import AnimalForm from '../components/AnimalForm'
 import Badge from '../components/Badge'
@@ -78,13 +79,30 @@ export default function Animales() {
 
   function PerfilAnimal({ animal }) {
     if (animal.sexo === 'hembra') {
+      const totalApareaminetos = camadas.filter((c) => c.id_madre === animal.id).length
+      const finCiclo = totalApareaminetos >= MAX_APAREAMIENTOS
       const perfil = calcularPerfilHembra(animal.id, camadas)
       const conf   = calcularConfiabilidadHembra(animal.id, camadas)
       if (!perfil) return (
-        <div className="text-xs py-2" style={{ color: '#4a5f7a' }}>Sin camadas con parto registrado</div>
+        <div className="space-y-2">
+          {finCiclo && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold"
+              style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.3)', color: '#ff6b80' }}>
+              🔚 Fin de ciclo reproductivo — {totalApareaminetos} apareamientos completados. Recomendada para sacrificio.
+            </div>
+          )}
+          <div className="text-xs py-2" style={{ color: '#4a5f7a' }}>Sin camadas con parto registrado</div>
+        </div>
       )
       return (
         <div className="space-y-2">
+          {/* Badge fin de ciclo */}
+          {finCiclo && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold"
+              style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.3)', color: '#ff6b80' }}>
+              🔚 Fin de ciclo reproductivo — {totalApareaminetos} apareamientos completados. Recomendada para sacrificio.
+            </div>
+          )}
           <div className="flex items-center gap-3 mb-3">
             <span className="text-xs font-semibold" style={{ color: '#8a9bb0' }}>{perfil.total_camadas} camada{perfil.total_camadas !== 1 ? 's' : ''} analizadas</span>
             {conf && conf.nivel !== 'ok' && (
