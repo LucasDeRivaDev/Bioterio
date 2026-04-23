@@ -200,7 +200,10 @@ export default function AnimalForm({ animal, onGuardar, onCancelar }) {
         </label>
         <textarea
           value={form.notas}
-          onChange={(e) => cambiar('notas', e.target.value)}
+          onChange={(e) => {
+            cambiar('notas', e.target.value)
+            if (!e.target.value.trim()) cambiar('nota_tipo', 'normal')
+          }}
           rows={2}
           placeholder="Observaciones opcionales..."
           className={`w-full px-3 py-2.5 text-sm resize-none ${inputFocusClass}`}
@@ -209,30 +212,32 @@ export default function AnimalForm({ animal, onGuardar, onCancelar }) {
             borderColor: form.nota_tipo === 'critica' && form.notas.trim() ? 'rgba(255,23,68,0.5)' : undefined,
           }}
         />
-        {/* Tipo de nota */}
-        <div className="flex items-center gap-2 mt-2">
-          <span className="text-xs" style={{ color: '#4a5f7a' }}>Tipo:</span>
-          {[
-            { value: 'normal',  label: '⚠ Normal',  color: '#ffb300' },
-            { value: 'critica', label: '🔴 Crítica', color: '#ff1744' },
-          ].map(({ value, label, color }) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => cambiar('nota_tipo', value)}
-              className="px-3 py-1 rounded-lg text-xs font-semibold transition-all"
-              style={form.nota_tipo === value
-                ? { background: `${color}18`, border: `1px solid ${color}55`, color }
-                : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }
-              }
-            >
-              {label}
-            </button>
-          ))}
-          {form.nota_tipo === 'critica' && (
-            <span className="text-xs" style={{ color: '#ff1744' }}>Prioridad máxima — resaltado en rojo</span>
-          )}
-        </div>
+        {/* Tipo de nota — solo visible si hay texto */}
+        {form.notas.trim() && (
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-xs" style={{ color: '#4a5f7a' }}>Tipo:</span>
+            {[
+              { value: 'normal',  label: '⚠ Normal',  color: '#ffb300' },
+              { value: 'critica', label: '🔴 Crítica', color: '#ff1744' },
+            ].map(({ value, label, color }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => cambiar('nota_tipo', value)}
+                className="px-3 py-1 rounded-lg text-xs font-semibold transition-all"
+                style={form.nota_tipo === value
+                  ? { background: `${color}18`, border: `1px solid ${color}55`, color }
+                  : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }
+                }
+              >
+                {label}
+              </button>
+            ))}
+            {form.nota_tipo === 'critica' && (
+              <span className="text-xs" style={{ color: '#ff1744' }}>Prioridad máxima</span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Botones */}

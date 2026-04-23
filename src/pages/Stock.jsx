@@ -232,6 +232,21 @@ function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccio
             </span>
           )}
         </div>
+
+        {/* Nota visible en la tarjeta (solo reproductores) */}
+        {bloque.tipo === 'reproductor' && bloque.animal.notas && (
+          <div
+            className="text-xs leading-snug px-2 py-1 rounded-lg"
+            style={{
+              background: bloque.animal.nota_tipo === 'critica' ? 'rgba(255,23,68,0.08)' : 'rgba(255,179,0,0.07)',
+              border: bloque.animal.nota_tipo === 'critica' ? '1px solid rgba(255,23,68,0.3)' : '1px solid rgba(255,179,0,0.2)',
+              color: bloque.animal.nota_tipo === 'critica' ? '#ff6b80' : '#ffb300',
+            }}
+          >
+            {bloque.animal.notas.length > 60 ? bloque.animal.notas.slice(0, 60) + '…' : bloque.animal.notas}
+          </div>
+        )}
+
         <SexoDisplay bloque={bloque} cfg={cfg} />
         <div className="text-xs" style={{ color: '#4a5f7a' }}>
           {bloque.edad != null ? `${formatEdad(bloque.edad)} · ${bloque.edad}d` : '—'}
@@ -254,13 +269,25 @@ function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccio
 
 const labelEstadoRepro = { activo: 'Activo', en_apareamiento: 'En apareamiento', en_cria: 'En cría', retirado: 'Retirado', fallecido: 'Fallecido' }
 
-function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, agregarJaula }) {
+function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, agregarJaula, editarAnimal }) {
   const cfg       = CAT[bloque.categoria]
   const esRepro   = bloque.tipo === 'reproductor'
   const esVirtual = Boolean(bloque.virtual)
   const esReal    = bloque.tipo === 'stock' && !esVirtual
 
   const [modo, setModo] = useState('ver')
+
+  // ── Nota de reproductor ───────────────────────────────────────────
+  const [editandoNota, setEditandoNota] = useState(false)
+  const [notaTexto,    setNotaTexto]    = useState(bloque.animal?.notas ?? '')
+  const [notaTipo,     setNotaTipo]     = useState(bloque.animal?.nota_tipo ?? 'normal')
+
+  async function guardarNotaRepro() {
+    const textoFinal = notaTexto.trim()
+    await editarAnimal({ ...bloque.animal, notas: textoFinal, nota_tipo: textoFinal ? notaTipo : 'normal' })
+    setEditandoNota(false)
+    onCerrar()
+  }
 
   // ── Editar ────────────────────────────────────────────────────────
   const [eTotal,   setETotal]   = useState(String(bloque.total))
@@ -387,7 +414,71 @@ function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, 
                     `${animales?.find(a => a.id === bloque.animal.id_madre)?.codigo ?? '?'} × ${animales?.find(a => a.id === bloque.animal.id_padre)?.codigo ?? '?'}`
                   } color="#8a9bb0" />
                 )}
-                {bloque.animal.notas && <Row label="Notas" valor={bloque.animal.notas} />}
+
+                {/* Editor de nota del reproductor */}
+                {editandoNota ? (
+                  <div className="space-y-2 pt-1">
+                    <textarea
+                      value={notaTexto}
+                      onChange={(e) => {
+                        setNotaTexto(e.target.value)
+                        if (!e.target.value.trim()) setNotaTipo('normal')
+                      }}
+                      rows={3}
+                      placeholder="Observación del animal..."
+                      className="w-full resize-none focus:outline-none text-sm"
+                      style={{ ...iStyle, padding: '0.5rem 0.75rem' }}
+                    />
+                    {notaTexto.trim() && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs" style={{ color: '#4a5f7a' }}>Tipo:</span>
+                        {[{ v: 'normal', l: '⚠ Normal', c: '#ffb300' }, { v: 'critica', l: '🔴 Crítica', c: '#ff1744' }].map(({ v, l, c }) => (
+                          <button key={v} type="button" onClick={() => setNotaTipo(v)}
+                            className="px-2 py-0.5 rounded text-xs font-semibold transition-all"
+                            style={notaTipo === v
+                              ? { background: `${c}18`, border: `1px solid ${c}55`, color: c }
+                              : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }}
+                          >{l}</button>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <button onClick={guardarNotaRepro}
+                        className="flex-1 py-1.5 rounded-lg text-xs font-bold"
+                        style={{ background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.3)', color: '#00e676' }}>
+                        ✓ Guardar nota
+                      </button>
+                      <button onClick={() => { setEditandoNota(false); setNotaTexto(bloque.animal?.notas ?? ''); setNotaTipo(bloque.animal?.nota_tipo ?? 'normal') }}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                        style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: '#4a5f7a' }}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {bloque.animal.notas ? (
+                      <div className="rounded-lg px-3 py-2 text-xs leading-relaxed"
+                        style={{
+                          background: bloque.animal.nota_tipo === 'critica' ? 'rgba(255,23,68,0.07)' : 'rgba(255,179,0,0.07)',
+                          border: bloque.animal.nota_tipo === 'critica' ? '1px solid rgba(255,23,68,0.3)' : '1px solid rgba(255,179,0,0.25)',
+                          color: bloque.animal.nota_tipo === 'critica' ? '#ff6b80' : '#ffb300',
+                        }}>
+                        <span className="font-bold">
+                          {bloque.animal.nota_tipo === 'critica' ? '🔴 Crítica' : '⚠ Observación'}:{' '}
+                        </span>
+                        {bloque.animal.notas}
+                      </div>
+                    ) : (
+                      <span className="text-xs" style={{ color: '#2a3a50' }}>Sin notas</span>
+                    )}
+                    <button onClick={() => setEditandoNota(true)}
+                      className="text-xs font-semibold transition-colors"
+                      style={{ color: '#40c4ff' }}>
+                      ✏ {bloque.animal.notas ? 'Editar nota' : 'Agregar nota'}
+                    </button>
+                  </div>
+                )}
               </>
             ) : (
               <>
@@ -1384,6 +1475,7 @@ export default function Stock() {
           onCerrar={() => setDetalle(null)}
           editarJaula={editarJaula}
           agregarJaula={agregarJaula}
+          editarAnimal={editarAnimal}
         />
       )}
 
