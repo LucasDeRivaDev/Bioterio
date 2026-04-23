@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
-import { calcularRangoParto, calcularDestete, formatFecha, hoy } from '../utils/calculos'
+import { calcularRangoParto, calcularDestete, formatFecha, hoy, difDias, parseDate } from '../utils/calculos'
 
 const vacioCamada = {
   id_madre: '', id_padre: '', fecha_copula: '', fecha_nacimiento: '',
@@ -65,7 +65,7 @@ function normalizarCamada(c) {
 }
 
 export default function CamadaForm({ camada, onGuardar, onCancelar }) {
-  const { animales } = useBioterio()
+  const { animales, camadas } = useBioterio()
   const [form, setForm] = useState(camada ? normalizarCamada(camada) : vacioCamada)
   const [errores, setErrores] = useState({})
   const [modoHistorico, setModoHistorico] = useState(false)
@@ -79,6 +79,43 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
   const madreSelec = animales.find((a) => a.id === form.id_madre)
   const padreSelec = animales.find((a) => a.id === form.id_padre)
   const fechaEsPasada = form.fecha_copula && form.fecha_copula < hoy()
+
+  // ── Disponibilidad reproductiva ───────────────────────────────────────────
+  function dispHembra(a) {
+    if (modoHistorico) return { ok: true }
+    if (!ESTADOS_ACTIVOS.includes(a.estado))
+      return { ok: false, motivo: etiquetaEstado[a.estado] ?? a.estado }
+    if (a.estado === 'en_apareamiento')
+      return { ok: false, motivo: 'En pareja activa' }
+    if (a.estado === 'en_cria') {
+      const act = camadas.find((c) => c.id_madre === a.id && !c.failure_flag && !c.fecha_destete)
+      return { ok: false, motivo: act?.fecha_nacimiento ? 'En lactancia' : 'Preñada' }
+    }
+    // Período de descanso post-destete (30 días)
+    const ultimoDestete = camadas
+      .filter((c) => c.id_madre === a.id && c.fecha_destete)
+      .map((c) => c.fecha_destete)
+      .sort()
+      .at(-1)
+    if (ultimoDestete) {
+      const dias = difDias(parseDate(ultimoDestete), parseDate(hoy()))
+      if (dias < 30) return { ok: false, motivo: `Descanso post-destete (${30 - dias}d restantes)` }
+    }
+    return { ok: true }
+  }
+
+  function dispMacho(a) {
+    if (modoHistorico) return { ok: true }
+    if (!ESTADOS_ACTIVOS.includes(a.estado))
+      return { ok: false, motivo: etiquetaEstado[a.estado] ?? a.estado }
+    if (a.estado === 'en_apareamiento')
+      return { ok: false, motivo: 'En apareamiento activo' }
+    return { ok: true }
+  }
+
+  // Al editar, la madre/padre originales nunca quedan bloqueados
+  const esOriginalMadre = (a) => camada && camada.id_madre === a.id
+  const esOriginalPadre = (a) => camada && camada.id_padre === a.id
 
   // Detección de consanguinidad directa
   const consanguinidad = (() => {
@@ -100,6 +137,18 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
     if (!form.id_madre) nuevos.id_madre = 'Seleccioná una hembra'
     if (!form.id_padre) nuevos.id_padre = 'Seleccioná un macho'
     if (!form.fecha_copula) nuevos.fecha_copula = 'La fecha de cópula es obligatoria'
+
+    // Disponibilidad biológica — solo para nuevos apareamientos (no ediciones)
+    if (!camada && !modoHistorico) {
+      if (madreSelec) {
+        const d = dispHembra(madreSelec)
+        if (!d.ok) nuevos.id_madre = `Hembra no disponible: ${d.motivo}.`
+      }
+      if (padreSelec) {
+        const d = dispMacho(padreSelec)
+        if (!d.ok) nuevos.id_padre = `Macho no disponible: ${d.motivo}.`
+      }
+    }
 
     // No permitir apareamiento futuro con animales inactivos
     if (form.fecha_copula && form.fecha_copula >= hoy()) {
@@ -181,12 +230,26 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
             style={{ ...selectStyle, borderColor: errores.id_madre ? 'rgba(255,61,87,0.5)' : undefined }}
           >
             <option value="">— Seleccioná —</option>
-            {hembras.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.codigo}{esInactivo(a) ? ` (${etiquetaEstado[a.estado] ?? a.estado})` : ''}
-              </option>
-            ))}
+            {hembras.map((a) => {
+              const d = dispHembra(a)
+              const bloqueada = !d.ok && !esOriginalMadre(a)
+              return (
+                <option key={a.id} value={a.id} disabled={bloqueada}>
+                  {a.codigo}
+                  {bloqueada ? ` — ${d.motivo}` : esInactivo(a) ? ` (${etiquetaEstado[a.estado] ?? a.estado})` : ''}
+                </option>
+              )
+            })}
           </select>
+          {/* Aviso si la hembra seleccionada no está disponible (edición) */}
+          {madreSelec && !esOriginalMadre(madreSelec) && (() => {
+            const d = dispHembra(madreSelec)
+            return !d.ok ? (
+              <p className="text-xs mt-1 px-2 py-1 rounded-lg" style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.2)', color: '#ff6b80' }}>
+                ⚠ Hembra no disponible: {d.motivo}
+              </p>
+            ) : null
+          })()}
           {esInactivo(madreSelec) && fechaEsPasada && (
             <p className="text-xs mt-1" style={{ color: '#ffb300' }}>
               Animal inactivo — permitido solo para carga histórica
@@ -201,12 +264,26 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
             style={{ ...selectStyle, borderColor: errores.id_padre ? 'rgba(255,61,87,0.5)' : undefined }}
           >
             <option value="">— Seleccioná —</option>
-            {machos.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.codigo}{esInactivo(a) ? ` (${etiquetaEstado[a.estado] ?? a.estado})` : ''}
-              </option>
-            ))}
+            {machos.map((a) => {
+              const d = dispMacho(a)
+              const bloqueado = !d.ok && !esOriginalPadre(a)
+              return (
+                <option key={a.id} value={a.id} disabled={bloqueado}>
+                  {a.codigo}
+                  {bloqueado ? ` — ${d.motivo}` : esInactivo(a) ? ` (${etiquetaEstado[a.estado] ?? a.estado})` : ''}
+                </option>
+              )
+            })}
           </select>
+          {/* Aviso si el macho seleccionado no está disponible (edición) */}
+          {padreSelec && !esOriginalPadre(padreSelec) && (() => {
+            const d = dispMacho(padreSelec)
+            return !d.ok ? (
+              <p className="text-xs mt-1 px-2 py-1 rounded-lg" style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.2)', color: '#ff6b80' }}>
+                ⚠ Macho no disponible: {d.motivo}
+              </p>
+            ) : null
+          })()}
           {esInactivo(padreSelec) && fechaEsPasada && (
             <p className="text-xs mt-1" style={{ color: '#ffb300' }}>
               Animal inactivo — permitido solo para carga histórica
