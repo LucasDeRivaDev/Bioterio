@@ -317,13 +317,13 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
         <div
           className="rounded-xl p-3 space-y-2"
           style={{
-            background: scores.loss_count > 0 ? 'rgba(255,61,87,0.05)' : 'rgba(0,230,118,0.05)',
-            border: scores.loss_count > 0 ? '1px solid rgba(255,61,87,0.2)' : '1px solid rgba(0,230,118,0.2)',
+            background: scores.survival_score === 0 ? 'rgba(255,23,68,0.07)' : scores.loss_count > 0 ? 'rgba(255,61,87,0.05)' : 'rgba(0,230,118,0.05)',
+            border: scores.survival_score === 0 ? '1px solid rgba(255,23,68,0.35)' : scores.loss_count > 0 ? '1px solid rgba(255,61,87,0.2)' : '1px solid rgba(0,230,118,0.2)',
           }}
         >
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-widest" style={{ color: scores.loss_count > 0 ? '#ff6b80' : '#00e676' }}>
-              {scores.loss_count > 0 ? '⚠ Pérdida parcial detectada' : '✓ Supervivencia completa'}
+            <span className="text-xs font-bold uppercase tracking-widest" style={{ color: scores.survival_score === 0 ? '#ff1744' : scores.loss_count > 0 ? '#ff6b80' : '#00e676' }}>
+              {scores.survival_score === 0 ? '🔴 CRÍTICO — Alta pérdida de crías. Evaluar hembra.' : scores.loss_count > 0 ? '⚠ Pérdida parcial detectada' : '✓ Supervivencia completa'}
             </span>
           </div>
           <div className="grid grid-cols-4 gap-3">

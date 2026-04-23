@@ -323,6 +323,29 @@ export function generarTareas(camadas, animales) {
         madreId: camada.id_madre,
       })
     }
+
+    // 5. Alerta crítica: supervivencia < 80% → alta pérdida de crías
+    if (
+      camada.total_destetados != null &&
+      camada.total_crias != null &&
+      camada.total_crias > 0 &&
+      !camada.failure_flag
+    ) {
+      const rate = camada.total_destetados / camada.total_crias
+      if (rate < 0.8) {
+        const perdidas = camada.total_crias - camada.total_destetados
+        tareas.push({
+          id: `supervivencia-critica-${camada.id}`,
+          tipo: 'evaluar_hembra',
+          prioridad: 'vencida',
+          fecha: camada.fecha_destete ?? camada.fecha_nacimiento,
+          descripcion: `Alta pérdida de crías — Evaluar hembra ${nombreMadre}`,
+          detalle: `Supervivencia ${Math.round(rate * 100)}% (${perdidas} pérdida${perdidas !== 1 ? 's' : ''} de ${camada.total_crias}) — Score CRÍTICO (0). Revisar / considerar descarte.`,
+          camadaId: camada.id,
+          madreId: camada.id_madre,
+        })
+      }
+    }
   })
 
   // Ordenar: vencidas primero, luego hoy, luego próximas; dentro de cada grupo por fecha
@@ -362,12 +385,14 @@ export function scoreProporcionSexual(machos, hembras) {
 
 /**
  * Score de supervivencia al destete.
- * survival_rate * 10 (con un decimal)
+ * 100% → 10 | 80–99% → 7 | <80% → 0 (CRÍTICO)
  */
 export function scoreSupervivencia(totalCrias, totalDestetados) {
   if (totalCrias == null || totalCrias === 0 || totalDestetados == null) return null
   const rate = totalDestetados / totalCrias
-  return Math.min(10, Math.round(rate * 100) / 10)
+  if (rate >= 1) return 10
+  if (rate >= 0.8) return 7
+  return 0
 }
 
 /**
