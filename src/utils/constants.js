@@ -18,11 +18,12 @@ export const ESTADO_ANIMAL = {
 }
 
 export const TIPO_TAREA = {
-  SEPARACION: 'separacion',      // separar pareja al fin del período de apareamiento
+  SEPARACION: 'separacion',        // separar pareja al fin del período de apareamiento
   CONTROL_PARTO: 'control_parto',
   DESTETE: 'destete',
   MADUREZ: 'madurez',
   REVISION: 'revision',
+  EVALUAR_HEMBRA: 'evaluar_hembra', // camada < 8 crías → score CRÍTICO
 }
 
 export const PRIORIDAD = {

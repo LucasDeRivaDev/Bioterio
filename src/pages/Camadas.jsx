@@ -232,6 +232,7 @@ function colorScore(v) {
 
 function ScoreVal({ label, value }) {
   const c = colorScore(value)
+  const esCritico = value === 0
   return (
     <div className="flex flex-col items-center gap-0.5">
       <span className="text-xs uppercase tracking-widest font-semibold text-center leading-tight" style={{ color: '#4a5f7a' }}>{label}</span>
@@ -241,6 +242,9 @@ function ScoreVal({ label, value }) {
       >
         {value != null ? value : '—'}
       </span>
+      {esCritico && (
+        <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#ff1744' }}>CRÍTICO</span>
+      )}
     </div>
   )
 }
@@ -415,17 +419,24 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
         </div>
       )}
 
-      {/* Alerta: camada con bajo litter score pero sin falla formal */}
+      {/* Alerta CRÍTICA: camada con < 8 crías → score 0 */}
       {camada.total_crias != null && camada.total_crias < 8 && !camada.failure_flag && (
         <div
-          className="flex items-start gap-2 rounded-xl px-3 py-2.5"
-          style={{ background: 'rgba(255,179,0,0.06)', border: '1px solid rgba(255,179,0,0.25)' }}
+          className="flex items-start gap-2 rounded-xl px-3 py-3"
+          style={{ background: 'rgba(255,23,68,0.08)', border: '1px solid rgba(255,23,68,0.4)' }}
         >
-          <span className="text-sm mt-0.5">⚠</span>
-          <p className="text-xs" style={{ color: '#ffb300' }}>
-            Esta camada produjo menos de 8 crías. Considerá registrar un fallo reproductivo o monitorear a{' '}
-            <span className="font-bold">{madre?.codigo ?? 'la hembra'}</span>.
-          </p>
+          <span className="text-base mt-0.5">🔴</span>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: '#ff1744' }}>
+              CRÍTICO — Hembra con camada menor a 8 crías. Recomendada para sacrificio.
+            </p>
+            <p className="text-xs mt-1" style={{ color: '#ff6b80' }}>
+              Score de tamaño: <span className="font-mono font-bold">0</span> — rendimiento mínimo.{' '}
+              Se generó una tarea de evaluación para{' '}
+              <span className="font-bold">{madre?.codigo ?? 'la hembra'}</span>.{' '}
+              Considerá registrar un fallo reproductivo o evaluar el descarte.
+            </p>
+          </div>
         </div>
       )}
 

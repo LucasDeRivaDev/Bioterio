@@ -41,11 +41,12 @@ const PRIORIDAD = {
 }
 
 const ICONO_TIPO = {
-  separacion:    '✂️',
-  control_parto: '🐣',
-  destete:       '📦',
-  madurez:       '🐀',
-  revision:      '🔬',
+  separacion:     '✂️',
+  control_parto:  '🐣',
+  destete:        '📦',
+  madurez:        '🐀',
+  revision:       '🔬',
+  evaluar_hembra: '🔴',
 }
 
 // ── Tarjeta de tarea con acción inline para separaciones ─────────────────────

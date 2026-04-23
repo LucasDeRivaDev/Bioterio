@@ -309,6 +309,20 @@ export function generarTareas(camadas, animales) {
         }
       }
     }
+
+    // 4. Alerta crítica: camada con menos de 8 crías → evaluar/sacrificar hembra
+    if (camada.fecha_nacimiento && camada.total_crias != null && camada.total_crias < 8 && !camada.failure_flag) {
+      tareas.push({
+        id: `evaluar-hembra-${camada.id}`,
+        tipo: 'evaluar_hembra',
+        prioridad: 'vencida',
+        fecha: camada.fecha_nacimiento,
+        descripcion: `Evaluar / Sacrificar hembra ${nombreMadre}`,
+        detalle: `Camada de ${camada.total_crias} crías (< 8) — Score CRÍTICO (0). Recomendada para sacrificio.`,
+        camadaId: camada.id,
+        madreId: camada.id_madre,
+      })
+    }
   })
 
   // Ordenar: vencidas primero, luego hoy, luego próximas; dentro de cada grupo por fecha
@@ -326,13 +340,13 @@ export function generarTareas(camadas, animales) {
 
 /**
  * Score por tamaño de camada.
- * 10+ crías → 10 | 8–9 → 7 | <8 → 5 (rendimiento bajo)
+ * 10–12 crías → 10 | 8–9 → 7 | <8 → 0 (CRÍTICO — penalización máxima)
  */
 export function scoreTamanoCamada(totalCrias) {
   if (totalCrias == null) return null
   if (totalCrias >= 10) return 10
   if (totalCrias >= 8)  return 7
-  return 5
+  return 0
 }
 
 /**

@@ -61,6 +61,7 @@ export default function Animales() {
     )
     const pct = Math.min((valor / max) * 100, 100)
     const color = valor >= 8 ? '#00e676' : valor >= 6 ? '#ffd740' : '#ff6b80'
+    const esCritico = valor === 0
     return (
       <div className="flex items-center gap-2">
         <span className="text-xs w-32" style={{ color: '#8a9bb0' }}>{label}</span>
@@ -68,6 +69,9 @@ export default function Animales() {
           <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
         </div>
         <span className="text-xs font-mono font-bold w-8 text-right" style={{ color }}>{valor}</span>
+        {esCritico && (
+          <span className="text-xs font-bold uppercase tracking-wide" style={{ color: '#ff1744' }}>CRÍTICO</span>
+        )}
       </div>
     )
   }
