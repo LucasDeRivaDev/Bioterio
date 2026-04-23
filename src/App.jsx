@@ -16,6 +16,7 @@ import Temperatura from './pages/Temperatura'
 import Estadisticas from './pages/Estadisticas'
 import Incidentes from './pages/Incidentes'
 import Login from './pages/Login'
+import Landing from './pages/Landing'
 
 // ── Pantalla de carga mientras verifica la sesión ────────────────────────────
 function PantallaCarga() {
@@ -213,13 +214,22 @@ function RutaRaiz() {
   if (cargando) return <PantallaCarga />
   // Si viene de invitación y ya tiene sesión → mostrar pantalla de crear contraseña
   if (necesitaPassword && sesion) return <PantallaCrearPassword />
+  // Sin sesión → mostrar Landing en "/" y Login en "/login"
+  if (!sesion) {
+    return (
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    )
+  }
+  // Con sesión → app normal
   return (
     <Routes>
-      <Route
-        path="/login"
-        element={sesion ? <Navigate to="/" replace /> : <Login />}
-      />
-      <Route path="/*" element={<AppLayout />} />
+      <Route path="/login"  element={<Navigate to="/" replace />} />
+      <Route path="/inicio" element={<Landing />} />
+      <Route path="/*"      element={<AppLayout />} />
     </Routes>
   )
 }

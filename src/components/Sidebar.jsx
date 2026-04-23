@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { BIO } from '../utils/constants'
 
 const links = [
+  { to: '/inicio', label: 'Inicio', icon: '🏠' },
   { to: '/', label: 'Panel de hoy', icon: '📋' },
   { to: '/animales', label: 'Reproductores', icon: '🐀' },
   { to: '/camadas', label: 'Emparejamientos', icon: '🪺' },
