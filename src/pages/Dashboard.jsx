@@ -308,6 +308,48 @@ export default function Dashboard() {
             >
               🌡️ Temperatura
             </Link>
+            <Link to="/animales"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+              style={{ background: 'rgba(206,147,216,0.08)', border: '1px solid rgba(206,147,216,0.25)', color: '#ce93d8', textDecoration: 'none' }}
+            >
+              🐀 Reproductores
+            </Link>
+            <Link to="/camadas"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+              style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676', textDecoration: 'none' }}
+            >
+              🪺 Emparejamientos
+            </Link>
+            <Link to="/stock"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+              style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.25)', color: '#40c4ff', textDecoration: 'none' }}
+            >
+              📦 Stock
+            </Link>
+            <Link to="/entregas"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+              style={{ background: 'rgba(255,210,0,0.08)', border: '1px solid rgba(255,210,0,0.25)', color: '#ffd600', textDecoration: 'none' }}
+            >
+              📦 Entregas
+            </Link>
+            <Link to="/sacrificios"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+              style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)', color: '#ff6b80', textDecoration: 'none' }}
+            >
+              🗡️ Sacrificios
+            </Link>
+            <Link to="/rendimiento"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+              style={{ background: 'rgba(255,152,0,0.08)', border: '1px solid rgba(255,152,0,0.25)', color: '#ff9800', textDecoration: 'none' }}
+            >
+              📊 Rendimiento
+            </Link>
+            <Link to="/estadisticas"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+              style={{ background: 'rgba(0,229,255,0.08)', border: '1px solid rgba(0,229,255,0.25)', color: '#00e5ff', textDecoration: 'none' }}
+            >
+              📈 Estadísticas
+            </Link>
           </div>
           <p className="text-sm ml-5 capitalize" style={{ color: '#4a5f7a' }}>{fechaHoy}</p>
         </div>
