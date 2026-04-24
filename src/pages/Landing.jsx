@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import logoGenERats from '../assets/generats-logo.jpeg'
+import GenERatsIcon from '../components/GenERatsIcon'
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
@@ -82,28 +83,7 @@ export default function Landing() {
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           {/* Logo */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <svg width="44" height="44" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="navRatGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#40c4ff"/><stop offset="100%" stopColor="#00e676"/>
-                </linearGradient>
-                <linearGradient id="navDnaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#00e676"/><stop offset="100%" stopColor="#a8e063"/>
-                </linearGradient>
-              </defs>
-              <path d="M50 10 C20 10, 5 30, 5 55 C5 75, 18 90, 40 93 C55 96, 75 90, 85 75 C95 60, 92 38, 80 25" fill="none" stroke="url(#navRatGrad)" strokeWidth="4" strokeLinecap="round"/>
-              <ellipse cx="80" cy="20" rx="13" ry="10" fill="none" stroke="url(#navRatGrad)" strokeWidth="3.5"/>
-              <ellipse cx="73" cy="11" rx="5" ry="6" fill="none" stroke="url(#navRatGrad)" strokeWidth="3"/>
-              <circle cx="85" cy="17" r="2" fill="#40c4ff"/>
-              <circle cx="92" cy="22" r="1.5" fill="#00e676"/>
-              <path d="M40 93 C30 98, 15 95, 8 88" fill="none" stroke="url(#navRatGrad)" strokeWidth="3" strokeLinecap="round"/>
-              <path d="M35 30 Q42 40, 35 50 Q28 60, 35 70" fill="none" stroke="url(#navDnaGrad)" strokeWidth="2.5" strokeLinecap="round"/>
-              <path d="M55 30 Q48 40, 55 50 Q62 60, 55 70" fill="none" stroke="url(#navDnaGrad)" strokeWidth="2.5" strokeLinecap="round"/>
-              <line x1="36" y1="35" x2="54" y2="35" stroke="url(#navDnaGrad)" strokeWidth="1.8" opacity="0.7"/>
-              <line x1="31" y1="45" x2="59" y2="45" stroke="url(#navDnaGrad)" strokeWidth="1.8" opacity="0.7"/>
-              <line x1="36" y1="55" x2="54" y2="55" stroke="url(#navDnaGrad)" strokeWidth="1.8" opacity="0.7"/>
-              <line x1="31" y1="65" x2="59" y2="65" stroke="url(#navDnaGrad)" strokeWidth="1.8" opacity="0.7"/>
-            </svg>
+            <GenERatsIcon size={44} prefix="nav" />
             <div>
               <span style={{ fontSize: '20px', fontWeight: 800, color: 'white', letterSpacing: '-0.5px' }}>Gen</span>
               <span style={{ fontSize: '20px', fontWeight: 800, color: '#00e676', letterSpacing: '-0.5px' }}>E</span>
@@ -193,20 +173,8 @@ export default function Landing() {
             <div style={{ position: 'relative' }}>
               <div style={{ position: 'absolute', inset: '-30px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,230,118,0.08) 0%, transparent 70%)' }} />
               <div className="card" style={{ borderRadius: '32px', padding: '48px', borderColor: 'rgba(0,230,118,0.2)', boxShadow: '0 0 60px rgba(0,230,118,0.1)' }}>
-                <svg width="280" height="280" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <linearGradient id="heroRatGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#40c4ff"/><stop offset="100%" stopColor="#00e676"/>
-                    </linearGradient>
-                    <linearGradient id="heroDnaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="#00e676"/><stop offset="100%" stopColor="#a8e063"/>
-                    </linearGradient>
-                    <filter id="glow">
-                      <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
-                      <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                    </filter>
-                  </defs>
-                  <path d="M50 8 C18 8, 4 28, 4 55 C4 76, 18 92, 42 95 C57 98, 78 91, 88 76 C98 61, 95 36, 82 22" fill="none" stroke="url(#heroRatGrad)" strokeWidth="3.5" strokeLinecap="round" filter="url(#glow)"/>
+                <GenERatsIcon size={280} prefix="hero" />
+                {/* PLACEHOLDER — reemplazado el bloque SVG grande que tenía aquí */}
                   <ellipse cx="82" cy="18" rx="14" ry="11" fill="rgba(13,21,40,0.9)" stroke="url(#heroRatGrad)" strokeWidth="3.2"/>
                   <ellipse cx="74" cy="9" rx="6" ry="7" fill="rgba(13,21,40,0.9)" stroke="url(#heroRatGrad)" strokeWidth="2.8"/>
                   <ellipse cx="74" cy="9" rx="3" ry="4" fill="rgba(0,230,118,0.15)"/>
@@ -221,19 +189,6 @@ export default function Landing() {
                   <path d="M56 28 Q47 38, 56 50 Q65 62, 56 72" fill="none" stroke="url(#heroDnaGrad)" strokeWidth="2.2" strokeLinecap="round" filter="url(#glow)"/>
                   <line x1="34.5" y1="33" x2="55.5" y2="33" stroke="#00e676" strokeWidth="1.6" opacity="0.8"/>
                   <line x1="28" y1="43" x2="62" y2="43" stroke="#00e676" strokeWidth="1.6" opacity="0.8"/>
-                  <line x1="28" y1="57" x2="62" y2="57" stroke="#a8e063" strokeWidth="1.6" opacity="0.8"/>
-                  <line x1="34.5" y1="67" x2="55.5" y2="67" stroke="#a8e063" strokeWidth="1.6" opacity="0.8"/>
-                  {[[34.5,33,'#00e676'],[55.5,33,'#00e676'],[28,43,'#40c4ff'],[62,43,'#40c4ff'],[28,57,'#40c4ff'],[62,57,'#40c4ff'],[34.5,67,'#a8e063'],[55.5,67,'#a8e063']].map(([cx,cy,fill]) => (
-                    <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="1.5" fill={fill}/>
-                  ))}
-                </svg>
-                <div style={{ textAlign: 'center', marginTop: '16px' }}>
-                  <span style={{ fontSize: '32px', fontWeight: 900, letterSpacing: '-0.5px', color: 'white' }}>Gen</span>
-                  <span style={{ fontSize: '32px', fontWeight: 900, color: '#00e676' }}>E</span>
-                  <span style={{ fontSize: '32px', fontWeight: 900, color: 'white' }}>R</span>
-                  <span style={{ fontSize: '32px', fontWeight: 900, color: '#40c4ff' }}>ats</span>
-                  <div className="mono" style={{ fontSize: '11px', color: '#4a5f7a', marginTop: '4px', letterSpacing: '2px' }}>BIOTERIO MANAGEMENT</div>
-                </div>
               </div>
             </div>
           </div>
@@ -432,7 +387,7 @@ export default function Landing() {
               height: '90px',
               width: 'auto',
               display: 'block',
-              imageRendering: 'auto',
+              mixBlendMode: 'screen',
             }}
           />
           <div className="mono" style={{ fontSize: '12px', color: '#4a5f7a' }}>Mus musculus · Orden Rodentia · Fam. Muridae</div>

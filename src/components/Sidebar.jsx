@@ -296,7 +296,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
             width: '100%',
             height: 'auto',
             display: 'block',
-            imageRendering: 'auto',
+            mixBlendMode: 'screen',
           }}
         />
       </div>
