@@ -6,14 +6,6 @@ import { BIO } from '../utils/constants'
 const links = [
   { to: '/inicio', label: 'Inicio', icon: '🏠' },
   { to: '/', label: 'Panel de hoy', icon: '📋' },
-  { to: '/animales', label: 'Reproductores', icon: '🐀' },
-  { to: '/camadas', label: 'Emparejamientos', icon: '🪺' },
-  { to: '/rendimiento',   label: 'Rendimiento',   icon: '📊' },
-  { to: '/estadisticas',  label: 'Estadísticas',  icon: '📈' },
-  { to: '/stock', label: 'Stock', icon: '📦' },
-  { to: '/sacrificios', label: 'Sacrificios', icon: '🗡️' },
-  { to: '/entregas',   label: 'Entregas',    icon: '📦' },
-  { to: '/temperatura', label: 'Temperatura', icon: '🌡️' },
   { to: '/reportes', label: 'Reportes e impresión', icon: '🖨️' },
 ]
 
