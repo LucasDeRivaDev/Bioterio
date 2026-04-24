@@ -302,6 +302,12 @@ export default function Dashboard() {
             >
               📝 Incidentes
             </Link>
+            <Link to="/temperatura"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+              style={{ background: 'rgba(255,87,51,0.08)', border: '1px solid rgba(255,87,51,0.25)', color: '#ff7043', textDecoration: 'none' }}
+            >
+              🌡️ Temperatura
+            </Link>
           </div>
           <p className="text-sm ml-5 capitalize" style={{ color: '#4a5f7a' }}>{fechaHoy}</p>
         </div>
