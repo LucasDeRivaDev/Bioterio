@@ -368,8 +368,7 @@ export default function Landing() {
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '18px' }}>
           <GenERatsBrand iconSize={132} nameSize={72} sloganSize={28} sublineSize={15} gap={20} align="left" iconPrefix="landingFooterBrand" />
           <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
-            <div className="mono" style={{ fontSize: '12px', color: '#4a5f7a' }}>Mus musculus · Orden Rodentia · Fam. Muridae</div>
-            <div className="mono" style={{ fontSize: '12px', color: '#4a5f7a' }}>© 2025 GenERats</div>
+            <div className="mono" style={{ fontSize: '12px', color: '#4a5f7a', marginLeft: 'auto' }}>© 2026 GenERats</div>
           </div>
         </div>
       </footer>
