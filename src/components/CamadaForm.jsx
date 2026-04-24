@@ -66,7 +66,7 @@ function normalizarCamada(c) {
 }
 
 export default function CamadaForm({ camada, onGuardar, onCancelar }) {
-  const { animales, camadas } = useBioterio()
+  const { animales, camadas, bio } = useBioterio()
   const [form, setForm] = useState(camada ? normalizarCamada(camada) : vacioCamada)
   const [errores, setErrores] = useState({})
   const [modoHistorico, setModoHistorico] = useState(false)
@@ -187,8 +187,8 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
     })
   }
 
-  const rango = form.fecha_copula ? calcularRangoParto(form.fecha_copula) : null
-  const fechaDestetePred = form.fecha_nacimiento ? calcularDestete(form.fecha_nacimiento) : null
+  const rango = form.fecha_copula ? calcularRangoParto(form.fecha_copula, bio) : null
+  const fechaDestetePred = form.fecha_nacimiento ? calcularDestete(form.fecha_nacimiento, bio) : null
 
   const selectStyle = { ...inputStyle, width: '100%' }
 

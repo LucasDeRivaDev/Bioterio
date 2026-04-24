@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { BiotheriumProvider } from './context/BiotheriumContext'
+import { BioterioActivoProvider, useBioterioActivo } from './context/BioterioActivoContext'
 import Sidebar from './components/Sidebar'
+import SelectorBioterio from './pages/SelectorBioterio'
 import Dashboard from './pages/Dashboard'
 import Animales from './pages/Animales'
 import Camadas from './pages/Camadas'
@@ -65,9 +67,13 @@ function PantallaCargaDatos() {
 // ── Layout principal (solo si hay sesión) ────────────────────────────────────
 function AppLayout() {
   const { sesion, cerrarSesion } = useAuth()
+  const { bioterioActivo } = useBioterioActivo()
   const [sidebarAbierto, setSidebarAbierto] = useState(false)
 
   if (!sesion) return <Navigate to="/login" replace />
+
+  // Sin bioterio activo → mostrar selector
+  if (!bioterioActivo) return <SelectorBioterio />
 
   function cerrarSidebar() { setSidebarAbierto(false) }
 
@@ -238,9 +244,11 @@ function RutaRaiz() {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <RutaRaiz />
-      </BrowserRouter>
+      <BioterioActivoProvider>
+        <BrowserRouter>
+          <RutaRaiz />
+        </BrowserRouter>
+      </BioterioActivoProvider>
     </AuthProvider>
   )
 }

@@ -1,24 +1,15 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useBioterio } from '../context/BiotheriumContext'
+import { useBioterioActivo } from '../context/BioterioActivoContext'
 import { useAuth } from '../context/AuthContext'
-import { BIO } from '../utils/constants'
-import { Home, LayoutDashboard, Printer, Bug, Send, LogOut, ChevronUp, ChevronDown, Dna } from 'lucide-react'
+import { Home, LayoutDashboard, Printer, Bug, Send, LogOut, ChevronUp, ChevronDown, Dna, RefreshCw } from 'lucide-react'
 import GenERatsBrand from './GenERatsBrand'
 
 const links = [
   { to: '/inicio',   label: 'Inicio',              icon: <Home size={15} /> },
   { to: '/',         label: 'Panel de hoy',         icon: <LayoutDashboard size={15} /> },
   { to: '/reportes', label: 'Reportes e impresión', icon: <Printer size={15} /> },
-]
-
-const datosBio = [
-  { label: 'Gestación',           valor: `${BIO.GESTACION_DIAS} días` },
-  { label: 'Destete',             valor: `${BIO.DESTETE_DIAS} días post-nacimiento` },
-  { label: 'Madurez sexual',      valor: `${BIO.MADUREZ_DIAS / 7} semanas` },
-  { label: 'Ciclo estral',        valor: `~${BIO.CICLO_ESTRAL_DIAS} días` },
-  { label: 'Camada promedio',     valor: '8–12 crías' },
-  { label: 'Vida reproductiva',   valor: '~14 meses' },
 ]
 
 const SECCIONES = [
@@ -116,9 +107,19 @@ function ReportarError() {
 }
 
 export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
-  const { animales, camadas } = useBioterio()
+  const { animales, camadas, bio } = useBioterio()
+  const { config, limpiarBioterio } = useBioterioActivo()
   const { sesion } = useAuth()
   const emailUsuario = sesion?.user?.email ?? ''
+
+  const datosBio = bio ? [
+    { label: 'Gestación',         valor: `${bio.GESTACION_DIAS} días` },
+    { label: 'Destete',           valor: `${bio.DESTETE_DIAS} días post-nacimiento` },
+    { label: 'Madurez sexual',    valor: `${bio.MADUREZ_DIAS / 7} semanas` },
+    { label: 'Ciclo estral',      valor: `~${bio.CICLO_ESTRAL_DIAS} días` },
+    { label: 'Camada promedio',   valor: config?.camadaPromedio ?? '—' },
+    { label: 'Vida reproductiva', valor: config?.vidaReproductiva ?? '—' },
+  ] : []
 
   const hembrasActivas = animales.filter((a) => a.sexo === 'hembra' && (a.estado === 'activo' || a.estado === 'en_apareamiento' || a.estado === 'en_cria')).length
   const machosActivos  = animales.filter((a) => a.sexo === 'macho'  && (a.estado === 'activo' || a.estado === 'en_apareamiento' || a.estado === 'en_cria')).length
@@ -132,25 +133,48 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
         borderRight: '1px solid rgba(0,230,118,0.12)',
       }}
     >
-      {/* Logo */}
-      <div className="px-5 py-5" style={{ borderBottom: '1px solid rgba(0,230,118,0.1)' }}>
-        <div className="flex items-center gap-3">
+      {/* Logo + bioterio activo */}
+      <div className="px-4 py-4" style={{ borderBottom: '1px solid rgba(0,230,118,0.1)' }}>
+        <div className="flex items-center gap-3 mb-3">
           <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
             style={{
               background: 'rgba(0,230,118,0.1)',
               border: '1px solid rgba(0,230,118,0.3)',
               boxShadow: '0 0 12px rgba(0,230,118,0.15)',
             }}
           >
-            <Dna size={22} style={{ color: '#00e676' }} />
+            <Dna size={18} style={{ color: '#00e676' }} />
           </div>
           <div>
             <div className="font-bold text-white text-sm tracking-wide">BIOTERIO</div>
-            <div className="text-xs mt-0.5 font-mono" style={{ color: 'rgba(0,230,118,0.7)' }}>
-              v1.0 · ACTIVO
+            <div className="text-xs font-mono" style={{ color: 'rgba(0,230,118,0.6)' }}>v1.0 · ACTIVO</div>
+          </div>
+        </div>
+        {/* Bioterio activo + botón cambiar */}
+        <div
+          className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl"
+          style={{ background: `${config?.color ?? '#00e676'}10`, border: `1px solid ${config?.color ?? '#00e676'}30` }}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-base shrink-0">{config?.icon ?? '🐀'}</span>
+            <div className="min-w-0">
+              <div className="text-xs font-semibold truncate" style={{ color: config?.color ?? '#00e676' }}>
+                {config?.labelCorto ?? 'Ratas'}
+              </div>
+              <div className="text-xs font-mono italic truncate" style={{ color: 'rgba(138,155,176,0.5)', fontSize: '10px' }}>
+                {config?.nombreCientifico ?? '—'}
+              </div>
             </div>
           </div>
+          <button
+            onClick={limpiarBioterio}
+            title="Cambiar bioterio"
+            className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a', cursor: 'pointer' }}
+          >
+            <RefreshCw size={12} />
+          </button>
         </div>
       </div>
 
@@ -213,42 +237,41 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
       </nav>
 
       {/* ── FICHA BIOLÓGICA DE LA ESPECIE ── */}
-      <div className="mx-3 mb-3 rounded-xl overflow-hidden"
-        style={{ border: '1px solid rgba(161,120,80,0.3)', background: 'rgba(161,120,80,0.05)' }}
-      >
-        {/* Encabezado */}
-        <div
-          className="px-4 py-3 flex items-center gap-2"
-          style={{ background: 'rgba(161,120,80,0.1)', borderBottom: '1px solid rgba(161,120,80,0.2)' }}
+      {config && bio && (
+        <div className="mx-3 mb-3 rounded-xl overflow-hidden"
+          style={{ border: '1px solid rgba(161,120,80,0.3)', background: 'rgba(161,120,80,0.05)' }}
         >
-          <span className="text-xl">🐀</span>
-          <div>
-            <div className="font-bold text-sm" style={{ color: '#c9a87a' }}>Ratón doméstico</div>
-            <div className="text-xs font-mono italic opacity-60" style={{ color: '#a17850' }}>Mus musculus</div>
-          </div>
-        </div>
-
-        {/* Datos biológicos */}
-        <div className="px-4 py-3 space-y-2">
-          <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'rgba(161,120,80,0.5)' }}>
-            Referencias biológicas
-          </div>
-          {datosBio.map(({ label, valor }) => (
-            <div key={label} className="flex items-start justify-between gap-2">
-              <span className="text-xs leading-tight" style={{ color: '#6b7c94' }}>{label}</span>
-              <span className="text-xs font-mono font-semibold text-right" style={{ color: '#a17850' }}>{valor}</span>
+          <div
+            className="px-4 py-3 flex items-center gap-2"
+            style={{ background: 'rgba(161,120,80,0.1)', borderBottom: '1px solid rgba(161,120,80,0.2)' }}
+          >
+            <span className="text-xl">{config.icon}</span>
+            <div>
+              <div className="font-bold text-sm" style={{ color: '#c9a87a' }}>{config.label}</div>
+              <div className="text-xs font-mono italic opacity-60" style={{ color: '#a17850' }}>{config.nombreCientifico}</div>
             </div>
-          ))}
-        </div>
+          </div>
 
-        {/* Footer especie */}
-        <div
-          className="px-4 py-2 text-xs text-center font-mono"
-          style={{ borderTop: '1px solid rgba(161,120,80,0.15)', color: 'rgba(107,124,148,0.5)' }}
-        >
-          Orden Rodentia · Fam. Muridae
+          <div className="px-4 py-3 space-y-2">
+            <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'rgba(161,120,80,0.5)' }}>
+              Referencias biológicas
+            </div>
+            {datosBio.map(({ label, valor }) => (
+              <div key={label} className="flex items-start justify-between gap-2">
+                <span className="text-xs leading-tight" style={{ color: '#6b7c94' }}>{label}</span>
+                <span className="text-xs font-mono font-semibold text-right" style={{ color: '#a17850' }}>{valor}</span>
+              </div>
+            ))}
+          </div>
+
+          <div
+            className="px-4 py-2 text-xs text-center font-mono"
+            style={{ borderTop: '1px solid rgba(161,120,80,0.15)', color: 'rgba(107,124,148,0.5)' }}
+          >
+            {config.orden}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Reportar error */}
       <ReportarError />

@@ -146,7 +146,7 @@ function SinDatos() {
 
 // ── PÁGINA PRINCIPAL ──────────────────────────────────────────────────────────
 export default function Estadisticas() {
-  const { camadas, animales } = useBioterio()
+  const { camadas, animales, bio } = useBioterio()
 
   // ── Filtros ────────────────────────────────────────────────────────────────
   const [desde,         setDesde]         = useState('')
@@ -238,7 +238,7 @@ export default function Estadisticas() {
   const dataEficiencia = useMemo(() => {
     const grupos = { '0–5d': 0, '6–10d': 0, '>10d': 0, 'En proceso/Parto fallido': 0 }
     camadasFiltradas.forEach((c) => {
-      const lat = calcularLatencia(c)
+      const lat = calcularLatencia(c, bio)
       if (lat === null)       grupos['En proceso/Parto fallido']++
       else if (lat <= 5)      grupos['0–5d']++
       else if (lat <= 10)     grupos['6–10d']++

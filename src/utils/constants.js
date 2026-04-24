@@ -1,12 +1,32 @@
-// Constantes biológicas del sistema (ratones de laboratorio)
-export const BIO = {
-  GESTACION_DIAS: 23,               // días de gestación
-  DESTETE_DIAS: 21,                 // días después del nacimiento para destetar
-  MADUREZ_DIAS: 84,                 // 12 semanas = madurez reproductiva
-  CICLO_ESTRAL_DIAS: 5,             // duración del ciclo estral
-  VENTANA_CONCEPCION_MIN: 1,        // mínimo días post-cópula para concepción
-  VENTANA_CONCEPCION_MAX: 5,        // máximo días post-cópula (1 ciclo)
-  DURACION_APAREAMIENTO_DIAS: 15,   // días de convivencia antes de separar la pareja
+// Constantes biológicas — Ratas (Rattus norvegicus)
+export const BIO_RATAS = {
+  GESTACION_DIAS: 23,
+  DESTETE_DIAS: 21,
+  MADUREZ_DIAS: 84,                 // 12 semanas
+  CICLO_ESTRAL_DIAS: 5,
+  VENTANA_CONCEPCION_MIN: 1,
+  VENTANA_CONCEPCION_MAX: 5,
+  DURACION_APAREAMIENTO_DIAS: 15,
+}
+
+// Constantes biológicas — Ratones (Mus musculus)
+export const BIO_RATONES = {
+  GESTACION_DIAS: 21,
+  DESTETE_DIAS: 21,
+  MADUREZ_DIAS: 56,                 // 8 semanas
+  CICLO_ESTRAL_DIAS: 5,
+  VENTANA_CONCEPCION_MIN: 1,
+  VENTANA_CONCEPCION_MAX: 5,
+  DURACION_APAREAMIENTO_DIAS: 15,
+}
+
+// Alias para compatibilidad con código existente
+export const BIO = BIO_RATAS
+
+// Devuelve los parámetros biológicos según el bioterio activo
+export function getBio(bioterioId) {
+  if (!bioterioId || bioterioId === 'ratas') return BIO_RATAS
+  return BIO_RATONES  // todos los subgrupos de ratones comparten parámetros
 }
 
 // Máximo de apareamientos permitidos por hembra antes del descarte

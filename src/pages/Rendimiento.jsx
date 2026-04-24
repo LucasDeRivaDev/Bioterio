@@ -98,7 +98,7 @@ const CONF_CONFIG = {
 const ESTADOS_ACTIVOS = new Set(['activo', 'en_apareamiento', 'en_cria'])
 
 export default function Rendimiento() {
-  const { animales, camadas } = useBioterio()
+  const { animales, camadas, bio } = useBioterio()
   const [vista, setVista] = useState('activos')
 
   const esActivo = (a) => ESTADOS_ACTIVOS.has(a.estado)
@@ -136,7 +136,7 @@ export default function Rendimiento() {
   function historial(machoId) {
     return camadas
       .filter((c) => c.id_padre === machoId)
-      .map((c) => ({ ...c, madre: animales.find((a) => a.id === c.id_madre), lat: calcularLatencia(c) }))
+      .map((c) => ({ ...c, madre: animales.find((a) => a.id === c.id_madre), lat: calcularLatencia(c, bio) }))
       .sort((a, b) => (a.fecha_copula ?? '').localeCompare(b.fecha_copula ?? ''))
   }
 

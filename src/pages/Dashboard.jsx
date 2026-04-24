@@ -225,7 +225,7 @@ function cargarDescartadas() {
 }
 
 export default function Dashboard() {
-  const { animales, camadas, confirmarSeparacion } = useBioterio()
+  const { animales, camadas, confirmarSeparacion, bio } = useBioterio()
 
   // IDs de tareas descartadas por el usuario hoy (se resetean el día siguiente)
   const [descartadas, setDescartadas] = useState(() => cargarDescartadas())
@@ -239,7 +239,7 @@ export default function Dashboard() {
     })
   }
 
-  const todasTareas = useMemo(() => generarTareas(camadas, animales), [camadas, animales])
+  const todasTareas = useMemo(() => generarTareas(camadas, animales, bio), [camadas, animales, bio])
   const tareas   = todasTareas.filter((t) => !descartadas.has(t.id))
   const vencidas = tareas.filter((t) => t.prioridad === 'vencida')
   const deHoy    = tareas.filter((t) => t.prioridad === 'hoy')

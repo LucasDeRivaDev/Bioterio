@@ -520,7 +520,7 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
 }
 
 export default function Camadas() {
-  const { camadas, animales, jaulas, agregarCamada, editarCamada, eliminarCamada, confirmarSeparacion, agregarJaula, editarJaula, eliminarJaula } = useBioterio()
+  const { camadas, animales, jaulas, agregarCamada, editarCamada, eliminarCamada, confirmarSeparacion, agregarJaula, editarJaula, eliminarJaula, bio } = useBioterio()
   const [modal, setModal] = useState(null)
   const [confirmarEliminar, setConfirmarEliminar] = useState(null)
   const [filtro, setFiltro] = useState('todas')
@@ -554,11 +554,11 @@ export default function Camadas() {
 
   const camadasEnriquecidas = useMemo(() => {
     return camadas.map((c) => {
-      const rango = c.fecha_copula && !c.fecha_nacimiento ? calcularRangoParto(c.fecha_copula) : null
-      const fechaDestete = c.fecha_nacimiento ? calcularDestete(c.fecha_nacimiento) : null
-      const fechaMadurez = c.fecha_nacimiento ? calcularMadurez(c.fecha_nacimiento) : null
-      const fechaSepEsperada = c.fecha_copula && !c.fecha_nacimiento ? calcularFechaSeparacion(c.fecha_copula) : null
-      const latencia = calcularLatencia(c)
+      const rango = c.fecha_copula && !c.fecha_nacimiento ? calcularRangoParto(c.fecha_copula, bio) : null
+      const fechaDestete = c.fecha_nacimiento ? calcularDestete(c.fecha_nacimiento, bio) : null
+      const fechaMadurez = c.fecha_nacimiento ? calcularMadurez(c.fecha_nacimiento, bio) : null
+      const fechaSepEsperada = c.fecha_copula && !c.fecha_nacimiento ? calcularFechaSeparacion(c.fecha_copula, bio) : null
+      const latencia = calcularLatencia(c, bio)
 
       let estado
       if (c.failure_flag) {

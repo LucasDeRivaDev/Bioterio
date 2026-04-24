@@ -43,9 +43,9 @@ export function parseDate(str) {
 /**
  * Calcula la fecha esperada de separación de la pareja (fecha_copula + 15 días).
  */
-export function calcularFechaSeparacion(fechaCopula) {
+export function calcularFechaSeparacion(fechaCopula, bio = BIO) {
   if (!fechaCopula) return null
-  return sumarDias(parseDate(fechaCopula), BIO.DURACION_APAREAMIENTO_DIAS)
+  return sumarDias(parseDate(fechaCopula), bio.DURACION_APAREAMIENTO_DIAS)
 }
 
 // ─── MOTOR PREDICTIVO ────────────────────────────────────────────────────────
@@ -57,19 +57,15 @@ export function calcularFechaSeparacion(fechaCopula) {
  * Si falló ese ciclo: próximo ciclo en 5 días → concepción día 5.
  * Gestación: 23 días desde la concepción.
  */
-export function calcularRangoParto(fechaCopula) {
+export function calcularRangoParto(fechaCopula, bio = BIO) {
   if (!fechaCopula) return null
   const copula = parseDate(fechaCopula)
-  // Concepción mínima: 1 día después
-  const concepcionMin = sumarDias(copula, BIO.VENTANA_CONCEPCION_MIN)
-  // Concepción máxima: 5 días después (un ciclo completo)
-  const concepcionMax = sumarDias(copula, BIO.VENTANA_CONCEPCION_MAX)
-  // Parto esperado
-  const partoMin = sumarDias(concepcionMin, BIO.GESTACION_DIAS)
-  const partoMax = sumarDias(concepcionMax, BIO.GESTACION_DIAS)
-  // El más probable: concepción a los 2-3 días (promedio)
+  const concepcionMin = sumarDias(copula, bio.VENTANA_CONCEPCION_MIN)
+  const concepcionMax = sumarDias(copula, bio.VENTANA_CONCEPCION_MAX)
+  const partoMin = sumarDias(concepcionMin, bio.GESTACION_DIAS)
+  const partoMax = sumarDias(concepcionMax, bio.GESTACION_DIAS)
   const concepcionProbable = sumarDias(copula, 2)
-  const partoProbable = sumarDias(concepcionProbable, BIO.GESTACION_DIAS)
+  const partoProbable = sumarDias(concepcionProbable, bio.GESTACION_DIAS)
 
   return { partoMin, partoMax, partoProbable }
 }
@@ -77,17 +73,17 @@ export function calcularRangoParto(fechaCopula) {
 /**
  * Calcula la fecha de destete dado el nacimiento.
  */
-export function calcularDestete(fechaNacimiento) {
+export function calcularDestete(fechaNacimiento, bio = BIO) {
   if (!fechaNacimiento) return null
-  return sumarDias(parseDate(fechaNacimiento), BIO.DESTETE_DIAS)
+  return sumarDias(parseDate(fechaNacimiento), bio.DESTETE_DIAS)
 }
 
 /**
  * Calcula la fecha de madurez reproductiva dado el nacimiento.
  */
-export function calcularMadurez(fechaNacimiento) {
+export function calcularMadurez(fechaNacimiento, bio = BIO) {
   if (!fechaNacimiento) return null
-  return sumarDias(parseDate(fechaNacimiento), BIO.MADUREZ_DIAS)
+  return sumarDias(parseDate(fechaNacimiento), bio.MADUREZ_DIAS)
 }
 
 // ─── LATENCIA DE FERTILIZACIÓN ───────────────────────────────────────────────
@@ -99,11 +95,11 @@ export function calcularMadurez(fechaNacimiento) {
  *
  * Usa gestacion_real si está disponible; si no, usa el default 23.
  */
-export function calcularLatencia(camada) {
+export function calcularLatencia(camada, bio = BIO) {
   const { fecha_copula, fecha_nacimiento, gestacion_real } = camada
   if (!fecha_copula || !fecha_nacimiento) return null
 
-  const gestacion = gestacion_real ?? BIO.GESTACION_DIAS
+  const gestacion = gestacion_real ?? bio.GESTACION_DIAS
   const nacimiento = parseDate(fecha_nacimiento)
   const concepcion = new Date(nacimiento)
   concepcion.setDate(concepcion.getDate() - gestacion)
@@ -206,7 +202,7 @@ export function calcularRendimientoMacho(machoId, camadas) {
  * Genera todas las tareas automáticas del sistema a partir de camadas y animales.
  * Incluye vencidas, de hoy y próximas (7 días).
  */
-export function generarTareas(camadas, animales) {
+export function generarTareas(camadas, animales, bio = BIO) {
   const hoyStr = hoy()
   const hoyDate = parseDate(hoyStr)
   const tareas = []
@@ -219,7 +215,7 @@ export function generarTareas(camadas, animales) {
 
     // 0. Separación de pareja (solo si está en período de apareamiento activo)
     if (camada.fecha_copula && !camada.fecha_separacion && !camada.fecha_nacimiento) {
-      const fechaSep = calcularFechaSeparacion(camada.fecha_copula)
+      const fechaSep = calcularFechaSeparacion(camada.fecha_copula, bio)
       if (fechaSep) {
         const diasHasta = difDias(hoyDate, fechaSep)
         if (diasHasta >= -7 && diasHasta <= 7) {
@@ -239,9 +235,9 @@ export function generarTareas(camadas, animales) {
     // 1. Parto esperado (solo si no hay fecha_nacimiento real aún Y ya pasó el período de apareamiento)
     if (!camada.fecha_nacimiento && camada.fecha_copula) {
       const diasDesdeCopula = difDias(parseDate(camada.fecha_copula), hoyDate)
-      const pastSeparacion = camada.fecha_separacion || diasDesdeCopula >= BIO.DURACION_APAREAMIENTO_DIAS
+      const pastSeparacion = camada.fecha_separacion || diasDesdeCopula >= bio.DURACION_APAREAMIENTO_DIAS
       if (pastSeparacion) {
-        const rango = calcularRangoParto(camada.fecha_copula)
+        const rango = calcularRangoParto(camada.fecha_copula, bio)
         if (rango) {
           const { partoMin, partoMax, partoProbable } = rango
           const diasHastaMin = difDias(hoyDate, partoMin)
@@ -274,7 +270,7 @@ export function generarTareas(camadas, animales) {
 
     // 2. Destete (si hay nacimiento pero no hay fecha_destete registrada)
     if (camada.fecha_nacimiento && !camada.fecha_destete) {
-      const fechaDestete = calcularDestete(camada.fecha_nacimiento)
+      const fechaDestete = calcularDestete(camada.fecha_nacimiento, bio)
       if (fechaDestete) {
         const diasHasta = difDias(hoyDate, fechaDestete)
         if (diasHasta >= -3 && diasHasta <= 7) {
@@ -293,7 +289,7 @@ export function generarTareas(camadas, animales) {
 
     // 3. Madurez reproductiva de las crías
     if (camada.fecha_nacimiento && camada.total_crias > 0) {
-      const fechaMadurez = calcularMadurez(camada.fecha_nacimiento)
+      const fechaMadurez = calcularMadurez(camada.fecha_nacimiento, bio)
       if (fechaMadurez) {
         const diasHasta = difDias(hoyDate, fechaMadurez)
         if (diasHasta >= -1 && diasHasta <= 7) {
@@ -540,7 +536,7 @@ export function calcularConfiabilidadHembra(hembraId, camadas) {
 /**
  * Genera todos los eventos del calendario a partir de camadas.
  */
-export function generarEventosCalendario(camadas, animales) {
+export function generarEventosCalendario(camadas, animales, bio = BIO) {
   const eventos = []
 
   camadas.forEach((camada) => {
@@ -557,7 +553,7 @@ export function generarEventosCalendario(camadas, animales) {
         color: 'green',
       })
 
-      const destete = calcularDestete(camada.fecha_nacimiento)
+      const destete = calcularDestete(camada.fecha_nacimiento, bio)
       if (destete && !camada.fecha_destete) {
         eventos.push({
           id: `destete-${camada.id}`,
@@ -568,7 +564,7 @@ export function generarEventosCalendario(camadas, animales) {
         })
       }
 
-      const madurez = calcularMadurez(camada.fecha_nacimiento)
+      const madurez = calcularMadurez(camada.fecha_nacimiento, bio)
       if (madurez) {
         eventos.push({
           id: `madurez-${camada.id}`,
@@ -582,7 +578,7 @@ export function generarEventosCalendario(camadas, animales) {
 
     // Parto esperado (si no hay nacimiento real)
     if (!camada.fecha_nacimiento && camada.fecha_copula) {
-      const rango = calcularRangoParto(camada.fecha_copula)
+      const rango = calcularRangoParto(camada.fecha_copula, bio)
       if (rango) {
         eventos.push({
           id: `parto-esp-${camada.id}`,
@@ -616,7 +612,7 @@ export function generarEventosCalendario(camadas, animales) {
       })
     } else if (camada.fecha_copula && !camada.fecha_nacimiento) {
       // Separación esperada (si aún no ocurrió)
-      const fechaSep = calcularFechaSeparacion(camada.fecha_copula)
+      const fechaSep = calcularFechaSeparacion(camada.fecha_copula, bio)
       if (fechaSep) {
         eventos.push({
           id: `sep-esp-${camada.id}`,

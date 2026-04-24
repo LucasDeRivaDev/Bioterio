@@ -15,13 +15,13 @@ const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto'
 const DIAS  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
 
 export default function Calendario() {
-  const { camadas, animales } = useBioterio()
+  const { camadas, animales, bio } = useBioterio()
   const hoyJs = new Date()
   const [anio, setAnio] = useState(hoyJs.getFullYear())
   const [mes, setMes] = useState(hoyJs.getMonth())
   const [diaSelec, setDiaSelec] = useState(null)
 
-  const eventos = useMemo(() => generarEventosCalendario(camadas, animales), [camadas, animales])
+  const eventos = useMemo(() => generarEventosCalendario(camadas, animales, bio), [camadas, animales, bio])
 
   const porFecha = useMemo(() => {
     const m = {}

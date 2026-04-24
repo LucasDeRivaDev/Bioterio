@@ -28,7 +28,7 @@ function inicioSemana() {
 const cardStyle = { background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }
 
 export default function Reportes() {
-  const { animales, camadas, jaulas, sacrificios, entregas, temperaturas, incidentes } = useBioterio()
+  const { animales, camadas, jaulas, sacrificios, entregas, temperaturas, incidentes, bio } = useBioterio()
   const hoyDate = new Date()
 
   const [periodo, setPeriodo]   = useState('mensual')
@@ -68,7 +68,7 @@ export default function Reportes() {
       .filter(a => a.sexo === 'macho')
       .flatMap(m => {
         const sus = camPeriodo.filter(c => c.id_padre === m.id)
-        const lats = sus.map(c => calcularLatencia(c)).filter(l => l !== null && l >= 0)
+        const lats = sus.map(c => calcularLatencia(c, bio)).filter(l => l !== null && l >= 0)
         if (!lats.length) return []
         return [{ codigo: m.codigo, camadas: sus.length,
           latProm: Math.round(lats.reduce((a,b)=>a+b,0)/lats.length*10)/10,
