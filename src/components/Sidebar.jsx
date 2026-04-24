@@ -4,6 +4,7 @@ import { useBioterio } from '../context/BiotheriumContext'
 import { useAuth } from '../context/AuthContext'
 import { BIO } from '../utils/constants'
 import { Home, LayoutDashboard, Printer, Bug, Send, LogOut, ChevronUp, ChevronDown, Dna } from 'lucide-react'
+import logoGenERats from '../assets/generats-logo.jpeg'
 
 const links = [
   { to: '/inicio',   label: 'Inicio',              icon: <Home size={15} /> },
@@ -286,12 +287,18 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
         </div>
       </div>
 
-      {/* Footer sistema */}
-      <div
-        className="px-5 py-3 text-center"
-        style={{ borderTop: '1px solid rgba(0,230,118,0.08)', color: 'rgba(138,155,176,0.25)' }}
-      >
-        <div className="text-xs font-mono">LAB-MGT · 2025</div>
+      {/* Footer — Logo GenERats */}
+      <div style={{ borderTop: '1px solid rgba(0,230,118,0.08)' }}>
+        <img
+          src={logoGenERats}
+          alt="GenERats — Genetically Evolving Rats"
+          style={{
+            width: '100%',
+            height: 'auto',
+            display: 'block',
+            imageRendering: 'auto',
+          }}
+        />
       </div>
     </aside>
   )

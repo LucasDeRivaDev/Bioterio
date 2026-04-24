@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import logoGenERats from '../assets/generats-logo.jpeg'
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
@@ -421,15 +422,19 @@ export default function Landing() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer style={{ padding: '40px 24px', borderTop: '1px solid rgba(30,51,82,0.5)', background: 'rgba(5,8,16,0.8)' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '18px', fontWeight: 900, color: 'white' }}>Gen</span>
-            <span style={{ fontSize: '18px', fontWeight: 900, color: '#00e676' }}>E</span>
-            <span style={{ fontSize: '18px', fontWeight: 900, color: 'white' }}>R</span>
-            <span style={{ fontSize: '18px', fontWeight: 900, color: '#40c4ff' }}>ats</span>
-            <span className="mono" style={{ fontSize: '11px', color: '#4a5f7a', paddingLeft: '12px', borderLeft: '1px solid rgba(30,51,82,0.6)' }}>Bioterio Management System</span>
-          </div>
+      <footer style={{ padding: '32px 24px', borderTop: '1px solid rgba(30,51,82,0.5)', background: 'rgba(5,8,16,0.8)' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '20px' }}>
+          {/* Logo + nombre + slogan */}
+          <img
+            src={logoGenERats}
+            alt="GenERats — Genetically Evolving Rats"
+            style={{
+              height: '90px',
+              width: 'auto',
+              display: 'block',
+              imageRendering: 'auto',
+            }}
+          />
           <div className="mono" style={{ fontSize: '12px', color: '#4a5f7a' }}>Mus musculus · Orden Rodentia · Fam. Muridae</div>
           <div className="mono" style={{ fontSize: '12px', color: '#4a5f7a' }}>© 2025 GenERats</div>
         </div>
