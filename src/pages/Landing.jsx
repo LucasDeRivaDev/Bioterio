@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import logoGenERats from '../assets/generats-logo.jpeg'
+import logoGenERats from '../assets/logo+generats+slogansinfondo.jpg'
 import GenERatsIcon from '../components/GenERatsIcon'
 
 const CSS = `
