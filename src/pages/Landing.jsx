@@ -82,7 +82,7 @@ export default function Landing() {
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           {/* Logo */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <GenERatsBrand iconSize={44} nameSize={26} sloganSize={11} sublineSize={0} gap={10} showSubline={false} align="left" iconPrefix="navBrand" />
+            <GenERatsBrand iconSize={44} nameSize={26} sloganSize={11} sublineSize={0} gap={10} showSlogan={false} showSubline={false} align="left" iconPrefix="navBrand" />
           </div>
 
           {/* Nav links */}
@@ -124,7 +124,7 @@ export default function Landing() {
         <div style={{ position: 'absolute', top: '20%', left: '50%', transform: 'translateX(-50%)', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(0,230,118,0.06) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', top: '40%', left: '20%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(64,196,255,0.05) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '80px 24px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '80px 24px', display: 'grid', gridTemplateColumns: 'minmax(0, 1.15fr) minmax(320px, 0.85fr)', gap: '56px', alignItems: 'center' }}>
           {/* Left */}
           <div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '20px', background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)', marginBottom: '24px' }}>
@@ -162,17 +162,18 @@ export default function Landing() {
           </div>
 
           {/* Right: Logo */}
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }} className="float">
-            <div style={{ position: 'relative' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', paddingLeft: '18px' }} className="float">
+            <div style={{ position: 'relative', transform: 'translateX(24px)' }}>
               <div style={{ position: 'absolute', inset: '-30px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,230,118,0.08) 0%, transparent 70%)' }} />
-              <div className="card" style={{ borderRadius: '32px', padding: '44px 52px', borderColor: 'rgba(0,230,118,0.2)', boxShadow: '0 0 60px rgba(0,230,118,0.1)' }}>
+              <div className="card" style={{ borderRadius: '32px', padding: '32px 38px', borderColor: 'rgba(0,230,118,0.2)', boxShadow: '0 0 60px rgba(0,230,118,0.1)' }}>
                 <GenERatsBrand
-                  iconSize={260}
-                  nameSize={92}
-                  sloganSize={34}
-                  sublineSize={17}
-                  gap={26}
+                  iconSize={182}
+                  nameSize={64}
+                  sloganSize={24}
+                  sublineSize={13}
+                  gap={18}
                   align="left"
+                  allowWrap
                   iconPrefix="heroBrand"
                 />
               </div>

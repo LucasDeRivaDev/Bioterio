@@ -7,7 +7,9 @@ export default function GenERatsBrand({
   sublineSize = 12,
   gap = 14,
   align = 'center',
+  showSlogan = true,
   showSubline = true,
+  allowWrap = false,
   iconPrefix = 'brand',
   style = {},
 }) {
@@ -37,29 +39,31 @@ export default function GenERatsBrand({
             fontWeight: 700,
             letterSpacing: '-0.05em',
             color: '#d8e4ef',
-            whiteSpace: 'nowrap',
+            whiteSpace: allowWrap ? 'normal' : 'nowrap',
           }}
         >
           <span style={{ color: '#7fd8ff' }}>Gen</span>
           <span style={{ color: '#b7ef74' }}>E</span>
           <span style={{ color: '#d8e4ef' }}>Rats</span>
         </div>
-        <div
-          style={{
-            marginTop: '6px',
-            fontFamily: '"IBM Plex Sans", "Source Sans 3", sans-serif',
-            fontSize: `${sloganSize}px`,
-            fontWeight: 500,
-            fontStyle: 'italic',
-            letterSpacing: '-0.015em',
-            color: '#8bc7ea',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          <span>Genetically </span>
-          <span style={{ color: '#b7ef74' }}>Evolving </span>
-          <span>Rats</span>
-        </div>
+        {showSlogan && (
+          <div
+            style={{
+              marginTop: '6px',
+              fontFamily: '"IBM Plex Sans", "Source Sans 3", sans-serif',
+              fontSize: `${sloganSize}px`,
+              fontWeight: 500,
+              fontStyle: 'italic',
+              letterSpacing: '-0.015em',
+              color: '#8bc7ea',
+              whiteSpace: allowWrap ? 'normal' : 'nowrap',
+            }}
+          >
+            <span>Genetically </span>
+            <span style={{ color: '#b7ef74' }}>Evolving </span>
+            <span>Rats</span>
+          </div>
+        )}
         {showSubline && (
           <div
             style={{
@@ -69,7 +73,7 @@ export default function GenERatsBrand({
               fontWeight: 400,
               letterSpacing: '0.015em',
               color: '#5d85a8',
-              whiteSpace: 'nowrap',
+              whiteSpace: allowWrap ? 'normal' : 'nowrap',
             }}
           >
             Colony management & genetic optimization system

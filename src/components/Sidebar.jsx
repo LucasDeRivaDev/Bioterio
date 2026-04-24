@@ -291,22 +291,23 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
       <div
         style={{
           borderTop: '1px solid rgba(0,230,118,0.08)',
-          padding: '14px 0 18px',
-          overflow: 'hidden',
+          padding: '14px 12px 18px',
+          overflow: 'visible',
           display: 'flex',
           justifyContent: 'center',
         }}
       >
         <GenERatsBrand
-          iconSize={88}
-          nameSize={50}
-          sloganSize={18}
+          iconSize={52}
+          nameSize={30}
+          sloganSize={11}
           sublineSize={0}
-          gap={14}
+          gap={10}
           align="left"
           showSubline={false}
+          allowWrap
           iconPrefix="sidebarFooterBrand"
-          style={{ width: 'auto', transform: 'translateX(4%)' }}
+          style={{ width: '100%', maxWidth: '100%' }}
         />
       </div>
     </aside>
