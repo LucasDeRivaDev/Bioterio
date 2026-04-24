@@ -3,7 +3,7 @@ import { useBioterio } from '../context/BiotheriumContext'
 import { difDias, parseDate, hoy, formatFecha, calcularPerfilHembra, calcularRendimientoMacho } from '../utils/calculos'
 import { BIO } from '../utils/constants'
 import Modal from '../components/Modal'
-import { TestTube2, FlaskConical, Microscope } from 'lucide-react'
+import { TestTube2, FlaskConical, Microscope, UserPlus } from 'lucide-react'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -282,7 +282,7 @@ function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccio
 
 const labelEstadoRepro = { activo: 'Activo', en_apareamiento: 'En apareamiento', en_cria: 'En cría', retirado: 'Retirado', fallecido: 'Fallecido' }
 
-function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, agregarJaula, editarAnimal }) {
+function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, agregarJaula, editarAnimal, onPromover }) {
   const cfg       = CAT[bloque.categoria]
   const esRepro   = bloque.tipo === 'reproductor'
   const esVirtual = Boolean(bloque.virtual)
@@ -322,6 +322,14 @@ function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, 
   const [cantMover, setCantMover] = useState('1')
   const cantN   = parseInt(cantMover) || 0
   const moverOk = destinoId && cantN > 0 && cantN <= bloque.total
+
+  // ── Promover ──────────────────────────────────────────────────────
+  const sufijoCamada = bloque.camada?.id?.slice(-4).toUpperCase() ?? 'XXXX'
+  const [sexoPromover,      setSexoPromover]      = useState('hembra')
+  const [codigoPromover,    setCodigoPromover]    = useState(`H-${sufijoCamada}`)
+  const [guardandoPromover, setGuardandoPromover] = useState(false)
+  const codigoExiste = Boolean(animales?.find((a) => a.codigo.trim().toLowerCase() === codigoPromover.trim().toLowerCase()))
+  const promoverOk   = codigoPromover.trim().length > 0 && !codigoExiste
 
   // ── Estilos comunes ───────────────────────────────────────────────
   const iStyle = {
@@ -409,6 +417,7 @@ function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, 
             {btnTab('editar', '✏ Editar')}
             {btnTab('dividir', '✂ Dividir')}
             {jaulasDestino.length > 0 && btnTab('mover', '→ Mover')}
+            {onPromover && btnTab('promover', '↑ Promover')}
           </div>
         )}
 
@@ -639,6 +648,95 @@ function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, 
               style={{ background: moverOk ? 'rgba(0,230,118,0.12)' : 'rgba(30,51,82,0.3)', border: `1px solid ${moverOk ? 'rgba(0,230,118,0.3)' : 'rgba(30,51,82,0.5)'}`, color: moverOk ? '#00e676' : '#4a5f7a', cursor: moverOk ? 'pointer' : 'not-allowed' }}>
               Confirmar movimiento
             </button>
+          </div>
+        )}
+
+        {/* ── PROMOVER ────────────────────────────────────────────── */}
+        {modo === 'promover' && esReal && !esRepro && onPromover && (
+          <div className="space-y-3">
+            {/* Sexo + Código */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs uppercase tracking-widest font-semibold mb-1 block" style={{ color: '#4a5f7a' }}>Sexo</label>
+                <select
+                  value={sexoPromover}
+                  onChange={(e) => {
+                    const nuevoSexo    = e.target.value
+                    const prefijoActual = sexoPromover === 'macho' ? 'M' : 'H'
+                    const prefijoNuevo  = nuevoSexo    === 'macho' ? 'M' : 'H'
+                    if (codigoPromover === `${prefijoActual}-${sufijoCamada}`) {
+                      setCodigoPromover(`${prefijoNuevo}-${sufijoCamada}`)
+                    }
+                    setSexoPromover(nuevoSexo)
+                  }}
+                  style={iStyle}
+                >
+                  <option value="hembra">♀ Hembra</option>
+                  <option value="macho">♂ Macho</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs uppercase tracking-widest font-semibold mb-1 block" style={{ color: '#4a5f7a' }}>Código</label>
+                <input
+                  type="text"
+                  value={codigoPromover}
+                  onChange={(e) => setCodigoPromover(e.target.value)}
+                  placeholder="Ej: H-A3F2"
+                  style={{ ...iStyle, borderColor: codigoExiste ? 'rgba(255,61,87,0.5)' : undefined }}
+                />
+                {codigoExiste && (
+                  <p className="text-xs mt-0.5" style={{ color: '#ff6b80' }}>Código ya existe</p>
+                )}
+              </div>
+            </div>
+
+            {/* Datos heredados */}
+            <div className="rounded-xl px-3 py-3 space-y-1.5"
+              style={{ background: 'rgba(30,51,82,0.25)', border: '1px solid rgba(30,51,82,0.5)' }}>
+              <div className="text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>Datos heredados</div>
+              <div className="flex items-center justify-between text-xs">
+                <span style={{ color: '#4a5f7a' }}>Nacimiento</span>
+                <span className="font-mono" style={{ color: '#8a9bb0' }}>{formatFecha(bloque.camada?.fecha_nacimiento) ?? '—'}</span>
+              </div>
+              {bloque.madre && (
+                <div className="flex items-center justify-between text-xs">
+                  <span style={{ color: '#4a5f7a' }}>Madre</span>
+                  <span className="font-mono" style={{ color: '#ce93d8' }}>{bloque.madre.codigo}</span>
+                </div>
+              )}
+              {bloque.padre && (
+                <div className="flex items-center justify-between text-xs">
+                  <span style={{ color: '#4a5f7a' }}>Padre</span>
+                  <span className="font-mono" style={{ color: '#40c4ff' }}>{bloque.padre.codigo}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between text-xs">
+                <span style={{ color: '#4a5f7a' }}>Origen</span>
+                <span className="font-mono" style={{ color: '#8a9bb0' }}>Camada ...{bloque.camada?.id?.slice(-6)}</span>
+              </div>
+            </div>
+
+            <button
+              onClick={async () => {
+                if (!promoverOk || guardandoPromover) return
+                setGuardandoPromover(true)
+                try { await onPromover(sexoPromover, codigoPromover.trim()) }
+                finally { setGuardandoPromover(false) }
+              }}
+              disabled={!promoverOk || guardandoPromover}
+              className="w-full py-2.5 rounded-xl text-sm font-bold"
+              style={{
+                background: (!promoverOk || guardandoPromover) ? 'rgba(30,51,82,0.3)' : 'rgba(0,230,118,0.12)',
+                border: `1px solid ${(!promoverOk || guardandoPromover) ? 'rgba(30,51,82,0.5)' : 'rgba(0,230,118,0.35)'}`,
+                color: (!promoverOk || guardandoPromover) ? '#4a5f7a' : '#00e676',
+                cursor: (!promoverOk || guardandoPromover) ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {guardandoPromover ? 'Procesando...' : '↑ Confirmar promoción a reproductor'}
+            </button>
+            <p className="text-xs text-center" style={{ color: 'rgba(74,95,122,0.5)' }}>
+              El animal se extrae de la jaula y pasa a Reproductores como activo
+            </p>
           </div>
         )}
 
@@ -1016,6 +1114,149 @@ function ModalEntrega({ bloques, onConfirmar, onCerrar }) {
   )
 }
 
+// ── Modal para promover desde selección múltiple ──────────────────────────────
+
+function ModalPromoverReproductor({ bloques, animales, onConfirmar, onCerrar }) {
+  const [guardando, setGuardando] = useState(false)
+  const [items, setItems] = useState(() =>
+    bloques.map((b) => {
+      const sufijo = b.camada?.id?.slice(-4).toUpperCase() ?? 'XXXX'
+      return { bloqueId: b.id, sexo: 'hembra', codigo: `H-${sufijo}` }
+    })
+  )
+
+  const codigosExistentes = new Set(animales.map((a) => a.codigo.trim().toLowerCase()))
+
+  function updateItem(idx, field, value) {
+    setItems((prev) => prev.map((item, i) => {
+      if (i !== idx) return item
+      const updated = { ...item, [field]: value }
+      if (field === 'sexo') {
+        const b = bloques[i]
+        const sufijo       = b.camada?.id?.slice(-4).toUpperCase() ?? 'XXXX'
+        const prefijoViejo = item.sexo  === 'macho' ? 'M' : 'H'
+        const prefijoNuevo = value === 'macho' ? 'M' : 'H'
+        if (item.codigo === `${prefijoViejo}-${sufijo}`) updated.codigo = `${prefijoNuevo}-${sufijo}`
+      }
+      return updated
+    }))
+  }
+
+  const codigosItems = items.map((i) => i.codigo.trim().toLowerCase())
+  const errores = items.map((item, idx) => {
+    const code = item.codigo.trim()
+    if (!code) return 'Requerido'
+    if (codigosExistentes.has(code.toLowerCase())) return 'Ya existe'
+    if (codigosItems.filter((c, i) => c === code.toLowerCase() && i !== idx).length > 0) return 'Duplicado'
+    return null
+  })
+  const todosOk = errores.every((e) => !e)
+
+  const iStyle = {
+    background: 'rgba(5,8,16,0.6)', border: '1px solid rgba(30,51,82,0.8)',
+    color: '#e2e8f0', borderRadius: '0.5rem', padding: '0.4rem 0.6rem',
+    fontSize: '0.8125rem', fontFamily: 'monospace', width: '100%', outline: 'none',
+  }
+
+  async function confirmar() {
+    if (!todosOk || guardando) return
+    setGuardando(true)
+    try { await onConfirmar(items) }
+    finally { setGuardando(false) }
+  }
+
+  return (
+    <Modal titulo="Promover a reproductores" onCerrar={onCerrar} ancho="max-w-md">
+      <div className="space-y-4">
+
+        {/* Info */}
+        <div className="flex items-start gap-3 px-4 py-3 rounded-xl"
+          style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.2)' }}>
+          <UserPlus size={17} style={{ color: '#00e676', flexShrink: 0, marginTop: 1 }} />
+          <div>
+            <div className="font-bold text-sm" style={{ color: '#00e676' }}>Convertir en reproductor</div>
+            <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>
+              1 animal por jaula se extrae del stock y pasa a Reproductores con estado Activo.
+            </div>
+          </div>
+        </div>
+
+        {/* Fila por jaula */}
+        <div className="space-y-3 max-h-80 overflow-y-auto">
+          {bloques.map((b, idx) => {
+            const cfg = CAT[b.categoria]
+            const err = errores[idx]
+            return (
+              <div key={b.id} className="rounded-xl p-3 space-y-2"
+                style={{ background: 'rgba(5,8,16,0.5)', border: `1px solid ${err ? 'rgba(255,61,87,0.4)' : cfg.borde}` }}>
+
+                {/* Header jaula */}
+                <div>
+                  <div className="text-xs font-mono font-semibold" style={{ color: cfg.color }}>
+                    {b.madre?.codigo ?? '?'} × {b.padre?.codigo ?? '?'}
+                  </div>
+                  <div className="text-xs" style={{ color: '#4a5f7a' }}>
+                    {cfg.label} · {b.total} en jaula
+                    {b.camada?.fecha_nacimiento && ` · nac. ${formatFecha(b.camada.fecha_nacimiento)}`}
+                  </div>
+                </div>
+
+                {/* Sexo + Código */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#4a5f7a' }}>Sexo</div>
+                    <select value={items[idx].sexo} onChange={(e) => updateItem(idx, 'sexo', e.target.value)} style={iStyle}>
+                      <option value="hembra">♀ Hembra</option>
+                      <option value="macho">♂ Macho</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#4a5f7a' }}>Código</div>
+                    <input
+                      type="text"
+                      value={items[idx].codigo}
+                      onChange={(e) => updateItem(idx, 'codigo', e.target.value)}
+                      placeholder="Ej: H-A3F2"
+                      style={{ ...iStyle, borderColor: err ? 'rgba(255,61,87,0.5)' : undefined }}
+                    />
+                    {err && <p className="text-xs mt-0.5" style={{ color: '#ff6b80' }}>{err}</p>}
+                  </div>
+                </div>
+
+                {/* Datos heredados compactos */}
+                <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs px-1">
+                  {b.madre && <span style={{ color: '#4a5f7a' }}>Madre <span style={{ color: '#ce93d8' }}>{b.madre.codigo}</span></span>}
+                  {b.padre && <span style={{ color: '#4a5f7a' }}>Padre <span style={{ color: '#40c4ff' }}>{b.padre.codigo}</span></span>}
+                  {b.camada?.fecha_nacimiento && <span style={{ color: '#4a5f7a' }}>Nac. <span style={{ color: '#8a9bb0' }}>{formatFecha(b.camada.fecha_nacimiento)}</span></span>}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Botones */}
+        <div className="flex gap-3">
+          <button onClick={onCerrar} disabled={guardando}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+            style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: '#8a9bb0' }}>
+            Cancelar
+          </button>
+          <button onClick={confirmar} disabled={guardando || !todosOk}
+            className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+            style={{
+              background: (!todosOk || guardando) ? 'rgba(30,51,82,0.3)' : 'rgba(0,230,118,0.12)',
+              border: `1.5px solid ${(!todosOk || guardando) ? 'rgba(30,51,82,0.5)' : 'rgba(0,230,118,0.4)'}`,
+              color: (!todosOk || guardando) ? '#4a5f7a' : '#00e676',
+              cursor: (!todosOk || guardando) ? 'not-allowed' : 'pointer',
+            }}>
+            {guardando ? 'Procesando...' : `↑ Promover ${bloques.length === 1 ? '1 animal' : `${bloques.length} animales`}`}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 // ── Componentes de la vista Resumen (existentes, sin cambios) ─────────────────
 
 function CategoriaCard({ icono, titulo, subtitulo, total, grupos, gruposLabel, machos, hembras, color, descripcion }) {
@@ -1063,7 +1304,7 @@ function CategoriaCard({ icono, titulo, subtitulo, total, grupos, gruposLabel, m
 
 
 export default function Stock() {
-  const { animales, camadas, sacrificios, entregas, jaulas, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, registrarSacrificio, registrarEntrega, entregarReproductor } = useBioterio()
+  const { animales, camadas, sacrificios, entregas, jaulas, agregarAnimal, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, registrarSacrificio, registrarEntrega, entregarReproductor } = useBioterio()
   const [vista, setVista] = useState('jaulas')
   const [detalle, setDetalle] = useState(null)
   const [filtroCat, setFiltroCat] = useState('todas')
@@ -1071,6 +1312,7 @@ export default function Stock() {
   const [seleccionadas, setSeleccionadas] = useState(new Set())
   const [modalSacrificio, setModalSacrificio] = useState(false)
   const [modalEntrega, setModalEntrega]       = useState(false)
+  const [modalPromover, setModalPromover]     = useState(false)
 
   // ── Bloques de jaulas (reproductores + stock) ─────────────────────────────
   const bloques = useMemo(() => {
@@ -1272,6 +1514,64 @@ export default function Stock() {
     salirModoSeleccion()
   }
 
+  // Promover desde el modal de una jaula individual
+  async function ejecutarPromoverDesdeModal(sexo, codigo) {
+    const bloque = detalle
+    if (!bloque || bloque.tipo !== 'stock' || bloque.virtual) return
+
+    await agregarAnimal({
+      codigo: codigo.trim(),
+      sexo,
+      estado: 'activo',
+      fecha_nacimiento: bloque.camada?.fecha_nacimiento ?? null,
+      id_madre: bloque.camada?.id_madre ?? null,
+      id_padre: bloque.camada?.id_padre ?? null,
+      notas: `Stock → reproductor · camada ...${bloque.camada?.id?.slice(-6) ?? ''}`,
+    })
+
+    if (bloque.jaula?.id) {
+      if (bloque.jaula.total <= 1) {
+        await eliminarJaula(bloque.jaula.id)
+      } else {
+        const nuevosMachos  = bloque.jaula.machos  != null ? Math.max(0, sexo === 'macho'  ? bloque.jaula.machos  - 1 : bloque.jaula.machos)  : null
+        const nuevasHembras = bloque.jaula.hembras != null ? Math.max(0, sexo === 'hembra' ? bloque.jaula.hembras - 1 : bloque.jaula.hembras) : null
+        await editarJaula({ ...bloque.jaula, total: bloque.jaula.total - 1, machos: nuevosMachos, hembras: nuevasHembras })
+      }
+    }
+
+    setDetalle(null)
+  }
+
+  // Promover desde la barra flotante (selección múltiple)
+  async function ejecutarPromoverMasivo(items) {
+    for (const item of items) {
+      const bloque = bloques.find((b) => b.id === item.bloqueId)
+      if (!bloque || bloque.tipo !== 'stock' || bloque.virtual) continue
+
+      await agregarAnimal({
+        codigo: item.codigo.trim(),
+        sexo: item.sexo,
+        estado: 'activo',
+        fecha_nacimiento: bloque.camada?.fecha_nacimiento ?? null,
+        id_madre: bloque.camada?.id_madre ?? null,
+        id_padre: bloque.camada?.id_padre ?? null,
+        notas: `Stock → reproductor · camada ...${bloque.camada?.id?.slice(-6) ?? ''}`,
+      })
+
+      if (bloque.jaula?.id) {
+        if (bloque.jaula.total <= 1) {
+          await eliminarJaula(bloque.jaula.id)
+        } else {
+          const nuevosMachos  = bloque.jaula.machos  != null ? Math.max(0, item.sexo === 'macho'  ? bloque.jaula.machos  - 1 : bloque.jaula.machos)  : null
+          const nuevasHembras = bloque.jaula.hembras != null ? Math.max(0, item.sexo === 'hembra' ? bloque.jaula.hembras - 1 : bloque.jaula.hembras) : null
+          await editarJaula({ ...bloque.jaula, total: bloque.jaula.total - 1, machos: nuevosMachos, hembras: nuevasHembras })
+        }
+      }
+    }
+    setModalPromover(false)
+    salirModoSeleccion()
+  }
+
   const btnTab = (v, label) => (
     <button
       onClick={() => setVista(v)}
@@ -1460,6 +1760,15 @@ export default function Stock() {
               )}
             </div>
             <div style={{ width: '1px', height: '20px', background: 'rgba(30,51,82,0.8)' }} />
+            {jaulasSel.some((b) => !b.virtual) && (
+              <button
+                onClick={() => setModalPromover(true)}
+                className="px-4 py-1.5 rounded-xl text-sm font-bold flex items-center gap-1.5"
+                style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.4)', color: '#00e676', cursor: 'pointer' }}
+              >
+                <UserPlus size={14} /> Promover
+              </button>
+            )}
             <button
               onClick={() => setModalEntrega(true)}
               className="px-4 py-1.5 rounded-xl text-sm font-bold"
@@ -1489,6 +1798,7 @@ export default function Stock() {
           editarJaula={editarJaula}
           agregarJaula={agregarJaula}
           editarAnimal={editarAnimal}
+          onPromover={detalle.tipo === 'stock' && !detalle.virtual ? ejecutarPromoverDesdeModal : undefined}
         />
       )}
 
@@ -1507,6 +1817,16 @@ export default function Stock() {
           bloques={bloques.filter((b) => seleccionadas.has(b.id))}
           onConfirmar={ejecutarEntrega}
           onCerrar={() => setModalEntrega(false)}
+        />
+      )}
+
+      {/* Modal promover */}
+      {modalPromover && (
+        <ModalPromoverReproductor
+          bloques={bloques.filter((b) => seleccionadas.has(b.id) && b.tipo === 'stock' && !b.virtual)}
+          animales={animales}
+          onConfirmar={ejecutarPromoverMasivo}
+          onCerrar={() => setModalPromover(false)}
         />
       )}
     </div>
