@@ -57,9 +57,9 @@ export default function SelectorBioterio() {
               <div className="text-xs font-mono italic" style={{ color: 'rgba(0,230,118,0.6)' }}>
                 Rattus norvegicus
               </div>
-              <div className="flex gap-3 mt-2">
+              <div className="flex flex-wrap gap-2 mt-2">
                 <span className="text-xs font-mono px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,230,118,0.1)', color: '#00e676', border: '1px solid rgba(0,230,118,0.2)' }}>
-                  Gestación 23 días
+                  Gestación 23d
                 </span>
                 <span className="text-xs font-mono px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,230,118,0.1)', color: '#00e676', border: '1px solid rgba(0,230,118,0.2)' }}>
                   Madurez 12 sem.
@@ -87,7 +87,7 @@ export default function SelectorBioterio() {
             <div>
               <div className="font-bold text-white text-sm">Bioterio de Ratones</div>
               <div className="text-xs font-mono italic" style={{ color: 'rgba(64,196,255,0.6)' }}>
-                Mus musculus · Gestación 21 días · Madurez 8 sem.
+                <span className="hidden sm:inline">Mus musculus · </span>Gestación 21d · Madurez 8 sem.
               </div>
             </div>
           </div>
@@ -120,7 +120,7 @@ export default function SelectorBioterio() {
                     style={{ background: cfg.color }}
                   />
                   <span className="font-semibold text-sm">{cfg.labelCorto}</span>
-                  <span className="text-xs font-mono ml-1" style={{ color: '#4a5f7a' }}>
+                  <span className="text-xs font-mono ml-1 hidden sm:inline" style={{ color: '#4a5f7a' }}>
                     {cfg.nombreCientifico}
                   </span>
                   <span className="ml-auto text-xs" style={{ color: cfg.color }}>›</span>

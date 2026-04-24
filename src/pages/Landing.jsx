@@ -29,6 +29,30 @@ const CSS = `
   .landing-root ::-webkit-scrollbar-track { background: #050810; }
   .landing-root ::-webkit-scrollbar-thumb { background: rgba(30,51,82,0.8); border-radius: 3px; }
   .landing-root a { color: inherit; }
+
+  /* ── RESPONSIVE ────────────────────────────────── */
+  @media (max-width: 900px) {
+    .landing-nav-links { display: none !important; }
+    .landing-hero-grid { grid-template-columns: 1fr !important; }
+    .landing-hero-right { display: none !important; }
+    .landing-hero-title { font-size: 38px !important; letter-spacing: -0.5px !important; }
+    .landing-hero-subtitle { font-size: 16px !important; }
+    .landing-hero-ctas { flex-direction: column !important; }
+    .landing-hero-ctas a { text-align: center !important; }
+    .landing-hero-stats { gap: 24px !important; flex-wrap: wrap !important; }
+    .landing-features-grid { grid-template-columns: 1fr !important; }
+    .landing-steps-grid { grid-template-columns: 1fr !important; }
+    .landing-steps-line { display: none !important; }
+    .landing-para-quien-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    .landing-pricing-grid { grid-template-columns: 1fr !important; }
+    .landing-form-grid { grid-template-columns: 1fr !important; }
+    .landing-section-h2 { font-size: 28px !important; letter-spacing: -0.5px !important; }
+  }
+  @media (max-width: 480px) {
+    .landing-hero-title { font-size: 30px !important; }
+    .landing-para-quien-grid { grid-template-columns: 1fr !important; }
+    .landing-root nav > div { padding: 0 16px !important; }
+  }
 `
 
 const NavLink = ({ href, children }) => (
@@ -86,29 +110,11 @@ export default function Landing() {
             <GenERatsBrand iconSize={44} nameSize={26} sloganSize={11} sublineSize={0} gap={10} showSlogan={false} showSubline={false} align="left" iconPrefix="navBrand" />
           </div>
 
-          {/* Nav links */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Nav links — se ocultan en mobile */}
+          <div className="landing-nav-links" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <NavLink href="#features">Funciones</NavLink>
             <NavLink href="#como-funciona">¿Cómo funciona?</NavLink>
             <NavLink href="#pricing">Planes</NavLink>
-            {/* LOGIN / BIOTERIO */}
-            {sesion ? (
-              <Link to="/"
-                style={{ marginLeft: '8px', padding: '9px 20px', borderRadius: '10px', fontSize: '14px', fontWeight: 600, textDecoration: 'none', color: '#00e676', background: 'rgba(0,230,118,0.08)', border: '1.5px solid rgba(0,230,118,0.3)', transition: 'all 0.2s' }}
-                onMouseOver={e => e.currentTarget.style.background = 'rgba(0,230,118,0.18)'}
-                onMouseOut={e => e.currentTarget.style.background = 'rgba(0,230,118,0.08)'}
-              >
-                Bioterio →
-              </Link>
-            ) : (
-              <Link to="/login"
-                style={{ marginLeft: '8px', padding: '9px 20px', borderRadius: '10px', fontSize: '14px', fontWeight: 600, textDecoration: 'none', color: '#40c4ff', background: 'rgba(64,196,255,0.08)', border: '1.5px solid rgba(64,196,255,0.3)', transition: 'all 0.2s' }}
-                onMouseOver={e => e.currentTarget.style.background = 'rgba(64,196,255,0.18)'}
-                onMouseOut={e => e.currentTarget.style.background = 'rgba(64,196,255,0.08)'}
-              >
-                Ingresar →
-              </Link>
-            )}
             <a href="#contacto"
               style={{ marginLeft: '4px', padding: '9px 20px', borderRadius: '10px', fontSize: '14px', fontWeight: 600, textDecoration: 'none', color: '#00e676', background: 'rgba(0,230,118,0.12)', border: '1.5px solid rgba(0,230,118,0.35)', transition: 'all 0.2s' }}
               onMouseOver={e => e.currentTarget.style.background = 'rgba(0,230,118,0.2)'}
@@ -117,6 +123,24 @@ export default function Landing() {
               Solicitar demo
             </a>
           </div>
+          {/* LOGIN / BIOTERIO — siempre visible */}
+          {sesion ? (
+            <Link to="/"
+              style={{ padding: '9px 20px', borderRadius: '10px', fontSize: '14px', fontWeight: 600, textDecoration: 'none', color: '#00e676', background: 'rgba(0,230,118,0.08)', border: '1.5px solid rgba(0,230,118,0.3)', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
+              onMouseOver={e => e.currentTarget.style.background = 'rgba(0,230,118,0.18)'}
+              onMouseOut={e => e.currentTarget.style.background = 'rgba(0,230,118,0.08)'}
+            >
+              Bioterio →
+            </Link>
+          ) : (
+            <Link to="/login"
+              style={{ padding: '9px 20px', borderRadius: '10px', fontSize: '14px', fontWeight: 600, textDecoration: 'none', color: '#40c4ff', background: 'rgba(64,196,255,0.08)', border: '1.5px solid rgba(64,196,255,0.3)', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
+              onMouseOver={e => e.currentTarget.style.background = 'rgba(64,196,255,0.18)'}
+              onMouseOut={e => e.currentTarget.style.background = 'rgba(64,196,255,0.08)'}
+            >
+              Ingresar →
+            </Link>
+          )}
         </div>
       </nav>
 
@@ -125,7 +149,7 @@ export default function Landing() {
         <div style={{ position: 'absolute', top: '20%', left: '50%', transform: 'translateX(-50%)', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(0,230,118,0.06) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', top: '40%', left: '20%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(64,196,255,0.05) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '80px 24px', display: 'grid', gridTemplateColumns: 'minmax(0, 1.15fr) minmax(320px, 0.85fr)', gap: '56px', alignItems: 'center' }}>
+        <div className="landing-hero-grid" style={{ maxWidth: '1200px', margin: '0 auto', padding: '80px 24px', display: 'grid', gridTemplateColumns: 'minmax(0, 1.15fr) minmax(320px, 0.85fr)', gap: '56px', alignItems: 'center' }}>
           {/* Left */}
           <div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '20px', background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)', marginBottom: '24px' }}>
@@ -133,17 +157,17 @@ export default function Landing() {
               <span style={{ fontSize: '12px', fontWeight: 600, color: '#00e676', letterSpacing: '1px', textTransform: 'uppercase' }}>Software de bioterio</span>
             </div>
 
-            <h1 style={{ fontSize: '52px', fontWeight: 900, lineHeight: 1.1, letterSpacing: '-1.5px', marginBottom: '20px' }}>
+            <h1 className="landing-hero-title" style={{ fontSize: '52px', fontWeight: 900, lineHeight: 1.1, letterSpacing: '-1.5px', marginBottom: '20px' }}>
               <span style={{ color: 'white' }}>Gestión inteligente</span><br />
               <span className="gradient-text">de tu colonia</span><br />
               <span style={{ color: 'white' }}>de laboratorio</span>
             </h1>
 
-            <p style={{ fontSize: '18px', lineHeight: 1.7, color: '#8a9bb0', marginBottom: '36px', maxWidth: '480px' }}>
+            <p className="landing-hero-subtitle" style={{ fontSize: '18px', lineHeight: 1.7, color: '#8a9bb0', marginBottom: '36px', maxWidth: '480px' }}>
               GenERats centraliza el control de tu bioterio: reproductores, camadas, predicciones de parto, stock y reportes — todo en tiempo real, desde cualquier dispositivo.
             </p>
 
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <div className="landing-hero-ctas" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               <a href="#contacto" style={{ padding: '14px 28px', borderRadius: '12px', fontSize: '15px', fontWeight: 700, textDecoration: 'none', color: '#050810', background: 'linear-gradient(135deg, #00e676, #40c4ff)', boxShadow: '0 4px 24px rgba(0,230,118,0.3)' }}>
                 Solicitar demo gratuito
               </a>
@@ -152,7 +176,7 @@ export default function Landing() {
               </a>
             </div>
 
-            <div style={{ display: 'flex', gap: '32px', marginTop: '48px', paddingTop: '32px', borderTop: '1px solid rgba(30,51,82,0.6)' }}>
+            <div className="landing-hero-stats" style={{ display: 'flex', gap: '32px', marginTop: '48px', paddingTop: '32px', borderTop: '1px solid rgba(30,51,82,0.6)' }}>
               {[['100%','#00e676','Digital, sin papel'],['24/7','#40c4ff','Acceso desde cualquier lugar'],['∞','#ce93d8','Historial de datos']].map(([val, color, label]) => (
                 <div key={label}>
                   <div className="mono" style={{ fontSize: '28px', fontWeight: 700, color }}>{val}</div>
@@ -162,8 +186,8 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* Right: Logo */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', paddingLeft: '18px' }} className="float">
+          {/* Right: Logo — oculto en mobile */}
+          <div className="landing-hero-right float" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', paddingLeft: '18px' }}>
             <div style={{ position: 'relative', transform: 'translateX(24px)' }}>
               <div style={{ position: 'absolute', inset: '-30px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,230,118,0.08) 0%, transparent 70%)' }} />
               <div className="card" style={{ borderRadius: '32px', padding: '32px 38px', borderColor: 'rgba(0,230,118,0.2)', boxShadow: '0 0 60px rgba(0,230,118,0.1)' }}>
@@ -190,13 +214,13 @@ export default function Landing() {
             <div style={{ display: 'inline-block', padding: '5px 14px', borderRadius: '20px', background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.2)', marginBottom: '16px' }}>
               <span style={{ fontSize: '12px', fontWeight: 600, color: '#40c4ff', letterSpacing: '1px', textTransform: 'uppercase' }}>Funciones</span>
             </div>
-            <h2 style={{ fontSize: '40px', fontWeight: 800, color: 'white', letterSpacing: '-1px', marginBottom: '16px' }}>Todo lo que necesita tu bioterio</h2>
+            <h2 className="landing-section-h2" style={{ fontSize: '40px', fontWeight: 800, color: 'white', letterSpacing: '-1px', marginBottom: '16px' }}>Todo lo que necesita tu bioterio</h2>
             <p style={{ fontSize: '16px', color: '#8a9bb0', maxWidth: '520px', margin: '0 auto', lineHeight: 1.7 }}>
               Diseñado específicamente para la gestión de colonias de <em style={{ color: '#c9d4e0' }}>Mus musculus</em>, con parámetros biológicos incorporados.
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+          <div className="landing-features-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
             {[
               { icon: <Dna size={22} />,      color:'rgba(0,230,118,', title:'Motor predictivo reproductivo', desc:'Calcula automáticamente las ventanas de parto, fechas de destete y madurez reproductiva con precisión científica.', foot:'Gestación · Destete · Madurez' },
               { icon: <BarChart2 size={22} />, color:'rgba(64,196,255,', title:'Scoring de rendimiento', desc:'Evalúa la eficiencia reproductiva de cada macho por latencia de fertilización. Ranking automático con puntajes por apareamiento.', foot:'Score 10 · 7 · 5 pts por latencia' },
@@ -222,10 +246,10 @@ export default function Landing() {
           <div style={{ display: 'inline-block', padding: '5px 14px', borderRadius: '20px', background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.2)', marginBottom: '16px' }}>
             <span style={{ fontSize: '12px', fontWeight: 600, color: '#00e676', letterSpacing: '1px', textTransform: 'uppercase' }}>Simple desde el día 1</span>
           </div>
-          <h2 style={{ fontSize: '40px', fontWeight: 800, color: 'white', letterSpacing: '-1px', marginBottom: '60px' }}>¿Cómo funciona?</h2>
+          <h2 className="landing-section-h2" style={{ fontSize: '40px', fontWeight: 800, color: 'white', letterSpacing: '-1px', marginBottom: '60px' }}>¿Cómo funciona?</h2>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '40px', position: 'relative' }}>
-            <div style={{ position: 'absolute', top: '32px', left: 'calc(16.6% + 16px)', right: 'calc(16.6% + 16px)', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(0,230,118,0.3), transparent)' }} />
+          <div className="landing-steps-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '40px', position: 'relative' }}>
+            <div className="landing-steps-line" style={{ position: 'absolute', top: '32px', left: 'calc(16.6% + 16px)', right: 'calc(16.6% + 16px)', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(0,230,118,0.3), transparent)' }} />
             {[
               { n:'01', color:'#00e676', bg:'rgba(0,230,118,', title:'Cargás tus animales', desc:'Registrás machos y hembras reproductoras con su código, fecha de nacimiento y linaje.' },
               { n:'02', color:'#40c4ff', bg:'rgba(64,196,255,', title:'Registrás los apareamientos', desc:'Con la fecha de cópula, el sistema calcula automáticamente la ventana de parto esperada.' },
@@ -247,10 +271,10 @@ export default function Landing() {
       <section style={{ padding: '100px 24px' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '60px' }}>
-            <h2 style={{ fontSize: '40px', fontWeight: 800, color: 'white', letterSpacing: '-1px', marginBottom: '16px' }}>¿Para quién es GenERats?</h2>
+            <h2 className="landing-section-h2" style={{ fontSize: '40px', fontWeight: 800, color: 'white', letterSpacing: '-1px', marginBottom: '16px' }}>¿Para quién es GenERats?</h2>
             <p style={{ fontSize: '16px', color: '#8a9bb0' }}>Diseñado para instituciones que trabajan con colonias de ratones de laboratorio</p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '16px' }}>
+          <div className="landing-para-quien-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '16px' }}>
             {[
               [<GraduationCap size={36} />, '#00e676',  'Universidades',             'Facultades de medicina, biología y veterinaria con bioterios propios'],
               [<Microscope size={36} />,    '#40c4ff',  'Institutos de investigación','CONICET, INTA, ANLIS y centros de investigación biomédica'],
@@ -273,10 +297,10 @@ export default function Landing() {
           <div style={{ display: 'inline-block', padding: '5px 14px', borderRadius: '20px', background: 'rgba(206,147,216,0.08)', border: '1px solid rgba(206,147,216,0.2)', marginBottom: '16px' }}>
             <span style={{ fontSize: '12px', fontWeight: 600, color: '#ce93d8', letterSpacing: '1px', textTransform: 'uppercase' }}>Planes</span>
           </div>
-          <h2 style={{ fontSize: '40px', fontWeight: 800, color: 'white', letterSpacing: '-1px', marginBottom: '16px' }}>Elegí el modelo que mejor te funciona</h2>
+          <h2 className="landing-section-h2" style={{ fontSize: '40px', fontWeight: 800, color: 'white', letterSpacing: '-1px', marginBottom: '16px' }}>Elegí el modelo que mejor te funciona</h2>
           <p style={{ fontSize: '16px', color: '#8a9bb0', marginBottom: '60px' }}>Consultoría personalizada sin compromiso. Ajustamos el plan a las necesidades de tu institución.</p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+          <div className="landing-pricing-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
             {/* Licencia */}
             <div className="card" style={{ borderRadius: '24px', padding: '40px', textAlign: 'left' }}>
               <div style={{ fontSize: '13px', fontWeight: 600, color: '#8a9bb0', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Licencia única</div>
@@ -325,13 +349,13 @@ export default function Landing() {
       <section id="contacto" style={{ padding: '100px 24px' }}>
         <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
           <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'center' }}><Dna size={48} style={{ color: '#00e676' }} /></div>
-          <h2 style={{ fontSize: '40px', fontWeight: 800, color: 'white', letterSpacing: '-1px', marginBottom: '16px' }}>Pedí tu demo gratuito</h2>
+          <h2 className="landing-section-h2" style={{ fontSize: '40px', fontWeight: 800, color: 'white', letterSpacing: '-1px', marginBottom: '16px' }}>Pedí tu demo gratuito</h2>
           <p style={{ fontSize: '16px', color: '#8a9bb0', marginBottom: '48px', lineHeight: 1.7 }}>
             Te mostramos el sistema en funcionamiento con datos reales. Sin compromiso, sin tarjeta de crédito.
           </p>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'left' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div className="landing-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: '#8a9bb0', marginBottom: '8px' }}>Nombre</label>
                 <input type="text" name="nombre" required placeholder="Tu nombre" style={inputStyle}
