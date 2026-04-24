@@ -205,16 +205,15 @@ function StatCard({ valor, label, icono, color }) {
 
 // ── Dashboard principal ───────────────────────────────────────────────────────
 
-// Clave de localStorage para las tareas descartadas hoy
+// Clave de localStorage para las tareas descartadas (permanente)
 const LS_KEY = 'appMosca_tareas_descartadas'
 
 function cargarDescartadas() {
   try {
-    const raw = JSON.parse(localStorage.getItem(LS_KEY) || '{}')
-    // Si el día guardado no es hoy, limpiamos — la tarea puede volver mañana
-    if (raw.fecha === new Date().toISOString().split('T')[0]) {
-      return new Set(raw.ids ?? [])
-    }
+    const raw = JSON.parse(localStorage.getItem(LS_KEY) || '[]')
+    // Soporte formato viejo { fecha, ids } → migrar a array simple
+    if (Array.isArray(raw)) return new Set(raw)
+    if (Array.isArray(raw.ids)) return new Set(raw.ids)
   } catch {}
   return new Set()
 }
@@ -229,10 +228,7 @@ export default function Dashboard() {
     setDescartadas((prev) => {
       const nuevo = new Set(prev)
       nuevo.add(id)
-      localStorage.setItem(LS_KEY, JSON.stringify({
-        fecha: new Date().toISOString().split('T')[0],
-        ids: [...nuevo],
-      }))
+      localStorage.setItem(LS_KEY, JSON.stringify([...nuevo]))
       return nuevo
     })
   }
