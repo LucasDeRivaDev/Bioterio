@@ -386,8 +386,9 @@ export default function Landing() {
             style={{
               height: '90px',
               width: 'auto',
+              maxWidth: '100%',
               display: 'block',
-              mixBlendMode: 'screen',
+              objectFit: 'contain',
             }}
           />
           <div className="mono" style={{ fontSize: '12px', color: '#4a5f7a' }}>Mus musculus · Orden Rodentia · Fam. Muridae</div>
