@@ -239,6 +239,19 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
   - Supervivencia de camadas: agrega segmento "Parto fallido/En proceso/Lactancia" para camadas sin datos de destete completos
   - Calidad de madres: "Sin datos" → "En proceso"
 
+- **Identidad visual GenERats y reemplazo total de emojis (24/04/2026):**
+  - Creado componente `GenERatsBrand.jsx`: logo compuesto (ícono SVG + nombre + slogan + sublinea), configurable con props `iconSize`, `nameSize`, `sloganSize`, `gap`, `align`, `showSlogan`, `showSubline`, `iconPrefix`. Usa Google Fonts Space Grotesk + IBM Plex Sans.
+  - Footer del Sidebar reemplazado: de `<img src={logoGenERats} mixBlendMode='screen'>` a `<GenERatsBrand>` — sin fondo oscuro, sin JPEG.
+  - Landing completamente renovada: navbar usa `GenERatsBrand` (solo ícono+nombre), hero usa `GenERatsBrand` grande centrado (ícono 182px + nombre 64px + slogan + sublinea), footer usa `GenERatsBrand` mediano.
+  - Todos los emojis de Landing reemplazados por Lucide React: features (🧬→`Dna`, 📊→`BarChart2`, 📦→`Archive`, 📅→`Calendar`, 🗡️→`Skull`, 🖨️→`Printer`), para quién (🎓→`GraduationCap`, 🔬→`Microscope`, 💊→`FlaskConical`, 🏥→`Building2`) cada uno con su color distintivo, contacto (🧬→`Dna`).
+  - `logoGenERats` JPEG ya no se importa en Landing ni Sidebar.
+
+- **Promover animal de stock a reproductor (24/04/2026):** nueva funcionalidad en `Stock.jsx`:
+  - **Desde modal de jaula individual:** tab "↑ Promover" (solo en jaulas reales de stock, no en reproductores ni virtuales). Formulario: sexo selector + código con sugerencia automática (`H-XXXX` / `M-XXXX` donde XXXX son las últimas 4 letras del ID de la camada). Código se actualiza automáticamente al cambiar sexo mientras no haya sido editado manualmente. Validación en tiempo real de código duplicado.
+  - **Desde selección múltiple:** botón verde "↑ Promover" en la barra flotante cuando hay jaulas de stock no virtuales seleccionadas. Abre `ModalPromoverReproductor` con una fila por jaula (sexo + código por animal).
+  - **Lógica de promoción (`ejecutarPromoverDesdeModal` / `ejecutarPromoverMasivo`):** crea un nuevo animal con `estado: 'activo'`, heredando `fecha_nacimiento`, `id_madre` e `id_padre` de la camada de origen. Nota automática: `Stock → reproductor · camada ...XXXXXX`. Reduce la jaula en 1 (o la elimina si era el último animal). Los machos/hembras de la jaula se decrementan según el sexo elegido.
+  - **Datos que hereda el reproductor:** fecha de nacimiento, padre y madre (disponibles para anti-consanguinidad automática en futuros apareamientos).
+
 ---
 
 ## Comportamientos de datos importantes
