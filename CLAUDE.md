@@ -252,6 +252,21 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
   - **Lógica de promoción (`ejecutarPromoverDesdeModal` / `ejecutarPromoverMasivo`):** crea un nuevo animal con `estado: 'activo'`, heredando `fecha_nacimiento`, `id_madre` e `id_padre` de la camada de origen. Nota automática: `Stock → reproductor · camada ...XXXXXX`. Reduce la jaula en 1 (o la elimina si era el último animal). Los machos/hembras de la jaula se decrementan según el sexo elegido.
   - **Datos que hereda el reproductor:** fecha de nacimiento, padre y madre (disponibles para anti-consanguinidad automática en futuros apareamientos).
 
+- **Sistema multi-bioterio — Ratas y Ratones (24/04/2026):** arquitectura completa para gestionar múltiples colonias separadas dentro de la misma app.
+  - **SQL ejecutado en Supabase:** columna `bioterio_id text NOT NULL DEFAULT 'ratas'` agregada a las 7 tablas (animales, camadas, jaulas, sacrificios, entregas, temperature_logs, incidentes). Datos existentes quedan como `'ratas'` automáticamente.
+  - **`BioterioActivoContext.jsx` (nuevo):** contexto que guarda el bioterio activo en `localStorage`. Expone `bioterioActivo`, `setBioterioActivo`, `limpiarBioterio`, `config` (metadata de la especie) y `bio` (parámetros biológicos). IDs posibles: `ratas`, `ratones_balbc`, `ratones_c57`, `ratones_hibridos`.
+  - **`SelectorBioterio.jsx` (nuevo):** pantalla de selección que aparece al entrar si no hay bioterio activo. Card para Ratas (1 grupo) y card para Ratones con 3 botones de subgrupo (Balb/C / C57 / Híbridos). La selección persiste en localStorage.
+  - **`constants.js`:** `BIO_RATAS` (gestación 23d, madurez 12 sem) y `BIO_RATONES` (gestación 21d, madurez 8 sem). `BIO` sigue apuntando a `BIO_RATAS` para compatibilidad. Función `getBio(bioterioId)` devuelve el BIO correcto.
+  - **`BiotheriumContext.jsx`:** usa `useBioterioActivo()` internamente. Todas las queries de Supabase filtran por `.eq('bioterio_id', bioterioActivo)`. Todos los inserts incluyen `bioterio_id: bioterioActivo`. Recarga datos cuando cambia el bioterio activo.
+  - **`calculos.js`:** todas las funciones BIO-dependientes (`calcularFechaSeparacion`, `calcularRangoParto`, `calcularDestete`, `calcularMadurez`, `calcularLatencia`, `generarTareas`, `generarEventosCalendario`) aceptan `bio = BIO` como parámetro con default para compatibilidad.
+  - **`Sidebar.jsx`:** muestra el bioterio activo con su ícono y color. Botón `↻` para cambiar de bioterio (llama a `limpiarBioterio()`). Ficha biológica dinámica con los parámetros reales de la especie activa.
+  - **Páginas actualizadas:** Dashboard, Calendario, Camadas, CamadaForm, Reportes, Rendimiento, Estadisticas — todas pasan `bio` a las funciones de cálculo.
+  - **Flujo:** Login → si no hay bioterio en localStorage → SelectorBioterio → Dashboard. Cambiar bioterio desde sidebar → SelectorBioterio → datos se recargan limpios.
+
+- **Responsive Landing y SelectorBioterio (24/04/2026):**
+  - **Landing:** media queries en el CSS string para `<900px` y `<480px`. Nav links se ocultan en mobile (queda logo + botón Ingresar). Hero colapsa a 1 columna, logo flotante oculto. h1 baja de 52px → 38px → 30px. Features, steps, para quién, pricing y formulario de contacto colapsan a 1 columna (para quién a 2 col en tablet). Títulos de sección bajan a 28px.
+  - **SelectorBioterio:** badges con `flex-wrap`, nombre científico oculto en xs con `hidden sm:inline`.
+
 ---
 
 ## Comportamientos de datos importantes
@@ -261,6 +276,8 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
 - **Tasa de éxito** en Estadísticas se calcula sobre `efectivos / (efectivos + fallidos)`, excluyendo apareamientos en curso del denominador.
 - **Madres con solo fallos** (sin ningún parto exitoso) aparecen como calidad "Baja" en el gráfico, no como "En proceso".
 - **Conteo de animales activos** en sidebar y Dashboard usa el mismo criterio: `activo | en_apareamiento | en_cria`.
+- **bioterio_id** está presente en todas las tablas. Todos los inserts lo incluyen automáticamente desde el contexto. Todas las queries filtran por él. Los datos existentes tienen `bioterio_id = 'ratas'`.
+- **getBio(bioterioId)** devuelve `BIO_RATAS` para `'ratas'` y `BIO_RATONES` para cualquier subgrupo de ratones. El `bio` se expone desde `useBioterio()` para que las páginas lo pasen a las funciones de cálculo.
 
 ---
 
@@ -269,5 +286,5 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
 - [ ] Notificaciones push o por email cuando hay tareas vencidas
 - [ ] Módulo de reportes con exportación real (PDF/Excel)
 - [ ] Historial de cambios por animal/camada (auditoría)
-- [ ] Multi-colonia o multi-usuario con roles
 - [ ] Modo offline con sincronización posterior
+- [x] ~~Multi-colonia o multi-usuario con roles~~ → implementado como multi-bioterio (ratas + ratones con subgrupos)
