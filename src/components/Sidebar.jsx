@@ -288,14 +288,24 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
       </div>
 
       {/* Footer — Logo GenERats */}
-      <div style={{ borderTop: '1px solid rgba(0,230,118,0.08)' }}>
+      <div
+        style={{
+          borderTop: '1px solid rgba(0,230,118,0.08)',
+          padding: '14px 0 18px',
+          overflow: 'hidden',
+          display: 'flex',
+          justifyContent: 'center',
+        }}
+      >
         <img
           src={logoGenERats}
           alt="GenERats — Genetically Evolving Rats"
           style={{
-            width: '100%',
+            width: '200%',
+            maxWidth: 'none',
             height: 'auto',
             display: 'block',
+            transform: 'translateX(-3%)',
           }}
         />
       </div>

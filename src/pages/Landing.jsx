@@ -377,22 +377,23 @@ export default function Landing() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer style={{ padding: '32px 24px', borderTop: '1px solid rgba(30,51,82,0.5)', background: 'rgba(5,8,16,0.8)' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '20px' }}>
-          {/* Logo + nombre + slogan */}
+      <footer style={{ padding: '42px 24px 28px', borderTop: '1px solid rgba(30,51,82,0.5)', background: 'rgba(5,8,16,0.8)' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '18px' }}>
           <img
             src={logoGenERats}
             alt="GenERats — Genetically Evolving Rats"
             style={{
-              height: '90px',
+              height: '180px',
               width: 'auto',
               maxWidth: '100%',
               display: 'block',
               objectFit: 'contain',
             }}
           />
-          <div className="mono" style={{ fontSize: '12px', color: '#4a5f7a' }}>Mus musculus · Orden Rodentia · Fam. Muridae</div>
-          <div className="mono" style={{ fontSize: '12px', color: '#4a5f7a' }}>© 2025 GenERats</div>
+          <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+            <div className="mono" style={{ fontSize: '12px', color: '#4a5f7a' }}>Mus musculus · Orden Rodentia · Fam. Muridae</div>
+            <div className="mono" style={{ fontSize: '12px', color: '#4a5f7a' }}>© 2025 GenERats</div>
+          </div>
         </div>
       </footer>
     </div>
