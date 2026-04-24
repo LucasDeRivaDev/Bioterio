@@ -4,7 +4,7 @@ import { useBioterio } from '../context/BiotheriumContext'
 import { useAuth } from '../context/AuthContext'
 import { BIO } from '../utils/constants'
 import { Home, LayoutDashboard, Printer, Bug, Send, LogOut, ChevronUp, ChevronDown, Dna } from 'lucide-react'
-import logoGenERats from '../assets/generats-logo.jpeg'
+import logoGenERats from '../assets/logo+generats+slogansinfondo.svg'
 
 const links = [
   { to: '/inicio',   label: 'Inicio',              icon: <Home size={15} /> },
@@ -296,7 +296,6 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
             width: '100%',
             height: 'auto',
             display: 'block',
-            mixBlendMode: 'screen',
           }}
         />
       </div>
