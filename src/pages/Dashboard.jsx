@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { useBioterio } from '../context/BiotheriumContext'
 import { generarTareas, formatFecha, calcularRangoParto, difDias, parseDate, hoy } from '../utils/calculos'
 import Badge from '../components/Badge'
@@ -280,14 +281,27 @@ export default function Dashboard() {
     <div className="p-4 md:p-6 space-y-5 bg-dots min-h-screen" style={{ background: '#050810' }}>
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="min-w-0">
-          <div className="flex items-center gap-3 mb-1">
+          <div className="flex items-center gap-3 mb-1 flex-wrap">
             <div
               className="w-2 h-8 rounded-full shrink-0"
               style={{ background: '#00e676', boxShadow: '0 0 10px rgba(0,230,118,0.6)' }}
             />
             <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">Panel de hoy</h1>
+            {/* Accesos rápidos */}
+            <Link to="/calendario"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+              style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.25)', color: '#40c4ff', textDecoration: 'none' }}
+            >
+              📅 Calendario
+            </Link>
+            <Link to="/incidentes"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+              style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.25)', color: '#ffb300', textDecoration: 'none' }}
+            >
+              📝 Incidentes
+            </Link>
           </div>
           <p className="text-sm ml-5 capitalize" style={{ color: '#4a5f7a' }}>{fechaHoy}</p>
         </div>
