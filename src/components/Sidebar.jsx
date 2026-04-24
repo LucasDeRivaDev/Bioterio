@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useBioterio } from '../context/BiotheriumContext'
 import { useAuth } from '../context/AuthContext'
@@ -17,6 +18,100 @@ const datosBio = [
   { label: 'Camada promedio',     valor: '8–12 crías' },
   { label: 'Vida reproductiva',   valor: '~14 meses' },
 ]
+
+const SECCIONES = [
+  'Panel de hoy', 'Reproductores', 'Emparejamientos', 'Stock',
+  'Entregas', 'Sacrificios', 'Rendimiento', 'Estadísticas',
+  'Temperatura', 'Reportes', 'Otra sección',
+]
+
+function ReportarError() {
+  const [abierto, setAbierto]     = useState(false)
+  const [seccion, setSeccion]     = useState('')
+  const [descripcion, setDesc]    = useState('')
+  const [enviado, setEnviado]     = useState(false)
+
+  function enviar() {
+    if (!descripcion.trim()) return
+    const asunto = encodeURIComponent(`[AppMosca] Error en: ${seccion || 'sin especificar'}`)
+    const cuerpo = encodeURIComponent(
+      `Sección: ${seccion || 'sin especificar'}\n\nDescripción:\n${descripcion.trim()}\n\n---\nEnviado desde AppMosca`
+    )
+    window.location.href = `mailto:LucasDeRiviaDev@gmail.com?subject=${asunto}&body=${cuerpo}`
+    setEnviado(true)
+    setTimeout(() => {
+      setEnviado(false)
+      setSeccion('')
+      setDesc('')
+      setAbierto(false)
+    }, 2000)
+  }
+
+  return (
+    <div className="mx-3 mb-3 rounded-xl overflow-hidden"
+      style={{ border: '1px solid rgba(255,61,87,0.25)', background: 'rgba(255,61,87,0.04)' }}
+    >
+      {/* Encabezado colapsable */}
+      <button
+        onClick={() => setAbierto(!abierto)}
+        className="w-full px-4 py-3 flex items-center justify-between gap-2 transition-all"
+        style={{ background: 'rgba(255,61,87,0.08)', borderBottom: abierto ? '1px solid rgba(255,61,87,0.2)' : 'none', cursor: 'pointer' }}
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-base">🐛</span>
+          <span className="text-xs font-semibold" style={{ color: '#ff6b80' }}>Reportar error</span>
+        </div>
+        <span className="text-xs" style={{ color: '#ff6b80' }}>{abierto ? '▲' : '▼'}</span>
+      </button>
+
+      {/* Formulario */}
+      {abierto && (
+        <div className="px-4 py-3 space-y-3">
+          <div>
+            <label className="text-xs font-semibold block mb-1" style={{ color: '#4a5f7a' }}>¿Dónde ocurrió?</label>
+            <select
+              value={seccion}
+              onChange={(e) => setSeccion(e.target.value)}
+              className="w-full px-2 py-1.5 rounded-lg text-xs focus:outline-none"
+              style={{ background: 'rgba(8,13,26,0.8)', border: '1px solid rgba(255,61,87,0.25)', color: '#c9d4e0' }}
+            >
+              <option value="">— Seleccioná una sección —</option>
+              {SECCIONES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-semibold block mb-1" style={{ color: '#4a5f7a' }}>Describí el error</label>
+            <textarea
+              value={descripcion}
+              onChange={(e) => setDesc(e.target.value)}
+              placeholder="¿Qué pasó? ¿Qué esperabas que pasara?"
+              rows={3}
+              className="w-full px-2 py-1.5 rounded-lg text-xs resize-none focus:outline-none"
+              style={{ background: 'rgba(8,13,26,0.8)', border: '1px solid rgba(255,61,87,0.25)', color: '#c9d4e0' }}
+            />
+          </div>
+          <button
+            onClick={enviar}
+            disabled={!descripcion.trim() || enviado}
+            className="w-full py-2 rounded-lg text-xs font-bold transition-all"
+            style={{
+              background: enviado ? 'rgba(0,230,118,0.15)' : 'rgba(255,61,87,0.15)',
+              border: `1px solid ${enviado ? 'rgba(0,230,118,0.4)' : 'rgba(255,61,87,0.4)'}`,
+              color: enviado ? '#00e676' : '#ff6b80',
+              cursor: !descripcion.trim() || enviado ? 'not-allowed' : 'pointer',
+              opacity: !descripcion.trim() ? 0.5 : 1,
+            }}
+          >
+            {enviado ? '✓ Abriendo cliente de correo...' : '📧 Enviar reporte'}
+          </button>
+          <p className="text-xs text-center" style={{ color: 'rgba(74,95,122,0.6)' }}>
+            Se abre tu app de correo con el reporte listo para enviar.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
   const { animales, camadas } = useBioterio()
@@ -152,6 +247,9 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
           Orden Rodentia · Fam. Muridae
         </div>
       </div>
+
+      {/* Reportar error */}
+      <ReportarError />
 
       {/* Usuario + Cerrar sesión */}
       <div
