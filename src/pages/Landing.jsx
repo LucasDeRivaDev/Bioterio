@@ -1,11 +1,10 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import logoGenERats from '../assets/logo+generats+slogansinfondo.svg'
-import GenERatsIcon from '../components/GenERatsIcon'
+import GenERatsBrand from '../components/GenERatsBrand'
 
 const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap');
   .landing-root { font-family: 'Inter', sans-serif; background: #050810; color: #c9d4e0; overflow-x: hidden; }
   .landing-root .mono { font-family: 'JetBrains Mono', monospace; }
   .landing-root .glow-green { box-shadow: 0 0 30px rgba(0,230,118,0.15); }
@@ -83,13 +82,7 @@ export default function Landing() {
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           {/* Logo */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <GenERatsIcon size={44} prefix="nav" />
-            <div>
-              <span style={{ fontSize: '20px', fontWeight: 800, color: 'white', letterSpacing: '-0.5px' }}>Gen</span>
-              <span style={{ fontSize: '20px', fontWeight: 800, color: '#00e676', letterSpacing: '-0.5px' }}>E</span>
-              <span style={{ fontSize: '20px', fontWeight: 800, color: 'white', letterSpacing: '-0.5px' }}>R</span>
-              <span style={{ fontSize: '20px', fontWeight: 800, color: '#40c4ff', letterSpacing: '-0.5px' }}>ats</span>
-            </div>
+            <GenERatsBrand iconSize={44} nameSize={26} sloganSize={11} sublineSize={0} gap={10} showSubline={false} align="left" iconPrefix="navBrand" />
           </div>
 
           {/* Nav links */}
@@ -172,23 +165,16 @@ export default function Landing() {
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }} className="float">
             <div style={{ position: 'relative' }}>
               <div style={{ position: 'absolute', inset: '-30px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,230,118,0.08) 0%, transparent 70%)' }} />
-              <div className="card" style={{ borderRadius: '32px', padding: '48px', borderColor: 'rgba(0,230,118,0.2)', boxShadow: '0 0 60px rgba(0,230,118,0.1)' }}>
-                <GenERatsIcon size={280} prefix="hero" />
-                {/* PLACEHOLDER — reemplazado el bloque SVG grande que tenía aquí */}
-                  <ellipse cx="82" cy="18" rx="14" ry="11" fill="rgba(13,21,40,0.9)" stroke="url(#heroRatGrad)" strokeWidth="3.2"/>
-                  <ellipse cx="74" cy="9" rx="6" ry="7" fill="rgba(13,21,40,0.9)" stroke="url(#heroRatGrad)" strokeWidth="2.8"/>
-                  <ellipse cx="74" cy="9" rx="3" ry="4" fill="rgba(0,230,118,0.15)"/>
-                  <circle cx="87" cy="15" r="2.5" fill="#40c4ff" filter="url(#glow)"/>
-                  <circle cx="87" cy="15" r="1" fill="white"/>
-                  <circle cx="95" cy="21" r="1.8" fill="#00e676" filter="url(#glow)"/>
-                  <line x1="95" y1="20" x2="100" y2="17" stroke="#40c4ff" strokeWidth="0.8" opacity="0.6"/>
-                  <line x1="95" y1="22" x2="100" y2="22" stroke="#40c4ff" strokeWidth="0.8" opacity="0.6"/>
-                  <line x1="95" y1="22" x2="100" y2="25" stroke="#40c4ff" strokeWidth="0.8" opacity="0.6"/>
-                  <path d="M42 95 C30 100, 13 96, 6 88" fill="none" stroke="url(#heroRatGrad)" strokeWidth="2.8" strokeLinecap="round" filter="url(#glow)"/>
-                  <path d="M34 28 Q43 38, 34 50 Q25 62, 34 72" fill="none" stroke="url(#heroDnaGrad)" strokeWidth="2.2" strokeLinecap="round" filter="url(#glow)"/>
-                  <path d="M56 28 Q47 38, 56 50 Q65 62, 56 72" fill="none" stroke="url(#heroDnaGrad)" strokeWidth="2.2" strokeLinecap="round" filter="url(#glow)"/>
-                  <line x1="34.5" y1="33" x2="55.5" y2="33" stroke="#00e676" strokeWidth="1.6" opacity="0.8"/>
-                  <line x1="28" y1="43" x2="62" y2="43" stroke="#00e676" strokeWidth="1.6" opacity="0.8"/>
+              <div className="card" style={{ borderRadius: '32px', padding: '44px 52px', borderColor: 'rgba(0,230,118,0.2)', boxShadow: '0 0 60px rgba(0,230,118,0.1)' }}>
+                <GenERatsBrand
+                  iconSize={260}
+                  nameSize={92}
+                  sloganSize={34}
+                  sublineSize={17}
+                  gap={26}
+                  align="left"
+                  iconPrefix="heroBrand"
+                />
               </div>
             </div>
           </div>
@@ -379,17 +365,7 @@ export default function Landing() {
       {/* ── FOOTER ── */}
       <footer style={{ padding: '42px 24px 28px', borderTop: '1px solid rgba(30,51,82,0.5)', background: 'rgba(5,8,16,0.8)' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '18px' }}>
-          <img
-            src={logoGenERats}
-            alt="GenERats — Genetically Evolving Rats"
-            style={{
-              height: '180px',
-              width: 'auto',
-              maxWidth: '100%',
-              display: 'block',
-              objectFit: 'contain',
-            }}
-          />
+          <GenERatsBrand iconSize={132} nameSize={72} sloganSize={28} sublineSize={15} gap={20} align="left" iconPrefix="landingFooterBrand" />
           <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
             <div className="mono" style={{ fontSize: '12px', color: '#4a5f7a' }}>Mus musculus · Orden Rodentia · Fam. Muridae</div>
             <div className="mono" style={{ fontSize: '12px', color: '#4a5f7a' }}>© 2025 GenERats</div>
