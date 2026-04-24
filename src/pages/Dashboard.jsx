@@ -3,6 +3,11 @@ import { Link } from 'react-router-dom'
 import { useBioterio } from '../context/BiotheriumContext'
 import { generarTareas, formatFecha, calcularRangoParto, difDias, parseDate, hoy } from '../utils/calculos'
 import Badge from '../components/Badge'
+import {
+  Scissors, Baby, Package, Activity, FlaskConical, AlertCircle, RefreshCcw,
+  Calendar, FileWarning, Thermometer, Microscope, Dna, Archive, PackageCheck,
+  Skull, BarChart2, TrendingUp, CheckCircle2, Layers, Link2,
+} from 'lucide-react'
 
 // Estilos por prioridad
 const PRIORIDAD = {
@@ -42,13 +47,13 @@ const PRIORIDAD = {
 }
 
 const ICONO_TIPO = {
-  separacion:     '✂️',
-  control_parto:  '🐣',
-  destete:        '📦',
-  madurez:        '🐀',
-  revision:       '🔬',
-  evaluar_hembra: '🔴',
-  fin_ciclo:      '🔚',
+  separacion:     <Scissors size={17} />,
+  control_parto:  <Baby size={17} />,
+  destete:        <Package size={17} />,
+  madurez:        <Activity size={17} />,
+  revision:       <FlaskConical size={17} />,
+  evaluar_hembra: <AlertCircle size={17} />,
+  fin_ciclo:      <RefreshCcw size={17} />,
 }
 
 // ── Tarjeta de tarea con acción inline para separaciones ─────────────────────
@@ -84,7 +89,7 @@ function TarjetaTarea({ tarea, onConfirmarSeparacion, onDescartar }) {
       {/* Fila principal: icono + texto + badge + ✕ */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
-          <span className="text-xl mt-0.5 shrink-0">{ICONO_TIPO[tarea.tipo]}</span>
+          <span className="mt-1 shrink-0" style={{ color: est.titulo }}>{ICONO_TIPO[tarea.tipo]}</span>
           <div className="min-w-0">
             <div className="font-semibold text-sm" style={{ color: est.titulo }}>{tarea.descripcion}</div>
             <div className="text-xs mt-0.5 opacity-70" style={{ color: est.titulo }}>{tarea.detalle}</div>
@@ -294,61 +299,61 @@ export default function Dashboard() {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
               style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.25)', color: '#40c4ff', textDecoration: 'none' }}
             >
-              📅 Calendario
+              <Calendar size={13} /> Calendario
             </Link>
             <Link to="/incidentes"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
               style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.25)', color: '#ffb300', textDecoration: 'none' }}
             >
-              📝 Incidentes
+              <FileWarning size={13} /> Incidentes
             </Link>
             <Link to="/temperatura"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
               style={{ background: 'rgba(255,87,51,0.08)', border: '1px solid rgba(255,87,51,0.25)', color: '#ff7043', textDecoration: 'none' }}
             >
-              🌡️ Temperatura
+              <Thermometer size={13} /> Temperatura
             </Link>
             <Link to="/animales"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
               style={{ background: 'rgba(206,147,216,0.08)', border: '1px solid rgba(206,147,216,0.25)', color: '#ce93d8', textDecoration: 'none' }}
             >
-              🐀 Reproductores
+              <Microscope size={13} /> Reproductores
             </Link>
             <Link to="/camadas"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
               style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676', textDecoration: 'none' }}
             >
-              🪺 Emparejamientos
+              <Dna size={13} /> Emparejamientos
             </Link>
             <Link to="/stock"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
               style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.25)', color: '#40c4ff', textDecoration: 'none' }}
             >
-              📦 Stock
+              <Archive size={13} /> Stock
             </Link>
             <Link to="/entregas"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
               style={{ background: 'rgba(255,210,0,0.08)', border: '1px solid rgba(255,210,0,0.25)', color: '#ffd600', textDecoration: 'none' }}
             >
-              📦 Entregas
+              <PackageCheck size={13} /> Entregas
             </Link>
             <Link to="/sacrificios"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
               style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)', color: '#ff6b80', textDecoration: 'none' }}
             >
-              🗡️ Sacrificios
+              <Skull size={13} /> Sacrificios
             </Link>
             <Link to="/rendimiento"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
               style={{ background: 'rgba(255,152,0,0.08)', border: '1px solid rgba(255,152,0,0.25)', color: '#ff9800', textDecoration: 'none' }}
             >
-              📊 Rendimiento
+              <BarChart2 size={13} /> Rendimiento
             </Link>
             <Link to="/estadisticas"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
               style={{ background: 'rgba(0,229,255,0.08)', border: '1px solid rgba(0,229,255,0.25)', color: '#00e5ff', textDecoration: 'none' }}
             >
-              📈 Estadísticas
+              <TrendingUp size={13} /> Estadísticas
             </Link>
           </div>
           <p className="text-sm ml-5 capitalize" style={{ color: '#4a5f7a' }}>{fechaHoy}</p>
@@ -369,9 +374,9 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <StatCard valor={hembrasActivas} label="Hembras activas"    icono="♀"  color="violeta" />
         <StatCard valor={machosActivos}  label="Machos activos"     icono="♂"  color="azul"    />
-        <StatCard valor={enApareamiento} label="En apareamiento"    icono="💑" color="azul"    />
-        <StatCard valor={enPreñez}       label="Preñadas"           icono="🫄" color="naranja"  />
-        <StatCard valor={camadasConCrias} label="Camadas con crías" icono="🪺" color="verde"    />
+        <StatCard valor={enApareamiento}  label="En apareamiento"    icono={<Link2 size={20} />}    color="azul"   />
+        <StatCard valor={enPreñez}        label="Preñadas"           icono={<Activity size={20} />} color="naranja" />
+        <StatCard valor={camadasConCrias} label="Camadas con crías" icono={<Layers size={20} />}   color="verde"   />
       </div>
 
       {/* Alertas urgentes */}
@@ -397,7 +402,7 @@ export default function Dashboard() {
           className="rounded-xl p-6 text-center"
           style={{ background: 'rgba(0,230,118,0.05)', border: '1px solid rgba(0,230,118,0.15)' }}
         >
-          <div className="text-3xl mb-2">✅</div>
+          <div className="flex justify-center mb-2"><CheckCircle2 size={32} style={{ color: '#00e676' }} /></div>
           <div className="font-semibold text-sm" style={{ color: '#00e676' }}>Sin tareas urgentes hoy</div>
           <div className="text-xs mt-1" style={{ color: '#4a5f7a' }}>La colonia está bajo control</div>
         </div>
@@ -421,7 +426,8 @@ export default function Dashboard() {
       {proximosPartos.length > 0 && (
         <div>
           <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: '#4a5f7a' }}>
-            🔬 Seguimiento de preñeces activas
+            <FlaskConical size={13} style={{ display: 'inline', marginRight: '4px' }} />
+            Seguimiento de preñeces activas
           </div>
           <div
             className="rounded-xl overflow-hidden"
@@ -479,7 +485,7 @@ export default function Dashboard() {
           className="rounded-xl p-12 text-center"
           style={{ background: 'rgba(13,21,40,0.5)', border: '1px dashed rgba(30,51,82,0.8)' }}
         >
-          <div className="text-5xl mb-4">🐀</div>
+          <div className="flex justify-center mb-4"><Microscope size={48} style={{ color: '#4a5f7a' }} /></div>
           <div className="font-semibold text-white mb-1">Bioterio vacío</div>
           <div className="text-sm" style={{ color: '#4a5f7a' }}>
             Empezá agregando animales en la sección{' '}

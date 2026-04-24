@@ -3,11 +3,12 @@ import { NavLink } from 'react-router-dom'
 import { useBioterio } from '../context/BiotheriumContext'
 import { useAuth } from '../context/AuthContext'
 import { BIO } from '../utils/constants'
+import { Home, LayoutDashboard, Printer, Bug, Send, LogOut, ChevronUp, ChevronDown, Dna } from 'lucide-react'
 
 const links = [
-  { to: '/inicio', label: 'Inicio', icon: '🏠' },
-  { to: '/', label: 'Panel de hoy', icon: '📋' },
-  { to: '/reportes', label: 'Reportes e impresión', icon: '🖨️' },
+  { to: '/inicio',   label: 'Inicio',              icon: <Home size={15} /> },
+  { to: '/',         label: 'Panel de hoy',         icon: <LayoutDashboard size={15} /> },
+  { to: '/reportes', label: 'Reportes e impresión', icon: <Printer size={15} /> },
 ]
 
 const datosBio = [
@@ -58,10 +59,10 @@ function ReportarError() {
         style={{ background: 'rgba(255,61,87,0.08)', borderBottom: abierto ? '1px solid rgba(255,61,87,0.2)' : 'none', cursor: 'pointer' }}
       >
         <div className="flex items-center gap-2">
-          <span className="text-base">🐛</span>
+          <Bug size={14} style={{ color: '#ff6b80' }} />
           <span className="text-xs font-semibold" style={{ color: '#ff6b80' }}>Reportar error</span>
         </div>
-        <span className="text-xs" style={{ color: '#ff6b80' }}>{abierto ? '▲' : '▼'}</span>
+        <span style={{ color: '#ff6b80' }}>{abierto ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>
       </button>
 
       {/* Formulario */}
@@ -102,7 +103,7 @@ function ReportarError() {
               opacity: !descripcion.trim() ? 0.5 : 1,
             }}
           >
-            {enviado ? '✓ Abriendo cliente de correo...' : '📧 Enviar reporte'}
+            {enviado ? '✓ Abriendo...' : <><Send size={12} style={{ display: 'inline', marginRight: 4 }} /> Enviar reporte</>}
           </button>
           <p className="text-xs text-center" style={{ color: 'rgba(74,95,122,0.6)' }}>
             Se abre tu app de correo con el reporte listo para enviar.
@@ -134,14 +135,14 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
       <div className="px-5 py-5" style={{ borderBottom: '1px solid rgba(0,230,118,0.1)' }}>
         <div className="flex items-center gap-3">
           <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"
+            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
             style={{
               background: 'rgba(0,230,118,0.1)',
               border: '1px solid rgba(0,230,118,0.3)',
               boxShadow: '0 0 12px rgba(0,230,118,0.15)',
             }}
           >
-            🧬
+            <Dna size={22} style={{ color: '#00e676' }} />
           </div>
           <div>
             <div className="font-bold text-white text-sm tracking-wide">BIOTERIO</div>
@@ -204,7 +205,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
                   }
             }
           >
-            <span style={{ fontSize: '15px', width: '20px', textAlign: 'center' }}>{icon}</span>
+            <span style={{ width: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{icon}</span>
             {label}
           </NavLink>
         ))}
@@ -272,7 +273,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
           <button
             onClick={onCerrarSesion}
             title="Cerrar sesión"
-            className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-all"
+            className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all"
             style={{
               background: 'rgba(255,61,87,0.08)',
               border: '1px solid rgba(255,61,87,0.2)',
@@ -280,7 +281,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
               cursor: 'pointer',
             }}
           >
-            ⏻
+            <LogOut size={14} />
           </button>
         </div>
       </div>

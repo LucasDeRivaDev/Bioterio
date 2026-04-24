@@ -1,19 +1,20 @@
 import { useState, useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { formatFecha, calcularLatencia } from '../utils/calculos'
+import { TrendingUp, Microscope, Dna, BarChart2, Archive, Skull, PackageCheck, Thermometer, FileWarning, Printer, Calendar, CalendarDays } from 'lucide-react'
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
 const SECCIONES = [
-  { key: 'estadisticas',    label: 'Estadísticas',    icon: '📈', color: '#ffb300', rgb: '255,179,0',   printBg: '#fefae8', printBorder: '#b8860b' },
-  { key: 'reproductores',   label: 'Reproductores',   icon: '🐀', color: '#ce93d8', rgb: '206,147,216', printBg: '#f5f0ff', printBorder: '#9d4edd' },
-  { key: 'emparejamientos', label: 'Emparejamientos', icon: '🪺', color: '#40c4ff', rgb: '64,196,255',  printBg: '#e8f4fd', printBorder: '#0277bd' },
-  { key: 'rendimiento',     label: 'Rendimiento',     icon: '📊', color: '#00e676', rgb: '0,230,118',   printBg: '#e8f8f0', printBorder: '#2e7d52' },
-  { key: 'stock',           label: 'Stock',           icon: '📦', color: '#00e676', rgb: '0,230,118',   printBg: '#e8f8f0', printBorder: '#2e7d52' },
-  { key: 'sacrificios',     label: 'Sacrificios',     icon: '🗡️', color: '#ff6b80', rgb: '255,107,128', printBg: '#fde8ec', printBorder: '#c62828' },
-  { key: 'entregas',        label: 'Entregas',        icon: '📤', color: '#ffb300', rgb: '255,179,0',   printBg: '#fefae8', printBorder: '#b8860b' },
-  { key: 'temperaturas',    label: 'Temperaturas',    icon: '🌡️', color: '#40c4ff', rgb: '64,196,255',  printBg: '#e8f4fd', printBorder: '#0277bd' },
-  { key: 'incidentes',      label: 'Incidentes',      icon: '📝', color: '#ce93d8', rgb: '206,147,216', printBg: '#f5f0ff', printBorder: '#9d4edd' },
+  { key: 'estadisticas',    label: 'Estadísticas',    icon: <TrendingUp size={14} />,    color: '#ffb300', rgb: '255,179,0',   printBg: '#fefae8', printBorder: '#b8860b' },
+  { key: 'reproductores',   label: 'Reproductores',   icon: <Microscope size={14} />,    color: '#ce93d8', rgb: '206,147,216', printBg: '#f5f0ff', printBorder: '#9d4edd' },
+  { key: 'emparejamientos', label: 'Emparejamientos', icon: <Dna size={14} />,           color: '#40c4ff', rgb: '64,196,255',  printBg: '#e8f4fd', printBorder: '#0277bd' },
+  { key: 'rendimiento',     label: 'Rendimiento',     icon: <BarChart2 size={14} />,     color: '#00e676', rgb: '0,230,118',   printBg: '#e8f8f0', printBorder: '#2e7d52' },
+  { key: 'stock',           label: 'Stock',           icon: <Archive size={14} />,       color: '#00e676', rgb: '0,230,118',   printBg: '#e8f8f0', printBorder: '#2e7d52' },
+  { key: 'sacrificios',     label: 'Sacrificios',     icon: <Skull size={14} />,         color: '#ff6b80', rgb: '255,107,128', printBg: '#fde8ec', printBorder: '#c62828' },
+  { key: 'entregas',        label: 'Entregas',        icon: <PackageCheck size={14} />,  color: '#ffb300', rgb: '255,179,0',   printBg: '#fefae8', printBorder: '#b8860b' },
+  { key: 'temperaturas',    label: 'Temperaturas',    icon: <Thermometer size={14} />,   color: '#40c4ff', rgb: '64,196,255',  printBg: '#e8f4fd', printBorder: '#0277bd' },
+  { key: 'incidentes',      label: 'Incidentes',      icon: <FileWarning size={14} />,   color: '#ce93d8', rgb: '206,147,216', printBg: '#f5f0ff', printBorder: '#9d4edd' },
 ]
 
 function inicioSemana() {
@@ -149,7 +150,7 @@ export default function Reportes() {
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold"
             style={{ background: 'rgba(0,230,118,0.15)', border: '1.5px solid rgba(0,230,118,0.4)', color: '#00e676', boxShadow: '0 0 20px rgba(0,230,118,0.1)' }}
           >
-            🖨️ Imprimir / PDF
+            <Printer size={15} /> Imprimir / PDF
           </button>
         </div>
 
@@ -157,7 +158,7 @@ export default function Reportes() {
         <div className="rounded-2xl p-5 space-y-4" style={cardStyle}>
           <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>Período del informe</div>
           <div className="flex gap-2">
-            {[{ val:'mensual', label:'📅 Por mes' },{ val:'semanal', label:'🗓 Por semana' }].map(({ val, label }) => (
+            {[{ val:'mensual', label: <><Calendar size={13} style={{ display:'inline', marginRight:4 }} />Por mes</> },{ val:'semanal', label: <><CalendarDays size={13} style={{ display:'inline', marginRight:4 }} />Por semana</> }].map(({ val, label }) => (
               <button key={val} onClick={() => setPeriodo(val)}
                 className="px-4 py-2 rounded-xl text-sm font-semibold"
                 style={periodo === val

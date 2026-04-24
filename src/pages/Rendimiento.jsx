@@ -6,6 +6,7 @@ import {
   calcularPerfilHembra, calcularConfiabilidadHembra,
 } from '../utils/calculos'
 import Badge from '../components/Badge'
+import { Trophy } from 'lucide-react'
 
 const cardStyle = { background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }
 
@@ -48,9 +49,9 @@ function ScoreChip({ score }) {
 }
 
 function Medalla({ pos }) {
-  if (pos === 1) return <span className="text-2xl" style={{ filter: 'drop-shadow(0 0 6px gold)' }}>🥇</span>
-  if (pos === 2) return <span className="text-2xl" style={{ filter: 'drop-shadow(0 0 4px silver)' }}>🥈</span>
-  if (pos === 3) return <span className="text-2xl">🥉</span>
+  if (pos === 1) return <Trophy size={22} style={{ color: '#ffd700', filter: 'drop-shadow(0 0 6px rgba(255,215,0,0.8))' }} />
+  if (pos === 2) return <Trophy size={22} style={{ color: '#c0c0c0', filter: 'drop-shadow(0 0 4px rgba(192,192,192,0.6))' }} />
+  if (pos === 3) return <Trophy size={22} style={{ color: '#cd7f32' }} />
   return <span className="font-mono font-bold text-sm w-8 text-center" style={{ color: '#4a5f7a' }}>#{pos}</span>
 }
 
