@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import GenERatsBrand from '../components/GenERatsBrand'
+import { Dna, BarChart2, Archive, Calendar, Skull, Printer, GraduationCap, Microscope, FlaskConical, Building2 } from 'lucide-react'
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap');
@@ -197,15 +198,15 @@ export default function Landing() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
             {[
-              { icon:'🧬', color:'rgba(0,230,118,', title:'Motor predictivo reproductivo', desc:'Calcula automáticamente las ventanas de parto, fechas de destete y madurez reproductiva con precisión científica.', foot:'Gestación · Destete · Madurez' },
-              { icon:'📊', color:'rgba(64,196,255,', title:'Scoring de rendimiento', desc:'Evalúa la eficiencia reproductiva de cada macho por latencia de fertilización. Ranking automático con puntajes por apareamiento.', foot:'Score 10 · 7 · 5 pts por latencia' },
-              { icon:'📦', color:'rgba(206,147,216,', title:'Control de stock por categorías', desc:'Clasificación automática por edad: reproductores, crías, jóvenes y adultos. Se actualiza en tiempo real sin intervención manual.', foot:'5 categorías · Actualización automática' },
-              { icon:'📅', color:'rgba(255,179,0,', title:'Calendario de eventos', desc:'Visualizá partos esperados, destetes y madurez reproductiva en un calendario mensual con alertas de vencimiento.', foot:'Alertas · Vencidas · Próximas' },
-              { icon:'🗡️', color:'rgba(255,107,128,', title:'Registro de sacrificios', desc:'Registrá los sacrificios por grupo con fecha, categoría y notas. El stock se descuenta automáticamente y queda el historial completo.', foot:'Trazabilidad completa · Sin errores' },
-              { icon:'🖨️', color:'rgba(0,230,118,', title:'Reportes e impresión', desc:'Generá reportes mensuales o personalizados listos para imprimir o exportar como PDF. Ideales para auditorías y registros institucionales.', foot:'PDF · Impresión directa · Filtros' },
+              { icon: <Dna size={22} />,      color:'rgba(0,230,118,', title:'Motor predictivo reproductivo', desc:'Calcula automáticamente las ventanas de parto, fechas de destete y madurez reproductiva con precisión científica.', foot:'Gestación · Destete · Madurez' },
+              { icon: <BarChart2 size={22} />, color:'rgba(64,196,255,', title:'Scoring de rendimiento', desc:'Evalúa la eficiencia reproductiva de cada macho por latencia de fertilización. Ranking automático con puntajes por apareamiento.', foot:'Score 10 · 7 · 5 pts por latencia' },
+              { icon: <Archive size={22} />,   color:'rgba(206,147,216,', title:'Control de stock por categorías', desc:'Clasificación automática por edad: reproductores, crías, jóvenes y adultos. Se actualiza en tiempo real sin intervención manual.', foot:'5 categorías · Actualización automática' },
+              { icon: <Calendar size={22} />,  color:'rgba(255,179,0,', title:'Calendario de eventos', desc:'Visualizá partos esperados, destetes y madurez reproductiva en un calendario mensual con alertas de vencimiento.', foot:'Alertas · Vencidas · Próximas' },
+              { icon: <Skull size={22} />,     color:'rgba(255,107,128,', title:'Registro de sacrificios', desc:'Registrá los sacrificios por grupo con fecha, categoría y notas. El stock se descuenta automáticamente y queda el historial completo.', foot:'Trazabilidad completa · Sin errores' },
+              { icon: <Printer size={22} />,   color:'rgba(0,230,118,', title:'Reportes e impresión', desc:'Generá reportes mensuales o personalizados listos para imprimir o exportar como PDF. Ideales para auditorías y registros institucionales.', foot:'PDF · Impresión directa · Filtros' },
             ].map(({ icon, color, title, desc, foot }) => (
               <div key={title} className="card feature-card" style={{ borderRadius: '20px', padding: '28px' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: `${color}0.1)`, border: `1px solid ${color}0.25)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', marginBottom: '20px' }}>{icon}</div>
+                <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: `${color}0.1)`, border: `1px solid ${color}0.25)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: `${color}0.9)`, marginBottom: '20px' }}>{icon}</div>
                 <h3 style={{ fontSize: '17px', fontWeight: 700, color: 'white', marginBottom: '10px' }}>{title}</h3>
                 <p style={{ fontSize: '14px', color: '#8a9bb0', lineHeight: 1.6 }}>{desc}</p>
                 <div className="mono" style={{ fontSize: '11px', color: '#4a5f7a', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(30,51,82,0.6)' }}>{foot}</div>
@@ -250,9 +251,14 @@ export default function Landing() {
             <p style={{ fontSize: '16px', color: '#8a9bb0' }}>Diseñado para instituciones que trabajan con colonias de ratones de laboratorio</p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '16px' }}>
-            {[['🎓','Universidades','Facultades de medicina, biología y veterinaria con bioterios propios'],['🔬','Institutos de investigación','CONICET, INTA, ANLIS y centros de investigación biomédica'],['💊','Laboratorios farmacéuticos','Empresas que requieren modelos animales para sus estudios'],['🏥','Hospitales y clínicas','Centros con unidades de investigación y bioterios satelitales']].map(([icon, title, desc]) => (
+            {[
+              [<GraduationCap size={36} />, '#00e676',  'Universidades',             'Facultades de medicina, biología y veterinaria con bioterios propios'],
+              [<Microscope size={36} />,    '#40c4ff',  'Institutos de investigación','CONICET, INTA, ANLIS y centros de investigación biomédica'],
+              [<FlaskConical size={36} />,  '#ce93d8',  'Laboratorios farmacéuticos', 'Empresas que requieren modelos animales para sus estudios'],
+              [<Building2 size={36} />,     '#ffb300',  'Hospitales y clínicas',      'Centros con unidades de investigación y bioterios satelitales'],
+            ].map(([icon, color, title, desc]) => (
               <div key={title} className="card" style={{ borderRadius: '16px', padding: '24px', textAlign: 'center' }}>
-                <div style={{ fontSize: '36px', marginBottom: '12px' }}>{icon}</div>
+                <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'center', color }}>{icon}</div>
                 <div style={{ fontSize: '15px', fontWeight: 600, color: 'white', marginBottom: '8px' }}>{title}</div>
                 <div style={{ fontSize: '13px', color: '#4a5f7a', lineHeight: 1.5 }}>{desc}</div>
               </div>
@@ -318,7 +324,7 @@ export default function Landing() {
       {/* ── CONTACTO ── */}
       <section id="contacto" style={{ padding: '100px 24px' }}>
         <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '20px' }}>🧬</div>
+          <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'center' }}><Dna size={48} style={{ color: '#00e676' }} /></div>
           <h2 style={{ fontSize: '40px', fontWeight: 800, color: 'white', letterSpacing: '-1px', marginBottom: '16px' }}>Pedí tu demo gratuito</h2>
           <p style={{ fontSize: '16px', color: '#8a9bb0', marginBottom: '48px', lineHeight: 1.7 }}>
             Te mostramos el sistema en funcionamiento con datos reales. Sin compromiso, sin tarjeta de crédito.
