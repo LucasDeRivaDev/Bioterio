@@ -33,11 +33,11 @@ function formatEdad(dias) {
 // ── Configuración de categorías ───────────────────────────────────────────────
 
 const CAT = {
-  macho_repro:  { label: 'Macho reproductor',  color: '#40c4ff', bg: 'rgba(64,196,255,0.1)',   borde: 'rgba(64,196,255,0.3)',   icono: '♂' },
-  hembra_repro: { label: 'Hembra reproductora', color: '#ce93d8', bg: 'rgba(206,147,216,0.1)',  borde: 'rgba(206,147,216,0.3)', icono: '♀' },
-  crias:        { label: 'Crías',               color: '#00e676', bg: 'rgba(0,230,118,0.08)',   borde: 'rgba(0,230,118,0.25)',  icono: <TestTube2 size={14} /> },
-  jovenes:      { label: 'Jóvenes',             color: '#ffb300', bg: 'rgba(255,179,0,0.08)',   borde: 'rgba(255,179,0,0.25)',  icono: <FlaskConical size={14} /> },
-  adultos:      { label: 'Adultos',             color: '#ff6b80', bg: 'rgba(255,61,87,0.08)',   borde: 'rgba(255,61,87,0.25)', icono: <Microscope size={14} /> },
+  macho_repro:  { label: 'Macho reproductor',  color: '#40c4ff', bg: 'rgba(64,196,255,0.1)',   borde: 'rgba(64,196,255,0.3)',   icono: '🐀' },
+  hembra_repro: { label: 'Hembra reproductora', color: '#ce93d8', bg: 'rgba(206,147,216,0.1)',  borde: 'rgba(206,147,216,0.3)', icono: '🐀' },
+  crias:        { label: 'Crías',               color: '#00e676', bg: 'rgba(0,230,118,0.08)',   borde: 'rgba(0,230,118,0.25)',  icono: '🐭' },
+  jovenes:      { label: 'Jóvenes',             color: '#ffb300', bg: 'rgba(255,179,0,0.08)',   borde: 'rgba(255,179,0,0.25)',  icono: '🐀' },
+  adultos:      { label: 'Adultos',             color: '#ff6b80', bg: 'rgba(255,61,87,0.08)',   borde: 'rgba(255,61,87,0.25)', icono: '🐀' },
 }
 
 function categoriaStock(edad) {
@@ -65,40 +65,40 @@ const COLOR_MACHO  = '#40c4ff'
 const COLOR_HEMBRA = '#ce93d8'
 
 function SexoDisplay({ bloque, cfg }) {
-  const { tipo, animal, machos, hembras, total } = bloque
+  const { tipo, animal, machos, hembra, total } = bloque
 
   if (tipo === 'reproductor') {
     const esMacho = animal.sexo === 'macho'
     return (
       <div className="flex items-center gap-1 text-xs font-mono font-semibold">
         <span style={{ color: esMacho ? COLOR_MACHO : COLOR_HEMBRA }}>
-          {esMacho ? '♂ 1 Macho' : '♀ 1 Hembra'}
+          {esMacho ? '🐀 Macho reproductor' : '🐀 Hembra reproductora'}
         </span>
       </div>
     )
   }
 
   // Jaula de stock — ambos sexos conocidos
-  if (machos != null && hembras != null) {
+  if (machos != null && hembra != null) {
     if (machos === 0) {
       return (
         <div className="flex items-center gap-1 text-xs font-mono font-semibold">
-          <span style={{ color: COLOR_HEMBRA }}>♀ {hembras} {hembras === 1 ? 'Hembra' : 'Hembras'}</span>
+          <span style={{ color: COLOR_HEMBRA }}>🐀 {hembra}{hembra === 1 ? 'Hembra' : 'Hembra'}</span>
         </div>
       )
     }
-    if (hembras === 0) {
+    if (hembra === 0) {
       return (
         <div className="flex items-center gap-1 text-xs font-mono font-semibold">
-          <span style={{ color: COLOR_MACHO }}>♂ {machos} {machos === 1 ? 'Macho' : 'Machos'}</span>
+          <span style={{ color: COLOR_MACHO }}>🐀 {machos}{machos === 1 ? 'Macho' : 'Machos'}</span>
         </div>
       )
     }
     return (
       <div className="flex items-center gap-1 text-xs font-mono font-semibold">
-        <span style={{ color: COLOR_MACHO }}>♂{machos}M</span>
+        <span style={{ color: COLOR_MACHO }}>🐀{machos}M</span>
         <span style={{ color: '#4a5f7a' }}>/</span>
-        <span style={{ color: COLOR_HEMBRA }}>♀{hembras}H</span>
+        <span style={{ color: COLOR_HEMBRA }}>🐀{hembra}H</span>
         <span style={{ color: '#4a5f7a', fontWeight: 400 }}>= {total}</span>
       </div>
     )
@@ -108,19 +108,19 @@ function SexoDisplay({ bloque, cfg }) {
   if (machos != null) {
     return (
       <div className="flex items-center gap-1 text-xs font-mono font-semibold">
-        <span style={{ color: COLOR_MACHO }}>♂{machos}M</span>
+        <span style={{ color: COLOR_MACHO }}>🐀{machos}M</span>
         <span style={{ color: '#4a5f7a' }}>/</span>
-        <span style={{ color: COLOR_HEMBRA }}>♀?</span>
+        <span style={{ color: COLOR_HEMBRA }}>🐀?</span>
         <span style={{ color: '#4a5f7a', fontWeight: 400 }}>= {total}</span>
       </div>
     )
   }
-  if (hembras != null) {
+  if (hembra != null) {
     return (
       <div className="flex items-center gap-1 text-xs font-mono font-semibold">
-        <span style={{ color: COLOR_MACHO }}>♂?</span>
+        <span style={{ color: COLOR_MACHO }}>🐀?</span>
         <span style={{ color: '#4a5f7a' }}>/</span>
-        <span style={{ color: COLOR_HEMBRA }}>♀{hembras}H</span>
+        <span style={{ color: COLOR_HEMBRA }}>🐀{hembra}H</span>
         <span style={{ color: '#4a5f7a', fontWeight: 400 }}>= {total}</span>
       </div>
     )
