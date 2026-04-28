@@ -69,9 +69,9 @@ function SelectBar({ label, opciones, valor, onChange, colorMap = {} }) {
   )
 }
 
-function GestacionPanel({ gestacion }) {
+function GestacionPanel({ gestacion, gestacionDias }) {
   const { diaActual, confirmadaPorEsperma, predicciones, diasParaParto, partoEsperado } = gestacion
-  const pct = Math.min((diaActual / 23) * 100, 100)
+  const pct = Math.min((diaActual / gestacionDias) * 100, 100)
   const urgente = diasParaParto <= 3
 
   const colorBarra = diaActual < 15 ? '#00e676' : diaActual < 20 ? '#ffb300' : '#ff6b80'
@@ -84,7 +84,6 @@ function GestacionPanel({ gestacion }) {
         border: `1px solid ${urgente ? 'rgba(255,61,87,0.3)' : 'rgba(0,230,118,0.25)'}`,
       }}
     >
-      {/* Contador */}
       <div className="flex items-center justify-between">
         <div>
           <div className="text-lg font-bold" style={{ color: urgente ? '#ff6b80' : '#00e676' }}>
@@ -113,7 +112,6 @@ function GestacionPanel({ gestacion }) {
         )}
       </div>
 
-      {/* Barra de progreso */}
       <div>
         <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(30,51,82,0.6)' }}>
           <div
@@ -124,11 +122,10 @@ function GestacionPanel({ gestacion }) {
         <div className="flex justify-between text-xs mt-1" style={{ color: '#2a3a50' }}>
           <span>Día 0</span>
           <span>Día 18</span>
-          <span>Día 23</span>
+          <span>Día {gestacionDias}</span>
         </div>
       </div>
 
-      {/* Hitos próximos */}
       <div className="space-y-1">
         {predicciones.filter((p) => !p.pasado || p.diasRestantes >= -1).map((p) => {
           const esHoy = p.diasRestantes === 0
@@ -183,7 +180,6 @@ function PrediccionPanel({ prediccion }) {
           <div className="text-xs" style={{ color: '#2a3a50' }}>{diasO} días O registrados</div>
         </div>
       </div>
-      {/* Próximas 3 ventanas */}
       <div className="flex gap-3 pt-1">
         {prediccion.ventanas.map((v, i) => (
           <div key={i} className="text-center px-2 py-1 rounded-lg flex-1"
@@ -210,7 +206,6 @@ export default function CicloEstral({ animal }) {
     [extendidos, animal.id]
   )
 
-  const patron   = useMemo(() => calcularPatronEstral(historial), [historial])
   const prediccion = useMemo(() => predecirProximoEstro(historial), [historial])
   const gestacion  = useMemo(() => calcularGestacionEstral(historial, bio), [historial, bio])
 
@@ -230,8 +225,10 @@ export default function CicloEstral({ animal }) {
   const [faseManual, setFaseManual] = useState('')
   const [notas, setNotas]         = useState('')
 
-  // Si hay un extendido existente para la fecha seleccionada, cargar sus datos
-  const existente = historial.find((e) => e.fecha === fecha)
+  const existente = useMemo(
+    () => historial.find((e) => e.fecha === fecha),
+    [historial, fecha]
+  )
 
   useEffect(() => {
     if (existente) {
@@ -250,11 +247,12 @@ export default function CicloEstral({ animal }) {
     }
   }, [fecha, existente?.id])
 
-  // Fase auto-sugerida a partir de los datos ingresados
-  const previos = historial.filter((e) => e.fecha < fecha)
   const faseSugerida = useMemo(
-    () => sugerirFase({ citologia, claridad, apertura_vaginal: apertura, copula, espermatozoides: esperma }, previos),
-    [citologia, claridad, apertura, copula, esperma]
+    () => {
+      const previos = historial.filter((e) => e.fecha < fecha)
+      return sugerirFase({ citologia, claridad, apertura_vaginal: apertura, copula, espermatozoides: esperma }, previos)
+    },
+    [historial, fecha, citologia, claridad, apertura, copula, esperma]
   )
   const faseEfectiva = faseManual || faseSugerida
   const esDia0 = copula === 'confirmada'
@@ -294,13 +292,15 @@ export default function CicloEstral({ animal }) {
     setEliminando(null)
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  const visibles = useMemo(
+    () => verTodo ? historial.slice().reverse() : historial.slice(-8).reverse(),
+    [historial, verTodo]
+  )
 
-  const visibles = verTodo ? historial.slice().reverse() : historial.slice(-8).reverse()
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-3 mt-1">
-      {/* Título de sección */}
       <div className="flex items-center justify-between">
         <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#ce93d8' }}>
           🔬 Ciclo Estral y Reproducción Predictiva
@@ -318,14 +318,11 @@ export default function CicloEstral({ animal }) {
         </button>
       </div>
 
-      {/* Panel de estado: gestación O predicción */}
-      {gestacion && <GestacionPanel gestacion={gestacion} />}
+      {gestacion && <GestacionPanel gestacion={gestacion} gestacionDias={bio.GESTACION_DIAS} />}
       {!gestacion && prediccion && <PrediccionPanel prediccion={prediccion} />}
       {!gestacion && !prediccion && historial.length > 0 && (
         <div className="text-xs px-3 py-2 rounded-lg" style={{ background: 'rgba(30,51,82,0.3)', color: '#4a5f7a', border: '1px solid rgba(30,51,82,0.5)' }}>
-          {patron.suficientesDatos === false && patron.diasO < 2
-            ? `Cargá más extendidos con fase O para activar la predicción (${patron.diasO ?? 0} días O registrados — necesitás 2)`
-            : 'Datos insuficientes para predicción.'}
+          {(() => { const p = calcularPatronEstral(historial); return p.diasO < 2 ? `Cargá más extendidos con fase O para activar la predicción (${p.diasO ?? 0} días O registrados — necesitás 2)` : 'Datos insuficientes para predicción.' })()}
         </div>
       )}
       {historial.length === 0 && !mostrarForm && (
@@ -334,7 +331,6 @@ export default function CicloEstral({ animal }) {
         </div>
       )}
 
-      {/* Formulario */}
       {mostrarForm && (
         <div
           className="rounded-xl p-4 space-y-3"
@@ -345,13 +341,11 @@ export default function CicloEstral({ animal }) {
             {existente && <span className="ml-2 font-normal normal-case text-xs" style={{ color: '#4a5f7a' }}>(sobreescribe el registro de esta fecha)</span>}
           </div>
 
-          {/* Fecha */}
           <div className="flex items-center gap-2">
             <span className="text-xs w-28 shrink-0" style={{ color: '#4a5f7a' }}>Fecha</span>
             <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={{ ...iStyle, width: 'auto' }} />
           </div>
 
-          {/* Divider */}
           <div className="text-xs font-semibold uppercase tracking-widest pt-1" style={{ color: '#4a5f7a', borderTop: '1px solid rgba(30,51,82,0.5)', paddingTop: '8px' }}>
             Citología vaginal
           </div>
@@ -433,7 +427,6 @@ export default function CicloEstral({ animal }) {
             </div>
           )}
 
-          {/* Fase auto-sugerida */}
           <div className="text-xs font-semibold uppercase tracking-widest pt-1" style={{ color: '#4a5f7a', borderTop: '1px solid rgba(30,51,82,0.5)', paddingTop: '8px' }}>
             Fase del ciclo
           </div>
@@ -455,7 +448,6 @@ export default function CicloEstral({ animal }) {
             colorMap={Object.fromEntries(Object.entries(FASES).map(([k, v]) => [k, v.color]))}
           />
 
-          {/* Notas */}
           <div className="flex items-center gap-2">
             <span className="text-xs w-28 shrink-0" style={{ color: '#4a5f7a' }}>Notas</span>
             <input
@@ -467,7 +459,6 @@ export default function CicloEstral({ animal }) {
             />
           </div>
 
-          {/* Botones */}
           <div className="flex gap-2 pt-1">
             <button
               onClick={() => { setMostrarForm(false); resetForm() }}
@@ -493,7 +484,6 @@ export default function CicloEstral({ animal }) {
         </div>
       )}
 
-      {/* Historial */}
       {historial.length > 0 && (
         <div className="space-y-1">
           <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
