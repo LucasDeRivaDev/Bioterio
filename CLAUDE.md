@@ -9,8 +9,8 @@ Sistema web de gestión de una colonia de ratones de laboratorio (*Mus musculus*
 
 | Módulo | Función |
 |---|---|
-| **Dashboard** | Alertas del día, tareas vencidas/próximas, tabla de preñeces activas |
-| **Animales** | CRUD de reproductores con filtros por sexo y estado |
+| **Dashboard** | Alertas del día, tareas vencidas/próximas, tabla de preñeces activas, alertas de ciclo estral y gestación |
+| **Animales** | CRUD de reproductores con filtros por sexo y estado. Hembras: sección "Ciclo Estral y Reproducción Predictiva" con registro de extendidos, predicción de receptividad y seguimiento gestacional |
 | **Camadas** | Registro de cópulas, seguimiento de preñez, destete, separación de pareja, scores reproductivos, análisis de confiabilidad de hembras y detección de fallos |
 | **Calendario** | Vista mensual con todos los eventos reproductivos coloreados |
 | **Stock** | Bloques visuales por jaula con display de sexo coloreado (♂ azul / ♀ violeta / mixto bicolor), edición/división/movimiento de animales, entrega y sacrificio en masa. Cada bloque muestra calidad de padres (Alta/Media/Baja) sin necesidad de abrir el modal |
@@ -55,14 +55,15 @@ Sistema web de gestión de una colonia de ratones de laboratorio (*Mus musculus*
 ```
 src/
 ├── App.jsx                          — Router + layout responsive (drawer mobile)
-├── context/BiotheriumContext.jsx    — Estado global (animales, camadas, jaulas, sacrificios, entregas, temperaturas)
+├── context/BiotheriumContext.jsx    — Estado global (animales, camadas, jaulas, sacrificios, entregas, temperaturas, extendidos)
 ├── utils/calculos.js                — Motor predictivo, scores reproductivos, confiabilidad de hembras
 ├── utils/constants.js               — Constantes biológicas (BIO, ESTADO_ANIMAL, TIPO_TAREA)
 ├── components/
 │   ├── Sidebar.jsx                  — Navegación (drawer en mobile, incluye link Temperatura)
 │   ├── Modal.jsx, Badge.jsx
 │   ├── AnimalForm.jsx
-│   └── CamadaForm.jsx               — Formulario de camada + registro de fallos reproductivos
+│   ├── CamadaForm.jsx               — Formulario de camada + registro de fallos reproductivos
+│   └── CicloEstral.jsx              — Sección de ciclo estral dentro del perfil de cada hembra
 └── pages/
     ├── Dashboard.jsx
     ├── Animales.jsx
@@ -106,6 +107,19 @@ entregas
 
 temperature_logs
   id, date, time, current_temp, min_temp, max_temp, created_at
+
+extendidos
+  id, animal_id, bioterio_id, fecha (date),
+  citologia (leucocitos|celulas_ovales|celulas_escamosas),
+  claridad (claro|poco_claro),
+  apertura_vaginal (si|no|dudosa),
+  lordosis (si|no|dudosa),
+  copula (confirmada|no_confirmada|no_observado),
+  espermatozoides (encontrados|no_encontrados|dudoso),
+  fase (L1|L2|L3|O|E), fase_confirmada (bool),
+  es_dia_0 (bool — día de cópula confirmada = inicio gestación),
+  notas, created_at
+  UNIQUE(animal_id, fecha)
 ```
 
 **Estados de un animal:** `activo` → `en_apareamiento` → `en_cria` → `retirado` / `fallecido`
@@ -266,6 +280,21 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
 - **Responsive Landing y SelectorBioterio (24/04/2026):**
   - **Landing:** media queries en el CSS string para `<900px` y `<480px`. Nav links se ocultan en mobile (queda logo + botón Ingresar). Hero colapsa a 1 columna, logo flotante oculto. h1 baja de 52px → 38px → 30px. Features, steps, para quién, pricing y formulario de contacto colapsan a 1 columna (para quién a 2 col en tablet). Títulos de sección bajan a 28px.
   - **SelectorBioterio:** badges con `flex-wrap`, nombre científico oculto en xs con `hidden sm:inline`.
+
+- **Fix emojis de categorías en Stock (28/04/2026):** `SexoDisplay` ahora usa `cfg.icono` de la categoría en vez de `🐀` hardcodeado para bloques de stock: crías → 🐣, jóvenes → 🐭, adultos → 🐁. Reproductores siguen con 🐀.
+
+- **Módulo de ciclo estral y seguimiento gestacional (28/04/2026):** sistema completo de predicción estral dentro del perfil de cada hembra.
+  - **Nueva tabla Supabase `extendidos`:** un registro por hembra por día con citología, signos externos, datos de servicio y espermatozoides. Constraint `UNIQUE(animal_id, fecha)`.
+  - **Nuevo componente `CicloEstral.jsx`:** sección "🔬 Ciclo Estral y Reproducción Predictiva" en el perfil expandible de cada hembra en Animales.
+  - **Formulario diario:** registro de citología vaginal (leucocitos/células ovales/células escamosas), claridad, apertura vaginal, lordosis, cópula y espermatozoides. Botones visuales por opción.
+  - **Auto-sugerencia de fase:** el sistema sugiere L1/L2/L3/O/E en tiempo real según los datos ingresados y el historial previo. El usuario puede confirmar o sobrescribir manualmente.
+  - **Día 0:** cópula confirmada marca automáticamente el registro como Día 0 de gestación con banner verde.
+  - **Confirmación por espermatozoides:** registro de espermatozoides "encontrados" al día siguiente confirma la preñez.
+  - **Panel de gestación:** cuando hay un Día 0 activo, muestra día actual de gestación, barra de progreso, hitos con cuenta regresiva (día 18 preparar nido / día 20 parto posible / día 21 parto probable / día 23 parto esperado).
+  - **Predicción de ciclo individual:** con ≥2 días O registrados calcula longitud promedio del ciclo, mín/máx, patrón (4d/5d) y predice las próximas 3 ventanas fértiles con cuenta de días.
+  - **Alertas en Dashboard:** sección morada 🔬 con alertas de receptividad inminente (hoy/mañana) y partos próximos en ≤2 días.
+  - **Historial:** tabla compacta con los últimos 8 registros (expandible al historial completo), con colores por fase y marcador "D0" para el día del servicio.
+  - **Funciones en `calculos.js`:** `sugerirFase`, `calcularPatronEstral`, `predecirProximoEstro`, `calcularGestacionEstral`, `generarAlertasEstrales`.
 
 ---
 
