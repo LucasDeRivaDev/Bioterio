@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useBioterio } from '../context/BiotheriumContext'
-import { generarTareas, formatFecha, calcularRangoParto, difDias, parseDate, hoy } from '../utils/calculos'
+import { generarTareas, formatFecha, calcularRangoParto, difDias, parseDate, hoy, generarAlertasEstrales } from '../utils/calculos'
 import Badge from '../components/Badge'
 import {
   Scissors, Baby, Package, Activity, FlaskConical, AlertCircle, RefreshCcw,
@@ -225,7 +225,7 @@ function cargarDescartadas() {
 }
 
 export default function Dashboard() {
-  const { animales, camadas, confirmarSeparacion, bio } = useBioterio()
+  const { animales, camadas, extendidos, confirmarSeparacion, bio } = useBioterio()
 
   // IDs de tareas descartadas por el usuario hoy (se resetean el día siguiente)
   const [descartadas, setDescartadas] = useState(() => cargarDescartadas())
@@ -240,6 +240,7 @@ export default function Dashboard() {
   }
 
   const todasTareas = useMemo(() => generarTareas(camadas, animales, bio), [camadas, animales, bio])
+  const alertasEstrales = useMemo(() => generarAlertasEstrales(animales, extendidos, bio), [animales, extendidos, bio])
   const tareas   = todasTareas.filter((t) => !descartadas.has(t.id))
   const vencidas = tareas.filter((t) => t.prioridad === 'vencida')
   const deHoy    = tareas.filter((t) => t.prioridad === 'hoy')
@@ -378,6 +379,29 @@ export default function Dashboard() {
         <StatCard valor={enPreñez}        label="Preñadas"           icono={<Activity size={20} />} color="naranja" />
         <StatCard valor={camadasConCrias} label="Camadas con crías" icono={<Layers size={20} />}   color="verde"   />
       </div>
+
+      {/* Alertas de ciclo estral y gestación */}
+      {alertasEstrales.length > 0 && (
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: '#ce93d8' }}>
+            🔬 Ciclo estral / gestación
+          </div>
+          <div className="space-y-2">
+            {alertasEstrales.map((a, i) => {
+              const color = a.tipo === 'critico' ? '#ff1744' : a.tipo === 'alerta' ? '#ff9100' : a.tipo === 'alta' ? '#ff6b80' : a.tipo === 'media' ? '#ffd740' : '#40c4ff'
+              return (
+                <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm"
+                  style={{ background: `${color}08`, border: `1px solid ${color}30` }}>
+                  <span style={{ color, fontSize: '16px' }}>
+                    {a.tipo === 'critico' || a.tipo === 'alta' ? '⚠' : '○'}
+                  </span>
+                  <span style={{ color: '#c9d4e0' }}>{a.mensaje}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Alertas urgentes */}
       {(vencidas.length > 0 || deHoy.length > 0) && (

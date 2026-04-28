@@ -83,22 +83,22 @@ function SexoDisplay({ bloque, cfg }) {
     if (machos === 0) {
       return (
         <div className="flex items-center gap-1 text-xs font-mono font-semibold">
-          <span style={{ color: COLOR_HEMBRA }}>🐀 {hembra}{hembra === 1 ? 'Hembra' : 'Hembra'}</span>
+          <span style={{ color: COLOR_HEMBRA }}>{cfg.icono} {hembra}{hembra === 1 ? 'Hembra' : 'Hembra'}</span>
         </div>
       )
     }
     if (hembra === 0) {
       return (
         <div className="flex items-center gap-1 text-xs font-mono font-semibold">
-          <span style={{ color: COLOR_MACHO }}>🐀 {machos}{machos === 1 ? 'Macho' : 'Machos'}</span>
+          <span style={{ color: COLOR_MACHO }}>{cfg.icono} {machos}{machos === 1 ? 'Macho' : 'Machos'}</span>
         </div>
       )
     }
     return (
       <div className="flex items-center gap-1 text-xs font-mono font-semibold">
-        <span style={{ color: COLOR_MACHO }}>🐀{machos}M</span>
+        <span style={{ color: COLOR_MACHO }}>{cfg.icono}{machos}M</span>
         <span style={{ color: '#4a5f7a' }}>/</span>
-        <span style={{ color: COLOR_HEMBRA }}>🐀{hembra}H</span>
+        <span style={{ color: COLOR_HEMBRA }}>{cfg.icono}{hembra}H</span>
         <span style={{ color: '#4a5f7a', fontWeight: 400 }}>= {total}</span>
       </div>
     )
@@ -108,9 +108,9 @@ function SexoDisplay({ bloque, cfg }) {
   if (machos != null) {
     return (
       <div className="flex items-center gap-1 text-xs font-mono font-semibold">
-        <span style={{ color: COLOR_MACHO }}>🐀{machos}M</span>
+        <span style={{ color: COLOR_MACHO }}>{cfg.icono}{machos}M</span>
         <span style={{ color: '#4a5f7a' }}>/</span>
-        <span style={{ color: COLOR_HEMBRA }}>🐀?</span>
+        <span style={{ color: COLOR_HEMBRA }}>{cfg.icono}?</span>
         <span style={{ color: '#4a5f7a', fontWeight: 400 }}>= {total}</span>
       </div>
     )
@@ -118,9 +118,9 @@ function SexoDisplay({ bloque, cfg }) {
   if (hembra != null) {
     return (
       <div className="flex items-center gap-1 text-xs font-mono font-semibold">
-        <span style={{ color: COLOR_MACHO }}>🐀?</span>
+        <span style={{ color: COLOR_MACHO }}>{cfg.icono}?</span>
         <span style={{ color: '#4a5f7a' }}>/</span>
-        <span style={{ color: COLOR_HEMBRA }}>🐀{hembra}H</span>
+        <span style={{ color: COLOR_HEMBRA }}>{cfg.icono}{hembra}H</span>
         <span style={{ color: '#4a5f7a', fontWeight: 400 }}>= {total}</span>
       </div>
     )

@@ -13,6 +13,16 @@ function reducer(estado, accion) {
     case 'SET_JAULAS':           return { ...estado, jaulas: accion.payload }
     case 'SET_TEMPERATURAS':     return { ...estado, temperaturas: accion.payload }
     case 'SET_INCIDENTES':       return { ...estado, incidentes: accion.payload }
+    case 'SET_EXTENDIDOS':       return { ...estado, extendidos: accion.payload }
+
+    case 'AGREGAR_EXTENDIDO': {
+      const lista = estado.extendidos.filter((e) => !(e.animal_id === accion.payload.animal_id && e.fecha === accion.payload.fecha))
+      lista.push(accion.payload)
+      lista.sort((a, b) => a.fecha.localeCompare(b.fecha))
+      return { ...estado, extendidos: lista }
+    }
+    case 'EDITAR_EXTENDIDO':   return { ...estado, extendidos: estado.extendidos.map((e) => e.id === accion.payload.id ? accion.payload : e) }
+    case 'ELIMINAR_EXTENDIDO': return { ...estado, extendidos: estado.extendidos.filter((e) => e.id !== accion.payload) }
 
     case 'AGREGAR_ANIMAL': {
       const lista = [...estado.animales, accion.payload]
@@ -67,7 +77,7 @@ const BiotheriumCtx = createContext(null)
 
 export function BiotheriumProvider({ children }) {
   const { bioterioActivo, bio } = useBioterioActivo()
-  const [estado, dispatch] = useReducer(reducer, { animales: [], camadas: [], sacrificios: [], entregas: [], jaulas: [], temperaturas: [], incidentes: [] })
+  const [estado, dispatch] = useReducer(reducer, { animales: [], camadas: [], sacrificios: [], entregas: [], jaulas: [], temperaturas: [], incidentes: [], extendidos: [] })
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
 
@@ -85,8 +95,9 @@ export function BiotheriumProvider({ children }) {
       dispatch({ type: 'SET_JAULAS',      payload: [] })
       dispatch({ type: 'SET_TEMPERATURAS', payload: [] })
       dispatch({ type: 'SET_INCIDENTES',  payload: [] })
+      dispatch({ type: 'SET_EXTENDIDOS',  payload: [] })
       try {
-        const [{ data: animales, error: errA }, { data: camadas, error: errC }, { data: sacrificios }, { data: entregas }, { data: jaulas }, { data: temperaturas }, { data: incidentes }] = await Promise.all([
+        const [{ data: animales, error: errA }, { data: camadas, error: errC }, { data: sacrificios }, { data: entregas }, { data: jaulas }, { data: temperaturas }, { data: incidentes }, { data: extendidos }] = await Promise.all([
           supabase.from('animales').select('*').eq('bioterio_id', bioterioActivo).order('fecha_nacimiento', { ascending: true }),
           supabase.from('camadas').select('*').eq('bioterio_id', bioterioActivo).order('fecha_copula', { ascending: true }),
           supabase.from('sacrificios').select('*').eq('bioterio_id', bioterioActivo).order('fecha', { ascending: true }),
@@ -94,6 +105,7 @@ export function BiotheriumProvider({ children }) {
           supabase.from('jaulas').select('*').eq('bioterio_id', bioterioActivo).order('created_at', { ascending: true }),
           supabase.from('temperature_logs').select('*').eq('bioterio_id', bioterioActivo).order('date', { ascending: false }).order('time', { ascending: false }),
           supabase.from('incidentes').select('*').eq('bioterio_id', bioterioActivo).order('fecha', { ascending: false }),
+          supabase.from('extendidos').select('*').eq('bioterio_id', bioterioActivo).order('fecha', { ascending: true }),
         ])
         if (errA) throw errA
         if (errC) throw errC
@@ -104,6 +116,7 @@ export function BiotheriumProvider({ children }) {
         dispatch({ type: 'SET_JAULAS', payload: jaulas ?? [] })
         dispatch({ type: 'SET_TEMPERATURAS', payload: temperaturas ?? [] })
         dispatch({ type: 'SET_INCIDENTES', payload: incidentes ?? [] })
+        dispatch({ type: 'SET_EXTENDIDOS', payload: extendidos ?? [] })
       } catch (e) {
         console.error('Error al cargar datos:', e)
         setError('No se pudieron cargar los datos. Verificá la conexión.')
@@ -491,6 +504,41 @@ export function BiotheriumProvider({ children }) {
     dispatch({ type: 'AGREGAR_TEMPERATURA', payload: data })
   }
 
+  // ── EXTENDIDOS (ciclo estral) ─────────────────────────────────────────────
+
+  async function agregarExtendido(datos) {
+    // Buscar si ya existe un registro para ese animal + fecha (editar en lugar de insertar)
+    const existente = estado.extendidos.find(
+      (e) => e.animal_id === datos.animal_id && e.fecha === datos.fecha
+    )
+    if (existente) {
+      return editarExtendido({ ...existente, ...datos })
+    }
+    const nuevo = { ...datos, id: generarId(), bioterio_id: bioterioActivo }
+    dispatch({ type: 'AGREGAR_EXTENDIDO', payload: nuevo })
+    const { error } = await supabase.from('extendidos').insert(nuevo)
+    if (error) {
+      console.error('Error al guardar extendido:', error)
+      dispatch({ type: 'ELIMINAR_EXTENDIDO', payload: nuevo.id })
+    }
+  }
+
+  async function editarExtendido(datos) {
+    dispatch({ type: 'EDITAR_EXTENDIDO', payload: datos })
+    const { error } = await supabase.from('extendidos').update(datos).eq('id', datos.id)
+    if (error) console.error('Error al editar extendido:', error)
+  }
+
+  async function eliminarExtendido(id) {
+    const respaldo = estado.extendidos.find((e) => e.id === id)
+    dispatch({ type: 'ELIMINAR_EXTENDIDO', payload: id })
+    const { error } = await supabase.from('extendidos').delete().eq('id', id)
+    if (error) {
+      console.error('Error al eliminar extendido:', error)
+      if (respaldo) dispatch({ type: 'AGREGAR_EXTENDIDO', payload: respaldo })
+    }
+  }
+
   async function eliminarTemperaturasMes(yearMonth) {
     // yearMonth formato: "2026-04"
     dispatch({ type: 'ELIMINAR_TEMPERATURAS_MES', payload: yearMonth })
@@ -513,6 +561,7 @@ export function BiotheriumProvider({ children }) {
       jaulas: estado.jaulas,
       temperaturas: estado.temperaturas,
       incidentes: estado.incidentes,
+      extendidos: estado.extendidos,
       cargando,
       error,
       bio,
@@ -524,6 +573,7 @@ export function BiotheriumProvider({ children }) {
       agregarJaula, editarJaula, eliminarJaula,
       agregarTemperatura, eliminarTemperaturasMes,
       agregarIncidente, eliminarIncidente,
+      agregarExtendido, editarExtendido, eliminarExtendido,
     }}>
       {children}
     </BiotheriumCtx.Provider>

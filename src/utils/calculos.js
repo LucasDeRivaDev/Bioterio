@@ -627,3 +627,272 @@ export function generarEventosCalendario(camadas, animales, bio = BIO) {
 
   return eventos
 }
+
+// Ciclo estral y gestión
+const ESTADOS_CICLO = ['L1', 'L2', 'L3', 'O', 'E']
+const DURACION_CICLO = 4
+
+export function getEstadoCicloActual(animalId, extendidos) {
+  if (!extendidos?.length) return null
+  const del = extendidos.filter(e => e.animal_id === animalId).sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''))
+  return del[0]?.estado_ciclo || null
+}
+
+export function getHistorialCiclos(animalId, extendidos) {
+  if (!extendidos?.length) return []
+  return extendidos.filter(e => e.animal_id === animalId).sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''))
+}
+
+export function predecirProximaReceptividad(animalId, extendidos) {
+  const del = getHistorialCiclos(animalId, extendidos)
+  if (!del.length) return null
+  const ult = del.find(e => e.estado_ciclo === 'O')
+  if (!ult) return null
+  return sumarDias(ult.fecha, DURACION_CICLO)
+}
+
+export function getProbabilidadReceptividad(animalId, extendidos) {
+  const del = extendidos?.filter(e => e.animal_id === animalId) || []
+  if (!del.length) return { probabilidad: 0, razon: 'Sin datos' }
+  const est = getEstadoCicloActual(animalId, extendidos)
+  if (est === 'O') return { probabilidad: 100, razon: 'En celo' }
+  if (est === 'E') return { probabilidad: 0, razon: 'Post-servicio' }
+  return { probabilidad: 30, razon: est || 'Desconocido' }
+}
+
+export function getDiaGestacional(animal) {
+  if (!animal.preanada || !animal.fecha_copula) return 0
+  return Math.max(0, difDias(animal.fecha_copula, hoy()))
+}
+
+export function getAlertasGestacion(animal) {
+  const alerts = []
+  if (!animal.preanada) return alerts
+  const dia = getDiaGestacional(animal)
+  if (dia === 18) alerts.push({ tipo: 'info', mensaje: 'Día 18 de gestación' })
+  if (dia === 21) alerts.push({ tipo: 'warning', mensaje: 'Día 21 - parto pronto' })
+  const resto = BIO.GESTACION_DIAS - dia
+  if (resto === 5) alerts.push({ tipo: 'info', mensaje: `Parto en ${resto} días` })
+  if (resto <= 0) alerts.push({ tipo: 'error', mensaje: 'Parto vencido' })
+  return alerts
+}
+
+export function getFechaPartoEsperado(fechaCopula) {
+  if (!fechaCopula) return null
+  return sumarDias(parseDate(fechaCopula), BIO.GESTACION_DIAS)
+}
+
+// ─── CICLO ESTRAL ─────────────────────────────────────────────────────────────
+
+/**
+ * Sugiere la fase del ciclo estral a partir de los datos del extendido del día
+ * y el historial previo ordenado por fecha (ascendente).
+ * Fases: L1 (diestro temprano) → L2 (diestro medio) → L3 (diestro tardío / proestro) → O (receptiva) → E (post-servicio)
+ */
+export function sugerirFase(datos, historialPrevio = []) {
+  const { citologia, apertura_vaginal, copula, espermatozoides } = datos
+
+  // Post-servicio: cópula confirmada o espermatozoides encontrados
+  if (copula === 'confirmada') return 'E'
+  if (espermatozoides === 'encontrados') return 'E'
+
+  // Estro / receptiva: células escamosas predominantes
+  if (citologia === 'celulas_escamosas') return 'O'
+
+  // Proestro tardío / L3: células ovales
+  if (citologia === 'celulas_ovales') return 'L3'
+
+  // Leucocitos → discriminar dentro del diestro según posición en ciclo
+  if (citologia === 'leucocitos') {
+    const anterior = historialPrevio[historialPrevio.length - 1]
+    if (!anterior) return 'L1'
+    const fa = anterior.fase
+    if (fa === 'E' || fa === null) return 'L1'
+    if (fa === 'L1') return 'L2'
+    if (fa === 'L2') return 'L3'
+    if (fa === 'L3') return 'L3'
+    if (fa === 'O') return 'L1' // nuevo ciclo post-estro sin copula
+    return 'L1'
+  }
+
+  return null
+}
+
+/**
+ * Analiza el historial de extendidos para calcular el patrón individual del ciclo.
+ * Retorna longitud promedio entre ciclos O, variabilidad y metadatos.
+ */
+export function calcularPatronEstral(extendidos) {
+  if (!extendidos || extendidos.length < 3) {
+    return { suficientesDatos: false, total: extendidos?.length ?? 0 }
+  }
+  const ordenados = [...extendidos].sort((a, b) => a.fecha.localeCompare(b.fecha))
+  const diasO = ordenados.filter((e) => e.fase === 'O')
+
+  if (diasO.length < 2) {
+    return { suficientesDatos: false, total: extendidos.length, diasO: diasO.length }
+  }
+
+  // Calcular intervalos entre días O consecutivos (filtrar ruido: solo ciclos plausibles 3–8 días)
+  const intervalos = []
+  for (let i = 1; i < diasO.length; i++) {
+    const d = difDias(parseDate(diasO[i - 1].fecha), parseDate(diasO[i].fecha))
+    if (d >= 3 && d <= 8) intervalos.push(d)
+  }
+
+  if (intervalos.length === 0) {
+    return { suficientesDatos: false, total: extendidos.length, diasO: diasO.length }
+  }
+
+  const promedio = intervalos.reduce((a, b) => a + b, 0) / intervalos.length
+  return {
+    suficientesDatos: true,
+    total: extendidos.length,
+    diasO: diasO.length,
+    ciclos: intervalos.length,
+    longitudPromedio: Math.round(promedio * 10) / 10,
+    longitudMin: Math.min(...intervalos),
+    longitudMax: Math.max(...intervalos),
+    patron: promedio <= 4.5 ? '4 días' : '5 días',
+    ultimaO: diasO[diasO.length - 1].fecha,
+  }
+}
+
+/**
+ * Predice la próxima ventana de receptividad (fase O) a partir del patrón histórico.
+ */
+export function predecirProximoEstro(extendidos) {
+  const patron = calcularPatronEstral(extendidos)
+  if (!patron.suficientesDatos) return null
+
+  const hoyDate = parseDate(hoy())
+  const ultimaODate = parseDate(patron.ultimaO)
+  const diasDesdeUltimaO = difDias(ultimaODate, hoyDate)
+
+  // Generar 3 próximas ventanas
+  const ventanas = [1, 2, 3].map((i) => {
+    const fecha = sumarDias(ultimaODate, Math.round(patron.longitudPromedio * i))
+    const fechaStr = fecha.toISOString().split('T')[0]
+    return {
+      fecha: fechaStr,
+      fechaFormateada: formatFecha(fecha),
+      diasHasta: difDias(hoyDate, fecha),
+    }
+  })
+
+  const proximaVentana = ventanas[0]
+
+  return {
+    ...patron,
+    diasDesdeUltimaO,
+    ventanas,
+    proximaVentana,
+    alertaHoy: proximaVentana.diasHasta === 0,
+    alertaMañana: proximaVentana.diasHasta === 1,
+  }
+}
+
+/**
+ * Calcula el estado gestacional a partir del historial de extendidos.
+ * Día 0 = registro con es_dia_0=true (cópula confirmada).
+ * Día 1 en adelante = días transcurridos desde el día 0.
+ */
+export function calcularGestacionEstral(extendidos, bio = BIO) {
+  if (!extendidos || extendidos.length === 0) return null
+
+  // Buscar el día 0 más reciente
+  const dia0 = [...extendidos]
+    .filter((e) => e.es_dia_0)
+    .sort((a, b) => b.fecha.localeCompare(a.fecha))[0]
+
+  if (!dia0) return null
+
+  const hoyDate = parseDate(hoy())
+  const fechaDia0 = parseDate(dia0.fecha)
+  const diasGestacion = difDias(fechaDia0, hoyDate)
+
+  if (diasGestacion < 0) return null
+
+  // Confirmar por espermatozoides (cualquier registro posterior al día 0 con esperma encontrado)
+  const confirmadaPorEsperma = extendidos.some(
+    (e) => e.espermatozoides === 'encontrados' && e.fecha > dia0.fecha
+  )
+
+  // Predicciones con días desde día 0
+  const hitos = [
+    { dia: 18, label: 'Preparar nido', urgencia: 'info' },
+    { dia: 20, label: 'Parto posible', urgencia: 'alerta' },
+    { dia: 21, label: 'Parto probable', urgencia: 'alerta' },
+    { dia: bio.GESTACION_DIAS, label: 'Parto esperado', urgencia: 'critico' },
+  ]
+
+  const predicciones = hitos.map((h) => {
+    const fechaHito = sumarDias(fechaDia0, h.dia)
+    return {
+      ...h,
+      fecha: fechaHito.toISOString().split('T')[0],
+      fechaFormateada: formatFecha(fechaHito),
+      diasRestantes: h.dia - diasGestacion,
+      pasado: diasGestacion > h.dia,
+    }
+  })
+
+  return {
+    fechaDia0: dia0.fecha,
+    diaActual: diasGestacion,
+    confirmadaPorEsperma,
+    predicciones,
+    diasParaParto: bio.GESTACION_DIAS - diasGestacion,
+    partoEsperado: sumarDias(fechaDia0, bio.GESTACION_DIAS).toISOString().split('T')[0],
+  }
+}
+
+/**
+ * Genera alertas de ciclo estral y gestación para el Dashboard.
+ */
+export function generarAlertasEstrales(animales, extendidos, bio = BIO) {
+  const alertas = []
+  const hembrasActivas = animales.filter(
+    (a) => a.sexo === 'hembra' && ['activo', 'en_apareamiento', 'en_cria'].includes(a.estado)
+  )
+
+  for (const hembra of hembrasActivas) {
+    const ext = extendidos.filter((e) => e.animal_id === hembra.id)
+    if (ext.length === 0) continue
+
+    const gestacion = calcularGestacionEstral(ext, bio)
+    if (gestacion) {
+      for (const pred of gestacion.predicciones) {
+        if (pred.diasRestantes >= 0 && pred.diasRestantes <= 2) {
+          alertas.push({
+            tipo: pred.urgencia,
+            animalId: hembra.id,
+            codigo: hembra.codigo,
+            mensaje: `${hembra.codigo} — Día ${gestacion.diaActual} de gestación — ${pred.label}${pred.diasRestantes === 0 ? ' (HOY)' : ` (en ${pred.diasRestantes}d)`}`,
+          })
+        }
+      }
+      continue
+    }
+
+    const prediccion = predecirProximoEstro(ext)
+    if (!prediccion) continue
+    if (prediccion.alertaHoy) {
+      alertas.push({
+        tipo: 'alta',
+        animalId: hembra.id,
+        codigo: hembra.codigo,
+        mensaje: `${hembra.codigo} — Alta probabilidad de receptividad HOY`,
+      })
+    } else if (prediccion.alertaMañana) {
+      alertas.push({
+        tipo: 'media',
+        animalId: hembra.id,
+        codigo: hembra.codigo,
+        mensaje: `${hembra.codigo} — Ventana óptima para cruce mañana`,
+      })
+    }
+  }
+
+  return alertas
+}

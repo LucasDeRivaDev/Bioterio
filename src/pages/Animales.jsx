@@ -5,6 +5,7 @@ import { MAX_APAREAMIENTOS } from '../utils/constants'
 import Modal from '../components/Modal'
 import AnimalForm from '../components/AnimalForm'
 import Badge from '../components/Badge'
+import CicloEstral from '../components/CicloEstral'
 
 const colorEstado = { activo:'verde', en_apareamiento:'azul', en_cria:'violeta', retirado:'gris', fallecido:'rojo' }
 const labelEstado = { activo:'Activo', en_apareamiento:'En apareamiento', en_cria:'En cría', retirado:'Retirado', fallecido:'Fallecido' }
@@ -323,6 +324,9 @@ export default function Animales() {
                           Perfil reproductivo — {animal.codigo}
                         </div>
                         <PerfilAnimal animal={animal} />
+                        {animal.sexo === 'hembra' && (
+                          <CicloEstral animal={animal} />
+                        )}
                       </td>
                     </tr>
                   )}
