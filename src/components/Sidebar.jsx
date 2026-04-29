@@ -3,13 +3,38 @@ import { NavLink } from 'react-router-dom'
 import { useBioterio } from '../context/BiotheriumContext'
 import { useBioterioActivo } from '../context/BioterioActivoContext'
 import { useAuth } from '../context/AuthContext'
-import { Home, LayoutDashboard, Printer, Bug, Send, LogOut, ChevronUp, ChevronDown, Dna, RefreshCw } from 'lucide-react'
+import {
+  Home, LayoutDashboard, Printer, Bug, Send, LogOut, ChevronUp, ChevronDown,
+  Dna, RefreshCw, Archive, GitMerge, Skull, TrendingUp, BarChart2,
+  Thermometer, CalendarDays,
+} from 'lucide-react'
 import GenERatsBrand from './GenERatsBrand'
 
-const links = [
-  { to: '/inicio',   label: 'Inicio',              icon: <Home size={15} /> },
-  { to: '/',         label: 'Panel de hoy',         icon: <LayoutDashboard size={15} /> },
-  { to: '/reportes', label: 'Reportes e impresión', icon: <Printer size={15} /> },
+const NAV = [
+  { to: '/inicio', label: 'Inicio', icon: <Home size={15} /> },
+  {
+    to: '/animales', label: 'Reproductores', icon: <Dna size={15} />,
+    hijos: [
+      { to: '/camadas', label: 'Emparejamientos', icon: <GitMerge size={13} /> },
+    ],
+  },
+  {
+    to: '/stock', label: 'Stock', icon: <Archive size={15} />,
+    hijos: [
+      { to: '/entregas',    label: 'Entregas',    icon: <Send size={13} /> },
+      { to: '/sacrificios', label: 'Sacrificios', icon: <Skull size={13} /> },
+    ],
+  },
+  {
+    to: '/rendimiento', label: 'Rendimiento', icon: <TrendingUp size={15} />,
+    hijos: [
+      { to: '/',             label: 'Panel de hoy',  icon: <LayoutDashboard size={13} />, end: true },
+      { to: '/estadisticas', label: 'Estadísticas',  icon: <BarChart2 size={13} /> },
+    ],
+  },
+  { to: '/temperatura', label: 'Temperatura', icon: <Thermometer size={15} /> },
+  { to: '/calendario',  label: 'Calendario',  icon: <CalendarDays size={15} /> },
+  { to: '/reportes',    label: 'Reportes',    icon: <Printer size={15} /> },
 ]
 
 const SECCIONES = [
@@ -203,37 +228,80 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 pb-3 space-y-1">
-        {links.map(({ to, label, icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/'}
-            onClick={onCerrarMenu}
-            style={({ isActive }) =>
-              isActive
-                ? {
-                    display: 'flex', alignItems: 'center', gap: '10px',
-                    padding: '8px 12px', borderRadius: '10px',
-                    background: 'rgba(0,230,118,0.12)',
-                    color: '#00e676',
-                    border: '1px solid rgba(0,230,118,0.25)',
-                    boxShadow: '0 0 12px rgba(0,230,118,0.1)',
-                    fontSize: '13px', fontWeight: 600, textDecoration: 'none',
-                  }
-                : {
-                    display: 'flex', alignItems: 'center', gap: '10px',
-                    padding: '8px 12px', borderRadius: '10px',
-                    color: '#8a9bb0',
-                    border: '1px solid transparent',
-                    fontSize: '13px', fontWeight: 500, textDecoration: 'none',
-                  }
-            }
-          >
-            <span style={{ width: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{icon}</span>
-            {label}
-          </NavLink>
-        ))}
+      <nav className="flex-1 overflow-y-auto px-3 pb-3 space-y-0.5">
+        {NAV.map((item) => {
+          const linkStyle = (isActive) =>
+            isActive
+              ? {
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  padding: '8px 12px', borderRadius: '10px',
+                  background: 'rgba(0,230,118,0.12)', color: '#00e676',
+                  border: '1px solid rgba(0,230,118,0.25)',
+                  boxShadow: '0 0 12px rgba(0,230,118,0.1)',
+                  fontSize: '13px', fontWeight: 600, textDecoration: 'none',
+                }
+              : {
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  padding: '8px 12px', borderRadius: '10px',
+                  color: '#8a9bb0', border: '1px solid transparent',
+                  fontSize: '13px', fontWeight: 500, textDecoration: 'none',
+                }
+
+          const iconSlot = (icon) => (
+            <span style={{ width: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {icon}
+            </span>
+          )
+
+          if (!item.hijos) {
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                onClick={onCerrarMenu}
+                style={({ isActive }) => linkStyle(isActive)}
+              >
+                {iconSlot(item.icon)}
+                {item.label}
+              </NavLink>
+            )
+          }
+
+          return (
+            <div key={item.to}>
+              <NavLink
+                to={item.to}
+                onClick={onCerrarMenu}
+                style={({ isActive }) => linkStyle(isActive)}
+              >
+                {iconSlot(item.icon)}
+                {item.label}
+              </NavLink>
+              <div
+                className="ml-4 mt-0.5 space-y-0.5 pl-3"
+                style={{ borderLeft: '1px solid rgba(30,51,82,0.6)' }}
+              >
+                {item.hijos.map((hijo) => (
+                  <NavLink
+                    key={hijo.to}
+                    to={hijo.to}
+                    end={hijo.end}
+                    onClick={onCerrarMenu}
+                    style={({ isActive }) => ({
+                      ...linkStyle(isActive),
+                      fontSize: '12px',
+                      padding: '6px 10px',
+                    })}
+                  >
+                    {iconSlot(hijo.icon)}
+                    {hijo.label}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
+          )
+        })}
       </nav>
 
       {/* ── FICHA BIOLÓGICA DE LA ESPECIE ── */}
