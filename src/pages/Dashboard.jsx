@@ -295,7 +295,7 @@ export default function Dashboard() {
               style={{ background: '#00e676', boxShadow: '0 0 10px rgba(0,230,118,0.6)' }}
             />
             <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">Panel de hoy</h1>
-            {/* Accesos rápidos */}
+            {/* Links independientes */}
             <Link to="/calendario"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
               style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.25)', color: '#40c4ff', textDecoration: 'none' }}
@@ -314,48 +314,63 @@ export default function Dashboard() {
             >
               <Thermometer size={13} /> Temperatura
             </Link>
-            <Link to="/animales"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-              style={{ background: 'rgba(206,147,216,0.08)', border: '1px solid rgba(206,147,216,0.25)', color: '#ce93d8', textDecoration: 'none' }}
-            >
-              <Microscope size={13} /> Reproductores
-            </Link>
-            <Link to="/camadas"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-              style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676', textDecoration: 'none' }}
-            >
-              <Dna size={13} /> Emparejamientos
-            </Link>
-            <Link to="/stock"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-              style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.25)', color: '#40c4ff', textDecoration: 'none' }}
-            >
-              <Archive size={13} /> Stock
-            </Link>
-            <Link to="/entregas"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-              style={{ background: 'rgba(255,210,0,0.08)', border: '1px solid rgba(255,210,0,0.25)', color: '#ffd600', textDecoration: 'none' }}
-            >
-              <PackageCheck size={13} /> Entregas
-            </Link>
-            <Link to="/sacrificios"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-              style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)', color: '#ff6b80', textDecoration: 'none' }}
-            >
-              <Skull size={13} /> Sacrificios
-            </Link>
-            <Link to="/rendimiento"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-              style={{ background: 'rgba(255,152,0,0.08)', border: '1px solid rgba(255,152,0,0.25)', color: '#ff9800', textDecoration: 'none' }}
-            >
-              <BarChart2 size={13} /> Rendimiento
-            </Link>
-            <Link to="/estadisticas"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-              style={{ background: 'rgba(0,229,255,0.08)', border: '1px solid rgba(0,229,255,0.25)', color: '#00e5ff', textDecoration: 'none' }}
-            >
-              <TrendingUp size={13} /> Estadísticas
-            </Link>
+
+            {/* Reproductores › Emparejamientos */}
+            <div className="flex items-center gap-1">
+              <Link to="/animales"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+                style={{ background: 'rgba(206,147,216,0.08)', border: '1px solid rgba(206,147,216,0.25)', color: '#ce93d8', textDecoration: 'none' }}
+              >
+                <Microscope size={13} /> Reproductores
+              </Link>
+              <span style={{ color: '#2a3a50', fontSize: '11px' }}>›</span>
+              <Link to="/camadas"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold"
+                style={{ background: 'rgba(206,147,216,0.04)', border: '1px solid rgba(206,147,216,0.15)', color: '#a77ac0', textDecoration: 'none' }}
+              >
+                <Dna size={12} /> Emparejamientos
+              </Link>
+            </div>
+
+            {/* Stock › Entregas · Sacrificios */}
+            <div className="flex items-center gap-1">
+              <Link to="/stock"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+                style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.25)', color: '#40c4ff', textDecoration: 'none' }}
+              >
+                <Archive size={13} /> Stock
+              </Link>
+              <span style={{ color: '#2a3a50', fontSize: '11px' }}>›</span>
+              <Link to="/entregas"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold"
+                style={{ background: 'rgba(255,210,0,0.04)', border: '1px solid rgba(255,210,0,0.18)', color: '#c9a800', textDecoration: 'none' }}
+              >
+                <PackageCheck size={12} /> Entregas
+              </Link>
+              <Link to="/sacrificios"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold"
+                style={{ background: 'rgba(255,61,87,0.04)', border: '1px solid rgba(255,61,87,0.18)', color: '#cc5566', textDecoration: 'none' }}
+              >
+                <Skull size={12} /> Sacrificios
+              </Link>
+            </div>
+
+            {/* Rendimiento › Estadísticas */}
+            <div className="flex items-center gap-1">
+              <Link to="/rendimiento"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+                style={{ background: 'rgba(255,152,0,0.08)', border: '1px solid rgba(255,152,0,0.25)', color: '#ff9800', textDecoration: 'none' }}
+              >
+                <BarChart2 size={13} /> Rendimiento
+              </Link>
+              <span style={{ color: '#2a3a50', fontSize: '11px' }}>›</span>
+              <Link to="/estadisticas"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold"
+                style={{ background: 'rgba(0,229,255,0.04)', border: '1px solid rgba(0,229,255,0.18)', color: '#00b8cc', textDecoration: 'none' }}
+              >
+                <TrendingUp size={12} /> Estadísticas
+              </Link>
+            </div>
           </div>
           <p className="text-sm ml-5 capitalize" style={{ color: '#4a5f7a' }}>{fechaHoy}</p>
         </div>
