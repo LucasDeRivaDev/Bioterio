@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useBioterio } from '../context/BiotheriumContext'
 import { generarTareas, formatFecha, calcularRangoParto, difDias, parseDate, hoy, generarAlertasEstrales } from '../utils/calculos'
@@ -6,7 +6,7 @@ import Badge from '../components/Badge'
 import {
   Scissors, Baby, Package, Activity, FlaskConical, AlertCircle, RefreshCcw,
   Calendar, FileWarning, Thermometer, Microscope, Dna, Archive, PackageCheck,
-  Skull, BarChart2, TrendingUp, CheckCircle2, Layers, Link2,
+  Skull, BarChart2, TrendingUp, CheckCircle2, Layers, Link2, ChevronDown,
 } from 'lucide-react'
 
 // Estilos por prioridad
@@ -54,6 +54,71 @@ const ICONO_TIPO = {
   revision:       <FlaskConical size={17} />,
   evaluar_hembra: <AlertCircle size={17} />,
   fin_ciclo:      <RefreshCcw size={17} />,
+}
+
+// ── Dropdown de acceso rápido con sublinks ────────────────────────────────────
+
+function DropdownAcceso({ label, icon, color, bg, border, hijos }) {
+  const [abierto, setAbierto] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!abierto) return
+    function cerrar(e) {
+      if (ref.current && !ref.current.contains(e.target)) setAbierto(false)
+    }
+    document.addEventListener('mousedown', cerrar)
+    return () => document.removeEventListener('mousedown', cerrar)
+  }, [abierto])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setAbierto(!abierto)}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+        style={{ background: bg, border: `1px solid ${border}`, color, cursor: 'pointer' }}
+      >
+        {icon}
+        {label}
+        <ChevronDown
+          size={11}
+          style={{ transition: 'transform 0.2s', transform: abierto ? 'rotate(180deg)' : 'rotate(0deg)' }}
+        />
+      </button>
+
+      {abierto && (
+        <div
+          className="absolute top-full left-0 mt-1 z-50 rounded-xl overflow-hidden"
+          style={{
+            background: 'rgba(8,13,26,0.97)',
+            border: '1px solid rgba(30,51,82,0.9)',
+            minWidth: '170px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+          }}
+        >
+          {hijos.map((hijo, i) => (
+            <Link
+              key={hijo.to}
+              to={hijo.to}
+              onClick={() => setAbierto(false)}
+              className="flex items-center gap-2 px-4 py-2.5 text-xs font-semibold transition-colors"
+              style={{
+                color: hijo.color,
+                textDecoration: 'none',
+                borderBottom: i < hijos.length - 1 ? '1px solid rgba(30,51,82,0.5)' : 'none',
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+            >
+              {hijo.icon}
+              {hijo.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ── Tarjeta de tarea con acción inline para separaciones ─────────────────────
@@ -315,62 +380,39 @@ export default function Dashboard() {
               <Thermometer size={13} /> Temperatura
             </Link>
 
-            {/* Reproductores › Emparejamientos */}
-            <div className="flex items-center gap-1">
-              <Link to="/animales"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-                style={{ background: 'rgba(206,147,216,0.08)', border: '1px solid rgba(206,147,216,0.25)', color: '#ce93d8', textDecoration: 'none' }}
-              >
-                <Microscope size={13} /> Reproductores
-              </Link>
-              <span style={{ color: '#2a3a50', fontSize: '11px' }}>›</span>
-              <Link to="/camadas"
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold"
-                style={{ background: 'rgba(206,147,216,0.04)', border: '1px solid rgba(206,147,216,0.15)', color: '#a77ac0', textDecoration: 'none' }}
-              >
-                <Dna size={12} /> Emparejamientos
-              </Link>
-            </div>
+            <DropdownAcceso
+              label="Reproductores"
+              icon={<Microscope size={13} />}
+              color="#ce93d8"
+              bg="rgba(206,147,216,0.08)"
+              border="rgba(206,147,216,0.25)"
+              hijos={[
+                { to: '/camadas', label: 'Emparejamientos', icon: <Dna size={13} />, color: '#ce93d8' },
+              ]}
+            />
 
-            {/* Stock › Entregas · Sacrificios */}
-            <div className="flex items-center gap-1">
-              <Link to="/stock"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-                style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.25)', color: '#40c4ff', textDecoration: 'none' }}
-              >
-                <Archive size={13} /> Stock
-              </Link>
-              <span style={{ color: '#2a3a50', fontSize: '11px' }}>›</span>
-              <Link to="/entregas"
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold"
-                style={{ background: 'rgba(255,210,0,0.04)', border: '1px solid rgba(255,210,0,0.18)', color: '#c9a800', textDecoration: 'none' }}
-              >
-                <PackageCheck size={12} /> Entregas
-              </Link>
-              <Link to="/sacrificios"
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold"
-                style={{ background: 'rgba(255,61,87,0.04)', border: '1px solid rgba(255,61,87,0.18)', color: '#cc5566', textDecoration: 'none' }}
-              >
-                <Skull size={12} /> Sacrificios
-              </Link>
-            </div>
+            <DropdownAcceso
+              label="Stock"
+              icon={<Archive size={13} />}
+              color="#40c4ff"
+              bg="rgba(64,196,255,0.08)"
+              border="rgba(64,196,255,0.25)"
+              hijos={[
+                { to: '/entregas',    label: 'Entregas',    icon: <PackageCheck size={13} />, color: '#ffd600' },
+                { to: '/sacrificios', label: 'Sacrificios', icon: <Skull size={13} />,        color: '#ff6b80' },
+              ]}
+            />
 
-            {/* Rendimiento › Estadísticas */}
-            <div className="flex items-center gap-1">
-              <Link to="/rendimiento"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-                style={{ background: 'rgba(255,152,0,0.08)', border: '1px solid rgba(255,152,0,0.25)', color: '#ff9800', textDecoration: 'none' }}
-              >
-                <BarChart2 size={13} /> Rendimiento
-              </Link>
-              <span style={{ color: '#2a3a50', fontSize: '11px' }}>›</span>
-              <Link to="/estadisticas"
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold"
-                style={{ background: 'rgba(0,229,255,0.04)', border: '1px solid rgba(0,229,255,0.18)', color: '#00b8cc', textDecoration: 'none' }}
-              >
-                <TrendingUp size={12} /> Estadísticas
-              </Link>
-            </div>
+            <DropdownAcceso
+              label="Rendimiento"
+              icon={<BarChart2 size={13} />}
+              color="#ff9800"
+              bg="rgba(255,152,0,0.08)"
+              border="rgba(255,152,0,0.25)"
+              hijos={[
+                { to: '/estadisticas', label: 'Estadísticas', icon: <TrendingUp size={13} />, color: '#00e5ff' },
+              ]}
+            />
           </div>
           <p className="text-sm ml-5 capitalize" style={{ color: '#4a5f7a' }}>{fechaHoy}</p>
         </div>
