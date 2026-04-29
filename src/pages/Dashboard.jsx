@@ -58,7 +58,7 @@ const ICONO_TIPO = {
 
 // ── Dropdown de acceso rápido con sublinks ────────────────────────────────────
 
-function DropdownAcceso({ label, icon, color, bg, border, hijos }) {
+function DropdownAcceso({ label, icon, color, bg, border, hijos, to }) {
   const [abierto, setAbierto] = useState(false)
   const ref = useRef(null)
 
@@ -73,18 +73,30 @@ function DropdownAcceso({ label, icon, color, bg, border, hijos }) {
 
   return (
     <div ref={ref} className="relative">
-      <button
-        onClick={() => setAbierto(!abierto)}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
-        style={{ background: bg, border: `1px solid ${border}`, color, cursor: 'pointer' }}
+      <div
+        className="flex items-center rounded-xl text-xs font-semibold"
+        style={{ background: bg, border: `1px solid ${border}`, color }}
       >
-        {icon}
-        {label}
-        <ChevronDown
-          size={11}
-          style={{ transition: 'transform 0.2s', transform: abierto ? 'rotate(180deg)' : 'rotate(0deg)' }}
-        />
-      </button>
+        <Link
+          to={to}
+          className="flex items-center gap-1.5 pl-3 py-1.5"
+          style={{ color, textDecoration: 'none' }}
+          onClick={() => setAbierto(false)}
+        >
+          {icon}
+          {label}
+        </Link>
+        <button
+          onClick={() => setAbierto(!abierto)}
+          className="flex items-center px-2 py-1.5"
+          style={{ color, cursor: 'pointer', background: 'transparent', border: 'none' }}
+        >
+          <ChevronDown
+            size={11}
+            style={{ transition: 'transform 0.2s', transform: abierto ? 'rotate(180deg)' : 'rotate(0deg)' }}
+          />
+        </button>
+      </div>
 
       {abierto && (
         <div
@@ -382,6 +394,7 @@ export default function Dashboard() {
 
             <DropdownAcceso
               label="Reproductores"
+              to="/animales"
               icon={<Microscope size={13} />}
               color="#ce93d8"
               bg="rgba(206,147,216,0.08)"
@@ -393,6 +406,7 @@ export default function Dashboard() {
 
             <DropdownAcceso
               label="Stock"
+              to="/stock"
               icon={<Archive size={13} />}
               color="#40c4ff"
               bg="rgba(64,196,255,0.08)"
@@ -405,6 +419,7 @@ export default function Dashboard() {
 
             <DropdownAcceso
               label="Rendimiento"
+              to="/rendimiento"
               icon={<BarChart2 size={13} />}
               color="#ff9800"
               bg="rgba(255,152,0,0.08)"
