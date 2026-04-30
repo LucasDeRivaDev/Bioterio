@@ -6,6 +6,7 @@ import Modal from '../components/Modal'
 import AnimalForm from '../components/AnimalForm'
 import Badge from '../components/Badge'
 import CicloEstral from '../components/CicloEstral'
+import Camadas from '../pages/Camadas'
 
 const colorEstado = { activo:'verde', en_apareamiento:'azul', en_cria:'violeta', retirado:'gris', fallecido:'rojo' }
 const labelEstado = { activo:'Activo', en_apareamiento:'En apareamiento', en_cria:'En cría', retirado:'Retirado', fallecido:'Fallecido' }
@@ -23,6 +24,7 @@ export default function Animales() {
   const [filtroEstado, setFiltroEstado] = useState('todos')
   const [busqueda, setBusqueda] = useState('')
   const [confirmarEliminar, setConfirmarEliminar] = useState(null)
+  const [subVista, setSubVista] = useState(null)
   const hoyStr = hoy()
 
   const filtrados = useMemo(() => {
@@ -53,6 +55,42 @@ export default function Animales() {
 
   const colorConfiabilidad = { ok: '#00e676', leve: '#ffd740', moderada: '#ff9100', critica: '#ff1744' }
   const labelConfiabilidad = { ok: 'OK', leve: 'Leve', moderada: 'Moderada', critica: 'Crítica' }
+
+  const btnSubTab = (v, label, color) => (
+    <button
+      onClick={() => setSubVista(v === subVista ? null : v)}
+      className="px-4 py-2 rounded-2xl text-3xs font-bold transition-all"
+      style={
+        subVista === v
+          ? { background: `${color}18`, border: `1px solid ${color}50`, color }
+          : { background: 'transparent', border: `1px solid rgba(30,51,82,0.6)`, color: '#4a5f7a' }
+      }
+    >
+      {label}
+    </button>
+  )
+
+  if (subVista === 'emparejamientos') {
+    return (
+      <div className="p-4 md:p-6 space-y-5 min-0" style={{ background: '#050810' }}>
+        <div className="flex items-center gap-3">
+          <div className="w-1.5 h-7 rounded-full" style={{ background: '#00e676', boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
+          <h1 className="text-2xl font-bold text-white">Reproductores</h1>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {btnSubTab('emparejamientos', '🔄 Emparejamientos', '#00e676')}
+          <button
+            onClick={() => setSubVista(null)}
+            className="px-4 py-2 rounded-2xl text-3xs font-bold"
+            style={{ background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }}
+          >
+            ← Volver a Reproductores
+          </button>
+        </div>
+        <Camadas />
+      </div>
+    )
+  }
 
   function ScoreBarra({ label, valor, max = 10 }) {
     if (valor == null) return (
@@ -164,10 +202,10 @@ export default function Animales() {
     )
   }
 
-  return (
-    <div className="p-4 md:p-6 space-y-5 min-h-screen" style={{ background: '#050810' }}>
+return (
+    <div className="p-4 md:p-6 space-y-5 min-0" style={{ background: '#050810' }}>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <div className="w-1.5 h-7 rounded-full" style={{ background: '#00e676', boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
           <div>
@@ -187,6 +225,11 @@ export default function Animales() {
         >
           + Agregar reproductor
         </button>
+      </div>
+
+      {/* ── TABS DE SUB-SECCIÓN ──────────────────────────────────────────── */}
+      <div className="flex gap-2 flex-wrap">
+        {btnSubTab('emparejamientos', '🔄 Emparejamientos', '#00e676')}
       </div>
 
       {/* Filtros */}

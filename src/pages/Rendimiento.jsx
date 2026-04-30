@@ -7,6 +7,7 @@ import {
 } from '../utils/calculos'
 import Badge from '../components/Badge'
 import { Trophy } from 'lucide-react'
+import Estadisticas from '../pages/Estadisticas'
 
 const cardStyle = { background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }
 
@@ -100,6 +101,7 @@ const ESTADOS_ACTIVOS = new Set(['activo', 'en_apareamiento', 'en_cria'])
 export default function Rendimiento() {
   const { animales, camadas, bio } = useBioterio()
   const [vista, setVista] = useState('activos')
+  const [subVista, setSubVista] = useState(null)
 
   const esActivo = (a) => ESTADOS_ACTIVOS.has(a.estado)
 
@@ -172,6 +174,42 @@ export default function Rendimiento() {
 
   const hembraStats = vista === 'activos' ? hembraStatsActivos : hembraStatsHistorico
 
+const btnSubTab = (v, label, color) => (
+    <button
+      onClick={() => setSubVista(v === subVista ? null : v)}
+      className="px-4 py-2 rounded-2xl text-xs font-bold transition-all"
+      style={
+        subVista === v
+          ? { background: `${color}18`, border: `1px solid ${color}50`, color }
+          : { background: 'transparent', border: `1px solid rgba(30,51,82,0.6)`, color: '#4a5f7a' }
+      }
+    >
+      {label}
+    </button>
+  )
+
+  if (subVista === 'estadisticas') {
+    return (
+      <div className="p-6 space-y-6 min-0" style={{ background: '#050810' }}>
+        <div className="flex items-center gap-3">
+          <div className="w-1.5 h-7 rounded-full" style={{ background: '#00e676', boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
+          <h1 className="text-xl font-bold text-white">Rendimiento reproductivo</h1>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {btnSubTab('estadisticas', '📈 Estadísticas', '#40c4ff')}
+          <button
+            onClick={() => setSubVista(null)}
+            className="px-4 py-2 rounded-2xl text-xs font-bold"
+            style={{ background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }}
+          >
+            ← Volver a Rendimiento
+          </button>
+        </div>
+        <Estadisticas />
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 space-y-6 min-h-screen" style={{ background: '#050810' }}>
       {/* Header */}
@@ -186,34 +224,25 @@ export default function Rendimiento() {
           </div>
         </div>
 
-        {/* Toggle Activos / Histórico */}
+{/* Toggle Activos / Histórico */}
         <div
-          className="flex rounded-xl overflow-hidden text-xs font-bold"
+          className="flex rounded-2xl overflow-hidden text-3xs font-bold"
           style={{ border: '1px solid rgba(30,51,82,0.8)', background: 'rgba(8,13,26,0.8)' }}
         >
           <button
             onClick={() => setVista('activos')}
-            className="px-4 py-2 transition-all"
-            style={
-              vista === 'activos'
-                ? { background: 'rgba(0,230,118,0.15)', color: '#00e676', borderRight: '1px solid rgba(30,51,82,0.8)' }
-                : { background: 'transparent', color: '#4a5f7a', borderRight: '1px solid rgba(30,51,82,0.8)' }
-            }
-          >
-            ✦ Activos
-          </button>
+            className="px-4 py-2 transition-all" style={ vista === 'activos' ? { background: 'rgba(0,230,118,0.15)', color: '#00e676', borderRight: '1px solid rgba(30,51,82,0.8)' } : { background: 'transparent', color: '#4a5f7a', borderRight: '1px solid rgba(30,51,82,0.8)' } }
+          >✦ Activos</button>
           <button
             onClick={() => setVista('historico')}
-            className="px-4 py-2 transition-all"
-            style={
-              vista === 'historico'
-                ? { background: 'rgba(64,196,255,0.12)', color: '#40c4ff' }
-                : { background: 'transparent', color: '#4a5f7a' }
-            }
-          >
-            📜 Histórico
-          </button>
+            className="px-4 py-2 transition-all" style={ vista === 'historico' ? { background: 'rgba(64,196,255,0.12)', color: '#40c4ff' } : { background: 'transparent', color: '#4a5f7a' } }
+>📜 Histórico</button>
         </div>
+      </div>
+
+      {/* ── TABS DE SUB-SECCIÓN ──────────────────────────────────────────── */}
+      <div className="flex gap-2 flex-wrap">
+        {btnSubTab('estadisticas', '📈 Estadísticas', '#40c4ff')}
       </div>
 
       {/* Indicador de vista */}

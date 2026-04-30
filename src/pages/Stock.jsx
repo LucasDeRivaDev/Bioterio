@@ -4,6 +4,8 @@ import { difDias, parseDate, hoy, formatFecha, calcularPerfilHembra, calcularRen
 import { BIO } from '../utils/constants'
 import Modal from '../components/Modal'
 import { TestTube2, FlaskConical, Microscope, UserPlus } from 'lucide-react'
+import Sacrificios from '../pages/Sacrificios'
+import Entregas from '../pages/Entregas'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -1306,6 +1308,7 @@ function CategoriaCard({ icono, titulo, subtitulo, total, grupos, gruposLabel, m
 export default function Stock() {
   const { animales, camadas, sacrificios, entregas, jaulas, agregarAnimal, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, registrarSacrificio, registrarEntrega, entregarReproductor } = useBioterio()
   const [vista, setVista] = useState('jaulas')
+  const [subVista, setSubVista] = useState(null)
   const [detalle, setDetalle] = useState(null)
   const [filtroCat, setFiltroCat] = useState('todas')
   const [modoSeleccion, setModoSeleccion] = useState(false)
@@ -1572,12 +1575,12 @@ export default function Stock() {
     salirModoSeleccion()
   }
 
-  const btnTab = (v, label) => (
+const btnTab = (v, label) => (
     <button
       onClick={() => setVista(v)}
-      className="px-4 py-2 rounded-xl text-xs font-bold transition-all"
+      className="px-4 py-2 rounded-2xl text-3xs font-bold transition-all"
       style={
-        vista === v
+        vista === v && subVista === null
           ? { background: 'rgba(64,196,255,0.15)', border: '1px solid rgba(64,196,255,0.4)', color: '#40c4ff' }
           : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }
       }
@@ -1586,13 +1589,79 @@ export default function Stock() {
     </button>
   )
 
+  const btnSubTab = (v, label, color) => (
+    <button
+      onClick={() => setSubVista(v === subVista ? null : v)}
+      className="px-4 py-2 rounded-2xl text-3xs font-bold transition-all"
+      style={
+        subVista === v
+          ? { background: `${color}18`, border: `1px solid ${color}50`, color }
+          : { background: 'transparent', border: `1px solid rgba(30,51,82,0.6)`, color: '#4a5f7a' }
+      }
+    >
+      {label}
+    </button>
+  )
+
+  if (subVista === 'entregas') {
+    return (
+      <div className="p-4 md:p-6 space-y-5 min-0" style={{ background: '#050810' }}>
+        <div className="flex items-center gap-3">
+          <div className="w-1.5 h-7 rounded-full" style={{ background: '#40c4ff', boxShadow: '0 0 8px rgba(64,196,255,0.5)' }} />
+          <h1 className="text-xl font-bold text-white">Stock</h1>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {btnSubTab('entregas', '📦 Entregas', '#ffb300')}
+          {btnSubTab('sacrificios', '🗡 Sacrificios', '#ff6b80')}
+          <button
+            onClick={() => setSubVista(null)}
+            className="px-4 py-2 rounded-2xl text-3xs font-bold"
+            style={{ background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }}
+          >
+            ← Volver a Stock
+          </button>
+        </div>
+        <Entregas />
+      </div>
+    )
+  }
+
+if (subVista === 'sacrificios') {
+    return (
+      <div className="p-4 md:p-6 space-y-5 min-0" style={{ background: '#050810' }}>
+        <div className="flex items-center gap-3">
+          <div className="w-1.5 h-7 rounded-full" style={{ background: '#40c4ff', boxShadow: '0 0 8px rgba(64,196,255,0.5)' }} />
+          <h1 className="text-xl font-bold text-white">Stock</h1>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {btnSubTab('entregas', '📦 Entregas', '#ffb300')}
+          {btnSubTab('sacrificios', '🗡 Sacrificios', '#ff6b80')}
+          <button
+            onClick={() => setSubVista(null)}
+            className="px-4 py-2 rounded-2xl text-3xs font-bold"
+            style={{ background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }}
+          >
+            ← Volver a Stock
+          </button>
+        </div>
+        <Sacrificios />
+      </div>
+    )
+  }
+
   return (
-    <div className="p-4 md:p-6 space-y-5 min-h-screen" style={{ background: '#050810' }}>
+    <div className="p-4 md:p-6 space-y-5 min-0" style={{ background: '#050810' }}>
 
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-1.5 h-7 rounded-full" style={{ background: '#40c4ff', boxShadow: '0 0 8px rgba(64,196,255,0.5)' }} />
         <h1 className="text-xl font-bold text-white">Stock</h1>
+      </div>
+
+      {/* ── TABS DE SUB-SECCIÓN ──────────────────────────────────────────── */}
+      <div className="flex gap-2 flex-wrap">
+        {btnSubTab('entregas', '📦 Entregas', '#ffb300')}
+        {btnSubTab('sacrificios', '🗡 Sacrificios', '#ff6b80')}
       </div>
 
       {/* ── RESUMEN SUPERIOR ───────────────────────────────────────────────── */}
