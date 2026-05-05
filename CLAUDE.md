@@ -296,6 +296,20 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
   - **Historial:** tabla compacta con los últimos 8 registros (expandible al historial completo), con colores por fase y marcador "D0" para el día del servicio.
   - **Funciones en `calculos.js`:** `sugerirFase`, `calcularPatronEstral`, `predecirProximoEstro`, `calcularGestacionEstral`, `generarAlertasEstrales`.
 
+- **Validaciones temporales en datos reproductivos (05/05/2026):** tres reglas de coherencia cronológica en los formularios:
+  - **Regla 1 — Progenitor más joven que la cría (`AnimalForm`):** al asignar madre o padre, si `fecha_nacimiento` del progenitor ≥ `fecha_nacimiento` de la cría → error rojo bajo el selector. Los selects de madre/padre ahora muestran `error` prop y borde rojo.
+  - **Regla 2 — Edad reproductiva mínima de la hembra (`CamadaForm`):** si la hembra no alcanzó `bio.MADUREZ_DIAS` al momento de la cópula → error en el campo hembra con días faltantes y semanas mínimas (dinámico según especie).
+  - **Regla 3 — Cópula antes del nacimiento (`CamadaForm`):** si `fecha_copula < fecha_nacimiento` de la hembra o el macho → error en el campo fecha con el código del animal y su fecha de nacimiento. Se omite si el animal no tiene `fecha_nacimiento` registrado (no rompe nada).
+
+- **Sistema de control de machos reproductores (05/05/2026):** gestión completa del ciclo de vida de los machos.
+  - **Constantes nuevas en `constants.js`:** `MACHO_EDAD_OPTIMA_MIN_DIAS=90`, `MACHO_EDAD_LIMITE_DIAS=270`, `MACHO_EDAD_ALERTA_DIAS=240`, `INTERVALO_RENOVACION_DIAS=150`. Nuevos tipos en `TIPO_TAREA`: `EVALUAR_MACHO`, `RENOVAR_MACHOS`.
+  - **`detectarBajaPerformanceMacho(machoId, camadas, n=3)` en `calculos.js`:** compara latencia promedio y tamaño de camada de las últimas N camadas vs. el historial previo. Alerta si latencia aumentó >2d o tamaño cayó >1.5 crías. Requiere mínimo N+1 camadas. Retorna `{ tipo: 'latencia'|'camada'|'ambos', avgLatUltimas, avgLatPrevias, avgTUltimas, avgTPrevias }` o `null`.
+  - **`generarAlertasMachos(animales, camadas, n=3)` en `calculos.js`:** genera alertas para todos los machos activos: `edad_limite` (≥9m), `edad_proxima` (8–9m con días restantes), `baja_performance` (declive detectado con descripción).
+  - **`generarTareas` (modificado):** nuevo bloque que genera tareas tipo `evaluar_macho` para machos que alcanzan o se acercan a 9 meses — aparecen como vencida/hoy/próxima en el panel de tareas del Dashboard y son descartables con ✕.
+  - **Dashboard — sección "♂ Control de machos":** aparece cuando hay alertas activas. Incluye: banner azul de renovación periódica cada 5 meses (localStorage key `appMosca_machos_reno_ts`, botón ✓ descarta y reinicia el contador), y una fila por macho con alerta (rojo=límite, naranja=próximo, amarillo=rendimiento). Icono `UserMinus` de Lucide React.
+  - **Rendimiento — tarjetas de machos:** badge "Edad avanzada · Xm" (rojo) o "Próximo límite · Xm" (naranja) junto al código del macho. Banner amarillo de baja performance con detalle de qué métrica está cayendo y valores concretos (últimas N vs. previas).
+  - **Animales — columna Edad:** para machos con ≥8 meses, el valor de edad se reemplaza por un badge con borde rojo/naranja. El perfil expandible del macho muestra el mismo banner de baja performance cuando corresponde.
+
 ---
 
 ## Comportamientos de datos importantes
@@ -307,6 +321,10 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
 - **Conteo de animales activos** en sidebar y Dashboard usa el mismo criterio: `activo | en_apareamiento | en_cria`.
 - **bioterio_id** está presente en todas las tablas. Todos los inserts lo incluyen automáticamente desde el contexto. Todas las queries filtran por él. Los datos existentes tienen `bioterio_id = 'ratas'`.
 - **getBio(bioterioId)** devuelve `BIO_RATAS` para `'ratas'` y `BIO_RATONES` para cualquier subgrupo de ratones. El `bio` se expone desde `useBioterio()` para que las páginas lo pasen a las funciones de cálculo.
+- **detectarBajaPerformanceMacho** requiere mínimo N+1 camadas con `fecha_nacimiento` para poder comparar. Con menos datos retorna `null` sin lanzar error.
+- **Validaciones temporales en formularios** se omiten silenciosamente si el animal no tiene `fecha_nacimiento` registrado — no bloquean el guardado en ese caso.
+- **Recordatorio de renovación de machos** se maneja en el frontend con localStorage. Se resetea al hacer clic en ✓. Si el key no existe (primera vez), muestra el banner de inmediato.
+- **Alertas de machos en Dashboard** son informativas (no descartables individualmente) — las tareas de edad sí son descartables desde el panel de tareas.
 
 ---
 
