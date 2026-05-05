@@ -185,6 +185,26 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
       }
     }
 
+    // Regla 4: El parto no puede ocurrir antes de la cópula
+    if (form.fecha_nacimiento && form.fecha_copula && !nuevos.fecha_nacimiento) {
+      if (form.fecha_nacimiento < form.fecha_copula) {
+        nuevos.fecha_nacimiento = `El parto no puede ser anterior a la cópula (${formatFecha(form.fecha_copula)}).`
+      }
+    }
+
+    // Regla destete: El destete no puede ocurrir antes del nacimiento
+    if (form.fecha_destete && form.fecha_nacimiento && !nuevos.fecha_destete) {
+      if (form.fecha_destete < form.fecha_nacimiento) {
+        nuevos.fecha_destete = `El destete no puede ser anterior al nacimiento (${formatFecha(form.fecha_nacimiento)}).`
+      }
+    }
+    // También: destete no puede ser antes de la cópula
+    if (form.fecha_destete && form.fecha_copula && !nuevos.fecha_destete) {
+      if (form.fecha_destete < form.fecha_copula) {
+        nuevos.fecha_destete = `El destete no puede ser anterior a la cópula (${formatFecha(form.fecha_copula)}).`
+      }
+    }
+
     // Consanguinidad directa sin confirmación
     if (consanguinidad && !confirmarConsanguinidad) {
       nuevos._consanguinidad = 'Confirmá el apareamiento consanguíneo antes de guardar'
@@ -402,13 +422,13 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
       )}
 
       {/* Fecha nacimiento */}
-      <LabInput label="Fecha de nacimiento" sublabel="completar cuando ocurra">
+      <LabInput label="Fecha de nacimiento" sublabel="completar cuando ocurra" error={errores.fecha_nacimiento}>
         <input
           type="date"
           value={form.fecha_nacimiento}
           onChange={(e) => cambiar('fecha_nacimiento', e.target.value)}
           className="w-full px-3 py-2.5 text-sm focus:outline-none"
-          style={inputStyle}
+          style={{ ...inputStyle, borderColor: errores.fecha_nacimiento ? 'rgba(255,61,87,0.5)' : undefined }}
         />
       </LabInput>
 
@@ -473,13 +493,13 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
                 style={inputStyle}
               />
             </LabInput>
-            <LabInput label="Fecha destete real">
+            <LabInput label="Fecha destete real" error={errores.fecha_destete}>
               <input
                 type="date"
                 value={form.fecha_destete}
                 onChange={(e) => cambiar('fecha_destete', e.target.value)}
                 className="w-full px-3 py-2.5 text-sm focus:outline-none"
-                style={inputStyle}
+                style={{ ...inputStyle, borderColor: errores.fecha_destete ? 'rgba(255,61,87,0.5)' : undefined }}
               />
             </LabInput>
           </div>

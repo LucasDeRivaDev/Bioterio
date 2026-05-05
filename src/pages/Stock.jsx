@@ -67,7 +67,7 @@ const COLOR_MACHO  = '#40c4ff'
 const COLOR_HEMBRA = '#ce93d8'
 
 function SexoDisplay({ bloque, cfg }) {
-  const { tipo, animal, machos, hembra, total } = bloque
+  const { tipo, animal, machos, hembras, total } = bloque
 
   if (tipo === 'reproductor') {
     const esMacho = animal.sexo === 'macho'
@@ -81,18 +81,18 @@ function SexoDisplay({ bloque, cfg }) {
   }
 
   // Jaula de stock — ambos sexos conocidos
-  if (machos != null && hembra != null) {
+  if (machos != null && hembras != null) {
     if (machos === 0) {
       return (
         <div className="flex items-center gap-1 text-xs font-mono font-semibold">
-          <span style={{ color: COLOR_HEMBRA }}>{cfg.icono} {hembra}{hembra === 1 ? 'Hembra' : 'Hembra'}</span>
+          <span style={{ color: COLOR_HEMBRA }}>{cfg.icono} {hembras} {hembras === 1 ? 'Hembra' : 'Hembras'}</span>
         </div>
       )
     }
-    if (hembra === 0) {
+    if (hembras === 0) {
       return (
         <div className="flex items-center gap-1 text-xs font-mono font-semibold">
-          <span style={{ color: COLOR_MACHO }}>{cfg.icono} {machos}{machos === 1 ? 'Macho' : 'Machos'}</span>
+          <span style={{ color: COLOR_MACHO }}>{cfg.icono} {machos} {machos === 1 ? 'Macho' : 'Machos'}</span>
         </div>
       )
     }
@@ -100,7 +100,7 @@ function SexoDisplay({ bloque, cfg }) {
       <div className="flex items-center gap-1 text-xs font-mono font-semibold">
         <span style={{ color: COLOR_MACHO }}>{cfg.icono}{machos}M</span>
         <span style={{ color: '#4a5f7a' }}>/</span>
-        <span style={{ color: COLOR_HEMBRA }}>{cfg.icono}{hembra}H</span>
+        <span style={{ color: COLOR_HEMBRA }}>{cfg.icono}{hembras}H</span>
         <span style={{ color: '#4a5f7a', fontWeight: 400 }}>= {total}</span>
       </div>
     )
@@ -117,12 +117,12 @@ function SexoDisplay({ bloque, cfg }) {
       </div>
     )
   }
-  if (hembra != null) {
+  if (hembras != null) {
     return (
       <div className="flex items-center gap-1 text-xs font-mono font-semibold">
         <span style={{ color: COLOR_MACHO }}>{cfg.icono}?</span>
         <span style={{ color: '#4a5f7a' }}>/</span>
-        <span style={{ color: COLOR_HEMBRA }}>{cfg.icono}{hembra}H</span>
+        <span style={{ color: COLOR_HEMBRA }}>{cfg.icono}{hembras}H</span>
         <span style={{ color: '#4a5f7a', fontWeight: 400 }}>= {total}</span>
       </div>
     )

@@ -296,10 +296,14 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
   - **Historial:** tabla compacta con los últimos 8 registros (expandible al historial completo), con colores por fase y marcador "D0" para el día del servicio.
   - **Funciones en `calculos.js`:** `sugerirFase`, `calcularPatronEstral`, `predecirProximoEstro`, `calcularGestacionEstral`, `generarAlertasEstrales`.
 
-- **Validaciones temporales en datos reproductivos (05/05/2026):** tres reglas de coherencia cronológica en los formularios:
+- **Validaciones temporales en datos reproductivos (05/05/2026):** seis reglas de coherencia cronológica en los formularios que garantizan la secuencia lógica `Nacimiento → Apareamiento → Gestación → Parto → Destete`:
   - **Regla 1 — Progenitor más joven que la cría (`AnimalForm`):** al asignar madre o padre, si `fecha_nacimiento` del progenitor ≥ `fecha_nacimiento` de la cría → error rojo bajo el selector. Los selects de madre/padre ahora muestran `error` prop y borde rojo.
   - **Regla 2 — Edad reproductiva mínima de la hembra (`CamadaForm`):** si la hembra no alcanzó `bio.MADUREZ_DIAS` al momento de la cópula → error en el campo hembra con días faltantes y semanas mínimas (dinámico según especie).
-  - **Regla 3 — Cópula antes del nacimiento (`CamadaForm`):** si `fecha_copula < fecha_nacimiento` de la hembra o el macho → error en el campo fecha con el código del animal y su fecha de nacimiento. Se omite si el animal no tiene `fecha_nacimiento` registrado (no rompe nada).
+  - **Regla 3 — Cópula antes del nacimiento de los reproductores (`CamadaForm`):** si `fecha_copula < fecha_nacimiento` de la hembra o el macho → error en el campo fecha con el código del animal y su fecha de nacimiento. Se omite si el animal no tiene `fecha_nacimiento` registrado (no rompe nada).
+  - **Regla 4 — Parto antes de la cópula (`CamadaForm`):** si `fecha_nacimiento < fecha_copula` → error rojo en el campo fecha de nacimiento con la fecha de cópula de referencia.
+  - **Regla 5 — Destete antes del nacimiento (`CamadaForm`):** si `fecha_destete < fecha_nacimiento` → error rojo en el campo fecha destete real con la fecha de nacimiento de referencia.
+  - **Regla 6 — Destete antes de la cópula (`CamadaForm`):** si `fecha_destete < fecha_copula` (y no hay nacimiento registrado) → error rojo en el campo fecha destete con la fecha de cópula de referencia.
+  - Todas las reglas bloquean el guardado, muestran mensaje claro con la fecha de referencia en formato legible, y resaltan el campo con borde rojo. Las validaciones respetan el orden: si ya hay un error en el campo, no lo pisan.
 
 - **Sistema de control de machos reproductores (05/05/2026):** gestión completa del ciclo de vida de los machos.
   - **Constantes nuevas en `constants.js`:** `MACHO_EDAD_OPTIMA_MIN_DIAS=90`, `MACHO_EDAD_LIMITE_DIAS=270`, `MACHO_EDAD_ALERTA_DIAS=240`, `INTERVALO_RENOVACION_DIAS=150`. Nuevos tipos en `TIPO_TAREA`: `EVALUAR_MACHO`, `RENOVAR_MACHOS`.
