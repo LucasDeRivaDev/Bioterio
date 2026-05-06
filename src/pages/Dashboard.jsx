@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useBioterio } from '../context/BiotheriumContext'
 import { generarTareas, formatFecha, calcularRangoParto, difDias, parseDate, hoy, generarAlertasEstrales, generarAlertasMachos } from '../utils/calculos'
@@ -6,8 +6,8 @@ import { INTERVALO_RENOVACION_DIAS } from '../utils/constants'
 import Badge from '../components/Badge'
 import {
   Scissors, Baby, Package, Activity, FlaskConical, AlertCircle, RefreshCcw,
-  Calendar, FileWarning, Thermometer, Microscope, Dna, Archive, PackageCheck,
-  Skull, BarChart2, TrendingUp, CheckCircle2, Layers, Link2, ChevronDown, UserMinus,
+  Calendar, FileWarning, Thermometer, Microscope,
+  CheckCircle2, Layers, Link2, UserMinus,
 } from 'lucide-react'
 
 // Estilos por prioridad
@@ -57,83 +57,6 @@ const ICONO_TIPO = {
   fin_ciclo:      <RefreshCcw size={17} />,
   evaluar_macho:  <UserMinus size={17} />,
   renovar_machos: <RefreshCcw size={17} />,
-}
-
-// ── Dropdown de acceso rápido con sublinks ────────────────────────────────────
-
-function DropdownAcceso({ label, icon, color, bg, border, hijos, to }) {
-  const [abierto, setAbierto] = useState(false)
-  const ref = useRef(null)
-
-  useEffect(() => {
-    if (!abierto) return
-    function cerrar(e) {
-      if (ref.current && !ref.current.contains(e.target)) setAbierto(false)
-    }
-    document.addEventListener('mousedown', cerrar)
-    return () => document.removeEventListener('mousedown', cerrar)
-  }, [abierto])
-
-  return (
-    <div ref={ref} className="relative">
-      <div
-        className="flex items-center rounded-xl text-xs font-semibold"
-        style={{ background: bg, border: `1px solid ${border}`, color }}
-      >
-        <Link
-          to={to}
-          className="flex items-center gap-1.5 pl-3 py-1.5"
-          style={{ color, textDecoration: 'none' }}
-          onClick={() => setAbierto(false)}
-        >
-          {icon}
-          {label}
-        </Link>
-        <button
-          onClick={() => setAbierto(!abierto)}
-          className="flex items-center px-2 py-1.5"
-          style={{ color, cursor: 'pointer', background: 'transparent', border: 'none' }}
-        >
-          <ChevronDown
-            size={11}
-            style={{ transition: 'transform 0.2s', transform: abierto ? 'rotate(180deg)' : 'rotate(0deg)' }}
-          />
-        </button>
-      </div>
-
-      {abierto && (
-        <div
-          className="absolute top-full left-0 mt-1 z-50 rounded-xl overflow-hidden"
-          style={{
-            background: 'rgba(8,13,26,0.97)',
-            border: '1px solid rgba(30,51,82,0.9)',
-            minWidth: '170px',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-          }}
-        >
-          {hijos.map((hijo, i) => (
-            <Link
-              key={hijo.to}
-              to={hijo.to}
-              onClick={() => setAbierto(false)}
-              className="flex items-center gap-2 px-4 py-2.5 text-xs font-semibold transition-colors"
-              style={{
-                color: hijo.color,
-                textDecoration: 'none',
-                borderBottom: i < hijos.length - 1 ? '1px solid rgba(30,51,82,0.5)' : 'none',
-                background: 'transparent',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-            >
-              {hijo.icon}
-              {hijo.label}
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
-  )
 }
 
 // ── Tarjeta de tarea con acción inline para separaciones ─────────────────────
@@ -414,42 +337,6 @@ export default function Dashboard() {
               <Thermometer size={13} /> Temperatura
             </Link>
 
-            <DropdownAcceso
-              label="Reproductores"
-              to="/animales"
-              icon={<Microscope size={13} />}
-              color="#ce93d8"
-              bg="rgba(206,147,216,0.08)"
-              border="rgba(206,147,216,0.25)"
-              hijos={[
-                { to: '/camadas', label: 'Emparejamientos', icon: <Dna size={13} />, color: '#ce93d8' },
-              ]}
-            />
-
-            <DropdownAcceso
-              label="Stock"
-              to="/stock"
-              icon={<Archive size={13} />}
-              color="#40c4ff"
-              bg="rgba(64,196,255,0.08)"
-              border="rgba(64,196,255,0.25)"
-              hijos={[
-                { to: '/entregas',    label: 'Entregas',    icon: <PackageCheck size={13} />, color: '#ffd600' },
-                { to: '/sacrificios', label: 'Sacrificios', icon: <Skull size={13} />,        color: '#ff6b80' },
-              ]}
-            />
-
-            <DropdownAcceso
-              label="Rendimiento"
-              to="/rendimiento"
-              icon={<BarChart2 size={13} />}
-              color="#ff9800"
-              bg="rgba(255,152,0,0.08)"
-              border="rgba(255,152,0,0.25)"
-              hijos={[
-                { to: '/estadisticas', label: 'Estadísticas', icon: <TrendingUp size={13} />, color: '#00e5ff' },
-              ]}
-            />
           </div>
           <p className="text-sm ml-5 capitalize" style={{ color: '#4a5f7a' }}>{fechaHoy}</p>
         </div>

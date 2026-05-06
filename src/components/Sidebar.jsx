@@ -1,9 +1,12 @@
 import { useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useBioterio } from '../context/BiotheriumContext'
 import { useBioterioActivo } from '../context/BioterioActivoContext'
 import { useAuth } from '../context/AuthContext'
-import { Home, LayoutDashboard, Printer, Bug, Send, LogOut, ChevronUp, ChevronDown, Dna, RefreshCw } from 'lucide-react'
+import {
+  Home, LayoutDashboard, Printer, Bug, Send, LogOut, ChevronUp, ChevronDown,
+  Dna, RefreshCw, Microscope, Archive, BarChart2, PackageCheck, Skull, TrendingUp,
+} from 'lucide-react'
 import GenERatsBrand from './GenERatsBrand'
 
 const links = [
@@ -11,6 +14,129 @@ const links = [
   { to: '/',         label: 'Panel de hoy',         icon: <LayoutDashboard size={15} /> },
   { to: '/reportes', label: 'Reportes e impresión', icon: <Printer size={15} /> },
 ]
+
+const GRUPOS = [
+  {
+    to: '/animales',
+    label: 'Reproductores',
+    icon: <Microscope size={15} />,
+    hijos: [
+      { to: '/camadas', label: 'Emparejamientos', icon: <Dna size={13} /> },
+    ],
+  },
+  {
+    to: '/stock',
+    label: 'Stock',
+    icon: <Archive size={15} />,
+    hijos: [
+      { to: '/entregas',    label: 'Entregas',    icon: <PackageCheck size={13} /> },
+      { to: '/sacrificios', label: 'Sacrificios', icon: <Skull size={13} /> },
+    ],
+  },
+  {
+    to: '/rendimiento',
+    label: 'Rendimiento',
+    icon: <BarChart2 size={15} />,
+    hijos: [
+      { to: '/estadisticas', label: 'Estadísticas', icon: <TrendingUp size={13} /> },
+    ],
+  },
+]
+
+function NavGrupo({ grupo, onCerrarMenu }) {
+  const location = useLocation()
+  const rutasGrupo = [grupo.to, ...grupo.hijos.map((h) => h.to)]
+  const estaActivo = rutasGrupo.some((r) => location.pathname === r)
+  const [abierto, setAbierto] = useState(estaActivo)
+
+  const estiloBase = {
+    display: 'flex', alignItems: 'center', gap: '10px',
+    padding: '8px 12px', borderRadius: '10px',
+    border: '1px solid transparent',
+    fontSize: '13px', fontWeight: 500, textDecoration: 'none',
+  }
+  const estiloActivo = {
+    ...estiloBase,
+    background: 'rgba(0,230,118,0.12)',
+    color: '#00e676',
+    border: '1px solid rgba(0,230,118,0.25)',
+    boxShadow: '0 0 12px rgba(0,230,118,0.1)',
+    fontWeight: 600,
+  }
+  const estiloInactivo = { ...estiloBase, color: '#8a9bb0' }
+
+  return (
+    <div>
+      {/* Fila principal con link + toggle */}
+      <div
+        className="flex items-center rounded-[10px] overflow-hidden"
+        style={estaActivo
+          ? { background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.25)', boxShadow: '0 0 12px rgba(0,230,118,0.1)' }
+          : { border: '1px solid transparent' }
+        }
+      >
+        <NavLink
+          to={grupo.to}
+          end
+          onClick={onCerrarMenu}
+          style={({ isActive }) => ({
+            display: 'flex', alignItems: 'center', gap: '10px',
+            flex: 1, padding: '8px 12px',
+            color: estaActivo ? '#00e676' : '#8a9bb0',
+            fontSize: '13px', fontWeight: estaActivo ? 600 : 500,
+            textDecoration: 'none', background: 'transparent',
+          })}
+        >
+          <span style={{ width: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {grupo.icon}
+          </span>
+          {grupo.label}
+        </NavLink>
+        <button
+          onClick={() => setAbierto(!abierto)}
+          className="flex items-center justify-center w-8 h-8 shrink-0"
+          style={{ background: 'transparent', border: 'none', color: estaActivo ? '#00e676' : '#4a5f7a', cursor: 'pointer' }}
+        >
+          {abierto ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+        </button>
+      </div>
+
+      {/* Sub-items */}
+      {abierto && (
+        <div className="mt-1 ml-4 space-y-0.5" style={{ borderLeft: '1px solid rgba(30,51,82,0.6)', paddingLeft: '12px' }}>
+          {grupo.hijos.map((hijo) => (
+            <NavLink
+              key={hijo.to}
+              to={hijo.to}
+              onClick={onCerrarMenu}
+              style={({ isActive }) =>
+                isActive
+                  ? {
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      padding: '6px 10px', borderRadius: '8px',
+                      background: 'rgba(0,230,118,0.1)',
+                      color: '#00e676',
+                      border: '1px solid rgba(0,230,118,0.2)',
+                      fontSize: '12px', fontWeight: 600, textDecoration: 'none',
+                    }
+                  : {
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      padding: '6px 10px', borderRadius: '8px',
+                      color: '#6b7c94',
+                      border: '1px solid transparent',
+                      fontSize: '12px', fontWeight: 500, textDecoration: 'none',
+                    }
+              }
+            >
+              {hijo.icon}
+              {hijo.label}
+            </NavLink>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 const SECCIONES = [
   'Panel de hoy', 'Reproductores', 'Emparejamientos', 'Stock',
@@ -233,6 +359,11 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
             <span style={{ width: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{icon}</span>
             {label}
           </NavLink>
+        ))}
+
+        {/* Grupos con sub-secciones */}
+        {GRUPOS.map((grupo) => (
+          <NavGrupo key={grupo.to} grupo={grupo} onCerrarMenu={onCerrarMenu} />
         ))}
       </nav>
 
