@@ -314,6 +314,8 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
   - **Rendimiento — tarjetas de machos:** badge "Edad avanzada · Xm" (rojo) o "Próximo límite · Xm" (naranja) junto al código del macho. Banner amarillo de baja performance con detalle de qué métrica está cayendo y valores concretos (últimas N vs. previas).
   - **Animales — columna Edad:** para machos con ≥8 meses, el valor de edad se reemplaza por un badge con borde rojo/naranja. El perfil expandible del macho muestra el mismo banner de baja performance cuando corresponde.
 
+- **Fix display de hembras en Stock (05/05/2026):** bug de typo en `SexoDisplay` — desestructuraba `hembra` (singular) del bloque pero el campo se llama `hembras` (plural). JavaScript retornaba `undefined`, que en comparación loose `!= null` da `false`, haciendo que todas las jaulas con hembras cayeran al caso "sexo sin registrar". Fix: renombrar a `hembras` en la desestructuración y todas las referencias internas. También corregido el plural del label ("Hembra" → "Hembras" cuando hay más de una).
+
 ---
 
 ## Comportamientos de datos importantes
