@@ -12,8 +12,9 @@ import GenERatsBrand from './GenERatsBrand'
 const links = [
   { to: '/inicio',   label: 'Inicio',              icon: <Home size={15} /> },
   { to: '/',         label: 'Panel de hoy',         icon: <LayoutDashboard size={15} /> },
-  { to: '/reportes', label: 'Reportes e impresión', icon: <Printer size={15} /> },
 ]
+
+const LINK_REPORTES = { to: '/reportes', label: 'Reportes e impresión', icon: <Printer size={15} /> }
 
 const GRUPOS = [
   {
@@ -365,6 +366,36 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
         {GRUPOS.map((grupo) => (
           <NavGrupo key={grupo.to} grupo={grupo} onCerrarMenu={onCerrarMenu} />
         ))}
+
+        {/* Reportes al final */}
+        <NavLink
+          to={LINK_REPORTES.to}
+          onClick={onCerrarMenu}
+          style={({ isActive }) =>
+            isActive
+              ? {
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  padding: '8px 12px', borderRadius: '10px',
+                  background: 'rgba(0,230,118,0.12)',
+                  color: '#00e676',
+                  border: '1px solid rgba(0,230,118,0.25)',
+                  boxShadow: '0 0 12px rgba(0,230,118,0.1)',
+                  fontSize: '13px', fontWeight: 600, textDecoration: 'none',
+                }
+              : {
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  padding: '8px 12px', borderRadius: '10px',
+                  color: '#8a9bb0',
+                  border: '1px solid transparent',
+                  fontSize: '13px', fontWeight: 500, textDecoration: 'none',
+                }
+          }
+        >
+          <span style={{ width: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {LINK_REPORTES.icon}
+          </span>
+          {LINK_REPORTES.label}
+        </NavLink>
       </nav>
 
       {/* ── FICHA BIOLÓGICA DE LA ESPECIE ── */}
