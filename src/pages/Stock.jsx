@@ -49,6 +49,11 @@ function categoriaStock(edad) {
   return 'adultos'
 }
 
+// True si es una hembra reproductora que está actualmente en período de apareamiento
+function esFemEnApareamiento(b) {
+  return b.tipo === 'reproductor' && b.animal?.sexo === 'hembra' && b.animal?.estado === 'en_apareamiento'
+}
+
 // Determina el sexo de un bloque para la planificación de apareamientos
 function sexoBloque(b) {
   if (b.categoria === 'macho_repro') return 'macho'
@@ -200,8 +205,16 @@ function MiniCalidad({ icono, codigo, calidad, animal }) {
 
 function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccionada = false }) {
   const cfg = CAT[bloque.categoria]
-  const esSeleccionable = modoSeleccion && !bloque.virtual
   const esStock = bloque.tipo === 'stock'
+
+  // Hembra en período de apareamiento → jaula temporalmente vacía
+  const esEnApareamiento = esFemEnApareamiento(bloque)
+  const esSeleccionable  = modoSeleccion && !bloque.virtual && !esEnApareamiento
+
+  // Colores efectivos: gris apagado para hembras en apareamiento
+  const cfgEfectivo = esEnApareamiento
+    ? { ...cfg, color: '#3d5068', bg: 'rgba(30,51,82,0.04)', borde: 'rgba(30,51,82,0.35)' }
+    : cfg
 
   const calMadre = esStock && bloque.madre && camadas ? calidadHembra(bloque.madre.id, camadas) : null
   const calPadre = esStock && bloque.padre && camadas ? calidadMacho(bloque.padre.id, camadas)  : null
@@ -214,9 +227,9 @@ function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccio
       className="rounded-xl overflow-hidden text-left w-full transition-all hover:scale-[1.02] active:scale-[0.98]"
       style={{
         background: seleccionada ? 'rgba(255,61,87,0.08)' : 'rgba(13,21,40,0.9)',
-        border: seleccionada ? '2px solid rgba(255,61,87,0.7)' : `1px solid ${cfg.borde}`,
-        boxShadow: seleccionada ? '0 0 16px rgba(255,61,87,0.15)' : `0 0 12px ${cfg.bg}`,
-        opacity: modoSeleccion && !esSeleccionable ? 0.35 : 1,
+        border: seleccionada ? '2px solid rgba(255,61,87,0.7)' : `1px solid ${cfgEfectivo.borde}`,
+        boxShadow: seleccionada ? '0 0 16px rgba(255,61,87,0.15)' : `0 0 8px ${cfgEfectivo.bg}`,
+        opacity: esEnApareamiento ? 0.6 : (modoSeleccion && !esSeleccionable ? 0.35 : 1),
         position: 'relative',
         cursor: modoSeleccion && !esSeleccionable ? 'default' : 'pointer',
       }}
@@ -236,14 +249,19 @@ function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccio
       {/* Header coloreado */}
       <div
         className="px-3 py-1.5 flex items-center justify-between"
-        style={{ background: cfg.bg, borderBottom: `1px solid ${cfg.borde}` }}
+        style={{ background: cfgEfectivo.bg, borderBottom: `1px solid ${cfgEfectivo.borde}` }}
       >
-        <span className="text-xs font-bold uppercase tracking-widest" style={{ color: cfg.color }}>
+        <span className="text-xs font-bold uppercase tracking-widest" style={{ color: cfgEfectivo.color }}>
           {cfg.icono} {cfg.label}
         </span>
         {bloque.virtual && (
           <span className="text-xs px-1.5 py-0.5 rounded font-semibold" style={{ background: 'rgba(255,179,0,0.2)', color: '#ffb300' }}>
             sin asignar
+          </span>
+        )}
+        {esEnApareamiento && (
+          <span className="text-xs px-1.5 py-0.5 rounded font-semibold" style={{ background: 'rgba(30,51,82,0.4)', color: '#3d5068' }}>
+            En apareamiento
           </span>
         )}
       </div>
@@ -267,10 +285,18 @@ function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccio
           )}
         </div>
 
-        <SexoDisplay bloque={bloque} cfg={cfg} />
+        <SexoDisplay bloque={bloque} cfg={cfgEfectivo} />
         <div className="text-xs" style={{ color: '#4a5f7a' }}>
           {bloque.edad != null ? `${formatEdad(bloque.edad)} · ${bloque.edad}d` : '—'}
         </div>
+
+        {/* Badge de jaula temporalmente vacía */}
+        {esEnApareamiento && (
+          <div className="text-xs px-2 py-1 rounded-lg"
+            style={{ background: 'rgba(30,51,82,0.25)', border: '1px solid rgba(30,51,82,0.5)', color: '#3d5068' }}>
+            Jaula temporalmente vacía
+          </div>
+        )}
 
         {/* Nota visible directamente en la tarjeta */}
         {bloque.tipo === 'reproductor' && bloque.animal.notas && (
@@ -1526,11 +1552,13 @@ export default function Stock() {
     const cats = Object.fromEntries(Object.keys(CAT).map((k) => [k, { animales: 0, jaulas: 0 }]))
     bloques.forEach((b) => {
       cats[b.categoria].animales += b.total
-      cats[b.categoria].jaulas += 1
+      // Hembras en apareamiento no cuentan como jaula ocupada (su jaula está vacía)
+      if (!esFemEnApareamiento(b)) cats[b.categoria].jaulas += 1
     })
     const totalAnimales = Object.values(cats).reduce((s, c) => s + c.animales, 0)
-    const totalJaulas = Object.values(cats).reduce((s, c) => s + c.jaulas, 0)
-    return { ...cats, totalAnimales, totalJaulas }
+    const totalJaulas   = Object.values(cats).reduce((s, c) => s + c.jaulas, 0)
+    const femEnApareamiento = bloques.filter(esFemEnApareamiento).length
+    return { ...cats, totalAnimales, totalJaulas, femEnApareamiento }
   }, [bloques])
 
   // ── Datos para la vista "Resumen" (categorías) ────────────────────────────
@@ -1589,6 +1617,7 @@ export default function Stock() {
 
   function toggleSeleccion(bloque) {
     if (bloque.virtual) return
+    if (esFemEnApareamiento(bloque)) return
     setSeleccionadas((prev) => {
       const next = new Set(prev)
       next.has(bloque.id) ? next.delete(bloque.id) : next.add(bloque.id)
@@ -1847,11 +1876,16 @@ if (subVista === 'sacrificios') {
         style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }}
       >
         {/* Totales */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <span className="font-mono text-sm font-bold text-white">
             Total: <span style={{ color: '#40c4ff' }}>{resumen.totalAnimales}</span> animales
-            {' '}/ <span style={{ color: '#00e676' }}>{resumen.totalJaulas}</span> jaulas
+            {' '}/ <span style={{ color: '#00e676' }}>{resumen.totalJaulas}</span> jaulas ocupadas
           </span>
+          {resumen.femEnApareamiento > 0 && (
+            <span className="text-xs font-mono" style={{ color: '#3d5068' }}>
+              · {resumen.femEnApareamiento} jaula{resumen.femEnApareamiento !== 1 ? 's' : ''} temporalmente vacía{resumen.femEnApareamiento !== 1 ? 's' : ''} (hembra{resumen.femEnApareamiento !== 1 ? 's' : ''} en apareamiento)
+            </span>
+          )}
         </div>
         {/* Chips por categoría */}
         <div className="flex flex-wrap gap-2">
