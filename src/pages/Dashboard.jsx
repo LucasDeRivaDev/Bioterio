@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useBioterio } from '../context/BiotheriumContext'
 import { generarTareas, formatFecha, calcularRangoParto, difDias, parseDate, hoy, generarAlertasEstrales, generarAlertasMachos } from '../utils/calculos'
@@ -214,6 +214,23 @@ function StatCard({ valor, label, icono, color }) {
 
 // ── Dashboard principal ───────────────────────────────────────────────────────
 
+// ── Planes de apareamiento ────────────────────────────────────────────────────
+
+function lsKeyPlanesDash(bioId) {
+  return `appMosca_apareamientos_${bioId}`
+}
+
+function cargarPlanesApareamiento(bioId) {
+  try { return JSON.parse(localStorage.getItem(lsKeyPlanesDash(bioId)) || '[]') }
+  catch { return [] }
+}
+
+function persistirPlanes(bioId, lista) {
+  localStorage.setItem(lsKeyPlanesDash(bioId), JSON.stringify(lista))
+}
+
+// ── Tareas descartadas ────────────────────────────────────────────────────────
+
 // Clave de localStorage para las tareas descartadas (permanente)
 const LS_KEY = 'appMosca_tareas_descartadas'
 
@@ -239,7 +256,7 @@ function cargarDescartadas() {
 }
 
 export default function Dashboard() {
-  const { animales, camadas, extendidos, confirmarSeparacion, bio } = useBioterio()
+  const { animales, camadas, extendidos, confirmarSeparacion, bio, bioterioActivo } = useBioterio()
 
   // IDs de tareas descartadas por el usuario hoy (se resetean el día siguiente)
   const [descartadas, setDescartadas] = useState(() => cargarDescartadas())
@@ -254,6 +271,42 @@ export default function Dashboard() {
   }
 
   const [mostrarRenovacion, setMostrarRenovacion] = useState(() => debesMostrarRenovacion())
+
+  // ── Planes de apareamiento ────────────────────────────────────────────────
+  const [planesApareamiento, setPlanesApareamiento] = useState([])
+
+  useEffect(() => {
+    if (bioterioActivo) setPlanesApareamiento(cargarPlanesApareamiento(bioterioActivo))
+  }, [bioterioActivo])
+
+  const alertasApareamiento = useMemo(() => {
+    const hoyStr = hoy()
+    return planesApareamiento
+      .filter((p) => !p.completado && p.fecha_planificada <= hoyStr)
+      .sort((a, b) => a.fecha_planificada.localeCompare(b.fecha_planificada))
+  }, [planesApareamiento])
+
+  const proximosApareamiento = useMemo(() => {
+    const hoyStr = hoy()
+    const limite = new Date(`${hoyStr}T12:00:00`)
+    limite.setDate(limite.getDate() + 7)
+    const limiteStr = limite.toISOString().slice(0, 10)
+    return planesApareamiento
+      .filter((p) => !p.completado && p.fecha_planificada > hoyStr && p.fecha_planificada <= limiteStr)
+      .sort((a, b) => a.fecha_planificada.localeCompare(b.fecha_planificada))
+  }, [planesApareamiento])
+
+  function completarPlan(id) {
+    const nueva = planesApareamiento.map((p) => p.id === id ? { ...p, completado: true } : p)
+    persistirPlanes(bioterioActivo, nueva)
+    setPlanesApareamiento(nueva)
+  }
+
+  function descartarPlan(id) {
+    const nueva = planesApareamiento.filter((p) => p.id !== id)
+    persistirPlanes(bioterioActivo, nueva)
+    setPlanesApareamiento(nueva)
+  }
 
   function descartarRenovacion() {
     localStorage.setItem(LS_RENO_KEY, hoy())
@@ -458,6 +511,90 @@ export default function Dashboard() {
                 </div>
               )
             })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Apareamientos planificados ──────────────────────────────────────── */}
+      {(alertasApareamiento.length > 0 || proximosApareamiento.length > 0) && (
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: '#40c4ff' }}>
+            🔗 Apareamientos planificados
+          </div>
+          <div className="space-y-2">
+
+            {/* Alertas de hoy / vencidas */}
+            {alertasApareamiento.map((plan) => {
+              const vencida = plan.fecha_planificada < hoy()
+              const color = vencida ? '#ff6b80' : '#ffb300'
+              return (
+                <div key={plan.id} className="rounded-xl px-4 py-3"
+                  style={{ background: `${color}08`, border: `1px solid ${color}30` }}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 space-y-1">
+                      <div className="font-semibold text-sm" style={{ color }}>
+                        {vencida ? '⚠️ Apareamiento pendiente' : '🔗 Realizar apareamiento hoy'}
+                      </div>
+                      <div className="text-xs" style={{ color: '#c9d4e0' }}>
+                        Tomar machos de{' '}
+                        <span className="font-mono" style={{ color: '#40c4ff' }}>{plan.macho.codigo}</span>
+                        {plan.macho.total > 0 && (
+                          <span style={{ color: '#4a5f7a' }}> ({plan.macho.total} disp.)</span>
+                        )}
+                        {' '}y hembras de{' '}
+                        <span className="font-mono" style={{ color: '#ce93d8' }}>{plan.hembra.codigo}</span>
+                        {plan.hembra.total > 0 && (
+                          <span style={{ color: '#4a5f7a' }}> ({plan.hembra.total} disp.)</span>
+                        )}
+                      </div>
+                      {plan.observaciones && (
+                        <div className="text-xs" style={{ color: '#4a5f7a' }}>{plan.observaciones}</div>
+                      )}
+                      <div className="text-xs font-mono" style={{ color: 'rgba(138,155,176,0.4)' }}>
+                        Planificado para: {formatFecha(plan.fecha_planificada)}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1.5 shrink-0">
+                      <button onClick={() => completarPlan(plan.id)}
+                        className="px-3 py-1 rounded-lg text-xs font-bold"
+                        style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.3)', color: '#00e676', cursor: 'pointer' }}>
+                        ✓ Hecho
+                      </button>
+                      <button onClick={() => descartarPlan(plan.id)}
+                        className="px-3 py-1 rounded-lg text-xs font-semibold"
+                        style={{ background: 'rgba(138,155,176,0.06)', border: '1px solid rgba(138,155,176,0.2)', color: '#4a5f7a', cursor: 'pointer' }}>
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+
+            {/* Próximos 7 días */}
+            {proximosApareamiento.map((plan) => (
+              <div key={plan.id} className="rounded-xl px-4 py-3 flex items-center justify-between gap-3"
+                style={{ background: 'rgba(64,196,255,0.04)', border: '1px solid rgba(64,196,255,0.15)' }}>
+                <div className="min-w-0 space-y-0.5">
+                  <div className="text-xs font-semibold" style={{ color: '#40c4ff' }}>
+                    Cruce planificado · {formatFecha(plan.fecha_planificada)}
+                  </div>
+                  <div className="text-xs" style={{ color: '#4a5f7a' }}>
+                    <span className="font-mono" style={{ color: '#40c4ff' }}>{plan.macho.codigo}</span>
+                    {' '}×{' '}
+                    <span className="font-mono" style={{ color: '#ce93d8' }}>{plan.hembra.codigo}</span>
+                    {plan.observaciones && <span> · {plan.observaciones}</span>}
+                  </div>
+                </div>
+                <button onClick={() => descartarPlan(plan.id)}
+                  title="Eliminar plan"
+                  className="w-6 h-6 rounded-lg flex items-center justify-center text-xs shrink-0"
+                  style={{ background: 'rgba(74,95,122,0.1)', border: '1px solid rgba(74,95,122,0.2)', color: '#4a5f7a', cursor: 'pointer' }}>
+                  ✕
+                </button>
+              </div>
+            ))}
+
           </div>
         </div>
       )}

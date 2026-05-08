@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { difDias, parseDate, hoy, formatFecha, calcularPerfilHembra, calcularRendimientoMacho } from '../utils/calculos'
 import { BIO } from '../utils/constants'
+import { generarId } from '../utils/storage'
 import Modal from '../components/Modal'
 import { TestTube2, FlaskConical, Microscope, UserPlus } from 'lucide-react'
 import Sacrificios from '../pages/Sacrificios'
@@ -46,6 +47,36 @@ function categoriaStock(edad) {
   if (edad < 42) return 'crias'
   if (edad < BIO.MADUREZ_DIAS) return 'jovenes'
   return 'adultos'
+}
+
+// Determina el sexo de un bloque para la planificación de apareamientos
+function sexoBloque(b) {
+  if (b.categoria === 'macho_repro') return 'macho'
+  if (b.categoria === 'hembra_repro') return 'hembra'
+  if (b.tipo === 'stock') {
+    const m = b.machos
+    const h = b.hembras
+    if (m != null && m > 0 && (h == null || h === 0)) return 'macho'
+    if (h != null && h > 0 && (m == null || m === 0)) return 'hembra'
+  }
+  return null
+}
+
+// ── Planificación de apareamientos — localStorage ────────────────────────────
+
+function lsKeyPlanes(bioId) {
+  return `appMosca_apareamientos_${bioId}`
+}
+
+function cargarPlanesApareamiento(bioId) {
+  try { return JSON.parse(localStorage.getItem(lsKeyPlanes(bioId)) || '[]') }
+  catch { return [] }
+}
+
+function guardarPlanApareamiento(bioId, plan) {
+  const lista = cargarPlanesApareamiento(bioId)
+  lista.push(plan)
+  localStorage.setItem(lsKeyPlanes(bioId), JSON.stringify(lista))
 }
 
 // ── Componentes ───────────────────────────────────────────────────────────────
@@ -831,6 +862,110 @@ function Row({ label, valor, color = '#8a9bb0' }) {
   )
 }
 
+// ── Modal de planificación de apareamiento ────────────────────────────────────
+
+function ModalPlanificarApareamiento({ bloquesMacho, bloquesHembra, onGuardar, onCerrar }) {
+  const [fechaPlanificada, setFechaPlanificada] = useState('')
+  const [observaciones,    setObservaciones]    = useState('')
+  const [guardando,        setGuardando]        = useState(false)
+
+  const iStyle = {
+    background: 'rgba(5,8,16,0.6)', border: '1px solid rgba(30,51,82,0.8)',
+    color: '#e2e8f0', borderRadius: '0.5rem', padding: '0.4rem 0.6rem',
+    fontSize: '0.8125rem', fontFamily: 'monospace', width: '100%', outline: 'none',
+  }
+
+  function getNombre(b) {
+    if (b.tipo === 'reproductor') return b.animal.codigo
+    return `${b.madre?.codigo ?? '?'} × ${b.padre?.codigo ?? '?'}`
+  }
+
+  function confirmar() {
+    if (!fechaPlanificada || guardando) return
+    setGuardando(true)
+    onGuardar(fechaPlanificada, observaciones.trim() || null)
+  }
+
+  return (
+    <Modal titulo="Planificar apareamiento" onCerrar={onCerrar} ancho="max-w-sm">
+      <div className="space-y-4">
+
+        {/* Info header */}
+        <div className="flex items-start gap-3 px-4 py-3 rounded-xl"
+          style={{ background: 'rgba(64,196,255,0.06)', border: '1px solid rgba(64,196,255,0.2)' }}>
+          <span className="text-xl shrink-0">🔗</span>
+          <div>
+            <div className="font-bold text-sm" style={{ color: '#40c4ff' }}>Reservar cruce futuro</div>
+            <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>
+              No crea el apareamiento todavía. Genera un recordatorio para la fecha elegida.
+            </div>
+          </div>
+        </div>
+
+        {/* Fuente machos */}
+        <div className="rounded-xl p-3 space-y-1"
+          style={{ background: 'rgba(64,196,255,0.05)', border: '1px solid rgba(64,196,255,0.2)' }}>
+          <div className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#40c4ff' }}>♂ Fuente de machos</div>
+          <div className="font-mono font-bold text-sm text-white">{getNombre(bloquesMacho)}</div>
+          <div className="text-xs" style={{ color: '#4a5f7a' }}>
+            {bloquesMacho.total} {bloquesMacho.total === 1 ? 'animal' : 'animales'}
+            {bloquesMacho.edad != null ? ` · ${formatEdad(bloquesMacho.edad)}` : ''}
+          </div>
+        </div>
+
+        {/* Fuente hembras */}
+        <div className="rounded-xl p-3 space-y-1"
+          style={{ background: 'rgba(206,147,216,0.05)', border: '1px solid rgba(206,147,216,0.2)' }}>
+          <div className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#ce93d8' }}>♀ Fuente de hembras</div>
+          <div className="font-mono font-bold text-sm text-white">{getNombre(bloquesHembra)}</div>
+          <div className="text-xs" style={{ color: '#4a5f7a' }}>
+            {bloquesHembra.total} {bloquesHembra.total === 1 ? 'animal' : 'animales'}
+            {bloquesHembra.edad != null ? ` · ${formatEdad(bloquesHembra.edad)}` : ''}
+          </div>
+        </div>
+
+        {/* Fecha */}
+        <div>
+          <label className="text-xs uppercase tracking-widest font-semibold mb-1 block" style={{ color: '#4a5f7a' }}>
+            Fecha planificada <span className="normal-case font-normal opacity-60">(requerida)</span>
+          </label>
+          <input type="date" value={fechaPlanificada}
+            onChange={(e) => setFechaPlanificada(e.target.value)} style={iStyle} />
+        </div>
+
+        {/* Observaciones */}
+        <div>
+          <label className="text-xs uppercase tracking-widest font-semibold mb-1 block" style={{ color: '#4a5f7a' }}>
+            Observaciones <span className="normal-case font-normal opacity-60">(opcional)</span>
+          </label>
+          <input type="text" placeholder="Protocolo, objetivo, investigador..."
+            value={observaciones} onChange={(e) => setObservaciones(e.target.value)}
+            style={{ ...iStyle, fontFamily: 'sans-serif' }} />
+        </div>
+
+        {/* Botones */}
+        <div className="flex gap-3">
+          <button onClick={onCerrar} disabled={guardando}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+            style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: '#8a9bb0' }}>
+            Cancelar
+          </button>
+          <button onClick={confirmar} disabled={!fechaPlanificada || guardando}
+            className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+            style={{
+              background: (!fechaPlanificada || guardando) ? 'rgba(30,51,82,0.3)' : 'rgba(64,196,255,0.12)',
+              border: `1.5px solid ${(!fechaPlanificada || guardando) ? 'rgba(30,51,82,0.5)' : 'rgba(64,196,255,0.4)'}`,
+              color: (!fechaPlanificada || guardando) ? '#4a5f7a' : '#40c4ff',
+              cursor: (!fechaPlanificada || guardando) ? 'not-allowed' : 'pointer',
+            }}>
+            {guardando ? 'Guardando...' : '🔗 Planificar'}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 function ModalSacrificio({ bloques, onConfirmar, onCerrar }) {
   const [fecha, setFecha]       = useState(hoy())
   const [notas, setNotas]       = useState('')
@@ -1313,9 +1448,10 @@ export default function Stock() {
   const [filtroCat, setFiltroCat] = useState('todas')
   const [modoSeleccion, setModoSeleccion] = useState(false)
   const [seleccionadas, setSeleccionadas] = useState(new Set())
-  const [modalSacrificio, setModalSacrificio] = useState(false)
-  const [modalEntrega, setModalEntrega]       = useState(false)
-  const [modalPromover, setModalPromover]     = useState(false)
+  const [modalSacrificio,  setModalSacrificio]  = useState(false)
+  const [modalEntrega,     setModalEntrega]     = useState(false)
+  const [modalPromover,    setModalPromover]    = useState(false)
+  const [modalPlanificar,  setModalPlanificar]  = useState(false)
 
   // ── Bloques de jaulas (reproductores + stock) ─────────────────────────────
   const bloques = useMemo(() => {
@@ -1442,6 +1578,14 @@ export default function Stock() {
   const totalSeleccionado = useMemo(() =>
     bloques.filter((b) => seleccionadas.has(b.id)).reduce((s, b) => s + b.total, 0),
   [bloques, seleccionadas])
+
+  // Detectar si la selección actual permite planificar un apareamiento
+  const bloquesSelArray = useMemo(() =>
+    bloques.filter((b) => seleccionadas.has(b.id)),
+  [bloques, seleccionadas])
+  const machoSel       = bloquesSelArray.find((b) => sexoBloque(b) === 'macho') ?? null
+  const hembraSel      = bloquesSelArray.find((b) => sexoBloque(b) === 'hembra') ?? null
+  const puedePlanificar = bloquesSelArray.length === 2 && Boolean(machoSel) && Boolean(hembraSel)
 
   function toggleSeleccion(bloque) {
     if (bloque.virtual) return
@@ -1572,6 +1716,39 @@ export default function Stock() {
       }
     }
     setModalPromover(false)
+    salirModoSeleccion()
+  }
+
+  // Guardar planificación de apareamiento en localStorage
+  function guardarPlanificacion(fechaPlanificada, observaciones) {
+    if (!machoSel || !hembraSel) return
+    const getNombre = (b) => b.tipo === 'reproductor'
+      ? b.animal.codigo
+      : `${b.madre?.codigo ?? '?'} × ${b.padre?.codigo ?? '?'}`
+    const plan = {
+      id: generarId(),
+      bioterioActivo,
+      fecha_planificada: fechaPlanificada,
+      observaciones,
+      macho: {
+        bloqueId: machoSel.id,
+        tipo: machoSel.tipo,
+        codigo: getNombre(machoSel),
+        total: machoSel.total,
+        edad: machoSel.edad,
+      },
+      hembra: {
+        bloqueId: hembraSel.id,
+        tipo: hembraSel.tipo,
+        codigo: getNombre(hembraSel),
+        total: hembraSel.total,
+        edad: hembraSel.edad,
+      },
+      completado: false,
+      created_at: hoy(),
+    }
+    guardarPlanApareamiento(bioterioActivo, plan)
+    setModalPlanificar(false)
     salirModoSeleccion()
   }
 
@@ -1829,6 +2006,15 @@ if (subVista === 'sacrificios') {
               )}
             </div>
             <div style={{ width: '1px', height: '20px', background: 'rgba(30,51,82,0.8)' }} />
+            {puedePlanificar && (
+              <button
+                onClick={() => setModalPlanificar(true)}
+                className="px-4 py-1.5 rounded-xl text-sm font-bold flex items-center gap-1.5"
+                style={{ background: 'rgba(64,196,255,0.1)', border: '1px solid rgba(64,196,255,0.4)', color: '#40c4ff', cursor: 'pointer' }}
+              >
+                🔗 Planificar apareamiento
+              </button>
+            )}
             {jaulasSel.some((b) => !b.virtual) && (
               <button
                 onClick={() => setModalPromover(true)}
@@ -1896,6 +2082,16 @@ if (subVista === 'sacrificios') {
           animales={animales}
           onConfirmar={ejecutarPromoverMasivo}
           onCerrar={() => setModalPromover(false)}
+        />
+      )}
+
+      {/* Modal planificar apareamiento */}
+      {modalPlanificar && machoSel && hembraSel && (
+        <ModalPlanificarApareamiento
+          bloquesMacho={machoSel}
+          bloquesHembra={hembraSel}
+          onGuardar={guardarPlanificacion}
+          onCerrar={() => setModalPlanificar(false)}
         />
       )}
     </div>
