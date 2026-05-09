@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { difDias, parseDate, hoy, formatFecha, calcularPerfilHembra, calcularRendimientoMacho } from '../utils/calculos'
-import { BIO } from '../utils/constants'
 import { generarId } from '../utils/storage'
 import Modal from '../components/Modal'
 import { TestTube2, FlaskConical, Microscope, UserPlus } from 'lucide-react'
@@ -43,9 +42,9 @@ const CAT = {
   adultos:      { label: 'Adultos',             color: '#ff6b80', bg: 'rgba(255,61,87,0.08)',   borde: 'rgba(255,61,87,0.25)', icono: '🐁' },
 }
 
-function categoriaStock(edad) {
+function categoriaStock(edad, adultosDias) {
   if (edad < 42) return 'crias'
-  if (edad < BIO.MADUREZ_DIAS) return 'jovenes'
+  if (edad < adultosDias) return 'jovenes'
   return 'adultos'
 }
 
@@ -1467,7 +1466,7 @@ function CategoriaCard({ icono, titulo, subtitulo, total, grupos, gruposLabel, m
 
 
 export default function Stock() {
-  const { animales, camadas, sacrificios, entregas, jaulas, agregarAnimal, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, registrarSacrificio, registrarEntrega, entregarReproductor } = useBioterio()
+  const { animales, camadas, sacrificios, entregas, jaulas, bio, agregarAnimal, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, registrarSacrificio, registrarEntrega, entregarReproductor } = useBioterio()
   const [vista, setVista] = useState('jaulas')
   const [subVista, setSubVista] = useState(null)
   const [detalle, setDetalle] = useState(null)
@@ -1512,7 +1511,7 @@ export default function Stock() {
         madre,
         padre,
         edad,
-        categoria: categoriaStock(edad),
+        categoria: categoriaStock(edad, bio.STOCK_ADULTOS_DIAS),
         total: jaula.total,
         machos: jaula.machos,
         hembras: jaula.hembras,
@@ -1537,7 +1536,7 @@ export default function Stock() {
         madre,
         padre,
         edad,
-        categoria: categoriaStock(edad),
+        categoria: categoriaStock(edad, bio.STOCK_ADULTOS_DIAS),
         total: stock,
         machos: camada.crias_machos,
         hembras: camada.crias_hembras,
@@ -1545,7 +1544,7 @@ export default function Stock() {
     })
 
     return result
-  }, [animales, camadas, jaulas, sacrificios])
+  }, [animales, camadas, jaulas, sacrificios, bio])
 
   // ── Resumen por categoría ─────────────────────────────────────────────────
   const resumen = useMemo(() => {
@@ -1574,7 +1573,7 @@ export default function Stock() {
     // Lactantes (pre-destete) — no están en bloques todavía, los sacamos de camadas
     camadas.filter((c) => c.fecha_nacimiento && !c.failure_flag && c.incluir_en_stock !== false).forEach((c) => {
       const edad = edadDias(c.fecha_nacimiento)
-      if (edad === null || edad >= BIO.DESTETE_DIAS) return
+      if (edad === null || edad >= bio.DESTETE_DIAS) return
       lactantes.total += c.total_crias ?? 0
       lactantes.grupos += 1
     })
@@ -1588,7 +1587,7 @@ export default function Stock() {
       const h = b.hembras ?? 0
       if (edad < 42) {
         crias.total += total; crias.grupos += 1; crias.machos += m; crias.hembras += h
-      } else if (edad < BIO.MADUREZ_DIAS) {
+      } else if (edad < bio.STOCK_ADULTOS_DIAS) {
         jovenes.total += total; jovenes.grupos += 1; jovenes.machos += m; jovenes.hembras += h
       } else {
         adultosNR.total += total; adultosNR.grupos += 1; adultosNR.machos += m; adultosNR.hembras += h
@@ -1596,7 +1595,7 @@ export default function Stock() {
     })
 
     return { hembrasRepro, machosRepro, crias, jovenes, adultosNR, lactantes }
-  }, [animales, camadas, bloques])
+  }, [animales, camadas, bloques, bio])
 
   const bloquesFiltrados = useMemo(() =>
     filtroCat === 'todas' ? bloques : bloques.filter((b) => b.categoria === filtroCat),
@@ -1992,9 +1991,14 @@ if (subVista === 'sacrificios') {
           <div>
             <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: '#4a5f7a' }}>Stock de camadas — por edad</div>
             <div className="space-y-3">
-              <CategoriaCard icono="🐣" titulo="Crías (post-destete)" subtitulo="21 días hasta 6 semanas" total={datosResumen.crias.total} grupos={datosResumen.crias.grupos} gruposLabel="Camadas" machos={datosResumen.crias.machos || undefined} hembras={datosResumen.crias.hembras || undefined} color="#00e676" descripcion="Destete completado · hasta 42 días" />
-              <CategoriaCard icono="🐭" titulo="Jóvenes" subtitulo="6 semanas hasta 12 semanas" total={datosResumen.jovenes.total} grupos={datosResumen.jovenes.grupos} gruposLabel="Camadas" machos={datosResumen.jovenes.machos || undefined} hembras={datosResumen.jovenes.hembras || undefined} color="#ffb300" descripcion="42 a 84 días · pre-madurez" />
-              <CategoriaCard icono="🐀" titulo="Adultos (no reproductores)" subtitulo="Más de 12 semanas" total={datosResumen.adultosNR.total} grupos={datosResumen.adultosNR.grupos} gruposLabel="Camadas" machos={datosResumen.adultosNR.machos || undefined} hembras={datosResumen.adultosNR.hembras || undefined} color="#ff6b80" descripcion="> 84 días · aptos para reproducción o retiro" />
+              {(() => {
+                const semanasAdultos = Math.round(bio.STOCK_ADULTOS_DIAS / 7)
+                return (<>
+                  <CategoriaCard icono="🐣" titulo="Crías (post-destete)" subtitulo={`${bio.DESTETE_DIAS} días hasta 6 semanas`} total={datosResumen.crias.total} grupos={datosResumen.crias.grupos} gruposLabel="Camadas" machos={datosResumen.crias.machos || undefined} hembras={datosResumen.crias.hembras || undefined} color="#00e676" descripcion={`Destete completado · hasta 42 días`} />
+                  <CategoriaCard icono="🐭" titulo="Jóvenes" subtitulo={`6 semanas hasta ${semanasAdultos} semanas`} total={datosResumen.jovenes.total} grupos={datosResumen.jovenes.grupos} gruposLabel="Camadas" machos={datosResumen.jovenes.machos || undefined} hembras={datosResumen.jovenes.hembras || undefined} color="#ffb300" descripcion={`42 a ${bio.STOCK_ADULTOS_DIAS} días · pre-madurez`} />
+                  <CategoriaCard icono="🐀" titulo="Adultos (no reproductores)" subtitulo={`Más de ${semanasAdultos} semanas`} total={datosResumen.adultosNR.total} grupos={datosResumen.adultosNR.grupos} gruposLabel="Camadas" machos={datosResumen.adultosNR.machos || undefined} hembras={datosResumen.adultosNR.hembras || undefined} color="#ff6b80" descripcion={`> ${bio.STOCK_ADULTOS_DIAS} días · aptos para reproducción o retiro`} />
+                </>)
+              })()}
             </div>
           </div>
 

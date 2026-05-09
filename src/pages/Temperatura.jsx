@@ -1,25 +1,27 @@
-import { useState, useMemo } from 'react'
-import { useBioterio } from '../context/BiotheriumContext'
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import { supabase } from '../lib/supabase'
+import { generarId } from '../utils/storage'
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// IDs fijos en Supabase — independientes del bioterio activo
+// Al consultar ratones también incluimos los IDs anteriores por compatibilidad
+// con registros creados antes de esta centralización.
+// ─────────────────────────────────────────────────────────────────────────────
+const BIOTERIO_RATAS    = 'ratas'
+const BIOTERIO_RATONES  = 'ratones'
+const RATONES_LEGACY    = ['ratones_balbc', 'ratones_c57', 'ratones_hibridos']
 
-function fechaHoy() {
-  return new Date().toISOString().split('T')[0]
-}
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-function horaAhora() {
-  return new Date().toTimeString().slice(0, 5)
-}
+function fechaHoy()  { return new Date().toISOString().split('T')[0] }
+function horaAhora() { return new Date().toTimeString().slice(0, 5) }
+function mesActual() { return new Date().toISOString().slice(0, 7) }
 
-function mesActual() {
-  return new Date().toISOString().slice(0, 7)
-}
-
-function labelMes(yearMonth) {
-  if (!yearMonth) return ''
-  const [y, m] = yearMonth.split('-')
-  const nombres = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
-  return `${nombres[parseInt(m, 10) - 1]} ${y}`
+function labelMes(ym) {
+  if (!ym) return ''
+  const [y, m] = ym.split('-')
+  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+  return `${MESES[parseInt(m, 10) - 1]} ${y}`
 }
 
 function formatTemp(v) {
@@ -27,76 +29,106 @@ function formatTemp(v) {
   return `${Number(v).toFixed(1)}°C`
 }
 
-function promedioArr(arr) {
-  if (!arr.length) return null
-  return arr.reduce((s, v) => s + v, 0) / arr.length
+function promedio(arr) {
+  const vals = arr.filter(v => v != null)
+  if (!vals.length) return null
+  return vals.reduce((s, v) => s + v, 0) / vals.length
 }
 
-// ── Estilos compartidos ───────────────────────────────────────────────────────
+// ── Constantes de estilo ──────────────────────────────────────────────────────
+const CARD_BG = 'rgba(13,21,40,0.95)'
+const BORDER  = '1px solid rgba(30,51,82,0.7)'
 
-const PAGE_BG   = '#050810'
-const CARD_BG   = 'rgba(13,21,40,0.95)'
-const BORDER    = '1px solid rgba(30,51,82,0.7)'
-const ACCENT    = '#00e676'
-const ACCENT_DIM = 'rgba(0,230,118,0.12)'
-
-function InputField({ label, value, onChange, placeholder, type = 'number' }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>
-        {label}
-      </label>
-      <input
-        type={type}
-        step="0.1"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="rounded-lg px-3 py-2 text-sm font-mono outline-none"
-        style={{
-          background: 'rgba(5,8,16,0.6)',
-          border: '1px solid rgba(30,51,82,0.8)',
-          color: '#e2e8f0',
-        }}
-      />
-    </div>
-  )
+// Colores por bioterio
+const CFG = {
+  ratas:   { color: '#00e676', dim: 'rgba(0,230,118,0.1)',  label: 'Bioterio de Ratas',   icon: '🐀' },
+  ratones: { color: '#40c4ff', dim: 'rgba(64,196,255,0.1)', label: 'Bioterio de Ratones', icon: '🐭' },
 }
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function Temperatura() {
-  const { temperaturas, agregarTemperatura, eliminarTemperaturasMes } = useBioterio()
+  // Tab activa
+  const [bio, setBio] = useState('ratas')
 
-  // ── Estado del formulario ──────────────────────────────────────────────────
+  // Datos de ambos bioterios
+  const [regsRatas,   setRegsRatas]   = useState([])
+  const [regsRatones, setRegsRatones] = useState([])
+  const [cargando, setCargando] = useState(true)
+  const [errorCarga, setErrorCarga] = useState('')
+
+  // Formulario
   const [formAbierto, setFormAbierto] = useState(false)
-  const [actual, setActual] = useState('')
-  const [minTemp, setMinTemp] = useState('')
-  const [maxTemp, setMaxTemp] = useState('')
+  const [actual,   setActual]   = useState('')
+  const [minTemp,  setMinTemp]  = useState('')
+  const [maxTemp,  setMaxTemp]  = useState('')
   const [guardando, setGuardando] = useState(false)
-  const [error, setError] = useState('')
+  const [errorForm, setErrorForm] = useState('')
 
-  // ── Estado de vista mensual ────────────────────────────────────────────────
-  const [mesSelec, setMesSelec] = useState(mesActual())
-  const [confirmElim, setConfirmElim] = useState(false)
-  const [eliminando, setEliminando] = useState(false)
+  // Vista mensual
+  const [mesSelec,     setMesSelec]    = useState(mesActual())
+  const [confirmElim,  setConfirmElim] = useState(false)
+  const [eliminando,   setEliminando]  = useState(false)
 
-  // ── Registros de hoy ───────────────────────────────────────────────────────
+  // ── Carga inicial ──────────────────────────────────────────────────────────
+  const cargarTodo = useCallback(async () => {
+    setCargando(true)
+    setErrorCarga('')
+    try {
+      const [resRatas, resRatones] = await Promise.all([
+        // Ratas
+        supabase
+          .from('temperature_logs')
+          .select('*')
+          .eq('bioterio_id', BIOTERIO_RATAS)
+          .order('date', { ascending: false })
+          .order('time', { ascending: false }),
+
+        // Ratones — incluye ID unificado + IDs legacy por compatibilidad
+        supabase
+          .from('temperature_logs')
+          .select('*')
+          .in('bioterio_id', [BIOTERIO_RATONES, ...RATONES_LEGACY])
+          .order('date', { ascending: false })
+          .order('time', { ascending: false }),
+      ])
+
+      if (resRatas.error)   throw resRatas.error
+      if (resRatones.error) throw resRatones.error
+
+      setRegsRatas(resRatas.data ?? [])
+      setRegsRatones(resRatones.data ?? [])
+    } catch (e) {
+      console.error('Error carga temperaturas:', e)
+      setErrorCarga('No se pudo cargar los registros. Verificá la conexión.')
+    } finally {
+      setCargando(false)
+    }
+  }, [])
+
+  useEffect(() => { cargarTodo() }, [cargarTodo])
+
+  // ── Registros activos según la tab ────────────────────────────────────────
+  const regs    = bio === 'ratas' ? regsRatas   : regsRatones
+  const setRegs = bio === 'ratas' ? setRegsRatas : setRegsRatones
+  const cfg     = CFG[bio]
+
+  // ── Hoy ───────────────────────────────────────────────────────────────────
   const hoy = fechaHoy()
+
   const registrosHoy = useMemo(
-    () => temperaturas.filter((t) => t.date === hoy).sort((a, b) => b.time.localeCompare(a.time)),
-    [temperaturas, hoy]
+    () => regs.filter(r => r.date === hoy).sort((a, b) => b.time.localeCompare(a.time)),
+    [regs, hoy]
   )
 
-  // ── Registros del mes seleccionado ────────────────────────────────────────
+  // ── Mes seleccionado ──────────────────────────────────────────────────────
   const registrosMes = useMemo(
-    () => temperaturas
-      .filter((t) => t.date?.startsWith(mesSelec))
+    () => regs
+      .filter(r => r.date?.startsWith(mesSelec))
       .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time)),
-    [temperaturas, mesSelec]
+    [regs, mesSelec]
   )
 
-  // Agrupar por día para la vista mensual
   const diasMes = useMemo(() => {
     const mapa = {}
     for (const r of registrosMes) {
@@ -106,37 +138,43 @@ export default function Temperatura() {
     return Object.entries(mapa).sort(([a], [b]) => a.localeCompare(b))
   }, [registrosMes])
 
-  // Promedios mensuales
-  const promedioMensual = useMemo(() => {
-    const currents = registrosMes.map((r) => r.current_temp).filter((v) => v != null)
-    const mins     = registrosMes.map((r) => r.min_temp).filter((v) => v != null)
-    const maxs     = registrosMes.map((r) => r.max_temp).filter((v) => v != null)
-    return {
-      actual: promedioArr(currents),
-      min:    promedioArr(mins),
-      max:    promedioArr(maxs),
-    }
-  }, [registrosMes])
+  const promedioMes = useMemo(() => ({
+    actual: promedio(registrosMes.map(r => r.current_temp)),
+    min:    promedio(registrosMes.map(r => r.min_temp)),
+    max:    promedio(registrosMes.map(r => r.max_temp)),
+  }), [registrosMes])
 
   // ── Guardar registro ──────────────────────────────────────────────────────
   async function guardar() {
-    if (actual === '') { setError('Ingresá la temperatura actual.'); return }
-    setError('')
+    if (actual === '') { setErrorForm('Ingresá la temperatura actual.'); return }
+    setErrorForm('')
     setGuardando(true)
     try {
-      await agregarTemperatura({
+      const bioterio_id = bio === 'ratas' ? BIOTERIO_RATAS : BIOTERIO_RATONES
+      const payload = {
+        bioterio_id,
         date:         hoy,
         time:         horaAhora(),
         current_temp: parseFloat(actual),
         min_temp:     minTemp !== '' ? parseFloat(minTemp) : null,
         max_temp:     maxTemp !== '' ? parseFloat(maxTemp) : null,
-      })
+      }
+      const { data, error } = await supabase
+        .from('temperature_logs')
+        .insert(payload)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      const nuevo = data ?? { ...payload, id: generarId() }
+      setRegs(prev => [nuevo, ...prev])
       setActual('')
       setMinTemp('')
       setMaxTemp('')
       setFormAbierto(false)
     } catch {
-      setError('No se pudo guardar. Verificá la conexión.')
+      setErrorForm('No se pudo guardar. Verificá la conexión.')
     } finally {
       setGuardando(false)
     }
@@ -145,8 +183,33 @@ export default function Temperatura() {
   // ── Eliminar mes ──────────────────────────────────────────────────────────
   async function eliminarMes() {
     setEliminando(true)
-    await eliminarTemperaturasMes(mesSelec)
-    setEliminando(false)
+    try {
+      const bioterio_id = bio === 'ratas' ? BIOTERIO_RATAS : BIOTERIO_RATONES
+      const { error } = await supabase
+        .from('temperature_logs')
+        .delete()
+        .eq('bioterio_id', bioterio_id)
+        .like('date', `${mesSelec}%`)
+
+      if (error) throw error
+
+      setRegs(prev => prev.filter(r => !r.date?.startsWith(mesSelec)))
+    } catch (e) {
+      console.error('Error eliminando mes:', e)
+    } finally {
+      setEliminando(false)
+      setConfirmElim(false)
+    }
+  }
+
+  // ── Cambiar tab (limpia estado del form) ──────────────────────────────────
+  function cambiarBio(nuevo) {
+    setBio(nuevo)
+    setFormAbierto(false)
+    setActual('')
+    setMinTemp('')
+    setMaxTemp('')
+    setErrorForm('')
     setConfirmElim(false)
   }
 
@@ -169,7 +232,7 @@ export default function Temperatura() {
           .print-table th { background: #f0f0f0; font-weight: bold; }
           .print-header { margin-bottom: 16px; }
           .print-header h1 { font-size: 18px; margin: 0 0 4px; }
-          .print-header p { font-size: 12px; margin: 0; color: #555; }
+          .print-header p  { font-size: 12px; margin: 0; color: #555; }
           .print-section { page-break-inside: avoid; margin-bottom: 20px; }
           .print-day-title { font-weight: bold; font-size: 12px; margin: 10px 0 4px; border-bottom: 1px solid #ccc; padding-bottom: 2px; }
           .print-avg-row { background: #f9f9f9; font-style: italic; }
@@ -182,24 +245,26 @@ export default function Temperatura() {
       {/* ── Contenido imprimible (oculto en pantalla) ── */}
       <div className="print-only" style={{ padding: '20px' }}>
         <div className="print-header">
-          <h1>Registro de Temperatura — {labelMes(mesSelec)}</h1>
-          <p>Bioterio · Generado: {new Date().toLocaleDateString('es-AR')}</p>
+          <h1>
+            Registro de Temperatura — {cfg.label}
+          </h1>
+          <p>
+            {labelMes(mesSelec)} · Generado: {new Date().toLocaleDateString('es-AR')}
+            {bio === 'ratones' && ' · Balb/C + C57 + Híbridos (ambiente compartido)'}
+          </p>
         </div>
 
         {diasMes.length === 0 ? (
           <p>Sin registros para este mes.</p>
         ) : (
-          diasMes.map(([fecha, regs]) => {
-            const currents = regs.map((r) => r.current_temp).filter((v) => v != null)
-            const mins     = regs.map((r) => r.min_temp).filter((v) => v != null)
-            const maxs     = regs.map((r) => r.max_temp).filter((v) => v != null)
-            const avgC = promedioArr(currents)
-            const avgMn = promedioArr(mins)
-            const avgMx = promedioArr(maxs)
+          diasMes.map(([fecha, rs]) => {
+            const avgC  = promedio(rs.map(r => r.current_temp))
+            const avgMn = promedio(rs.map(r => r.min_temp))
+            const avgMx = promedio(rs.map(r => r.max_temp))
             const [, m, d] = fecha.split('-')
             return (
               <div key={fecha} className="print-section">
-                <div className="print-day-title">{d}/{m}/{fecha.slice(0,4)}</div>
+                <div className="print-day-title">{d}/{m}/{fecha.slice(0, 4)}</div>
                 <table className="print-table">
                   <thead>
                     <tr>
@@ -210,7 +275,7 @@ export default function Temperatura() {
                     </tr>
                   </thead>
                   <tbody>
-                    {regs.map((r) => (
+                    {rs.map(r => (
                       <tr key={r.id}>
                         <td>{r.time?.slice(0, 5)}</td>
                         <td>{formatTemp(r.current_temp)}</td>
@@ -218,10 +283,10 @@ export default function Temperatura() {
                         <td>{formatTemp(r.max_temp)}</td>
                       </tr>
                     ))}
-                    {regs.length > 1 && (
+                    {rs.length > 1 && (
                       <tr className="print-avg-row">
                         <td>Promedio</td>
-                        <td>{avgC != null ? formatTemp(avgC.toFixed(1)) : '—'}</td>
+                        <td>{avgC  != null ? formatTemp(avgC.toFixed(1))  : '—'}</td>
                         <td>{avgMn != null ? formatTemp(avgMn.toFixed(1)) : '—'}</td>
                         <td>{avgMx != null ? formatTemp(avgMx.toFixed(1)) : '—'}</td>
                       </tr>
@@ -235,184 +300,232 @@ export default function Temperatura() {
 
         {registrosMes.length > 0 && (
           <div className="print-section">
-            <div className="print-day-title">Promedio mensual</div>
+            <div className="print-day-title">Promedio mensual — {labelMes(mesSelec)}</div>
             <table className="print-table">
               <tbody>
-                <tr>
-                  <td><strong>Temperatura actual</strong></td>
-                  <td>{promedioMensual.actual != null ? formatTemp(promedioMensual.actual.toFixed(1)) : '—'}</td>
-                </tr>
-                <tr>
-                  <td><strong>Temperatura mínima</strong></td>
-                  <td>{promedioMensual.min != null ? formatTemp(promedioMensual.min.toFixed(1)) : '—'}</td>
-                </tr>
-                <tr>
-                  <td><strong>Temperatura máxima</strong></td>
-                  <td>{promedioMensual.max != null ? formatTemp(promedioMensual.max.toFixed(1)) : '—'}</td>
-                </tr>
+                <tr><td><strong>Temperatura actual</strong></td><td>{promedioMes.actual != null ? formatTemp(promedioMes.actual.toFixed(1)) : '—'}</td></tr>
+                <tr><td><strong>Temperatura mínima</strong></td><td>{promedioMes.min    != null ? formatTemp(promedioMes.min.toFixed(1))    : '—'}</td></tr>
+                <tr><td><strong>Temperatura máxima</strong></td><td>{promedioMes.max    != null ? formatTemp(promedioMes.max.toFixed(1))    : '—'}</td></tr>
               </tbody>
             </table>
           </div>
         )}
       </div>
 
-      {/* ── UI principal (visible en pantalla) ── */}
-      <div className="no-print flex flex-col gap-6 p-4 md:p-6 max-w-4xl mx-auto" style={{ color: '#e2e8f0' }}>
+      {/* ── UI principal ── */}
+      <div className="no-print flex flex-col gap-5 p-4 md:p-6 max-w-4xl mx-auto" style={{ color: '#e2e8f0' }}>
 
         {/* Header */}
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-xl font-bold text-white tracking-wide">🌡️ Temperatura</h1>
-            <p className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
-              Registro ambiental de la colonia
-            </p>
-          </div>
-          <button
-            onClick={() => setFormAbierto((v) => !v)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
-            style={{
-              background: formAbierto ? 'rgba(0,230,118,0.08)' : ACCENT_DIM,
-              border: `1px solid ${formAbierto ? 'rgba(0,230,118,0.4)' : 'rgba(0,230,118,0.25)'}`,
-              color: ACCENT,
-            }}
-          >
-            {formAbierto ? '✕ Cancelar' : '+ Agregar registro'}
-          </button>
+        <div>
+          <h1 className="text-xl font-bold text-white tracking-wide">🌡️ Temperatura</h1>
+          <p className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
+            Registro ambiental por bioterio físico
+          </p>
         </div>
 
-        {/* Formulario */}
-        {formAbierto && (
-          <div className="rounded-2xl p-5 space-y-4" style={{ background: CARD_BG, border: BORDER }}>
-            <div className="text-sm font-semibold text-white">Nuevo registro — hoy {hoy.split('-').reverse().join('/')} · {horaAhora()}</div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <InputField label="Temp. actual *" value={actual} onChange={setActual} placeholder="Ej: 22.5" />
-              <InputField label="Temp. mínima"   value={minTemp} onChange={setMinTemp} placeholder="Ej: 20.0" />
-              <InputField label="Temp. máxima"   value={maxTemp} onChange={setMaxTemp} placeholder="Ej: 25.5" />
-            </div>
-            {error && <p className="text-xs font-mono" style={{ color: '#ff6b80' }}>{error}</p>}
-            <button
-              onClick={guardar}
-              disabled={guardando}
-              className="px-5 py-2 rounded-xl text-sm font-bold transition-all"
-              style={{
-                background: ACCENT_DIM,
-                border: `1px solid rgba(0,230,118,0.35)`,
-                color: ACCENT,
-                opacity: guardando ? 0.5 : 1,
-              }}
-            >
-              {guardando ? 'Guardando...' : 'Guardar registro'}
-            </button>
+        {/* Error de carga */}
+        {errorCarga && (
+          <div className="rounded-xl px-4 py-3 text-sm font-mono" style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)', color: '#ff6b80' }}>
+            ⚠️ {errorCarga}
           </div>
         )}
 
-        {/* Registros de hoy */}
-        <div className="rounded-2xl overflow-hidden" style={{ background: CARD_BG, border: BORDER }}>
-          <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: BORDER, background: ACCENT_DIM }}>
-            <span className="text-xs font-bold uppercase tracking-widest" style={{ color: ACCENT }}>
-              Registros de hoy — {hoy.split('-').reverse().join('/')}
-            </span>
-            <span
-              className="ml-auto text-xs font-mono px-2 py-0.5 rounded-full"
-              style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.2)', color: ACCENT }}
-            >
-              {registrosHoy.length}
-            </span>
+        {/* ── Tabs de bioterio ── */}
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{ background: CARD_BG, border: BORDER }}
+        >
+          {/* Selector de bioterio */}
+          <div
+            className="flex"
+            style={{ borderBottom: BORDER }}
+          >
+            {['ratas', 'ratones'].map(b => {
+              const c = CFG[b]
+              const activo = bio === b
+              return (
+                <button
+                  key={b}
+                  onClick={() => cambiarBio(b)}
+                  className="flex-1 flex items-center justify-center gap-2 py-4 text-sm font-semibold transition-all"
+                  style={{
+                    background: activo ? `${c.color}0d` : 'transparent',
+                    borderBottom: activo ? `2px solid ${c.color}` : '2px solid transparent',
+                    color: activo ? c.color : '#4a5f7a',
+                  }}
+                >
+                  <span>{c.icon}</span>
+                  <span>{c.label}</span>
+                  {cargando && (
+                    <span
+                      className="w-3 h-3 rounded-full border border-t-transparent animate-spin ml-1"
+                      style={{ borderColor: c.color, borderTopColor: 'transparent' }}
+                    />
+                  )}
+                </button>
+              )
+            })}
           </div>
 
-          {registrosHoy.length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm font-mono" style={{ color: '#4a5f7a' }}>
-              Sin registros para hoy
+          {/* Nota ratones */}
+          {bio === 'ratones' && (
+            <div
+              className="px-5 py-2 text-xs font-mono flex items-center gap-2"
+              style={{ background: 'rgba(64,196,255,0.04)', borderBottom: '1px solid rgba(64,196,255,0.1)', color: '#4a5f7a' }}
+            >
+              <span style={{ color: '#40c4ff' }}>ℹ</span>
+              Balb/C · C57 · Híbridos comparten el mismo ambiente físico — un único registro.
             </div>
-          ) : (
-            <div className="divide-y" style={{ borderColor: 'rgba(30,51,82,0.4)' }}>
-              {registrosHoy.map((r) => (
-                <div key={r.id} className="px-4 py-3 flex items-center gap-4 flex-wrap">
-                  <span className="font-mono text-sm font-bold" style={{ color: ACCENT, minWidth: '50px' }}>
-                    {r.time?.slice(0, 5)}
-                  </span>
-                  <TempChip label="Actual" value={r.current_temp} color="#00e676" />
-                  <TempChip label="Mín"    value={r.min_temp}     color="#40c4ff" />
-                  <TempChip label="Máx"    value={r.max_temp}     color="#ff6b80" />
-                </div>
-              ))}
+          )}
+
+          {/* ── Botón agregar + formulario ── */}
+          <div className="px-5 py-4 flex items-center justify-between gap-4" style={{ borderBottom: BORDER }}>
+            <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+              Hoy · <span style={{ color: '#c9d4e0' }}>{hoy.split('-').reverse().join('/')}</span>
+              {' · '}
+              <span style={{ color: cfg.color }}>{registrosHoy.length} registro{registrosHoy.length !== 1 ? 's' : ''}</span>
+            </div>
+            <button
+              onClick={() => setFormAbierto(v => !v)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all shrink-0"
+              style={{
+                background: formAbierto ? `${cfg.color}10` : `${cfg.color}0d`,
+                border: `1px solid ${formAbierto ? cfg.color + '55' : cfg.color + '30'}`,
+                color: cfg.color,
+              }}
+            >
+              {formAbierto ? '✕ Cancelar' : '+ Agregar registro'}
+            </button>
+          </div>
+
+          {formAbierto && (
+            <div className="px-5 py-4 space-y-4" style={{ borderBottom: BORDER, background: 'rgba(0,0,0,0.15)' }}>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <InputField label="Temp. actual *" value={actual}  onChange={setActual}  placeholder="Ej: 22.5" />
+                <InputField label="Temp. mínima"   value={minTemp} onChange={setMinTemp} placeholder="Ej: 20.0" />
+                <InputField label="Temp. máxima"   value={maxTemp} onChange={setMaxTemp} placeholder="Ej: 25.5" />
+              </div>
+              {errorForm && (
+                <p className="text-xs font-mono" style={{ color: '#ff6b80' }}>{errorForm}</p>
+              )}
+              <button
+                onClick={guardar}
+                disabled={guardando}
+                className="px-5 py-2 rounded-xl text-sm font-bold transition-all"
+                style={{
+                  background: `${cfg.color}15`,
+                  border: `1px solid ${cfg.color}45`,
+                  color: cfg.color,
+                  opacity: guardando ? 0.5 : 1,
+                }}
+              >
+                {guardando ? 'Guardando...' : 'Guardar registro'}
+              </button>
+            </div>
+          )}
+
+          {/* ── Registros de hoy ── */}
+          {registrosHoy.length > 0 && (
+            <div>
+              <div
+                className="px-5 py-2 text-xs font-bold uppercase tracking-widest"
+                style={{ color: cfg.color, background: `${cfg.color}06`, borderBottom: BORDER }}
+              >
+                Registros de hoy
+              </div>
+              <div className="divide-y" style={{ borderColor: 'rgba(30,51,82,0.35)' }}>
+                {registrosHoy.map(r => (
+                  <div key={r.id} className="px-5 py-3 flex items-center gap-5 flex-wrap">
+                    <span className="font-mono text-sm font-bold" style={{ color: cfg.color, minWidth: '48px' }}>
+                      {r.time?.slice(0, 5)}
+                    </span>
+                    <TempChip label="Actual" value={r.current_temp} color="#00e676" />
+                    <TempChip label="Mín"    value={r.min_temp}     color="#40c4ff" />
+                    <TempChip label="Máx"    value={r.max_temp}     color="#ff6b80" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!cargando && registrosHoy.length === 0 && !formAbierto && (
+            <div className="px-5 py-6 text-center text-sm font-mono" style={{ color: '#2a3a50' }}>
+              Sin registros para hoy — presioná "+ Agregar registro"
             </div>
           )}
         </div>
 
-        {/* Vista mensual */}
+        {/* ── Vista mensual ── */}
         <div className="rounded-2xl overflow-hidden" style={{ background: CARD_BG, border: BORDER }}>
+
+          {/* Header mensual */}
           <div
-            className="px-4 py-3 flex items-center gap-3 flex-wrap"
+            className="px-5 py-3 flex items-center gap-3 flex-wrap"
             style={{ borderBottom: BORDER, background: 'rgba(255,179,0,0.06)' }}
           >
             <span className="text-xs font-bold uppercase tracking-widest" style={{ color: '#ffb300' }}>
-              📋 Vista mensual
+              📋 Planilla mensual — {cfg.label}
             </span>
             <input
               type="month"
               value={mesSelec}
-              onChange={(e) => { setMesSelec(e.target.value); setConfirmElim(false) }}
+              onChange={e => { setMesSelec(e.target.value); setConfirmElim(false) }}
               className="ml-auto rounded-lg px-2 py-1 text-xs font-mono outline-none"
-              style={{
-                background: 'rgba(5,8,16,0.6)',
-                border: '1px solid rgba(30,51,82,0.8)',
-                color: '#e2e8f0',
-              }}
+              style={{ background: 'rgba(5,8,16,0.6)', border: '1px solid rgba(30,51,82,0.8)', color: '#e2e8f0' }}
             />
             <button
               onClick={imprimir}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-              style={{
-                background: 'rgba(255,179,0,0.1)',
-                border: '1px solid rgba(255,179,0,0.3)',
-                color: '#ffb300',
-              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+              style={{ background: 'rgba(255,179,0,0.1)', border: '1px solid rgba(255,179,0,0.3)', color: '#ffb300' }}
             >
-              🖨️ Imprimir
+              🖨️ Imprimir {bio === 'ratas' ? 'Ratas' : 'Ratones'}
             </button>
           </div>
 
-          {registrosMes.length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm font-mono" style={{ color: '#4a5f7a' }}>
+          {cargando ? (
+            <div className="px-5 py-8 text-center">
+              <span
+                className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin inline-block"
+                style={{ borderColor: cfg.color, borderTopColor: 'transparent' }}
+              />
+            </div>
+          ) : registrosMes.length === 0 ? (
+            <div className="px-5 py-8 text-center text-sm font-mono" style={{ color: '#4a5f7a' }}>
               Sin registros para {labelMes(mesSelec)}
             </div>
           ) : (
             <>
               {/* Promedios del mes */}
-              <div className="px-4 py-3 grid grid-cols-3 gap-3" style={{ borderBottom: BORDER }}>
-                <PromedioCard label="Promedio actual" value={promedioMensual.actual} color="#00e676" />
-                <PromedioCard label="Promedio mínima" value={promedioMensual.min}    color="#40c4ff" />
-                <PromedioCard label="Promedio máxima" value={promedioMensual.max}    color="#ff6b80" />
+              <div className="px-5 py-4 grid grid-cols-3 gap-3" style={{ borderBottom: BORDER }}>
+                <PromedioCard label="Promedio actual" value={promedioMes.actual} color="#00e676" />
+                <PromedioCard label="Promedio mínima" value={promedioMes.min}    color="#40c4ff" />
+                <PromedioCard label="Promedio máxima" value={promedioMes.max}    color="#ff6b80" />
               </div>
 
-              {/* Tabla por día */}
+              {/* Tabla */}
               <div className="overflow-x-auto">
                 <table className="w-full text-xs font-mono">
                   <thead>
                     <tr style={{ borderBottom: BORDER }}>
-                      <th className="px-4 py-2 text-left font-semibold" style={{ color: '#4a5f7a' }}>Fecha</th>
-                      <th className="px-4 py-2 text-left font-semibold" style={{ color: '#4a5f7a' }}>Hora</th>
-                      <th className="px-4 py-2 text-right font-semibold" style={{ color: '#00e676' }}>Actual</th>
-                      <th className="px-4 py-2 text-right font-semibold" style={{ color: '#40c4ff' }}>Mín</th>
-                      <th className="px-4 py-2 text-right font-semibold" style={{ color: '#ff6b80' }}>Máx</th>
+                      <th className="px-5 py-2 text-left font-semibold" style={{ color: '#4a5f7a' }}>Fecha</th>
+                      <th className="px-5 py-2 text-left font-semibold" style={{ color: '#4a5f7a' }}>Hora</th>
+                      <th className="px-5 py-2 text-right font-semibold" style={{ color: '#00e676' }}>Actual</th>
+                      <th className="px-5 py-2 text-right font-semibold" style={{ color: '#40c4ff' }}>Mín</th>
+                      <th className="px-5 py-2 text-right font-semibold" style={{ color: '#ff6b80' }}>Máx</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {diasMes.map(([fecha, regs]) => {
+                    {diasMes.map(([fecha, rs]) => {
                       const [, m, d] = fecha.split('-')
-                      return regs.map((r, i) => (
-                        <tr
-                          key={r.id}
-                          style={{ borderBottom: '1px solid rgba(30,51,82,0.3)' }}
-                        >
-                          <td className="px-4 py-2" style={{ color: i === 0 ? '#e2e8f0' : 'transparent' }}>
+                      return rs.map((r, i) => (
+                        <tr key={r.id} style={{ borderBottom: '1px solid rgba(30,51,82,0.25)' }}>
+                          <td className="px-5 py-2" style={{ color: i === 0 ? '#e2e8f0' : 'transparent' }}>
                             {d}/{m}
                           </td>
-                          <td className="px-4 py-2" style={{ color: '#8a9bb0' }}>{r.time?.slice(0, 5)}</td>
-                          <td className="px-4 py-2 text-right" style={{ color: '#00e676' }}>{formatTemp(r.current_temp)}</td>
-                          <td className="px-4 py-2 text-right" style={{ color: '#40c4ff' }}>{formatTemp(r.min_temp)}</td>
-                          <td className="px-4 py-2 text-right" style={{ color: '#ff6b80' }}>{formatTemp(r.max_temp)}</td>
+                          <td className="px-5 py-2" style={{ color: '#6a8099' }}>{r.time?.slice(0, 5)}</td>
+                          <td className="px-5 py-2 text-right" style={{ color: '#00e676' }}>{formatTemp(r.current_temp)}</td>
+                          <td className="px-5 py-2 text-right" style={{ color: '#40c4ff' }}>{formatTemp(r.min_temp)}</td>
+                          <td className="px-5 py-2 text-right" style={{ color: '#ff6b80' }}>{formatTemp(r.max_temp)}</td>
                         </tr>
                       ))
                     })}
@@ -420,17 +533,13 @@ export default function Temperatura() {
                 </table>
               </div>
 
-              {/* Botón eliminar mes */}
-              <div className="px-4 py-4" style={{ borderTop: BORDER }}>
+              {/* Eliminar mes */}
+              <div className="px-5 py-4" style={{ borderTop: BORDER }}>
                 {!confirmElim ? (
                   <button
                     onClick={() => setConfirmElim(true)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all"
-                    style={{
-                      background: 'rgba(255,61,87,0.05)',
-                      border: '1px solid rgba(255,61,87,0.2)',
-                      color: '#ff6b80',
-                    }}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold"
+                    style={{ background: 'rgba(255,61,87,0.05)', border: '1px solid rgba(255,61,87,0.2)', color: '#ff6b80' }}
                   >
                     🗑️ Eliminar registros de {labelMes(mesSelec)}
                   </button>
@@ -439,35 +548,24 @@ export default function Temperatura() {
                     className="rounded-xl p-4 space-y-3"
                     style={{ background: 'rgba(255,61,87,0.06)', border: '1px solid rgba(255,61,87,0.25)' }}
                   >
-                    <p className="text-sm font-semibold" style={{ color: '#ff6b80' }}>
-                      ⚠️ ¿Confirmar eliminación?
-                    </p>
+                    <p className="text-sm font-semibold" style={{ color: '#ff6b80' }}>⚠️ ¿Confirmar eliminación?</p>
                     <p className="text-xs" style={{ color: '#8a9bb0' }}>
-                      Se van a borrar permanentemente los {registrosMes.length} registros de {labelMes(mesSelec)}.
-                      Asegurate de haber impreso o guardado los datos antes de continuar.
+                      Se van a borrar los {registrosMes.length} registros de {labelMes(mesSelec)} del {cfg.label}.
+                      Asegurate de haber impreso los datos antes de continuar.
                     </p>
                     <div className="flex gap-2">
                       <button
                         onClick={eliminarMes}
                         disabled={eliminando}
-                        className="px-4 py-1.5 rounded-lg text-xs font-bold transition-all"
-                        style={{
-                          background: 'rgba(255,61,87,0.15)',
-                          border: '1px solid rgba(255,61,87,0.4)',
-                          color: '#ff6b80',
-                          opacity: eliminando ? 0.5 : 1,
-                        }}
+                        className="px-4 py-1.5 rounded-lg text-xs font-bold"
+                        style={{ background: 'rgba(255,61,87,0.15)', border: '1px solid rgba(255,61,87,0.4)', color: '#ff6b80', opacity: eliminando ? 0.5 : 1 }}
                       >
                         {eliminando ? 'Eliminando...' : 'Sí, eliminar'}
                       </button>
                       <button
                         onClick={() => setConfirmElim(false)}
                         className="px-4 py-1.5 rounded-lg text-xs font-semibold"
-                        style={{
-                          background: 'rgba(30,51,82,0.4)',
-                          border: '1px solid rgba(30,51,82,0.6)',
-                          color: '#8a9bb0',
-                        }}
+                        style={{ background: 'rgba(30,51,82,0.4)', border: '1px solid rgba(30,51,82,0.6)', color: '#8a9bb0' }}
                       >
                         Cancelar
                       </button>
@@ -483,7 +581,26 @@ export default function Temperatura() {
   )
 }
 
-// ── Sub-componentes ───────────────────────────────────────────────────────────
+// ── Sub-componentes ────────────────────────────────────────────────────────────
+
+function InputField({ label, value, onChange, placeholder }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>
+        {label}
+      </label>
+      <input
+        type="number"
+        step="0.1"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="rounded-lg px-3 py-2 text-sm font-mono outline-none"
+        style={{ background: 'rgba(5,8,16,0.6)', border: '1px solid rgba(30,51,82,0.8)', color: '#e2e8f0' }}
+      />
+    </div>
+  )
+}
 
 function TempChip({ label, value, color }) {
   if (value == null) return null

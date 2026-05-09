@@ -5,6 +5,9 @@ import { BiotheriumProvider } from './context/BiotheriumContext'
 import { BioterioActivoProvider, useBioterioActivo } from './context/BioterioActivoContext'
 import Sidebar from './components/Sidebar'
 import SelectorBioterio from './pages/SelectorBioterio'
+import ResumenRatones from './pages/ResumenRatones'
+import ConsumoAlimento from './pages/ConsumoAlimento'
+import ConsumoViruta from './pages/ConsumoViruta'
 import Dashboard from './pages/Dashboard'
 import Animales from './pages/Animales'
 import Camadas from './pages/Camadas'
@@ -74,6 +77,15 @@ function AppLayout() {
 
   // Sin bioterio activo → mostrar selector
   if (!bioterioActivo) return <SelectorBioterio />
+
+  // Resumen global de ratones → página especial sin sidebar
+  if (bioterioActivo === 'resumen_ratones') return <ResumenRatones />
+
+  // Consumo global de alimento → página especial sin sidebar
+  if (bioterioActivo === 'alimento_global') return <ConsumoAlimento />
+
+  // Consumo de viruta → página especial sin sidebar
+  if (bioterioActivo === 'viruta_global') return <ConsumoViruta />
 
   function cerrarSidebar() { setSidebarAbierto(false) }
 
