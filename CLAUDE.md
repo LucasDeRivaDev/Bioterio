@@ -316,6 +316,19 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
 
 - **Fix display de hembras en Stock (05/05/2026):** bug de typo en `SexoDisplay` — desestructuraba `hembra` (singular) del bloque pero el campo se llama `hembras` (plural). JavaScript retornaba `undefined`, que en comparación loose `!= null` da `false`, haciendo que todas las jaulas con hembras cayeran al caso "sexo sin registrar". Fix: renombrar a `hembras` en la desestructuración y todas las referencias internas. También corregido el plural del label ("Hembra" → "Hembras" cuando hay más de una).
 
+- **Sistema de planificación de apareamientos desde Stock (08/05/2026):** permite reservar cruces futuros directamente desde la vista de jaulas, sin crear el emparejamiento real todavía.
+  - **Detección automática de sexo:** función `sexoBloque(b)` determina si un bloque es fuente de machos o hembras (por categoría para reproductores, por campos `machos`/`hembras` para stock).
+  - **Activación:** en modo selección, al elegir exactamente 2 bloques — uno de machos y uno de hembras — aparece el botón azul "🔗 Planificar apareamiento" en la barra flotante.
+  - **Modal `ModalPlanificarApareamiento`:** muestra fuente de machos (azul) y fuente de hembras (violeta) con total y edad, campo de fecha requerida y observaciones opcionales.
+  - **Storage en localStorage:** key `appMosca_apareamientos_{bioterioActivo}`. Cada plan guarda `{ id, bioterioActivo, fecha_planificada, observaciones, macho: { bloqueId, tipo, codigo, total, edad }, hembra: { ... }, completado, created_at }`.
+  - **Alertas en Dashboard:** sección "🔗 Apareamientos planificados" con dos niveles: hoy/vencidos (amarillo/rojo) con botones "✓ Hecho" y "✕ Descartar"; próximos 7 días (azul) con botón ✕. La sección solo aparece cuando hay planes activos. Se carga con `useEffect` al montar el Dashboard y al cambiar de bioterio.
+
+- **Visualización de jaulas vacías durante apareamientos (08/05/2026):** refleja correctamente la ocupación real de jaulas cuando una hembra reproductora está en período de apareamiento.
+  - **Función `esFemEnApareamiento(b)`:** retorna `true` si el bloque es un reproductor hembra con `estado === 'en_apareamiento'`.
+  - **BloqueJaula:** hembras en apareamiento se renderizan con colores grises apagados (`cfgEfectivo`), badge "En apareamiento" en el header, badge "Jaula temporalmente vacía" en el cuerpo y opacidad 60%. No son seleccionables en modo selección múltiple.
+  - **Conteo de jaulas:** `resumen.totalJaulas` excluye las jaulas de hembras en apareamiento. El resumen superior muestra "X jaulas ocupadas · Y jaulas temporalmente vacías (hembras en apareamiento)" cuando hay hembras en ese estado. Los animales siguen contándose igual en `totalAnimales`.
+  - **Reactivación automática:** cuando se confirma la separación de la pareja, la hembra pasa a `en_cria` → el bloque vuelve a verse normal sin ninguna acción adicional.
+
 ---
 
 ## Comportamientos de datos importantes
@@ -331,6 +344,8 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
 - **Validaciones temporales en formularios** se omiten silenciosamente si el animal no tiene `fecha_nacimiento` registrado — no bloquean el guardado en ese caso.
 - **Recordatorio de renovación de machos** se maneja en el frontend con localStorage. Se resetea al hacer clic en ✓. Si el key no existe (primera vez), muestra el banner de inmediato.
 - **Alertas de machos en Dashboard** son informativas (no descartables individualmente) — las tareas de edad sí son descartables desde el panel de tareas.
+- **Planes de apareamiento** se guardan en localStorage por bioterio (`appMosca_apareamientos_{bioterioActivo}`). No usan Supabase. Al marcar "Hecho" se setea `completado: true`; al descartar se elimina del array. El Dashboard los carga con `useEffect` al montar y al cambiar de bioterio.
+- **Hembras en apareamiento en Stock:** `esFemEnApareamiento(b)` es el punto único de verdad. Su jaula no cuenta en `totalJaulas` ni en `resumen.hembra_repro.jaulas`, pero sí en `totalAnimales` y `resumen.hembra_repro.animales`. La función `toggleSeleccion` las ignora en modo selección múltiple.
 
 ---
 
