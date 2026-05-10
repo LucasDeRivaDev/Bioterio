@@ -23,7 +23,7 @@ Sistema web de gestión de una colonia de ratones de laboratorio (*Mus musculus*
 
 **Motor predictivo:** calcula automáticamente fechas de parto (gestación 23d), destete (21d), madurez sexual (84d) y genera tareas con prioridad.
 
-**Flujo reproductivo:** Cópula → Estado "en apareamiento" (15d) → Separación → Preñez → Parto → Destete → Stock por jaulas.
+**Flujo reproductivo:** Cópula → Estado "en apareamiento" (15d) → Separación → Preñez → Parto → Destete → Stock por jaulas. Estado de la hembra: `activo` → `en_apareamiento` → `en_cria` → `activo` (ciclo completo automático).
 
 **Sistema de scores reproductivos (calculados en tiempo real, sin DB):**
 - Velocidad de reproducción: latencia **0–5d** → 10pts / 6–10d → 7pts / 11–15d → 5pts (latencia 0 = fecundación el mismo día del apareamiento, es score máximo)
@@ -54,10 +54,12 @@ Sistema web de gestión de una colonia de ratones de laboratorio (*Mus musculus*
 
 ```
 src/
-├── App.jsx                          — Router + layout responsive (drawer mobile)
-├── context/BiotheriumContext.jsx    — Estado global (animales, camadas, jaulas, sacrificios, entregas, temperaturas, extendidos)
+├── App.jsx                          — Router + layout responsive + rutas especiales (resumen_ratones, alimento_global, viruta_global)
+├── context/
+│   ├── BiotheriumContext.jsx        — Estado global (animales, camadas, jaulas, sacrificios, entregas, temperaturas, extendidos, animalesExportados)
+│   └── BioterioActivoContext.jsx    — Bioterio activo en localStorage (bioterioActivo, bio, config)
 ├── utils/calculos.js                — Motor predictivo, scores reproductivos, confiabilidad de hembras
-├── utils/constants.js               — Constantes biológicas (BIO, ESTADO_ANIMAL, TIPO_TAREA)
+├── utils/constants.js               — Constantes biológicas (BIO_RATAS, BIO_RATONES, BIO, ESTADO_ANIMAL, TIPO_TAREA)
 ├── components/
 │   ├── Sidebar.jsx                  — Navegación (drawer en mobile, incluye link Temperatura)
 │   ├── Modal.jsx, Badge.jsx
@@ -66,16 +68,19 @@ src/
 │   └── CicloEstral.jsx              — Sección de ciclo estral dentro del perfil de cada hembra
 └── pages/
     ├── Dashboard.jsx
-    ├── Animales.jsx
+    ├── Animales.jsx                 — Incluye sección "Reproductores compartidos" en Híbridos + ModalExportarReproductor
     ├── Camadas.jsx                  — Lista + detalle expandible + AnalisisReproductivo
     ├── Calendario.jsx
-    ├── Stock.jsx                    — Jaulas con SexoDisplay coloreado + calidad de padres en cada bloque
+    ├── Stock.jsx                    — Jaulas con SexoDisplay coloreado + calidad de padres + bloqueo de promoción en Híbridos (F1)
     ├── Sacrificios.jsx
     ├── Entregas.jsx                 — Historial de entregas con buscador y tarjetas resumen
     ├── Rendimiento.jsx
     ├── Estadisticas.jsx             — Dashboard visual: 4 gráficos reproductivos + KPIs + filtros
-    ├── Temperatura.jsx              — Registro ambiental diario + exportación mensual
-    └── Reportes.jsx
+    ├── Temperatura.jsx              — 2 tabs físicos (Bioterio de Ratas / Bioterio de Ratones), sin dependencia de bioterio activo
+    ├── Reportes.jsx
+    ├── SelectorBioterio.jsx         — Pantalla de selección de bioterio (ratas + 3 subgrupos de ratones + accesos globales)
+    ├── ResumenRatones.jsx           — Vista unificada de stock de las 3 colonias de ratones con desglose por categoría + jaulas
+    └── ConsumoViruta.jsx            — Predicción adaptativa de consumo de viruta por tipo de jaula con censo en bolsas (paso 0.25)
 ```
 
 ---
@@ -85,7 +90,8 @@ src/
 ```
 animales
   id, codigo, sexo, estado, fecha_nacimiento, notas,
-  fecha_sacrificio, motivo_sacrificio
+  fecha_sacrificio, motivo_sacrificio,
+  exportado_hibridos (bool, default false) — marcado cuando el reproductor se comparte con la colonia Híbridos
 
 camadas
   id, id_madre, id_padre, fecha_copula, fecha_separacion,
@@ -329,6 +335,44 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
   - **Conteo de jaulas:** `resumen.totalJaulas` excluye las jaulas de hembras en apareamiento. El resumen superior muestra "X jaulas ocupadas · Y jaulas temporalmente vacías (hembras en apareamiento)" cuando hay hembras en ese estado. Los animales siguen contándose igual en `totalAnimales`.
   - **Reactivación automática:** cuando se confirma la separación de la pareja, la hembra pasa a `en_cria` → el bloque vuelve a verse normal sin ninguna acción adicional.
 
+- **Sistema adaptativo de predicción de consumo de viruta (10/05/2026):** nueva página `ConsumoViruta.jsx`, accesible desde SelectorBioterio → "🪵 Consumo de viruta / camas" (botón violeta, `bioterioActivo = 'viruta_global'`).
+  - **Tipos de jaula con peso de viruta por cambio:** macho reproductor (1.2 kg), hembra repro / adultos stock (1.0 kg), jóvenes stock (0.7 kg), crías stock / ratón estándar (0.5 kg). Cambios: 2 por semana.
+  - **Modal de censo:** entrada en bolsas con `step="0.25"`. Botones de fracción rápida: Entera / ¼ / ½ / ¾. Preview de kg antes de guardar. Historial de censos en localStorage.
+  - **Panel predictivo (3 métricas):** viruta disponible (bolsas + kg) / consumo estimado por semana (bolsas) / duración estimada (semanas). Alertas de color: crítico <2 sem (rojo), bajo <4 sem (naranja), ok/bien (verde).
+  - **Tarjetas por tipo de jaula:** fórmula visible `n × peso × 2 cambios/sem = result`. Jaulas de ratas: grande/mediana/chica/macho; ratones: estándar.
+  - **Calibración adaptativa:** aprende la tasa real de consumo comparando pares de censos. Tasa = `(bolsas_consumidas / semanas) / uAvg`. Persiste en localStorage. Fallback a `TASA_DEFAULT = 0.08` si no hay historial.
+
+- **Temperatura centralizada por bioterio físico (10/05/2026):** `Temperatura.jsx` rediseñada para gestionar temperatura por espacio físico real, no por subcolonia.
+  - **2 tabs fijos:** "🐀 Bioterio de Ratas" y "🐭 Bioterio de Ratones" — independientes del bioterio activo actual.
+  - **Queries directas a Supabase:** ratas = `eq('bioterio_id', 'ratas')`; ratones = `in('bioterio_id', ['ratones', 'ratones_balbc', 'ratones_c57', 'ratones_hibridos'])` (incluye registros legacy de subgrupos).
+  - **Inserción:** nuevos registros usan `bioterio_id = 'ratas'` o `bioterio_id = 'ratones'` fijos.
+  - **Cambio de tab** resetea formulario + estado de confirmación de eliminación.
+  - **Impresión:** aplica al tab activo + mes seleccionado.
+
+- **Exportación de reproductores hacia sección de Híbridos (10/05/2026):** permite usar reproductores de BAL/C y C57 en cruzas F1 sin duplicar el animal en la base de datos.
+  - **Columna `exportado_hibridos boolean`** en tabla `animales` (Supabase). Animal queda en su bioterio original, marcado como compartido.
+  - **`animalesExportados` en contexto:** array separado cargado solo cuando `bioterioActivo === 'ratones_hibridos'`. Queries de BAL/C y C57 filtradas por `exportado_hibridos: true`.
+  - **Reducción en reducer:** `SET_ANIMALES_EXPORTADOS`, `AGREGAR_ANIMAL_EXPORTADO`, `REMOVER_ANIMAL_EXPORTADO`, `EDITAR_ANIMAL_EXPORTADO`.
+  - **`agregarCamada` y `confirmarSeparacion`:** buscan la madre en `animales` Y `animalesExportados`. Dispatch correcto según array de origen.
+  - **`exportarAHibridos(animal)` y `devolverDeHibridos(animalId)`:** funciones con update optimista + rollback en el contexto.
+  - **Animales.jsx en Híbridos:** sección "Reproductores compartidos" con reproductores exportados (badge de colonia, score, botón ↩ Devolver). Badge 🧬 en la tabla de animales propios de BAL/C y C57. `ModalExportarReproductor` para elegir animal de una colonia y exportarlo.
+  - **CamadaForm en Híbridos:** `todosAnimales = [...animales, ...animalesExportados]`. Etiqueta de colonia (BAL/C / C57) junto al código del reproductor en los selects.
+  - **Stock en Híbridos:** tab "↑ Promover" oculto. Banner "🧬 Crías F1 — No pueden ser promovidas". Botón Promover oculto en selección múltiple.
+
+- **ResumenRatones — vista unificada de stock (10/05/2026):** nueva página accesible desde SelectorBioterio → "📊 Resumen global de ratones" (`bioterioActivo = 'resumen_ratones'`).
+  - **Fetch paralelo** de las 3 colonias (jaulas + camadas + sacrificios + entregas por `bioterio_id`).
+  - **`calcularStockGrupo`:** clasifica stock por edad (crías <6 sem, jóvenes 6–10 sem, adultos >10 sem) usando `BIO_RATONES.STOCK_ADULTOS_DIAS`. Incluye bloques virtuales (camadas con destete sin jaula en DB).
+  - **Tarjeta total global:** KPI grande + desglose por categoría con `TarjetaEdad`.
+  - **Distribución por colonia:** `FilaColonia` por BAL/C / C57 / Híbridos con barra de porcentaje y botón "Entrar ›".
+  - **Desglose de jaulas por categoría (10/05/2026):** `calcularStockGrupo` retorna `jaulasCrias`, `jaulasJovenes`, `jaulasAdultos`. `TarjetaEdad` muestra "N jaulas" bajo el número grande. `MiniCat` muestra "cantidad (jaulas)" inline en las filas de colonia.
+
+- **Fix: reactivación automática de jaula de hembra después de separación (10/05/2026):** `editarCamada` ahora actualiza el estado de la madre en tres momentos del ciclo reproductivo.
+  - **Raíz del bug:** si el usuario no usaba el botón inline "Confirmar separación" de Camadas (usaba el form o dejaba que el sistema auto-detectara por días), `confirmarSeparacion` nunca se llamaba y la madre quedaba atrapada en `en_apareamiento` indefinidamente → bloque gris en Stock para siempre.
+  - **Fix 1 — Separación (`fecha_separacion` nueva):** madre `en_apareamiento` → `en_cria`. Jaula deja de ser gris inmediatamente.
+  - **Fix 2 — Parto (`fecha_nacimiento` nueva, safety net):** si la madre sigue `en_apareamiento` al registrar el parto → `en_cria`. Cubre el caso donde el usuario saltea el paso de separación.
+  - **Fix 3 — Destete (`fecha_destete` nueva):** madre `en_cria` → `activo`. Completa el ciclo: la hembra queda disponible para un nuevo apareamiento sin intervención manual.
+  - Los tres triggers aplican tanto a animales propios como a exportados (`EDITAR_ANIMAL` vs `EDITAR_ANIMAL_EXPORTADO`). No hay acción si no hay `id_madre` o si el estado ya es el correcto.
+
 ---
 
 ## Comportamientos de datos importantes
@@ -346,6 +390,11 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
 - **Alertas de machos en Dashboard** son informativas (no descartables individualmente) — las tareas de edad sí son descartables desde el panel de tareas.
 - **Planes de apareamiento** se guardan en localStorage por bioterio (`appMosca_apareamientos_{bioterioActivo}`). No usan Supabase. Al marcar "Hecho" se setea `completado: true`; al descartar se elimina del array. El Dashboard los carga con `useEffect` al montar y al cambiar de bioterio.
 - **Hembras en apareamiento en Stock:** `esFemEnApareamiento(b)` es el punto único de verdad. Su jaula no cuenta en `totalJaulas` ni en `resumen.hembra_repro.jaulas`, pero sí en `totalAnimales` y `resumen.hembra_repro.animales`. La función `toggleSeleccion` las ignora en modo selección múltiple.
+- **Ciclo de estado de la madre (automático desde `editarCamada`):** al guardar `fecha_separacion` nueva → madre pasa de `en_apareamiento` a `en_cria` (jaula se reactiva). Al guardar `fecha_nacimiento` nueva → mismo cambio como safety net. Al guardar `fecha_destete` nueva → madre pasa de `en_cria` a `activo` (disponible para nuevo ciclo). Aplica tanto a animales propios como a exportados (Híbridos).
+- **animalesExportados en contexto:** array separado cargado solo cuando `bioterioActivo === 'ratones_hibridos'`. Contiene reproductores de BAL/C y C57 marcados con `exportado_hibridos: true`. `agregarCamada` y `confirmarSeparacion` buscan la madre en ambos arrays.
+- **Temperatura sin dependencia de bioterio activo:** `Temperatura.jsx` hace queries directas a Supabase con IDs fijos (`'ratas'` e `IN ['ratones', 'ratones_balbc', 'ratones_c57', 'ratones_hibridos']`). Registros nuevos siempre usan `'ratas'` o `'ratones'`. Datos legacy de subgrupos siguen apareciendo en la tab de Ratones.
+- **ConsumoViruta — tasa adaptativa:** aprende del consumo real comparando pares de censos consecutivos. Tasa calibrada = `(consumo_bolsas / semanas) / uAvg`. Se guarda en localStorage. Si no hay historial suficiente, usa `TASA_DEFAULT = 0.08`. Predicción: disponible / consumo_estimado_sem / duración_semanas con alertas de color (crítico <2 sem, bajo <4 sem, ok).
+- **ResumenRatones — jaulas por categoría:** `calcularStockGrupo` devuelve `jaulasCrias`, `jaulasJovenes`, `jaulasAdultos` además del total. `TarjetaEdad` muestra "N jaulas" bajo el número. `MiniCat` muestra "cantidad (jaulas)" inline.
 
 ---
 
