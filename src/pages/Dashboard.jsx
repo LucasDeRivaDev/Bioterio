@@ -214,6 +214,19 @@ function StatCard({ valor, label, icono, color }) {
 
 // ── Dashboard principal ───────────────────────────────────────────────────────
 
+// ── Notas / recordatorios ────────────────────────────────────────────────────
+
+function lsKeyNotasDash(bioId) { return `appMosca_notas_${bioId}` }
+
+function cargarNotasDash(bioId) {
+  try { return JSON.parse(localStorage.getItem(lsKeyNotasDash(bioId)) || '[]') }
+  catch { return [] }
+}
+
+function persistirNotasDash(bioId, lista) {
+  localStorage.setItem(lsKeyNotasDash(bioId), JSON.stringify(lista))
+}
+
 // ── Planes de apareamiento ────────────────────────────────────────────────────
 
 function lsKeyPlanesDash(bioId) {
@@ -279,6 +292,13 @@ export default function Dashboard() {
     if (bioterioActivo) setPlanesApareamiento(cargarPlanesApareamiento(bioterioActivo))
   }, [bioterioActivo])
 
+  // ── Notas / recordatorios ─────────────────────────────────────────────────
+  const [notasDash, setNotasDash] = useState([])
+
+  useEffect(() => {
+    if (bioterioActivo) setNotasDash(cargarNotasDash(bioterioActivo))
+  }, [bioterioActivo])
+
   const alertasApareamiento = useMemo(() => {
     const hoyStr = hoy()
     return planesApareamiento
@@ -306,6 +326,26 @@ export default function Dashboard() {
     const nueva = planesApareamiento.filter((p) => p.id !== id)
     persistirPlanes(bioterioActivo, nueva)
     setPlanesApareamiento(nueva)
+  }
+
+  // Notas de hoy y vencidas (no completadas)
+  const alertasNotas = useMemo(() => {
+    const hoyStr = hoy()
+    return notasDash
+      .filter((n) => !n.completada && n.fecha <= hoyStr)
+      .sort((a, b) => a.fecha.localeCompare(b.fecha))
+  }, [notasDash])
+
+  function completarNotaDash(id) {
+    const nueva = notasDash.map((n) => n.id === id ? { ...n, completada: true } : n)
+    persistirNotasDash(bioterioActivo, nueva)
+    setNotasDash(nueva)
+  }
+
+  function eliminarNotaDash(id) {
+    const nueva = notasDash.filter((n) => n.id !== id)
+    persistirNotasDash(bioterioActivo, nueva)
+    setNotasDash(nueva)
   }
 
   function descartarRenovacion() {
@@ -508,6 +548,55 @@ export default function Dashboard() {
                   >
                     {esLimite ? 'LÍMITE' : esProxima ? 'PRÓXIMO' : 'RENDIMIENTO'}
                   </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Notas / recordatorios del día ──────────────────────────────────── */}
+      {alertasNotas.length > 0 && (
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: '#fbbf24' }}>
+            📝 Recordatorios
+          </div>
+          <div className="space-y-2">
+            {alertasNotas.map((n) => {
+              const hoyStr = hoy()
+              const vencida = n.fecha < hoyStr
+              const color = vencida ? '#ff6b80' : '#fbbf24'
+              return (
+                <div key={n.id} className="rounded-xl px-4 py-3"
+                  style={{ background: `${color}08`, border: `1px solid ${color}30` }}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="font-semibold text-sm" style={{ color }}>
+                        {vencida ? '⚠️ Recordatorio vencido' : '📝 Recordatorio de hoy'}
+                      </div>
+                      {n.titulo && (
+                        <div className="text-xs font-bold" style={{ color }}>{n.titulo}</div>
+                      )}
+                      <div className="text-xs" style={{ color: '#c9d4e0' }}>{n.descripcion}</div>
+                      {vencida && (
+                        <div className="text-xs font-mono" style={{ color: 'rgba(138,155,176,0.4)' }}>
+                          Fecha: {n.fecha.split('-').reverse().join('/')}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-1.5 shrink-0">
+                      <button onClick={() => completarNotaDash(n.id)}
+                        className="px-3 py-1 rounded-lg text-xs font-bold"
+                        style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.3)', color: '#00e676', cursor: 'pointer' }}>
+                        ✓ Hecho
+                      </button>
+                      <button onClick={() => eliminarNotaDash(n.id)}
+                        className="px-3 py-1 rounded-lg text-xs font-semibold"
+                        style={{ background: 'rgba(138,155,176,0.06)', border: '1px solid rgba(138,155,176,0.2)', color: '#4a5f7a', cursor: 'pointer' }}>
+                        ✕
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )
             })}
