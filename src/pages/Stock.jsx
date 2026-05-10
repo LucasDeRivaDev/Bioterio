@@ -258,18 +258,6 @@ function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccio
             sin asignar
           </span>
         )}
-        {bloque.coloniaOrigen && (
-          <span
-            className="text-xs px-1.5 py-0.5 rounded font-bold"
-            style={{
-              background: bloque.coloniaOrigen === 'ratones_balbc' ? 'rgba(64,196,255,0.18)' : 'rgba(206,147,216,0.18)',
-              color:      bloque.coloniaOrigen === 'ratones_balbc' ? '#40c4ff' : '#ce93d8',
-              border:    `1px solid ${bloque.coloniaOrigen === 'ratones_balbc' ? 'rgba(64,196,255,0.45)' : 'rgba(206,147,216,0.45)'}`,
-            }}
-          >
-            {bloque.coloniaOrigen === 'ratones_balbc' ? 'BAL/C' : 'C57'}
-          </span>
-        )}
         {esEnApareamiento && (
           <span className="text-xs px-1.5 py-0.5 rounded font-semibold" style={{ background: 'rgba(30,51,82,0.4)', color: '#3d5068' }}>
             En apareamiento
@@ -1488,7 +1476,7 @@ function CategoriaCard({ icono, titulo, subtitulo, total, grupos, gruposLabel, m
 
 
 export default function Stock() {
-  const { animales, animalesExportados, camadas, sacrificios, entregas, jaulas, bio, bioterioActivo, agregarAnimal, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, registrarSacrificio, registrarEntrega, entregarReproductor } = useBioterio()
+  const { animales, camadas, sacrificios, entregas, jaulas, bio, bioterioActivo, agregarAnimal, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, registrarSacrificio, registrarEntrega, entregarReproductor } = useBioterio()
   const esHibridos = bioterioActivo === 'ratones_hibridos'
   const [vista, setVista] = useState('jaulas')
   const [subVista, setSubVista] = useState(null)
@@ -1518,23 +1506,6 @@ export default function Stock() {
           total: 1,
         })
       })
-
-    // 1b. Reproductores exportados desde BAL/C y C57 (solo en Híbridos)
-    if (bioterioActivo === 'ratones_hibridos') {
-      animalesExportados
-        .filter((a) => ['activo', 'en_apareamiento', 'en_cria'].includes(a.estado))
-        .forEach((animal) => {
-          result.push({
-            tipo: 'reproductor',
-            id: `re-${animal.id}`,
-            animal,
-            edad: animal.fecha_nacimiento ? edadDias(animal.fecha_nacimiento) : null,
-            categoria: animal.sexo === 'macho' ? 'macho_repro' : 'hembra_repro',
-            total: 1,
-            coloniaOrigen: animal.bioterio_id, // 'ratones_balbc' | 'ratones_c57'
-          })
-        })
-    }
 
     // 2. Jaulas de stock (de la tabla jaulas)
     jaulas.forEach((jaula) => {
@@ -1584,7 +1555,7 @@ export default function Stock() {
     })
 
     return result
-  }, [animales, animalesExportados, camadas, jaulas, sacrificios, bio, bioterioActivo])
+  }, [animales, camadas, jaulas, sacrificios, bio])
 
   // ── Resumen por categoría ─────────────────────────────────────────────────
   const resumen = useMemo(() => {
