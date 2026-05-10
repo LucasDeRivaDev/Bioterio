@@ -308,6 +308,34 @@ export function BiotheriumProvider({ children }) {
         }
       }
     }
+
+    // ── Actualizar estado de la madre según el progreso de la camada ─────────
+    // Garantiza que la jaula de la hembra se reactive correctamente sin depender
+    // de que confirmarSeparacion haya sido llamado manualmente.
+    const madreId = datos.id_madre
+    if (madreId) {
+      const madrePropia    = estado.animales.find((a) => a.id === madreId)
+      const madreExportada = estado.animalesExportados.find((a) => a.id === madreId)
+      const madre          = madrePropia ?? madreExportada
+
+      if (madre) {
+        const tipoDispatch     = madrePropia ? 'EDITAR_ANIMAL' : 'EDITAR_ANIMAL_EXPORTADO'
+        const separacionNueva  = datos.fecha_separacion && !antigua?.fecha_separacion
+        const partoNuevo       = datos.fecha_nacimiento && !antigua?.fecha_nacimiento
+
+        if (desteteNuevo && ['en_cria', 'en_apareamiento'].includes(madre.estado)) {
+          // Destete confirmado → el ciclo reproductivo terminó, la hembra vuelve a activo
+          const actualizada = { ...madre, estado: 'activo' }
+          dispatch({ type: tipoDispatch, payload: actualizada })
+          await supabase.from('animales').update({ estado: 'activo' }).eq('id', madreId)
+        } else if ((separacionNueva || partoNuevo) && madre.estado === 'en_apareamiento') {
+          // Separación o parto registrado → la hembra ya está de vuelta en su jaula
+          const actualizada = { ...madre, estado: 'en_cria' }
+          dispatch({ type: tipoDispatch, payload: actualizada })
+          await supabase.from('animales').update({ estado: 'en_cria' }).eq('id', madreId)
+        }
+      }
+    }
   }
 
   async function eliminarCamada(id) {

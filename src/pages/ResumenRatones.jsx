@@ -39,7 +39,10 @@ function stockCamada(camada, sacrificios, entregas) {
 
 // Calcula el desglose de stock por categoría de edad para un grupo
 function calcularStockGrupo(jaulas, camadas, sacrificios, entregas) {
-  const result = { crias: 0, jovenes: 0, adultos: 0, sin_fecha: 0, total: 0, jaulas: 0 }
+  const result = {
+    crias: 0, jovenes: 0, adultos: 0, sin_fecha: 0, total: 0, jaulas: 0,
+    jaulasCrias: 0, jaulasJovenes: 0, jaulasAdultos: 0, jaulasSin_fecha: 0,
+  }
 
   const camadasMap = Object.fromEntries(camadas.map((c) => [c.id, c]))
   const jaulasIds  = new Set(jaulas.map((j) => j.camada_id))
@@ -53,6 +56,7 @@ function calcularStockGrupo(jaulas, camadas, sacrificios, entregas) {
     result[cat] += jaula.total
     result.total += jaula.total
     result.jaulas++
+    result[`jaulas${cat.charAt(0).toUpperCase()}${cat.slice(1)}`]++
   }
 
   // ── Bloques virtuales (camadas con destete pero sin jaula en DB) ──
@@ -69,6 +73,7 @@ function calcularStockGrupo(jaulas, camadas, sacrificios, entregas) {
     result[cat] += stock
     result.total += stock
     result.jaulas++
+    result[`jaulas${cat.charAt(0).toUpperCase()}${cat.slice(1)}`]++
   }
 
   return result
@@ -126,15 +131,22 @@ export default function ResumenRatones() {
     return GRUPOS.reduce(
       (acc, gid) => {
         const g = datos[gid]
-        acc.crias    += g.crias
-        acc.jovenes  += g.jovenes
-        acc.adultos  += g.adultos
-        acc.sin_fecha += g.sin_fecha
-        acc.total    += g.total
-        acc.jaulas   += g.jaulas
+        acc.crias          += g.crias
+        acc.jovenes        += g.jovenes
+        acc.adultos        += g.adultos
+        acc.sin_fecha      += g.sin_fecha
+        acc.total          += g.total
+        acc.jaulas         += g.jaulas
+        acc.jaulasCrias    += g.jaulasCrias
+        acc.jaulasJovenes  += g.jaulasJovenes
+        acc.jaulasAdultos  += g.jaulasAdultos
+        acc.jaulasSin_fecha += g.jaulasSin_fecha
         return acc
       },
-      { crias: 0, jovenes: 0, adultos: 0, sin_fecha: 0, total: 0, jaulas: 0 }
+      {
+        crias: 0, jovenes: 0, adultos: 0, sin_fecha: 0, total: 0, jaulas: 0,
+        jaulasCrias: 0, jaulasJovenes: 0, jaulasAdultos: 0, jaulasSin_fecha: 0,
+      }
     )
   }, [datos])
 
@@ -248,6 +260,7 @@ export default function ResumenRatones() {
                   subtitulo="< 6 semanas"
                   icono="🐣"
                   cantidad={totales.crias}
+                  jaulas={totales.jaulasCrias}
                   color="#00e676"
                 />
                 <TarjetaEdad
@@ -255,6 +268,7 @@ export default function ResumenRatones() {
                   subtitulo="6 – 10 semanas"
                   icono="🐭"
                   cantidad={totales.jovenes}
+                  jaulas={totales.jaulasJovenes}
                   color="#ffb300"
                 />
                 <TarjetaEdad
@@ -262,6 +276,7 @@ export default function ResumenRatones() {
                   subtitulo="> 10 semanas"
                   icono="🐁"
                   cantidad={totales.adultos}
+                  jaulas={totales.jaulasAdultos}
                   color="#ff6b80"
                 />
               </div>
@@ -322,7 +337,7 @@ export default function ResumenRatones() {
 
 // ── Sub-componentes ────────────────────────────────────────────────────────────
 
-function TarjetaEdad({ label, subtitulo, icono, cantidad, color }) {
+function TarjetaEdad({ label, subtitulo, icono, cantidad, jaulas, color }) {
   return (
     <div
       className="rounded-xl p-4 flex flex-col items-center gap-1 text-center"
@@ -332,6 +347,11 @@ function TarjetaEdad({ label, subtitulo, icono, cantidad, color }) {
       <div className="text-2xl font-bold font-mono" style={{ color }}>
         {cantidad}
       </div>
+      {jaulas > 0 && (
+        <div className="text-xs font-mono" style={{ color: `${color}99` }}>
+          {jaulas} {jaulas === 1 ? 'jaula' : 'jaulas'}
+        </div>
+      )}
       <div className="text-xs font-semibold" style={{ color: '#c9d4e0' }}>{label}</div>
       <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{subtitulo}</div>
     </div>
@@ -387,9 +407,9 @@ function FilaColonia({ cfg, grupo, totalGlobal, onEntrar }) {
 
       {/* Desglose por edad */}
       <div className="px-5 py-3 grid grid-cols-3 gap-3 text-center">
-        <MiniCat label="Crías" cantidad={grupo.crias} color="#00e676" />
-        <MiniCat label="Jóvenes" cantidad={grupo.jovenes} color="#ffb300" />
-        <MiniCat label="Adultos" cantidad={grupo.adultos} color="#ff6b80" />
+        <MiniCat label="Crías" cantidad={grupo.crias} jaulas={grupo.jaulasCrias} color="#00e676" />
+        <MiniCat label="Jóvenes" cantidad={grupo.jovenes} jaulas={grupo.jaulasJovenes} color="#ffb300" />
+        <MiniCat label="Adultos" cantidad={grupo.adultos} jaulas={grupo.jaulasAdultos} color="#ff6b80" />
       </div>
 
       {grupo.sin_fecha > 0 && (
@@ -404,11 +424,16 @@ function FilaColonia({ cfg, grupo, totalGlobal, onEntrar }) {
   )
 }
 
-function MiniCat({ label, cantidad, color }) {
+function MiniCat({ label, cantidad, jaulas, color }) {
   return (
     <div className="flex flex-col items-center gap-0.5">
       <div className="text-base font-bold font-mono" style={{ color: cantidad > 0 ? color : '#2a3a50' }}>
         {cantidad}
+        {jaulas > 0 && (
+          <span className="text-xs font-normal" style={{ color: `${color}80` }}>
+            {' '}({jaulas})
+          </span>
+        )}
       </div>
       <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{label}</div>
     </div>
