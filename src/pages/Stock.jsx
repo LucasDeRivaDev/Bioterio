@@ -340,7 +340,7 @@ function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccio
 
 const labelEstadoRepro = { activo: 'Activo', en_apareamiento: 'En apareamiento', en_cria: 'En cría', retirado: 'Retirado', fallecido: 'Fallecido' }
 
-function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, agregarJaula, editarAnimal, onPromover }) {
+function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, agregarJaula, editarAnimal, onPromover, esHibridos }) {
   const cfg       = CAT[bloque.categoria]
   const esRepro   = bloque.tipo === 'reproductor'
   const esVirtual = Boolean(bloque.virtual)
@@ -467,6 +467,16 @@ function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, 
             {esRepro   && <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>Reproductor registrado</div>}
           </div>
         </div>
+
+        {/* Aviso F1 en Híbridos */}
+        {esHibridos && !esRepro && (
+          <div
+            className="px-3 py-2 rounded-xl text-xs font-mono flex items-center gap-2"
+            style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', color: '#a78bfa' }}
+          >
+            🧬 Crías F1 — No pueden ser promovidas como reproductores
+          </div>
+        )}
 
         {/* Tabs — solo para jaulas reales */}
         {esReal && (
@@ -1466,7 +1476,8 @@ function CategoriaCard({ icono, titulo, subtitulo, total, grupos, gruposLabel, m
 
 
 export default function Stock() {
-  const { animales, camadas, sacrificios, entregas, jaulas, bio, agregarAnimal, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, registrarSacrificio, registrarEntrega, entregarReproductor } = useBioterio()
+  const { animales, camadas, sacrificios, entregas, jaulas, bio, bioterioActivo, agregarAnimal, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, registrarSacrificio, registrarEntrega, entregarReproductor } = useBioterio()
+  const esHibridos = bioterioActivo === 'ratones_hibridos'
   const [vista, setVista] = useState('jaulas')
   const [subVista, setSubVista] = useState(null)
   const [detalle, setDetalle] = useState(null)
@@ -2053,7 +2064,7 @@ if (subVista === 'sacrificios') {
                 🔗 Planificar apareamiento
               </button>
             )}
-            {jaulasSel.some((b) => !b.virtual) && (
+            {!esHibridos && jaulasSel.some((b) => !b.virtual) && (
               <button
                 onClick={() => setModalPromover(true)}
                 className="px-4 py-1.5 rounded-xl text-sm font-bold flex items-center gap-1.5"
@@ -2091,7 +2102,8 @@ if (subVista === 'sacrificios') {
           editarJaula={editarJaula}
           agregarJaula={agregarJaula}
           editarAnimal={editarAnimal}
-          onPromover={detalle.tipo === 'stock' && !detalle.virtual ? ejecutarPromoverDesdeModal : undefined}
+          onPromover={detalle.tipo === 'stock' && !detalle.virtual && !esHibridos ? ejecutarPromoverDesdeModal : undefined}
+          esHibridos={esHibridos}
         />
       )}
 

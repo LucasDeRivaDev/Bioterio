@@ -65,20 +65,31 @@ function normalizarCamada(c) {
   }
 }
 
+// Label corto de colonia para animales exportados
+function labelColonia(bioId) {
+  if (bioId === 'ratones_balbc') return 'BAL/C'
+  if (bioId === 'ratones_c57')   return 'C57'
+  return null
+}
+
 export default function CamadaForm({ camada, onGuardar, onCancelar }) {
-  const { animales, camadas, bio } = useBioterio()
+  const { animales, animalesExportados, camadas, bio, bioterioActivo } = useBioterio()
   const [form, setForm] = useState(camada ? normalizarCamada(camada) : vacioCamada)
   const [errores, setErrores] = useState({})
   const [modoHistorico, setModoHistorico] = useState(false)
 
+  // En Híbridos, incluir también los animales exportados de BAL/C y C57
+  const esHibridos    = bioterioActivo === 'ratones_hibridos'
+  const todosAnimales = esHibridos ? [...animales, ...animalesExportados] : animales
+
   // En modo normal: solo activos. En modo histórico: todos.
-  const hembrasBase = animales.filter((a) => a.sexo === 'hembra')
-  const machosBase  = animales.filter((a) => a.sexo === 'macho')
+  const hembrasBase = todosAnimales.filter((a) => a.sexo === 'hembra')
+  const machosBase  = todosAnimales.filter((a) => a.sexo === 'macho')
   const hembras = modoHistorico ? hembrasBase : hembrasBase.filter((a) => ESTADOS_ACTIVOS.includes(a.estado))
   const machos  = modoHistorico ? machosBase  : machosBase.filter((a)  => ESTADOS_ACTIVOS.includes(a.estado))
 
-  const madreSelec = animales.find((a) => a.id === form.id_madre)
-  const padreSelec = animales.find((a) => a.id === form.id_padre)
+  const madreSelec = todosAnimales.find((a) => a.id === form.id_madre)
+  const padreSelec = todosAnimales.find((a) => a.id === form.id_padre)
   const fechaEsPasada = form.fecha_copula && form.fecha_copula < hoy()
 
   // ── Disponibilidad reproductiva ───────────────────────────────────────────
@@ -280,11 +291,12 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
           >
             <option value="">— Seleccioná —</option>
             {hembras.map((a) => {
-              const d = dispHembra(a)
+              const d        = dispHembra(a)
               const bloqueada = !d.ok && !esOriginalMadre(a)
+              const colonia   = labelColonia(a.bioterio_id)
               return (
                 <option key={a.id} value={a.id} disabled={bloqueada}>
-                  {a.codigo}
+                  {a.codigo}{colonia ? ` (${colonia})` : ''}
                   {bloqueada ? ` — ${d.motivo}` : esInactivo(a) ? ` (${etiquetaEstado[a.estado] ?? a.estado})` : ''}
                 </option>
               )
@@ -314,11 +326,12 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
           >
             <option value="">— Seleccioná —</option>
             {machos.map((a) => {
-              const d = dispMacho(a)
+              const d        = dispMacho(a)
               const bloqueado = !d.ok && !esOriginalPadre(a)
+              const colonia   = labelColonia(a.bioterio_id)
               return (
                 <option key={a.id} value={a.id} disabled={bloqueado}>
-                  {a.codigo}
+                  {a.codigo}{colonia ? ` (${colonia})` : ''}
                   {bloqueado ? ` — ${d.motivo}` : esInactivo(a) ? ` (${etiquetaEstado[a.estado] ?? a.estado})` : ''}
                 </option>
               )

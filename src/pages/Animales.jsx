@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
+import { supabase } from '../lib/supabase'
 import { formatFecha, difDias, parseDate, hoy, calcularPerfilHembra, calcularConfiabilidadHembra, calcularRendimientoMacho, detectarBajaPerformanceMacho } from '../utils/calculos'
 import { MAX_APAREAMIENTOS, MACHO_EDAD_LIMITE_DIAS, MACHO_EDAD_ALERTA_DIAS } from '../utils/constants'
 import Modal from '../components/Modal'
@@ -16,15 +17,30 @@ const cardStyle = {
   border: '1px solid rgba(30,51,82,0.8)',
 }
 
+// Labels de colonia para mostrar el origen de animales exportados
+const LABEL_COLONIA = {
+  ratones_balbc: 'BAL/C',
+  ratones_c57:   'C57',
+}
+
 export default function Animales() {
-  const { animales, agregarAnimal, editarAnimal, eliminarAnimal, camadas } = useBioterio()
-  const [modal, setModal] = useState(null)
-  const [expandido, setExpandido] = useState(null)
-  const [filtroSexo, setFiltroSexo] = useState('todos')
-  const [filtroEstado, setFiltroEstado] = useState('todos')
-  const [busqueda, setBusqueda] = useState('')
+  const {
+    animales, animalesExportados, camadas,
+    agregarAnimal, editarAnimal, eliminarAnimal,
+    exportarAHibridos, devolverDeHibridos,
+    bioterioActivo,
+  } = useBioterio()
+
+  const esHibridos = bioterioActivo === 'ratones_hibridos'
+
+  const [modal,            setModal]            = useState(null)
+  const [expandido,        setExpandido]        = useState(null)
+  const [filtroSexo,       setFiltroSexo]       = useState('todos')
+  const [filtroEstado,     setFiltroEstado]     = useState('todos')
+  const [busqueda,         setBusqueda]         = useState('')
   const [confirmarEliminar, setConfirmarEliminar] = useState(null)
-  const [subVista, setSubVista] = useState(null)
+  const [subVista,         setSubVista]         = useState(null)
+  const [modalExportar,    setModalExportar]    = useState(false)
   const hoyStr = hoy()
 
   const filtrados = useMemo(() => {
@@ -255,6 +271,125 @@ return (
         {btnSubTab('emparejamientos', '🔄 Emparejamientos', '#00e676')}
       </div>
 
+      {/* ── SECCIÓN HÍBRIDOS: reproductores compartidos ── */}
+      {esHibridos && (
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{ background: 'rgba(13,21,40,0.85)', border: '1.5px solid rgba(139,92,246,0.3)', boxShadow: '0 0 30px rgba(139,92,246,0.05)' }}
+        >
+          {/* Header */}
+          <div
+            className="px-5 py-4 flex items-center gap-3"
+            style={{ borderBottom: '1px solid rgba(139,92,246,0.15)', background: 'rgba(139,92,246,0.06)' }}
+          >
+            <span className="text-lg">🧬</span>
+            <div className="flex-1">
+              <div className="font-bold text-sm text-white">Reproductores compartidos desde otras colonias</div>
+              <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
+                Machos BAL/C × Hembras C57 para producir F1 · Las crías híbridas no pueden ser promovidas a reproductores
+              </div>
+            </div>
+            <button
+              onClick={() => setModalExportar(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold shrink-0"
+              style={{ background: 'rgba(139,92,246,0.14)', border: '1px solid rgba(139,92,246,0.4)', color: '#a78bfa' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.22)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.14)' }}
+            >
+              + Exportar reproductor
+            </button>
+          </div>
+
+          {/* Lista de exportados */}
+          {animalesExportados.length === 0 ? (
+            <div className="px-5 py-8 text-center">
+              <div className="text-2xl mb-2">🔬</div>
+              <div className="text-sm font-mono" style={{ color: '#3d5068' }}>
+                Sin reproductores compartidos todavía.
+              </div>
+              <div className="text-xs font-mono mt-1" style={{ color: '#2a3a50' }}>
+                Usá "+ Exportar reproductor" para traer machos BAL/C o hembras C57.
+              </div>
+            </div>
+          ) : (
+            <div className="divide-y" style={{ borderColor: 'rgba(139,92,246,0.1)' }}>
+              {animalesExportados.map((a) => {
+                const colonia   = LABEL_COLONIA[a.bioterio_id] ?? a.bioterio_id
+                const colorCol  = a.bioterio_id === 'ratones_balbc' ? '#40c4ff' : '#ce93d8'
+                const edad      = calcularEdad(a.fecha_nacimiento)
+                const perfil    = a.sexo === 'hembra'
+                  ? calcularPerfilHembra(a.id, camadas)
+                  : calcularRendimientoMacho(a.id, camadas)
+                const scoreVal  = a.sexo === 'hembra'
+                  ? perfil?.avg_time_score
+                  : perfil?.score_promedio
+
+                return (
+                  <div
+                    key={a.id}
+                    className="px-5 py-3 flex flex-wrap items-center gap-x-4 gap-y-1"
+                  >
+                    {/* Sexo */}
+                    <span
+                      className="text-xs font-bold font-mono px-2 py-0.5 rounded-full"
+                      style={{
+                        background: a.sexo === 'macho' ? 'rgba(64,196,255,0.1)' : 'rgba(206,147,216,0.1)',
+                        border:     `1px solid ${a.sexo === 'macho' ? 'rgba(64,196,255,0.3)' : 'rgba(206,147,216,0.3)'}`,
+                        color:      a.sexo === 'macho' ? '#40c4ff' : '#ce93d8',
+                      }}
+                    >
+                      {a.sexo === 'macho' ? '♂' : '♀'}
+                    </span>
+
+                    {/* Código + colonia */}
+                    <div>
+                      <span className="font-bold text-sm text-white">{a.codigo}</span>
+                      <span
+                        className="ml-1.5 text-xs font-mono px-1.5 py-0.5 rounded"
+                        style={{ background: `${colorCol}18`, color: colorCol, border: `1px solid ${colorCol}35` }}
+                      >
+                        {colonia}
+                      </span>
+                    </div>
+
+                    {/* Edad */}
+                    <span className="text-xs font-mono" style={{ color: '#6a8099' }}>{edad}</span>
+
+                    {/* Estado */}
+                    <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{labelEstado[a.estado] ?? a.estado}</span>
+
+                    {/* Score */}
+                    {scoreVal != null && (
+                      <span
+                        className="text-xs font-mono px-2 py-0.5 rounded"
+                        style={{
+                          background: scoreVal >= 8 ? 'rgba(0,230,118,0.08)' : scoreVal >= 6 ? 'rgba(255,215,64,0.08)' : 'rgba(255,107,128,0.08)',
+                          color:      scoreVal >= 8 ? '#00e676'              : scoreVal >= 6 ? '#ffd740'              : '#ff6b80',
+                        }}
+                      >
+                        Score {scoreVal}
+                      </span>
+                    )}
+
+                    {/* Botón devolver */}
+                    <button
+                      onClick={() => devolverDeHibridos(a.id)}
+                      className="ml-auto text-xs font-mono px-3 py-1.5 rounded-lg"
+                      style={{ background: 'rgba(255,61,87,0.06)', border: '1px solid rgba(255,61,87,0.2)', color: '#ff6b80' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,61,87,0.12)' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,61,87,0.06)' }}
+                      title="Devolver a su colonia original"
+                    >
+                      ↩ Devolver
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Filtros */}
       <div className="flex flex-wrap gap-3 p-4 rounded-xl" style={cardStyle}>
         <input
@@ -317,6 +452,16 @@ return (
                           title={animal.notas}
                           style={{ color: animal.nota_tipo === 'critica' ? '#ff1744' : '#ffb300', marginLeft: '5px', cursor: 'help' }}
                         >⚠</span>
+                      )}
+                      {/* Badge: animal compartido con Híbridos */}
+                      {animal.exportado_hibridos && (
+                        <span
+                          className="ml-2 text-xs px-1.5 py-0.5 rounded font-semibold"
+                          style={{ background: 'rgba(139,92,246,0.12)', color: '#a78bfa', border: '1px solid rgba(139,92,246,0.25)', fontSize: '10px' }}
+                          title="Compartido con Bioterio de Híbridos"
+                        >
+                          🧬 Híbridos
+                        </span>
                       )}
                     </td>
                     <td className="px-4 py-3 font-medium text-xs">
@@ -457,6 +602,198 @@ return (
           </div>
         </Modal>
       )}
+
+      {/* Modal exportar reproductor a Híbridos */}
+      {modalExportar && (
+        <ModalExportarReproductor
+          animalesYaExportados={animalesExportados}
+          onExportar={(animal) => { exportarAHibridos(animal); setModalExportar(false) }}
+          onCerrar={() => setModalExportar(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+// ── Modal para exportar reproductores a Híbridos ──────────────────────────────
+
+function ModalExportarReproductor({ animalesYaExportados, onExportar, onCerrar }) {
+  const [origen,    setOrigen]    = useState('ratones_balbc')
+  const [animales,  setAnimales]  = useState([])
+  const [cargando,  setCargando]  = useState(true)
+  const [seleccionado, setSelec]  = useState(null)
+
+  const idsYaExportados = new Set(animalesYaExportados.map((a) => a.id))
+
+  useEffect(() => {
+    setSelec(null)
+    cargar()
+  }, [origen])
+
+  async function cargar() {
+    setCargando(true)
+    const { data } = await supabase
+      .from('animales')
+      .select('*')
+      .eq('bioterio_id', origen)
+      .in('estado', ['activo', 'en_cria'])
+      .order('fecha_nacimiento', { ascending: true })
+    setAnimales(data ?? [])
+    setCargando(false)
+  }
+
+  const disponibles = animales.filter((a) => !idsYaExportados.has(a.id))
+
+  const colorOrigen = origen === 'ratones_balbc' ? '#40c4ff' : '#ce93d8'
+  const labelOrigen = origen === 'ratones_balbc' ? 'BAL/C' : 'C57'
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(5,8,16,0.88)', backdropFilter: 'blur(4px)' }}
+    >
+      <div
+        className="w-full max-w-lg rounded-2xl overflow-hidden flex flex-col"
+        style={{ background: 'rgba(13,21,40,0.98)', border: '1.5px solid rgba(139,92,246,0.3)', boxShadow: '0 0 60px rgba(139,92,246,0.12)', maxHeight: '85vh' }}
+      >
+        {/* Header */}
+        <div
+          className="px-6 py-5 shrink-0"
+          style={{ borderBottom: '1px solid rgba(139,92,246,0.15)', background: 'rgba(139,92,246,0.06)' }}
+        >
+          <div className="font-bold text-white text-sm">🧬 Exportar reproductor a Híbridos</div>
+          <div className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
+            Seleccioná un animal de BAL/C o C57 para usarlo en Híbridos. El animal sigue perteneciendo a su colonia original.
+          </div>
+        </div>
+
+        {/* Selector de colonia origen */}
+        <div
+          className="px-6 py-4 flex gap-3 shrink-0"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+        >
+          {[
+            { id: 'ratones_balbc', label: 'Machos BAL/C',   color: '#40c4ff', nota: 'Típicamente los machos' },
+            { id: 'ratones_c57',   label: 'Hembras C57',    color: '#ce93d8', nota: 'Típicamente las hembras' },
+          ].map(({ id, label, color, nota }) => (
+            <button
+              key={id}
+              onClick={() => setOrigen(id)}
+              className="flex-1 py-3 px-4 rounded-xl text-sm font-semibold text-left transition-all"
+              style={{
+                background: origen === id ? `${color}14` : 'rgba(255,255,255,0.02)',
+                border:     `1.5px solid ${origen === id ? color + '55' : 'rgba(30,51,82,0.6)'}`,
+                color:      origen === id ? color : '#4a5f7a',
+              }}
+            >
+              <div>{label}</div>
+              <div className="text-xs font-normal mt-0.5 opacity-70">{nota}</div>
+            </button>
+          ))}
+        </div>
+
+        {/* Lista de animales disponibles */}
+        <div className="flex-1 overflow-y-auto px-6 py-3 space-y-2">
+          {cargando ? (
+            <div className="flex items-center justify-center py-8 gap-2">
+              <span className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: colorOrigen, borderTopColor: 'transparent' }} />
+              <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Cargando reproductores de {labelOrigen}...</span>
+            </div>
+          ) : disponibles.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-sm font-mono" style={{ color: '#3d5068' }}>
+                Sin reproductores disponibles de {labelOrigen}.
+              </div>
+              <div className="text-xs font-mono mt-1" style={{ color: '#2a3a50' }}>
+                Solo se muestran animales activos que aún no fueron exportados.
+              </div>
+            </div>
+          ) : (
+            disponibles.map((a) => {
+              const activo   = seleccionado?.id === a.id
+              const diasNac  = a.fecha_nacimiento
+                ? Math.floor((Date.now() - new Date(a.fecha_nacimiento + 'T12:00:00').getTime()) / 86400000)
+                : null
+              const edad     = diasNac == null ? '—' : diasNac < 30 ? `${diasNac}d` : diasNac < 112 ? `${Math.floor(diasNac / 7)}sem` : `${Math.floor(diasNac / 30)}m`
+              const colorSexo = a.sexo === 'macho' ? '#40c4ff' : '#ce93d8'
+
+              return (
+                <button
+                  key={a.id}
+                  onClick={() => setSelec(activo ? null : a)}
+                  className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-4 transition-all"
+                  style={{
+                    background: activo ? `${colorOrigen}14` : 'rgba(255,255,255,0.02)',
+                    border:     `1.5px solid ${activo ? colorOrigen + '55' : 'rgba(30,51,82,0.5)'}`,
+                  }}
+                >
+                  {/* Check */}
+                  <div
+                    className="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0"
+                    style={{ borderColor: activo ? colorOrigen : 'rgba(30,51,82,0.8)', background: activo ? colorOrigen : 'transparent' }}
+                  >
+                    {activo && <span style={{ color: '#050810', fontSize: '9px', fontWeight: 'bold' }}>✓</span>}
+                  </div>
+
+                  {/* Sexo */}
+                  <span className="text-xs font-bold" style={{ color: colorSexo }}>
+                    {a.sexo === 'macho' ? '♂' : '♀'}
+                  </span>
+
+                  {/* Código */}
+                  <span className="font-bold font-mono text-sm text-white">{a.codigo}</span>
+
+                  {/* Edad */}
+                  <span className="text-xs font-mono" style={{ color: '#6a8099' }}>{edad}</span>
+
+                  {/* Estado */}
+                  <span
+                    className="text-xs font-mono px-2 py-0.5 rounded-full ml-auto"
+                    style={{ background: 'rgba(255,255,255,0.04)', color: '#4a5f7a' }}
+                  >
+                    {a.estado === 'activo' ? 'Activo' : a.estado === 'en_cria' ? 'En cría' : a.estado}
+                  </span>
+                </button>
+              )
+            })
+          )}
+        </div>
+
+        {/* Botones */}
+        <div
+          className="px-6 py-4 flex items-center gap-3 shrink-0"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+        >
+          {seleccionado && (
+            <div className="flex-1 text-xs font-mono" style={{ color: '#a78bfa' }}>
+              Seleccionado: <span className="font-bold text-white">{seleccionado.codigo}</span>
+              {' '}({seleccionado.sexo === 'macho' ? '♂' : '♀'} · {labelOrigen})
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={onCerrar}
+            className="px-4 py-2.5 rounded-xl text-sm font-mono"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a' }}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={() => seleccionado && onExportar(seleccionado)}
+            disabled={!seleccionado}
+            className="px-5 py-2.5 rounded-xl text-sm font-bold transition-all"
+            style={{
+              background: seleccionado ? 'rgba(139,92,246,0.16)' : 'rgba(255,255,255,0.04)',
+              border:     `1.5px solid ${seleccionado ? 'rgba(139,92,246,0.5)' : 'rgba(255,255,255,0.08)'}`,
+              color:      seleccionado ? '#a78bfa' : '#3d5068',
+              cursor:     seleccionado ? 'pointer' : 'not-allowed',
+            }}
+          >
+            Exportar a Híbridos
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

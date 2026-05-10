@@ -15,6 +15,12 @@ function reducer(estado, accion) {
     case 'SET_INCIDENTES':       return { ...estado, incidentes: accion.payload }
     case 'SET_EXTENDIDOS':       return { ...estado, extendidos: accion.payload }
 
+    // Animales exportados desde BAL/C y C57 hacia Híbridos
+    case 'SET_ANIMALES_EXPORTADOS':   return { ...estado, animalesExportados: accion.payload }
+    case 'AGREGAR_ANIMAL_EXPORTADO':  return { ...estado, animalesExportados: [...estado.animalesExportados, accion.payload] }
+    case 'REMOVER_ANIMAL_EXPORTADO':  return { ...estado, animalesExportados: estado.animalesExportados.filter((a) => a.id !== accion.payload) }
+    case 'EDITAR_ANIMAL_EXPORTADO':   return { ...estado, animalesExportados: estado.animalesExportados.map((a) => a.id === accion.payload.id ? accion.payload : a) }
+
     case 'AGREGAR_EXTENDIDO': {
       const lista = estado.extendidos.filter((e) => !(e.animal_id === accion.payload.animal_id && e.fecha === accion.payload.fecha))
       lista.push(accion.payload)
@@ -77,7 +83,7 @@ const BiotheriumCtx = createContext(null)
 
 export function BiotheriumProvider({ children }) {
   const { bioterioActivo, bio } = useBioterioActivo()
-  const [estado, dispatch] = useReducer(reducer, { animales: [], camadas: [], sacrificios: [], entregas: [], jaulas: [], temperaturas: [], incidentes: [], extendidos: [] })
+  const [estado, dispatch] = useReducer(reducer, { animales: [], animalesExportados: [], camadas: [], sacrificios: [], entregas: [], jaulas: [], temperaturas: [], incidentes: [], extendidos: [] })
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
 
@@ -88,14 +94,15 @@ export function BiotheriumProvider({ children }) {
       setCargando(true)
       setError(null)
       // Limpiar estado anterior antes de cargar el nuevo bioterio
-      dispatch({ type: 'SET_ANIMALES',    payload: [] })
-      dispatch({ type: 'SET_CAMADAS',     payload: [] })
-      dispatch({ type: 'SET_SACRIFICIOS', payload: [] })
-      dispatch({ type: 'SET_ENTREGAS',    payload: [] })
-      dispatch({ type: 'SET_JAULAS',      payload: [] })
-      dispatch({ type: 'SET_TEMPERATURAS', payload: [] })
-      dispatch({ type: 'SET_INCIDENTES',  payload: [] })
-      dispatch({ type: 'SET_EXTENDIDOS',  payload: [] })
+      dispatch({ type: 'SET_ANIMALES',             payload: [] })
+      dispatch({ type: 'SET_ANIMALES_EXPORTADOS',  payload: [] })
+      dispatch({ type: 'SET_CAMADAS',              payload: [] })
+      dispatch({ type: 'SET_SACRIFICIOS',          payload: [] })
+      dispatch({ type: 'SET_ENTREGAS',             payload: [] })
+      dispatch({ type: 'SET_JAULAS',               payload: [] })
+      dispatch({ type: 'SET_TEMPERATURAS',         payload: [] })
+      dispatch({ type: 'SET_INCIDENTES',           payload: [] })
+      dispatch({ type: 'SET_EXTENDIDOS',           payload: [] })
       try {
         const [{ data: animales, error: errA }, { data: camadas, error: errC }, { data: sacrificios }, { data: entregas }, { data: jaulas }, { data: temperaturas }, { data: incidentes }, { data: extendidos }] = await Promise.all([
           supabase.from('animales').select('*').eq('bioterio_id', bioterioActivo).order('fecha_nacimiento', { ascending: true }),
@@ -117,6 +124,18 @@ export function BiotheriumProvider({ children }) {
         dispatch({ type: 'SET_TEMPERATURAS', payload: temperaturas ?? [] })
         dispatch({ type: 'SET_INCIDENTES', payload: incidentes ?? [] })
         dispatch({ type: 'SET_EXTENDIDOS', payload: extendidos ?? [] })
+
+        // Cuando el bioterio activo es Híbridos, cargar también los animales
+        // de BAL/C y C57 que fueron marcados como exportados
+        if (bioterioActivo === 'ratones_hibridos') {
+          const { data: exportados } = await supabase
+            .from('animales')
+            .select('*')
+            .in('bioterio_id', ['ratones_balbc', 'ratones_c57'])
+            .eq('exportado_hibridos', true)
+            .order('fecha_nacimiento', { ascending: true })
+          dispatch({ type: 'SET_ANIMALES_EXPORTADOS', payload: exportados ?? [] })
+        }
       } catch (e) {
         console.error('Error al cargar datos:', e)
         setError('No se pudieron cargar los datos. Verificá la conexión.')
@@ -195,11 +214,14 @@ export function BiotheriumProvider({ children }) {
       return
     }
     // Auto-setear la hembra a 'en_apareamiento' si estaba 'activo'
+    // Buscar en animales propios y también en exportados (para Híbridos)
     if (datos.id_madre) {
-      const madre = estado.animales.find((a) => a.id === datos.id_madre)
+      const madrePropia      = estado.animales.find((a) => a.id === datos.id_madre)
+      const madreExportada   = estado.animalesExportados.find((a) => a.id === datos.id_madre)
+      const madre            = madrePropia ?? madreExportada
       if (madre && madre.estado === 'activo') {
         const madreActualizada = { ...madre, estado: 'en_apareamiento' }
-        dispatch({ type: 'EDITAR_ANIMAL', payload: madreActualizada })
+        dispatch({ type: madrePropia ? 'EDITAR_ANIMAL' : 'EDITAR_ANIMAL_EXPORTADO', payload: madreActualizada })
         const { error: errA } = await supabase.from('animales').update({ estado: 'en_apareamiento' }).eq('id', datos.id_madre)
         if (errA) console.error('Error al actualizar estado de madre:', errA)
       }
@@ -214,11 +236,14 @@ export function BiotheriumProvider({ children }) {
     const { error: errC } = await supabase.from('camadas').update({ fecha_separacion: fechaSeparacion }).eq('id', camadaId)
     if (errC) console.error('Error al confirmar separación:', errC)
     // Cambiar la hembra a 'en_cria' si estaba 'en_apareamiento'
+    // Buscar en animales propios y también en exportados (para Híbridos)
     if (camada.id_madre) {
-      const madre = estado.animales.find((a) => a.id === camada.id_madre)
+      const madrePropia    = estado.animales.find((a) => a.id === camada.id_madre)
+      const madreExportada = estado.animalesExportados.find((a) => a.id === camada.id_madre)
+      const madre          = madrePropia ?? madreExportada
       if (madre && madre.estado === 'en_apareamiento') {
         const madreActualizada = { ...madre, estado: 'en_cria' }
-        dispatch({ type: 'EDITAR_ANIMAL', payload: madreActualizada })
+        dispatch({ type: madrePropia ? 'EDITAR_ANIMAL' : 'EDITAR_ANIMAL_EXPORTADO', payload: madreActualizada })
         const { error: errA } = await supabase.from('animales').update({ estado: 'en_cria' }).eq('id', camada.id_madre)
         if (errA) console.error('Error al actualizar estado de madre:', errA)
       }
@@ -552,9 +577,40 @@ export function BiotheriumProvider({ children }) {
     if (error) console.error('Error al eliminar temperaturas del mes:', error)
   }
 
+  // ── EXPORTACIÓN DE REPRODUCTORES A HÍBRIDOS ──────────────────────────────
+  // Marca un animal de BAL/C o C57 como disponible en Híbridos.
+  // El animal NO se mueve de su bioterio — solo se agrega a animalesExportados.
+  async function exportarAHibridos(animal) {
+    const actualizado = { ...animal, exportado_hibridos: true }
+    dispatch({ type: 'AGREGAR_ANIMAL_EXPORTADO', payload: actualizado })
+    const { error } = await supabase
+      .from('animales')
+      .update({ exportado_hibridos: true })
+      .eq('id', animal.id)
+    if (error) {
+      console.error('Error al exportar animal a Híbridos:', error)
+      dispatch({ type: 'REMOVER_ANIMAL_EXPORTADO', payload: animal.id })
+    }
+  }
+
+  // Devuelve el reproductor a su colonia original — quita el vínculo con Híbridos.
+  async function devolverDeHibridos(animalId) {
+    const respaldo = estado.animalesExportados.find((a) => a.id === animalId)
+    dispatch({ type: 'REMOVER_ANIMAL_EXPORTADO', payload: animalId })
+    const { error } = await supabase
+      .from('animales')
+      .update({ exportado_hibridos: false })
+      .eq('id', animalId)
+    if (error) {
+      console.error('Error al devolver animal de Híbridos:', error)
+      if (respaldo) dispatch({ type: 'AGREGAR_ANIMAL_EXPORTADO', payload: respaldo })
+    }
+  }
+
   return (
     <BiotheriumCtx.Provider value={{
       animales: estado.animales,
+      animalesExportados: estado.animalesExportados,
       camadas: estado.camadas,
       sacrificios: estado.sacrificios,
       entregas: estado.entregas,
@@ -566,6 +622,7 @@ export function BiotheriumProvider({ children }) {
       error,
       bio,
       bioterioActivo,
+      exportarAHibridos, devolverDeHibridos,
       agregarAnimal, editarAnimal, eliminarAnimal, sacrificarReproductor,
       agregarCamada, editarCamada, eliminarCamada, confirmarSeparacion,
       registrarSacrificio, eliminarSacrificio, eliminarSacrificioReproductor,
