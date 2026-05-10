@@ -364,7 +364,8 @@ export function BiotheriumProvider({ children }) {
   // Sacrificio de animales reproductores (actualiza estado + graba en tabla sacrificios)
   async function sacrificarReproductor(animal, fecha, motivo) {
     const actualizado = { ...animal, estado: 'fallecido', fecha_sacrificio: fecha, motivo_sacrificio: motivo || null }
-    dispatch({ type: 'EDITAR_ANIMAL', payload: actualizado })
+    const esExportado = estado.animalesExportados.some((a) => a.id === animal.id)
+    dispatch({ type: esExportado ? 'EDITAR_ANIMAL_EXPORTADO' : 'EDITAR_ANIMAL', payload: actualizado })
 
     // Grabar en tabla sacrificios con animal_id para poder vincularlo después
     const sacrificioRepro = {
@@ -435,10 +436,11 @@ export function BiotheriumProvider({ children }) {
       }
     }
 
+    const esExportado = estado.animalesExportados.some((a) => a.id === animal.id)
     if (restaurar) {
       // Devolver vivo: activo + limpiar fecha y motivo
       const restaurado = { ...animal, estado: 'activo', fecha_sacrificio: null, motivo_sacrificio: null }
-      dispatch({ type: 'EDITAR_ANIMAL', payload: restaurado })
+      dispatch({ type: esExportado ? 'EDITAR_ANIMAL_EXPORTADO' : 'EDITAR_ANIMAL', payload: restaurado })
       const { error } = await supabase.from('animales').update({
         estado: 'activo',
         fecha_sacrificio: null,
@@ -448,7 +450,7 @@ export function BiotheriumProvider({ children }) {
     } else {
       // Mantener fallecido pero limpiar fecha para poder re-registrar correctamente
       const limpiado = { ...animal, fecha_sacrificio: null, motivo_sacrificio: null }
-      dispatch({ type: 'EDITAR_ANIMAL', payload: limpiado })
+      dispatch({ type: esExportado ? 'EDITAR_ANIMAL_EXPORTADO' : 'EDITAR_ANIMAL', payload: limpiado })
       const { error } = await supabase.from('animales').update({
         fecha_sacrificio: null,
         motivo_sacrificio: null,
@@ -473,7 +475,8 @@ export function BiotheriumProvider({ children }) {
   // Entrega de reproductor: pasa a estado 'retirado' y queda registrado en tabla entregas
   async function entregarReproductor(animal, fecha, observaciones) {
     const actualizado = { ...animal, estado: 'retirado' }
-    dispatch({ type: 'EDITAR_ANIMAL', payload: actualizado })
+    const esExportado = estado.animalesExportados.some((a) => a.id === animal.id)
+    dispatch({ type: esExportado ? 'EDITAR_ANIMAL_EXPORTADO' : 'EDITAR_ANIMAL', payload: actualizado })
     const { error } = await supabase.from('animales').update({ estado: 'retirado' }).eq('id', animal.id)
     if (error) console.error('Error al actualizar estado de reproductor:', error)
 
@@ -501,10 +504,12 @@ export function BiotheriumProvider({ children }) {
       })
     } else if (entrega.animal_id) {
       // Reproductor → restaurar estado a 'activo'
-      const animal = estado.animales.find((a) => a.id === entrega.animal_id)
+      const animalPropio    = estado.animales.find((a) => a.id === entrega.animal_id)
+      const animalExportado = estado.animalesExportados.find((a) => a.id === entrega.animal_id)
+      const animal = animalPropio ?? animalExportado
       if (animal) {
         const restaurado = { ...animal, estado: 'activo' }
-        dispatch({ type: 'EDITAR_ANIMAL', payload: restaurado })
+        dispatch({ type: animalExportado ? 'EDITAR_ANIMAL_EXPORTADO' : 'EDITAR_ANIMAL', payload: restaurado })
         const { error } = await supabase.from('animales').update({ estado: 'activo' }).eq('id', entrega.animal_id)
         if (error) console.error('Error al restaurar reproductor:', error)
       }
