@@ -213,17 +213,22 @@ export function BiotheriumProvider({ children }) {
       dispatch({ type: 'ELIMINAR_CAMADA', payload: nueva.id })
       return
     }
-    // Auto-setear la hembra a 'en_apareamiento' si estaba 'activo'
-    // Buscar en animales propios y también en exportados (para Híbridos)
+    // Setear el estado de la hembra según el progreso real de la camada creada
+    // (si ya tiene separación/parto/destete registrados — ej: carga histórica)
     if (datos.id_madre) {
       const madrePropia      = estado.animales.find((a) => a.id === datos.id_madre)
       const madreExportada   = estado.animalesExportados.find((a) => a.id === datos.id_madre)
       const madre            = madrePropia ?? madreExportada
-      if (madre && madre.estado === 'activo') {
-        const madreActualizada = { ...madre, estado: 'en_apareamiento' }
-        dispatch({ type: madrePropia ? 'EDITAR_ANIMAL' : 'EDITAR_ANIMAL_EXPORTADO', payload: madreActualizada })
-        const { error: errA } = await supabase.from('animales').update({ estado: 'en_apareamiento' }).eq('id', datos.id_madre)
-        if (errA) console.error('Error al actualizar estado de madre:', errA)
+      if (madre && ['activo', 'en_apareamiento', 'en_cria'].includes(madre.estado)) {
+        const estadoMadre = datos.fecha_destete ? 'activo'
+          : (datos.fecha_separacion || datos.fecha_nacimiento) ? 'en_cria'
+          : 'en_apareamiento'
+        if (madre.estado !== estadoMadre) {
+          const madreActualizada = { ...madre, estado: estadoMadre }
+          dispatch({ type: madrePropia ? 'EDITAR_ANIMAL' : 'EDITAR_ANIMAL_EXPORTADO', payload: madreActualizada })
+          const { error: errA } = await supabase.from('animales').update({ estado: estadoMadre }).eq('id', datos.id_madre)
+          if (errA) console.error('Error al actualizar estado de madre:', errA)
+        }
       }
     }
   }
@@ -309,30 +314,32 @@ export function BiotheriumProvider({ children }) {
       }
     }
 
-    // ── Actualizar estado de la madre según el progreso de la camada ─────────
-    // Garantiza que la jaula de la hembra se reactive correctamente sin depender
-    // de que confirmarSeparacion haya sido llamado manualmente.
+    // ── Reconciliar estado de la madre con el progreso real de la camada ───────
+    // Enfoque: calcular qué estado DEBERÍA tener la madre y corregirlo si no
+    // coincide. Esto garantiza que cualquier edición de la camada sincronice
+    // automáticamente el estado de la hembra, incluso si la separación/parto
+    // ya estaba registrada desde antes (evita hembras atascadas en en_apareamiento).
     const madreId = datos.id_madre
     if (madreId) {
       const madrePropia    = estado.animales.find((a) => a.id === madreId)
       const madreExportada = estado.animalesExportados.find((a) => a.id === madreId)
       const madre          = madrePropia ?? madreExportada
 
-      if (madre) {
-        const tipoDispatch     = madrePropia ? 'EDITAR_ANIMAL' : 'EDITAR_ANIMAL_EXPORTADO'
-        const separacionNueva  = datos.fecha_separacion && !antigua?.fecha_separacion
-        const partoNuevo       = datos.fecha_nacimiento && !antigua?.fecha_nacimiento
+      if (madre && ['activo', 'en_apareamiento', 'en_cria'].includes(madre.estado)) {
+        const tipoDispatch = madrePropia ? 'EDITAR_ANIMAL' : 'EDITAR_ANIMAL_EXPORTADO'
 
-        if (desteteNuevo && ['en_cria', 'en_apareamiento'].includes(madre.estado)) {
-          // Destete confirmado → el ciclo reproductivo terminó, la hembra vuelve a activo
-          const actualizada = { ...madre, estado: 'activo' }
+        // Estado esperado según el progreso de la camada:
+        // destete → activo | separación o parto → en_cria | solo cópula → en_apareamiento
+        const estadoEsperado = datos.fecha_destete                            ? 'activo'
+          : (datos.fecha_separacion || datos.fecha_nacimiento) ? 'en_cria'
+          : datos.fecha_copula                                  ? 'en_apareamiento'
+          : null
+
+        if (estadoEsperado && madre.estado !== estadoEsperado) {
+          const actualizada = { ...madre, estado: estadoEsperado }
           dispatch({ type: tipoDispatch, payload: actualizada })
-          await supabase.from('animales').update({ estado: 'activo' }).eq('id', madreId)
-        } else if ((separacionNueva || partoNuevo) && madre.estado === 'en_apareamiento') {
-          // Separación o parto registrado → la hembra ya está de vuelta en su jaula
-          const actualizada = { ...madre, estado: 'en_cria' }
-          dispatch({ type: tipoDispatch, payload: actualizada })
-          await supabase.from('animales').update({ estado: 'en_cria' }).eq('id', madreId)
+          const { error: errA } = await supabase.from('animales').update({ estado: estadoEsperado }).eq('id', madreId)
+          if (errA) console.error('Error al actualizar estado de madre:', errA)
         }
       }
     }
