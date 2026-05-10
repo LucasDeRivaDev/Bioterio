@@ -38,7 +38,8 @@ function stockCamada(camada, sacrificios, entregas) {
 }
 
 // Calcula el desglose de stock por categoría de edad para un grupo
-function calcularStockGrupo(jaulas, camadas, sacrificios, entregas) {
+// animales = reproductores activos del grupo (se suman como adultos)
+function calcularStockGrupo(jaulas, camadas, sacrificios, entregas, animales = []) {
   const result = {
     crias: 0, jovenes: 0, adultos: 0, sin_fecha: 0, total: 0, jaulas: 0,
     jaulasCrias: 0, jaulasJovenes: 0, jaulasAdultos: 0, jaulasSin_fecha: 0,
@@ -76,6 +77,18 @@ function calcularStockGrupo(jaulas, camadas, sacrificios, entregas) {
     result[`jaulas${cat.charAt(0).toUpperCase()}${cat.slice(1)}`]++
   }
 
+  // ── Reproductores activos → siempre cuentan como adultos ──
+  // Hembras en apareamiento: el animal existe pero su jaula está vacía → no suma jaula
+  for (const animal of animales) {
+    result.adultos += 1
+    result.total   += 1
+    const jaulaVacia = animal.sexo === 'hembra' && animal.estado === 'en_apareamiento'
+    if (!jaulaVacia) {
+      result.jaulas++
+      result.jaulasAdultos++
+    }
+  }
+
   return result
 }
 
@@ -100,18 +113,22 @@ export default function ResumenRatones() {
             supabase.from('camadas').select('*').eq('bioterio_id', gid),
             supabase.from('sacrificios').select('*').eq('bioterio_id', gid),
             supabase.from('entregas').select('*').eq('bioterio_id', gid),
+            supabase.from('animales').select('id, sexo, estado, fecha_nacimiento')
+              .eq('bioterio_id', gid)
+              .in('estado', ['activo', 'en_apareamiento', 'en_cria']),
           ])
         )
       )
 
       const nuevosDatos = {}
       GRUPOS.forEach((gid, i) => {
-        const [{ data: jaulas }, { data: camadas }, { data: sacrificios }, { data: entregas }] = resultados[i]
+        const [{ data: jaulas }, { data: camadas }, { data: sacrificios }, { data: entregas }, { data: animales }] = resultados[i]
         nuevosDatos[gid] = calcularStockGrupo(
           jaulas ?? [],
           camadas ?? [],
           sacrificios ?? [],
-          entregas ?? []
+          entregas ?? [],
+          animales ?? []
         )
       })
       setDatos(nuevosDatos)
