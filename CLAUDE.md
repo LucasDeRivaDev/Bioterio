@@ -12,7 +12,7 @@ Sistema web de gestión de una colonia de ratones de laboratorio (*Mus musculus*
 | **Dashboard** | Alertas del día, tareas vencidas/próximas, tabla de preñeces activas, alertas de ciclo estral y gestación |
 | **Animales** | CRUD de reproductores con filtros por sexo y estado. Hembras: sección "Ciclo Estral y Reproducción Predictiva" con registro de extendidos, predicción de receptividad y seguimiento gestacional |
 | **Camadas** | Registro de cópulas, seguimiento de preñez, destete, separación de pareja, scores reproductivos, análisis de confiabilidad de hembras y detección de fallos |
-| **Calendario** | Vista mensual con todos los eventos reproductivos coloreados |
+| **Calendario** | Vista mensual con eventos reproductivos coloreados + planificación de apareamientos futuros desde el día seleccionado |
 | **Stock** | Bloques visuales por jaula con display de sexo coloreado (♂ azul / ♀ violeta / mixto bicolor), edición/división/movimiento de animales, entrega y sacrificio en masa. Cada bloque muestra calidad de padres (Alta/Media/Baja) sin necesidad de abrir el modal |
 | **Sacrificios** | Selección múltiple de jaulas desde stock para registrar sacrificios en masa |
 | **Entregas** | Historial de animales entregados a investigadores, con buscador y resumen numérico |
@@ -372,6 +372,26 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
   - **Fix 2 — Parto (`fecha_nacimiento` nueva, safety net):** si la madre sigue `en_apareamiento` al registrar el parto → `en_cria`. Cubre el caso donde el usuario saltea el paso de separación.
   - **Fix 3 — Destete (`fecha_destete` nueva):** madre `en_cria` → `activo`. Completa el ciclo: la hembra queda disponible para un nuevo apareamiento sin intervención manual.
   - Los tres triggers aplican tanto a animales propios como a exportados (`EDITAR_ANIMAL` vs `EDITAR_ANIMAL_EXPORTADO`). No hay acción si no hay `id_madre` o si el estado ya es el correcto.
+
+- **Fix: dispatch correcto en operaciones sobre reproductores exportados (10/05/2026):** `sacrificarReproductor`, `entregarReproductor`, `eliminarSacrificioReproductor` y `devolverEntrega` ahora detectan si el animal pertenece a `animalesExportados` y despachan `EDITAR_ANIMAL_EXPORTADO` en lugar de `EDITAR_ANIMAL`. Antes, operar sobre un exportado desde Híbridos dejaba el estado local desincronizado.
+  - **SQL ejecutado:** `ALTER TABLE animales ADD COLUMN IF NOT EXISTS exportado_hibridos boolean DEFAULT false;` ✅
+
+- **Fix: reconciliación de estado de hembra al editar/crear camada (10/05/2026):** reemplaza la lógica de "campo nuevo" por reconciliación declarativa en `editarCamada` y `agregarCamada`. Cada vez que se guarda una camada, el sistema calcula el estado que DEBERÍA tener la madre según el progreso real y lo corrige si no coincide. Elimina hembras atascadas en `en_apareamiento` aunque la separación/parto ya estuviera guardada de antes.
+  - Regla: `fecha_destete` → `activo` | `fecha_separacion` o `fecha_nacimiento` → `en_cria` | solo `fecha_copula` → `en_apareamiento`
+  - **SQL ejecutado para arreglar registros viejos:** UPDATE animales SET estado según camada más reciente donde estado = 'en_apareamiento' y camada ya tiene separación/parto/destete. ✅
+
+- **ResumenRatones: reproductores incluidos en conteo de adultos (10/05/2026):** `calcularStockGrupo` ahora recibe y suma los reproductores activos de cada colonia dentro de la categoría Adultos. Cada reproductor = 1 animal + 1 jaula, excepto hembras en `en_apareamiento` (su jaula está vacía → suman animal pero no jaula). Fetch de `animales` agregado en paralelo en `cargarDatos`.
+  - **SQL necesario:** ninguno — solo cambia el fetch y el cálculo en el frontend.
+
+- **Calendario: planificación de apareamientos (10/05/2026):** permite planificar cruces futuros directamente desde el calendario sin crear el apareamiento real.
+  - Seleccionando un día → aparece botón violeta "🔗 Planificar apareamiento"
+  - Modal con dos columnas: machos activos (celeste) y hembras activas (violeta), selección con checkmark, campo de observaciones
+  - Solo muestra animales con `estado === 'activo'` — excluye `en_apareamiento` y `en_cria`
+  - Guarda en localStorage con el mismo formato que Stock → planes visibles en Dashboard como recordatorio
+  - Días con planes muestran borde violeta + punto violeta en la grilla del mes
+  - Panel lateral muestra el plan con botón "✕ Descartar"
+  - Nueva entrada en leyenda: "Apareamiento planif." (violeta `#a78bfa`)
+  - **SQL necesario:** ninguno — usa localStorage igual que Stock.
 
 ---
 
