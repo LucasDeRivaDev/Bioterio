@@ -7,7 +7,7 @@ import { generarId } from '../utils/storage'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
-import { ArrowLeft, RefreshCw, Plus, CheckCircle, Package, TrendingUp, Wheat } from 'lucide-react'
+import { ArrowLeft, RefreshCw, Plus, TrendingUp, Wheat, ClipboardList, ShoppingBag } from 'lucide-react'
 
 // ── Tasas de consumo por especie y categoría (g/día por animal) ───────────────
 const TASAS = {
@@ -29,13 +29,25 @@ const TASAS = {
 
 // ── Bioterios que participan del cálculo global ───────────────────────────────
 const TODOS_BIOTERIOS = [
-  { id: 'ratas',          especie: 'rata',  bio: BIO_RATAS },
-  { id: 'ratones_balbc',  especie: 'raton', bio: BIO_RATONES },
-  { id: 'ratones_c57',    especie: 'raton', bio: BIO_RATONES },
+  { id: 'ratas',            especie: 'rata',  bio: BIO_RATAS },
+  { id: 'ratones_balbc',    especie: 'raton', bio: BIO_RATONES },
+  { id: 'ratones_c57',      especie: 'raton', bio: BIO_RATONES },
   { id: 'ratones_hibridos', especie: 'raton', bio: BIO_RATONES },
 ]
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── localStorage ──────────────────────────────────────────────────────────────
+const LS_CENSOS   = 'appMosca_alimento_censos'
+const LS_INGRESOS = 'appMosca_alimento_ingresos'
+
+function cargarLS(key) {
+  try { return JSON.parse(localStorage.getItem(key) || '[]') }
+  catch { return [] }
+}
+function guardarLS(key, lista) {
+  localStorage.setItem(key, JSON.stringify(lista))
+}
+
+// ── Helpers de cálculo ────────────────────────────────────────────────────────
 
 function mid(tasa) { return (tasa.min + tasa.max) / 2 }
 
@@ -57,12 +69,10 @@ function stockCamada(camada, sacrificios, entregas) {
   return Math.max(0, base - sac - ent)
 }
 
-// Calcula consumo de un grupo {count} con tasa {tasa}
 function consumoGrupo(count, tasa) {
   return { count, min: count * tasa.min, max: count * tasa.max, mid: count * mid(tasa) }
 }
 
-// Suma dos objetos de consumo
 function sumarConsumo(a, b) {
   return { count: a.count + b.count, min: a.min + b.min, max: a.max + b.max, mid: a.mid + b.mid }
 }
@@ -75,8 +85,6 @@ function calcularConsumo(bioId, especie, bio, animales, camadas, jaulas, sacrifi
   const tasas = TASAS[especie]
   const activos = ['activo', 'en_apareamiento', 'en_cria']
 
-  // ── Reproductores ──
-  // Hembras lactantes: en_cria + camada con nacimiento pero sin destete
   const lactantes = animales.filter(a =>
     a.sexo === 'hembra' &&
     a.estado === 'en_cria' &&
@@ -96,7 +104,6 @@ function calcularConsumo(bioId, especie, bio, animales, camadas, jaulas, sacrifi
   const reproLactantes = consumoGrupo(lactantes.length, tasas.lactante)
   const reproOtros     = consumoGrupo(otrasHembras.length + machos.length, tasas.repro)
 
-  // ── Stock de jaulas ──
   const jaulasIds = new Set(jaulas.map(j => j.camada_id))
   let stockCrias = { ...VACIO }, stockJovenes = { ...VACIO }, stockAdultos = { ...VACIO }
 
@@ -109,14 +116,12 @@ function calcularConsumo(bioId, especie, bio, animales, camadas, jaulas, sacrifi
     else                        stockAdultos = sumarConsumo(stockAdultos, consumoGrupo(total, tasas.adultos))
   }
 
-  // Jaulas reales
   jaulas.forEach(jaula => {
     const camada = camadas.find(c => c.id === jaula.camada_id)
     if (!camada || camada.incluir_en_stock === false || jaula.total <= 0) return
     acumularStock(jaula.total, camada.fecha_nacimiento)
   })
 
-  // Bloques virtuales
   camadas.forEach(camada => {
     if (!camada.fecha_destete || camada.incluir_en_stock === false) return
     if (jaulasIds.has(camada.id)) return
@@ -125,7 +130,6 @@ function calcularConsumo(bioId, especie, bio, animales, camadas, jaulas, sacrifi
     acumularStock(stock, camada.fecha_nacimiento)
   })
 
-  // ── Total ──
   const totalMin = reproLactantes.min + reproOtros.min + stockCrias.min + stockJovenes.min + stockAdultos.min
   const totalMax = reproLactantes.max + reproOtros.max + stockCrias.max + stockJovenes.max + stockAdultos.max
 
@@ -141,17 +145,6 @@ function calcularConsumo(bioId, especie, bio, animales, camadas, jaulas, sacrifi
   }
 }
 
-// ── localStorage para el historial de compras ─────────────────────────────────
-const LS_KEY = 'appMosca_alimento_compras'
-
-function cargarCompras() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]') }
-  catch { return [] }
-}
-function guardarCompras(lista) {
-  localStorage.setItem(LS_KEY, JSON.stringify(lista))
-}
-
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function ConsumoAlimento() {
@@ -160,9 +153,12 @@ export default function ConsumoAlimento() {
   const [datosBioterios, setDatosBioterios] = useState(null)
   const [cargando, setCargando]             = useState(true)
   const [error, setError]                   = useState(null)
-  const [alimentoKg, setAlimentoKg]         = useState('')
-  const [compras, setCompras]               = useState(() => cargarCompras())
-  const [modalCompra, setModalCompra]       = useState(false)
+
+  const [censos,   setCensos]   = useState(() => cargarLS(LS_CENSOS))
+  const [ingresos, setIngresos] = useState(() => cargarLS(LS_INGRESOS))
+
+  const [modalCenso,   setModalCenso]   = useState(false)
+  const [modalIngreso, setModalIngreso] = useState(false)
 
   // ── Fetch paralelo de los 4 bioterios ──
   const cargarDatos = useCallback(async () => {
@@ -212,33 +208,69 @@ export default function ConsumoAlimento() {
     )
   }, [datosBioterios])
 
-  // ── Factor de calibración (basado en compras cerradas) ──
-  const calibracion = useMemo(() => {
-    const cerradas = compras.filter(c => c.cerrado && c.dias_reales > 0 && c.consumo_estimado_g_dia > 0)
-    if (cerradas.length === 0) return null
-    const ratios = cerradas.map(c => {
-      const realGDia = (c.cantidad_kg * 1000) / c.dias_reales
-      return realGDia / c.consumo_estimado_g_dia
-    })
-    const factorPromedio = ratios.reduce((s, r) => s + r, 0) / ratios.length
-    return { factor: factorPromedio, muestras: cerradas.length }
-  }, [compras])
+  // ── Censos ordenados por fecha ──
+  const censosOrdenados = useMemo(
+    () => [...censos].sort((a, b) => a.fecha.localeCompare(b.fecha)),
+    [censos]
+  )
 
-  // Consumo ajustado con calibración
+  const ultimoCenso = censosOrdenados.length > 0 ? censosOrdenados[censosOrdenados.length - 1] : null
+
+  // ── Stock actual: último censo + ingresos posteriores ──
+  const ingresosPostCenso = ultimoCenso
+    ? ingresos.filter(i => i.fecha >= ultimoCenso.fecha)
+    : []
+
+  const stockActualKg = ultimoCenso !== null
+    ? ultimoCenso.kg + ingresosPostCenso.reduce((s, i) => s + i.kg, 0)
+    : null
+
+  // ── Calibración adaptativa ──
+  const calibracion = useMemo(() => {
+    if (censosOrdenados.length < 2) return null
+    const pares = []
+    for (let i = 0; i < censosOrdenados.length - 1; i++) {
+      const prev = censosOrdenados[i]
+      const cur  = censosOrdenados[i + 1]
+      const dias = difDias(parseDate(prev.fecha), parseDate(cur.fecha))
+      if (dias <= 0) continue
+
+      // Ingresos realizados entre este par de censos
+      const ingresosEnPeriodo = ingresos
+        .filter(c => c.fecha >= prev.fecha && c.fecha < cur.fecha)
+        .reduce((s, c) => s + c.kg, 0)
+
+      const consumidoG = (prev.kg + ingresosEnPeriodo - cur.kg) * 1000
+      if (consumidoG <= 0) continue  // censo sin sentido (compras superan consumo)
+
+      const realGDia = consumidoG / dias
+      if (!prev.consumoEstimadoGDia || prev.consumoEstimadoGDia <= 0) continue
+
+      pares.push({
+        fechaInicio: prev.fecha,
+        fechaFin: cur.fecha,
+        dias,
+        realGDia,
+        estimadoGDia: prev.consumoEstimadoGDia,
+        factor: realGDia / prev.consumoEstimadoGDia,
+      })
+    }
+    if (pares.length === 0) return null
+    const factorPromedio = pares.reduce((s, p) => s + p.factor, 0) / pares.length
+    return { factor: factorPromedio, muestras: pares.length, pares }
+  }, [censosOrdenados, ingresos])
+
+  const consumoBase     = global?.mid ?? 0
   const consumoAjustado = global && calibracion
     ? global.mid * calibracion.factor
-    : global?.mid ?? 0
+    : consumoBase
 
-  // Consumo base (midpoint) para los cálculos
-  const consumoBase = global?.mid ?? 0
-
-  // ── Calculadora de duración ──
+  // ── Predicción de duración basada en stock actual ──
   const diasEstimados = useMemo(() => {
-    const kg = parseFloat(alimentoKg)
-    if (!kg || kg <= 0 || consumoBase <= 0) return null
+    if (stockActualKg === null || stockActualKg <= 0 || consumoBase <= 0) return null
     const consumoFinal = calibracion ? consumoBase * calibracion.factor : consumoBase
-    return Math.floor((kg * 1000) / consumoFinal)
-  }, [alimentoKg, consumoBase, calibracion])
+    return Math.floor((stockActualKg * 1000) / consumoFinal)
+  }, [stockActualKg, consumoBase, calibracion])
 
   const fechaAgotamiento = useMemo(() => {
     if (!diasEstimados) return null
@@ -247,72 +279,74 @@ export default function ConsumoAlimento() {
     return formatFecha(d)
   }, [diasEstimados])
 
-  // ── Registrar compra ──
-  function registrarCompra(fecha, cantidadKg) {
-    const consumoEstimado = Math.round(consumoBase)
-    const diasEst = consumoEstimado > 0 ? Math.floor((cantidadKg * 1000) / consumoEstimado) : 0
+  // ── Línea temporal de movimientos ──
+  const movimientos = useMemo(() => {
+    const items = [
+      ...censos.map(c => ({ ...c, tipo: 'censo' })),
+      ...ingresos.map(i => ({ ...i, tipo: 'ingreso' })),
+    ]
+    return items.sort((a, b) => b.fecha.localeCompare(a.fecha))
+  }, [censos, ingresos])
 
-    const nuevas = [...compras]
+  // ── Gráfico: estimado vs real por par de censos ──
+  const datosGrafico = useMemo(() => {
+    if (!calibracion) return []
+    return calibracion.pares.map(p => ({
+      fecha: formatFecha(p.fechaInicio, { month: '2-digit', day: '2-digit', year: undefined }),
+      estimado: Math.round(p.estimadoGDia / 100) / 10,
+      real: Math.round(p.realGDia / 100) / 10,
+    })).slice(-8)
+  }, [calibracion])
 
-    // Cerrar el registro abierto anterior
-    const abierto = nuevas.find(c => !c.cerrado)
-    if (abierto) {
-      const diasReales = difDias(parseDate(abierto.fecha), parseDate(fecha))
-      abierto.cerrado = true
-      abierto.fecha_cierre = fecha
-      abierto.dias_reales = Math.max(1, diasReales)
-    }
+  // ── Consumo para censos helper ──
+  function consumoPorCenso(censoActual, idx) {
+    const prev = censosOrdenados[idx - 1]
+    if (!prev) return null
+    const dias = difDias(parseDate(prev.fecha), parseDate(censoActual.fecha))
+    if (dias <= 0) return null
+    const ingresosG = ingresos
+      .filter(c => c.fecha >= prev.fecha && c.fecha < censoActual.fecha)
+      .reduce((s, c) => s + c.kg, 0) * 1000
+    const consumidoG = (prev.kg + ingresosG / 1000 - censoActual.kg) * 1000
+    if (consumidoG <= 0) return null
+    return { consumidoG, dias, realGDia: consumidoG / dias }
+  }
 
-    // Agregar nueva compra
-    nuevas.push({
+  // ── Registrar censo ──
+  function registrarCenso(fecha, kg) {
+    const consumoEstimadoGDia = Math.round(consumoAjustado)
+    const nuevo = {
       id: generarId(),
       fecha,
-      cantidad_kg: cantidadKg,
-      consumo_estimado_g_dia: consumoEstimado,
-      dias_estimados: diasEst,
-      cerrado: false,
-      fecha_cierre: null,
-      dias_reales: null,
-    })
-
-    setCompras(nuevas)
-    guardarCompras(nuevas)
-    setModalCompra(false)
-    setAlimentoKg(String(cantidadKg))
+      kg,
+      consumoEstimadoGDia,
+    }
+    const nuevos = [...censos, nuevo]
+    setCensos(nuevos)
+    guardarLS(LS_CENSOS, nuevos)
+    setModalCenso(false)
   }
 
-  function cerrarCompraActual() {
-    const nuevas = [...compras]
-    const abierto = nuevas.find(c => !c.cerrado)
-    if (!abierto) return
-    const hoyStr = hoy()
-    const diasReales = difDias(parseDate(abierto.fecha), parseDate(hoyStr))
-    abierto.cerrado = true
-    abierto.fecha_cierre = hoyStr
-    abierto.dias_reales = Math.max(1, diasReales)
-    setCompras(nuevas)
-    guardarCompras(nuevas)
+  function eliminarCensoItem(id) {
+    const nuevos = censos.filter(c => c.id !== id)
+    setCensos(nuevos)
+    guardarLS(LS_CENSOS, nuevos)
   }
 
-  function eliminarCompra(id) {
-    const nuevas = compras.filter(c => c.id !== id)
-    setCompras(nuevas)
-    guardarCompras(nuevas)
+  // ── Registrar ingreso ──
+  function registrarIngreso(fecha, kg) {
+    const nuevo = { id: generarId(), fecha, kg }
+    const nuevos = [...ingresos, nuevo]
+    setIngresos(nuevos)
+    guardarLS(LS_INGRESOS, nuevos)
+    setModalIngreso(false)
   }
 
-  // ── Datos para el gráfico ──
-  const datosGrafico = useMemo(() => {
-    return compras
-      .filter(c => c.cerrado && c.dias_reales > 0)
-      .map(c => ({
-        fecha: formatFecha(c.fecha, { month: '2-digit', day: '2-digit', year: undefined }),
-        estimado: Math.round(c.consumo_estimado_g_dia / 100) / 10,  // kg
-        real: Math.round((c.cantidad_kg * 1000 / c.dias_reales) / 100) / 10,
-      }))
-      .slice(-8)  // últimas 8 entradas
-  }, [compras])
-
-  const compraAbierta = compras.find(c => !c.cerrado) ?? null
+  function eliminarIngresoItem(id) {
+    const nuevos = ingresos.filter(i => i.id !== id)
+    setIngresos(nuevos)
+    guardarLS(LS_INGRESOS, nuevos)
+  }
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -376,7 +410,7 @@ export default function ConsumoAlimento() {
                   <div className="font-bold text-white text-sm">Consumo diario estimado — todos los bioterios</div>
                   <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
                     Rango: {Math.round(global.min)} – {Math.round(global.max)} g/día
-                    {calibracion && <span style={{ color: '#40c4ff' }}> · Ajustado por {calibracion.muestras} períodos reales</span>}
+                    {calibracion && <span style={{ color: '#40c4ff' }}> · Ajustado por {calibracion.muestras} pares de censos</span>}
                   </div>
                 </div>
                 <div className="text-right">
@@ -419,59 +453,91 @@ export default function ConsumoAlimento() {
               )}
             </div>
 
-            {/* ── Calculadora de duración ── */}
+            {/* ── Panel de stock y predicción ── */}
             <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(0,230,118,0.2)' }}>
-              <div className="px-6 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(0,230,118,0.12)', background: 'rgba(0,230,118,0.04)' }}>
-                <Package size={18} style={{ color: '#00e676' }} />
-                <div className="font-bold text-sm text-white">Calculadora de duración</div>
-              </div>
-              <div className="px-6 py-5 flex flex-col md:flex-row gap-6 items-start md:items-center">
-                <div className="flex items-center gap-3">
-                  <label className="text-xs font-mono uppercase tracking-widest" style={{ color: '#4a5f7a' }}>Alimento disponible</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.5"
-                      value={alimentoKg}
-                      onChange={e => setAlimentoKg(e.target.value)}
-                      placeholder="0"
-                      className="w-24 px-3 py-2 rounded-xl text-sm font-mono font-bold text-center"
-                      style={{ background: 'rgba(0,230,118,0.07)', border: '1px solid rgba(0,230,118,0.25)', color: '#c9d4e0', outline: 'none' }}
-                    />
-                    <span className="text-sm font-mono" style={{ color: '#4a5f7a' }}>kg</span>
-                  </div>
+              <div className="px-6 py-4" style={{ borderBottom: '1px solid rgba(0,230,118,0.12)', background: 'rgba(0,230,118,0.04)' }}>
+                <div className="font-bold text-sm text-white">Stock y predicción de duración</div>
+                <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
+                  Basado en el último censo más los ingresos registrados
                 </div>
-
-                {diasEstimados ? (
-                  <div className="flex gap-6">
-                    <div>
-                      <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Duración estimada</div>
-                      <div className="text-2xl font-bold font-mono" style={{ color: '#00e676' }}>
-                        {diasEstimados} días
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Se agota el</div>
-                      <div className="text-base font-bold font-mono" style={{ color: diasEstimados < 7 ? '#ff6b80' : diasEstimados < 14 ? '#ffb300' : '#00e676' }}>
-                        {fechaAgotamiento}
-                      </div>
-                    </div>
-                    {calibracion && (
-                      <div>
-                        <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Sin ajuste</div>
-                        <div className="text-base font-mono" style={{ color: '#4a5f7a' }}>
-                          {Math.floor((parseFloat(alimentoKg) * 1000) / consumoBase)} días
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-sm font-mono" style={{ color: '#3d5068' }}>
-                    Ingresá la cantidad disponible para ver cuántos días dura
-                  </div>
-                )}
               </div>
+
+              {stockActualKg === null ? (
+                <div className="px-6 py-8 text-center text-sm font-mono" style={{ color: '#3d5068' }}>
+                  Registrá el primer censo para ver la predicción de duración
+                </div>
+              ) : (
+                <div className="px-6 py-5">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {/* Stock actual */}
+                    <div className="rounded-xl px-4 py-3 text-center" style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.2)' }}>
+                      <div className="text-xs font-mono mb-1" style={{ color: '#4a5f7a' }}>Stock actual</div>
+                      <div className="text-xl font-bold font-mono" style={{ color: '#00e676' }}>
+                        {stockActualKg.toFixed(1)} kg
+                      </div>
+                    </div>
+
+                    {/* Último censo */}
+                    <div className="rounded-xl px-4 py-3 text-center" style={{ background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.2)' }}>
+                      <div className="text-xs font-mono mb-1" style={{ color: '#4a5f7a' }}>Último censo</div>
+                      <div className="font-bold font-mono text-sm" style={{ color: '#a78bfa' }}>
+                        {ultimoCenso.kg.toFixed(1)} kg
+                      </div>
+                      <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
+                        {formatFecha(ultimoCenso.fecha)}
+                      </div>
+                    </div>
+
+                    {/* Último ingreso */}
+                    <div className="rounded-xl px-4 py-3 text-center" style={{ background: 'rgba(0,230,118,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div className="text-xs font-mono mb-1" style={{ color: '#4a5f7a' }}>Último ingreso</div>
+                      {ingresos.length > 0 ? (() => {
+                        const ult = [...ingresos].sort((a, b) => b.fecha.localeCompare(a.fecha))[0]
+                        return (
+                          <>
+                            <div className="font-bold font-mono text-sm" style={{ color: '#00e676' }}>+{ult.kg.toFixed(1)} kg</div>
+                            <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>{formatFecha(ult.fecha)}</div>
+                          </>
+                        )
+                      })() : (
+                        <div className="text-xs font-mono mt-1" style={{ color: '#3d5068' }}>Sin ingresos</div>
+                      )}
+                    </div>
+
+                    {/* Duración estimada */}
+                    <div
+                      className="rounded-xl px-4 py-3 text-center"
+                      style={{
+                        background: diasEstimados < 7 ? 'rgba(255,61,87,0.08)' : diasEstimados < 14 ? 'rgba(255,179,0,0.07)' : 'rgba(0,230,118,0.06)',
+                        border: `1px solid ${diasEstimados < 7 ? 'rgba(255,61,87,0.3)' : diasEstimados < 14 ? 'rgba(255,179,0,0.25)' : 'rgba(0,230,118,0.2)'}`,
+                      }}
+                    >
+                      <div className="text-xs font-mono mb-1" style={{ color: '#4a5f7a' }}>Duración estimada</div>
+                      {diasEstimados ? (
+                        <>
+                          <div
+                            className="text-xl font-bold font-mono"
+                            style={{ color: diasEstimados < 7 ? '#ff6b80' : diasEstimados < 14 ? '#ffb300' : '#00e676' }}
+                          >
+                            {diasEstimados} días
+                          </div>
+                          <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
+                            {fechaAgotamiento}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-xs font-mono mt-1" style={{ color: '#3d5068' }}>—</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {ingresosPostCenso.length > 0 && (
+                    <div className="mt-3 text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                      {ingresosPostCenso.length} ingreso{ingresosPostCenso.length > 1 ? 's' : ''} post-censo: +{ingresosPostCenso.reduce((s, i) => s + i.kg, 0).toFixed(1)} kg sumados al stock
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* ── Desglose por bioterio ── */}
@@ -488,7 +554,6 @@ export default function ConsumoAlimento() {
 
                   return (
                     <div key={id} className="rounded-xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.6)', border: `1px solid ${cfg.color}25` }}>
-                      {/* Encabezado */}
                       <div className="px-5 py-3 flex items-center gap-3" style={{ borderBottom: `1px solid ${cfg.color}15`, background: `${cfg.color}07` }}>
                         <span className="text-lg">{cfg.icon}</span>
                         <div className="flex-1">
@@ -504,14 +569,13 @@ export default function ConsumoAlimento() {
                         </div>
                       </div>
 
-                      {/* Categorías */}
                       {tieneData ? (
                         <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
-                          <FilaCategoria label="Hembras lactantes" dato={d.reproLactantes} tasaMin={tasas.lactante.min} tasaMax={tasas.lactante.max} color="#ce93d8" />
-                          <FilaCategoria label="Reproductores (resto)" dato={d.reproOtros} tasaMin={tasas.repro.min} tasaMax={tasas.repro.max} color="#40c4ff" />
-                          <FilaCategoria label="Crías en stock" dato={d.stockCrias} tasaMin={tasas.crias.min} tasaMax={tasas.crias.max} color="#00e676" />
-                          <FilaCategoria label="Jóvenes en stock" dato={d.stockJovenes} tasaMin={tasas.jovenes.min} tasaMax={tasas.jovenes.max} color="#ffb300" />
-                          <FilaCategoria label="Adultos en stock" dato={d.stockAdultos} tasaMin={tasas.adultos.min} tasaMax={tasas.adultos.max} color="#ff6b80" />
+                          <FilaCategoria label="Hembras lactantes"     dato={d.reproLactantes} tasaMin={tasas.lactante.min} tasaMax={tasas.lactante.max} color="#ce93d8" />
+                          <FilaCategoria label="Reproductores (resto)" dato={d.reproOtros}     tasaMin={tasas.repro.min}    tasaMax={tasas.repro.max}    color="#40c4ff" />
+                          <FilaCategoria label="Crías en stock"        dato={d.stockCrias}     tasaMin={tasas.crias.min}    tasaMax={tasas.crias.max}    color="#00e676" />
+                          <FilaCategoria label="Jóvenes en stock"      dato={d.stockJovenes}   tasaMin={tasas.jovenes.min}  tasaMax={tasas.jovenes.max}  color="#ffb300" />
+                          <FilaCategoria label="Adultos en stock"      dato={d.stockAdultos}   tasaMin={tasas.adultos.min}  tasaMax={tasas.adultos.max}  color="#ff6b80" />
                         </div>
                       ) : (
                         <div className="px-5 py-4 text-xs font-mono" style={{ color: '#3d5068' }}>
@@ -524,91 +588,101 @@ export default function ConsumoAlimento() {
               </div>
             </div>
 
-            {/* ── Sistema adaptativo ── */}
-            <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(64,196,255,0.18)' }}>
-              <div className="px-6 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(64,196,255,0.12)', background: 'rgba(64,196,255,0.04)' }}>
-                <TrendingUp size={18} style={{ color: '#40c4ff' }} />
+            {/* ── Movimientos de stock ── */}
+            <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(167,139,250,0.18)' }}>
+              <div className="px-6 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(167,139,250,0.12)', background: 'rgba(167,139,250,0.04)' }}>
+                <ClipboardList size={18} style={{ color: '#a78bfa' }} />
                 <div className="flex-1">
-                  <div className="font-bold text-sm text-white">Sistema adaptativo</div>
+                  <div className="font-bold text-sm text-white">Movimientos de stock</div>
                   <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
-                    Registrá cada compra para calibrar el consumo real con el tiempo
+                    Censos = fuente del cálculo real · Ingresos = compras que suman al stock
                   </div>
                 </div>
-                <button
-                  onClick={() => setModalCompra(true)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono font-semibold"
-                  style={{ background: 'rgba(64,196,255,0.1)', border: '1px solid rgba(64,196,255,0.3)', color: '#40c4ff' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(64,196,255,0.18)' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(64,196,255,0.1)' }}
-                >
-                  <Plus size={13} />
-                  Registrar compra
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setModalCenso(true)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono font-semibold"
+                    style={{ background: 'rgba(167,139,250,0.1)', border: '1px solid rgba(167,139,250,0.3)', color: '#a78bfa' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.18)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.1)' }}
+                  >
+                    <ClipboardList size={13} />
+                    Registrar censo
+                  </button>
+                  <button
+                    onClick={() => setModalIngreso(true)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono font-semibold"
+                    style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,230,118,0.15)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,230,118,0.08)' }}
+                  >
+                    <ShoppingBag size={13} />
+                    Registrar ingreso
+                  </button>
+                </div>
               </div>
 
-              {/* Compra activa */}
-              {compraAbierta && (
-                <div className="px-6 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div className="text-xs font-mono uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>Período actual</div>
-                  <div className="rounded-xl px-4 py-3 flex items-center gap-4" style={{ background: 'rgba(0,230,118,0.05)', border: '1px solid rgba(0,230,118,0.2)' }}>
-                    <div>
-                      <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Desde</div>
-                      <div className="font-bold text-sm text-white">{formatFecha(compraAbierta.fecha)}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Cantidad</div>
-                      <div className="font-bold text-sm" style={{ color: '#00e676' }}>{compraAbierta.cantidad_kg} kg</div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Días transcurridos</div>
-                      <div className="font-bold text-sm text-white">
-                        {difDias(parseDate(compraAbierta.fecha), parseDate(hoy()))} días
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Duración estimada</div>
-                      <div className="font-bold text-sm text-white">{compraAbierta.dias_estimados} días</div>
-                    </div>
-                    <button
-                      onClick={cerrarCompraActual}
-                      className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono"
-                      style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)', color: '#ff6b80' }}
-                    >
-                      <CheckCircle size={12} />
-                      Se agotó hoy
-                    </button>
-                  </div>
+              {/* Nota explicativa */}
+              <div className="px-6 py-3 text-xs font-mono space-y-1" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(255,255,255,0.01)', color: '#4a5f7a' }}>
+                <div>
+                  <span style={{ color: '#a78bfa' }}>📊 Censo</span>
+                  {' '}— pesaje real del stock actual. Es la fuente del aprendizaje adaptativo.
                 </div>
-              )}
+                <div>
+                  <span style={{ color: '#00e676' }}>📦 Ingreso</span>
+                  {' '}— compra o reposición. Suma al stock disponible sin alterar el historial de consumo.
+                </div>
+                <div style={{ color: '#3d5068' }}>
+                  Consumo real = censo anterior + ingresos del período − censo actual
+                </div>
+              </div>
 
-              {/* Historial de compras */}
-              {compras.filter(c => c.cerrado).length > 0 && (
-                <div className="px-6 py-4">
-                  <div className="text-xs font-mono uppercase tracking-widest mb-3" style={{ color: '#4a5f7a' }}>Historial de períodos</div>
-                  <div className="space-y-2">
-                    {[...compras].filter(c => c.cerrado).reverse().slice(0, 6).map(c => {
-                      const realGDia = (c.cantidad_kg * 1000) / c.dias_reales
-                      const diferencia = realGDia - c.consumo_estimado_g_dia
-                      const pct = Math.round(Math.abs(diferencia) / c.consumo_estimado_g_dia * 100)
+              {/* Timeline */}
+              {movimientos.length === 0 ? (
+                <div className="px-6 py-8 text-center text-sm font-mono" style={{ color: '#3d5068' }}>
+                  Aún no hay registros. Empezá con un censo del alimento disponible.
+                </div>
+              ) : (
+                <div className="px-6 py-4 space-y-2 max-h-80 overflow-y-auto">
+                  {movimientos.map((mov) => {
+                    if (mov.tipo === 'censo') {
+                      const idxEnOrden = censosOrdenados.findIndex(c => c.id === mov.id)
+                      const consumo = consumoPorCenso(mov, idxEnOrden)
                       return (
-                        <div key={c.id} className="rounded-lg px-4 py-2.5 flex items-center gap-3 text-xs font-mono" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                          <div style={{ color: '#6a8099' }}>{formatFecha(c.fecha)}</div>
-                          <div className="text-white font-semibold">{c.cantidad_kg} kg</div>
-                          <div style={{ color: '#4a5f7a' }}>{c.dias_reales} días reales / {c.dias_estimados} estimados</div>
-                          <div style={{ color: diferencia > 0 ? '#ff6b80' : '#00e676' }}>
-                            {diferencia > 0 ? `+${pct}%` : `-${pct}%`}
+                        <div key={mov.id} className="rounded-xl px-4 py-3 flex items-start gap-3" style={{ background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.18)' }}>
+                          <div className="text-base mt-0.5">📊</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-bold font-mono" style={{ color: '#a78bfa' }}>Censo</span>
+                              <span className="text-xs font-mono text-white">{mov.kg.toFixed(1)} kg</span>
+                              <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{formatFecha(mov.fecha)}</span>
+                            </div>
+                            {consumo && (
+                              <div className="text-xs font-mono mt-1" style={{ color: '#6a8099' }}>
+                                Consumo del período: {(consumo.consumidoG / 1000).toFixed(2)} kg en {consumo.dias} días
+                                {' · '}{Math.round(consumo.realGDia)} g/día
+                              </div>
+                            )}
                           </div>
-                          <button onClick={() => eliminarCompra(c.id)} className="ml-auto" style={{ color: '#2a3a50' }} title="Eliminar">✕</button>
+                          <button onClick={() => eliminarCensoItem(mov.id)} className="text-xs shrink-0" style={{ color: '#2a3a50' }} title="Eliminar">✕</button>
                         </div>
                       )
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {compras.length === 0 && (
-                <div className="px-6 py-8 text-center text-sm font-mono" style={{ color: '#3d5068' }}>
-                  Aún no hay registros. Registrá tu próxima compra de alimento para empezar a calibrar el sistema.
+                    } else {
+                      return (
+                        <div key={mov.id} className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: 'rgba(0,230,118,0.04)', border: '1px solid rgba(0,230,118,0.12)' }}>
+                          <div className="text-base">📦</div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-bold font-mono" style={{ color: '#00e676' }}>Ingreso</span>
+                              <span className="text-xs font-mono text-white">+{mov.kg.toFixed(1)} kg</span>
+                              <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{formatFecha(mov.fecha)}</span>
+                            </div>
+                          </div>
+                          <button onClick={() => eliminarIngresoItem(mov.id)} className="text-xs shrink-0" style={{ color: '#2a3a50' }} title="Eliminar">✕</button>
+                        </div>
+                      )
+                    }
+                  })}
                 </div>
               )}
             </div>
@@ -618,7 +692,7 @@ export default function ConsumoAlimento() {
               <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(255,255,255,0.07)' }}>
                 <div className="px-6 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                   <div className="font-bold text-sm text-white">Consumo estimado vs. real — histórico</div>
-                  <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>kg/día por período de compra</div>
+                  <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>kg/día por par de censos</div>
                 </div>
                 <div className="px-4 py-4" style={{ height: 220 }}>
                   <ResponsiveContainer width="100%" height="100%">
@@ -634,7 +708,7 @@ export default function ConsumoAlimento() {
                       />
                       <Legend formatter={v => v === 'estimado' ? 'Estimado' : 'Real'} wrapperStyle={{ fontSize: 12, fontFamily: 'monospace', color: '#6a8099' }} />
                       <Bar dataKey="estimado" fill="rgba(255,179,0,0.5)"  radius={[4,4,0,0]} />
-                      <Bar dataKey="real"      fill="rgba(0,230,118,0.6)"  radius={[4,4,0,0]} />
+                      <Bar dataKey="real"      fill="rgba(0,230,118,0.6)" radius={[4,4,0,0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -651,11 +725,19 @@ export default function ConsumoAlimento() {
         )}
       </div>
 
-      {/* Modal: Registrar compra */}
-      {modalCompra && (
-        <ModalRegistrarCompra
-          onConfirmar={registrarCompra}
-          onCerrar={() => setModalCompra(false)}
+      {/* Modales */}
+      {modalCenso && (
+        <ModalCensoAlimento
+          stockActualKg={stockActualKg}
+          onConfirmar={registrarCenso}
+          onCerrar={() => setModalCenso(false)}
+        />
+      )}
+      {modalIngreso && (
+        <ModalIngreso
+          stockActualKg={stockActualKg}
+          onConfirmar={registrarIngreso}
+          onCerrar={() => setModalIngreso(false)}
         />
       )}
     </div>
@@ -680,29 +762,29 @@ function FilaCategoria({ label, dato, tasaMin, tasaMax, color }) {
   )
 }
 
-function ModalRegistrarCompra({ onConfirmar, onCerrar }) {
-  const [fecha, setFecha]       = useState(hoy())
-  const [cantidad, setCantidad] = useState('')
+function ModalCensoAlimento({ stockActualKg, onConfirmar, onCerrar }) {
+  const [fecha, setFecha] = useState(hoy())
+  const [kg, setKg]       = useState('')
 
   function confirmar(e) {
     e.preventDefault()
-    const kg = parseFloat(cantidad)
-    if (!kg || kg <= 0) return
-    onConfirmar(fecha, kg)
+    const v = parseFloat(kg)
+    if (!v || v < 0) return
+    onConfirmar(fecha, v)
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(5,8,16,0.85)', backdropFilter: 'blur(4px)' }}>
-      <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(64,196,255,0.25)', boxShadow: '0 0 60px rgba(64,196,255,0.1)' }}>
-        <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(64,196,255,0.12)', background: 'rgba(64,196,255,0.04)' }}>
-          <div className="font-bold text-white text-sm">Registrar compra de alimento</div>
-          <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
-            Esto cierra el período anterior y abre uno nuevo
+      <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(167,139,250,0.3)', boxShadow: '0 0 60px rgba(167,139,250,0.12)' }}>
+        <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(167,139,250,0.15)', background: 'rgba(167,139,250,0.05)' }}>
+          <div className="font-bold text-white text-sm">📊 Registrar censo de alimento</div>
+          <div className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
+            Pesá el alimento disponible ahora mismo
           </div>
         </div>
         <form onSubmit={confirmar} className="px-6 py-5 space-y-4">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>Fecha de compra</label>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>Fecha del censo</label>
             <input
               type="date"
               value={fecha}
@@ -713,19 +795,39 @@ function ModalRegistrarCompra({ onConfirmar, onCerrar }) {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>Cantidad (kg)</label>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
+              Alimento disponible (kg)
+            </label>
             <input
               type="number"
-              min="0.5"
+              min="0"
               step="0.5"
-              value={cantidad}
-              onChange={e => setCantidad(e.target.value)}
-              placeholder="Ej: 25"
+              value={kg}
+              onChange={e => setKg(e.target.value)}
+              placeholder="Ej: 18.5"
               required
               className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
               style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }}
             />
           </div>
+
+          {stockActualKg !== null && kg && parseFloat(kg) >= 0 && (
+            <div className="rounded-xl px-4 py-3 text-xs font-mono space-y-1"
+              style={{ background: 'rgba(167,139,250,0.07)', border: '1px solid rgba(167,139,250,0.18)' }}>
+              <div style={{ color: '#a78bfa' }}>Vista previa</div>
+              <div style={{ color: '#8a9bb0' }}>
+                Stock anterior: <span className="text-white">{stockActualKg.toFixed(1)} kg</span>
+                {' → '}
+                Nuevo stock: <span className="text-white">{parseFloat(kg || 0).toFixed(1)} kg</span>
+              </div>
+              {stockActualKg - parseFloat(kg || 0) > 0 && (
+                <div style={{ color: '#6a8099' }}>
+                  Consumo registrado: {(stockActualKg - parseFloat(kg)).toFixed(1)} kg
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex gap-3 pt-1">
             <button
               type="button"
@@ -738,9 +840,92 @@ function ModalRegistrarCompra({ onConfirmar, onCerrar }) {
             <button
               type="submit"
               className="flex-1 py-2.5 rounded-xl text-sm font-bold"
-              style={{ background: 'rgba(64,196,255,0.12)', border: '1px solid rgba(64,196,255,0.4)', color: '#40c4ff' }}
+              style={{ background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.4)', color: '#a78bfa' }}
             >
-              Registrar
+              Guardar censo
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function ModalIngreso({ stockActualKg, onConfirmar, onCerrar }) {
+  const [fecha, setFecha] = useState(hoy())
+  const [kg, setKg]       = useState('')
+
+  const nuevoStock = stockActualKg !== null && kg
+    ? (stockActualKg + parseFloat(kg || 0)).toFixed(1)
+    : null
+
+  function confirmar(e) {
+    e.preventDefault()
+    const v = parseFloat(kg)
+    if (!v || v <= 0) return
+    onConfirmar(fecha, v)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(5,8,16,0.85)', backdropFilter: 'blur(4px)' }}>
+      <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(0,230,118,0.25)', boxShadow: '0 0 60px rgba(0,230,118,0.08)' }}>
+        <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(0,230,118,0.12)', background: 'rgba(0,230,118,0.04)' }}>
+          <div className="font-bold text-white text-sm">📦 Registrar ingreso de alimento</div>
+          <div className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
+            Suma al stock disponible · No modifica el historial de consumo
+          </div>
+        </div>
+        <form onSubmit={confirmar} className="px-6 py-5 space-y-4">
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>Fecha del ingreso</label>
+            <input
+              type="date"
+              value={fecha}
+              onChange={e => setFecha(e.target.value)}
+              required
+              className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
+              style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
+              Cantidad ingresada (kg)
+            </label>
+            <input
+              type="number"
+              min="0.5"
+              step="0.5"
+              value={kg}
+              onChange={e => setKg(e.target.value)}
+              placeholder="Ej: 25"
+              required
+              className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
+              style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }}
+            />
+          </div>
+
+          {nuevoStock && (
+            <div className="rounded-xl px-4 py-3 text-xs font-mono" style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.2)' }}>
+              <span style={{ color: '#4a5f7a' }}>Stock después del ingreso: </span>
+              <span className="font-bold" style={{ color: '#00e676' }}>{nuevoStock} kg</span>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-1">
+            <button
+              type="button"
+              onClick={onCerrar}
+              className="flex-1 py-2.5 rounded-xl text-sm font-mono"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a' }}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+              style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.4)', color: '#00e676' }}
+            >
+              Guardar ingreso
             </button>
           </div>
         </form>

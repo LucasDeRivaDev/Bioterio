@@ -344,12 +344,21 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
   - **Conteo de jaulas:** `resumen.totalJaulas` excluye las jaulas de hembras en apareamiento. El resumen superior muestra "X jaulas ocupadas · Y jaulas temporalmente vacías (hembras en apareamiento)" cuando hay hembras en ese estado. Los animales siguen contándose igual en `totalAnimales`.
   - **Reactivación automática:** cuando se confirma la separación de la pareja, la hembra pasa a `en_cria` → el bloque vuelve a verse normal sin ninguna acción adicional.
 
-- **Sistema adaptativo de predicción de consumo de viruta (10/05/2026):** nueva página `ConsumoViruta.jsx`, accesible desde SelectorBioterio → "🪵 Consumo de viruta / camas" (botón violeta, `bioterioActivo = 'viruta_global'`).
-  - **Tipos de jaula con peso de viruta por cambio:** macho reproductor (1.2 kg), hembra repro / adultos stock (1.0 kg), jóvenes stock (0.7 kg), crías stock / ratón estándar (0.5 kg). Cambios: 2 por semana.
-  - **Modal de censo:** entrada en bolsas con `step="0.25"`. Botones de fracción rápida: Entera / ¼ / ½ / ¾. Preview de kg antes de guardar. Historial de censos en localStorage.
-  - **Panel predictivo (3 métricas):** viruta disponible (bolsas + kg) / consumo estimado por semana (bolsas) / duración estimada (semanas). Alertas de color: crítico <2 sem (rojo), bajo <4 sem (naranja), ok/bien (verde).
-  - **Tarjetas por tipo de jaula:** fórmula visible `n × peso × 2 cambios/sem = result`. Jaulas de ratas: grande/mediana/chica/macho; ratones: estándar.
-  - **Calibración adaptativa:** aprende la tasa real de consumo comparando pares de censos. Tasa = `(bolsas_consumidas / semanas) / uAvg`. Persiste en localStorage. Fallback a `TASA_DEFAULT = 0.08` si no hay historial.
+- **Sistema separado de censos y compras — viruta y alimento (11/05/2026):** reescritura de `ConsumoViruta.jsx` y `ConsumoAlimento.jsx` para separar los registros en dos acciones distintas.
+  - **Principio:** censos = única fuente del aprendizaje adaptativo; ingresos/compras = reposiciones que suman al stock sin alterar el historial.
+  - **Fórmula:** `consumo real = censo_anterior + ingresos_en_período − censo_actual`
+  - **Stock actual:** `stockActual = ultimoCenso + sum(ingresos donde fecha >= ultimoCenso.fecha)`
+  - **Duración estimada:** auto-calculada desde stockActual (sin campo manual).
+  - **Viruta** — LS keys: `appMosca_viruta_censos` + `appMosca_viruta_compras`. Censos en bolsas (step 0.25), compras suman al stock.
+  - **Alimento** — LS keys: `appMosca_alimento_censos` + `appMosca_alimento_ingresos`. Censos en kg, ingresos suman al stock.
+  - **Dos botones de acción:** "📊 Registrar censo" (violeta) + "📦 Registrar ingreso/compra" (verde).
+  - **Nota explicativa** en la sección de movimientos: qué hace cada tipo de registro.
+  - **Timeline unificado** de censos + ingresos ordenados por fecha descendente con consumo calculado por par de censos.
+  - **Calibración adaptativa (viruta):** aprende la tasa real comparando pares de censos. Tasa = `(bolsas_consumidas / semanas) / uAvg`. Persiste en localStorage. Fallback a `TASA_DEFAULT = 0.08`.
+  - **Calibración adaptativa (alimento):** factor = `realGDia / estimadoGDia` promediado entre pares de censos. Factor persiste implícito; `consumoAjustado = global.mid × factor`.
+  - **ConsumoViruta:** tipos de jaula (macho repro 1.2 kg / hembra repro y adultos stock 1.0 kg / jóvenes 0.7 kg / crías y ratón estándar 0.5 kg), 2 cambios/semana. Panel predictivo: stock disponible / consumo semanal / duración con alertas de color.
+
+- **Sistema adaptativo de predicción de consumo de viruta — versión original (10/05/2026):** nueva página `ConsumoViruta.jsx`, accesible desde SelectorBioterio → "🪵 Consumo de viruta / camas" (botón violeta, `bioterioActivo = 'viruta_global'`). Reemplazada el 11/05 por la versión con censos + ingresos separados.
 
 - **Temperatura centralizada por bioterio físico (10/05/2026):** `Temperatura.jsx` rediseñada para gestionar temperatura por espacio físico real, no por subcolonia.
   - **2 tabs fijos:** "🐀 Bioterio de Ratas" y "🐭 Bioterio de Ratones" — independientes del bioterio activo actual.
@@ -463,7 +472,9 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
 - **Ciclo de estado de la madre (automático desde `editarCamada`):** al guardar `fecha_separacion` nueva → madre pasa de `en_apareamiento` a `en_cria` (jaula se reactiva). Al guardar `fecha_nacimiento` nueva → mismo cambio como safety net. Al guardar `fecha_destete` nueva → madre pasa de `en_cria` a `activo` (disponible para nuevo ciclo). Aplica tanto a animales propios como a exportados (Híbridos).
 - **animalesExportados en contexto:** array separado cargado solo cuando `bioterioActivo === 'ratones_hibridos'`. Contiene reproductores de BAL/C y C57 marcados con `exportado_hibridos: true`. `agregarCamada` y `confirmarSeparacion` buscan la madre en ambos arrays.
 - **Temperatura sin dependencia de bioterio activo:** `Temperatura.jsx` hace queries directas a Supabase con IDs fijos (`'ratas'` e `IN ['ratones', 'ratones_balbc', 'ratones_c57', 'ratones_hibridos']`). Registros nuevos siempre usan `'ratas'` o `'ratones'`. Datos legacy de subgrupos siguen apareciendo en la tab de Ratones.
+- **ConsumoViruta y ConsumoAlimento — censos vs ingresos:** censos son la única fuente del aprendizaje adaptativo. Ingresos/compras suman al stock pero no alteran el historial. `stockActual = ultimoCenso + sum(ingresos fecha >= ultimoCenso.fecha)`. Duración estimada = `stockActual / consumoEstimado`. LS keys viruta: `appMosca_viruta_censos` + `appMosca_viruta_compras`. LS keys alimento: `appMosca_alimento_censos` + `appMosca_alimento_ingresos`.
 - **ConsumoViruta — tasa adaptativa:** aprende del consumo real comparando pares de censos consecutivos. Tasa calibrada = `(consumo_bolsas / semanas) / uAvg`. Se guarda en localStorage. Si no hay historial suficiente, usa `TASA_DEFAULT = 0.08`. Predicción: disponible / consumo_estimado_sem / duración_semanas con alertas de color (crítico <2 sem, bajo <4 sem, ok).
+- **ConsumoAlimento — factor de calibración:** `factor = realGDia / estimadoGDia` promediado entre todos los pares de censos. `consumoAjustado = global.mid × factor`. `realGDia = (prev.kg + ingresos_kg - cur.kg) × 1000 / dias`. Si no hay pares, usa `global.mid` sin ajuste.
 - **ResumenRatones — jaulas por categoría:** `calcularStockGrupo` devuelve `jaulasCrias`, `jaulasJovenes`, `jaulasAdultos` además del total. `TarjetaEdad` muestra "N jaulas" bajo el número. `MiniCat` muestra "cantidad (jaulas)" inline.
 - **Notas del calendario** se guardan en localStorage key `appMosca_notas_{bioterioActivo}`. Estructura: `{ id, bioterioActivo, fecha, titulo, descripcion, completada, created_at }`. Las notas completadas no generan punto en el grid pero siguen visibles en el panel lateral del día. El Dashboard solo muestra notas con `fecha <= hoy` y `completada: false`.
 - **getAnimalesReservados(bioterioActivo)** lee los planes de apareamiento del localStorage y devuelve un `Map<animalId, {fecha, planId}>` con animales reservados. Solo planes `!completado && fecha_planificada >= hoy`. Extrae el animal ID de `bloqueId.slice(2)` cuando `tipo === 'reproductor'`. Usada en Animales.jsx, Stock.jsx (BloqueJaula + ModalSacrificio + ModalEntrega) y CamadaForm.jsx. No bloquea operaciones — solo avisa.
