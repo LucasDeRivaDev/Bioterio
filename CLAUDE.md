@@ -1,5 +1,14 @@
 # AppMosca — Bioterio 🧬
 
+## Protocolo de trabajo
+
+> **Regla:** después de cada commit que agregue una **feature nueva** (no fixes ni refactors), actualizar este CLAUDE.md con:
+> - La descripción de la feature en "Implementado recientemente"
+> - El comportamiento de datos relevante en "Comportamientos de datos importantes" (si aplica)
+> - La tabla de módulos en "Qué hace" si cambia la funcionalidad visible
+
+---
+
 ## Qué es
 Sistema web de gestión de una colonia de ratones de laboratorio (*Mus musculus*). Permite registrar animales reproductores, hacer seguimiento de camadas, predecir partos, controlar stock de crías, registrar temperatura ambiental y evaluar el desempeño reproductivo de los animales.
 
@@ -12,7 +21,7 @@ Sistema web de gestión de una colonia de ratones de laboratorio (*Mus musculus*
 | **Dashboard** | Alertas del día, tareas vencidas/próximas, tabla de preñeces activas, alertas de ciclo estral y gestación |
 | **Animales** | CRUD de reproductores con filtros por sexo y estado. Hembras: sección "Ciclo Estral y Reproducción Predictiva" con registro de extendidos, predicción de receptividad y seguimiento gestacional |
 | **Camadas** | Registro de cópulas, seguimiento de preñez, destete, separación de pareja, scores reproductivos, análisis de confiabilidad de hembras y detección de fallos |
-| **Calendario** | Vista mensual con eventos reproductivos coloreados + planificación de apareamientos futuros desde el día seleccionado |
+| **Calendario** | Vista mensual con eventos reproductivos coloreados + planificación de apareamientos futuros + sistema de notas y recordatorios personalizados |
 | **Stock** | Bloques visuales por jaula con display de sexo coloreado (♂ azul / ♀ violeta / mixto bicolor), edición/división/movimiento de animales, entrega y sacrificio en masa. Cada bloque muestra calidad de padres (Alta/Media/Baja) sin necesidad de abrir el modal |
 | **Sacrificios** | Selección múltiple de jaulas desde stock para registrar sacrificios en masa |
 | **Entregas** | Historial de animales entregados a investigadores, con buscador y resumen numérico |
@@ -393,6 +402,28 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
   - Nueva entrada en leyenda: "Apareamiento planif." (violeta `#a78bfa`)
   - **SQL necesario:** ninguno — usa localStorage igual que Stock.
 
+- **Sistema de notas y recordatorios en el calendario (10/05/2026):** permite agregar notas y recordatorios personalizados a cualquier día del calendario.
+  - Nueva entrada `nota` en `TIPOS` con color ámbar (`#fbbf24`)
+  - Storage en localStorage: key `appMosca_notas_{bioterioActivo}`, separado por colonia
+  - Botón amarillo "📝 Agregar nota / recordatorio" en el panel lateral al seleccionar cualquier día
+  - `ModalNota`: título opcional + descripción requerida. Enter guarda, Esc cierra
+  - Acciones por nota en el panel lateral: ✓ Hecho / ↩ Reabrir / ✕ Eliminar
+  - Notas completadas se muestran tachadas con opacidad reducida (visibles pero no molestas)
+  - Punto ámbar en el grid del calendario para días con notas pendientes
+  - Vista de mes (sin día seleccionado): sección "Notas pendientes" al tope con acciones rápidas
+  - Dashboard: sección "📝 Recordatorios" con notas del día y notas vencidas. Notas vencidas en rojo, notas de hoy en amarillo
+  - **SQL necesario:** ninguno — localStorage igual que planes de apareamiento.
+  - **Estructura de una nota:** `{ id, bioterioActivo, fecha, titulo, descripcion, completada, created_at }`
+
+- **Marcado de animales reservados para apareamientos futuros (11/05/2026):** identifica visualmente animales que ya fueron seleccionados para un apareamiento planificado, para evitar sacrificios o movimientos no intencionales.
+  - Nueva función `getAnimalesReservados(bioterioActivo)` en `calculos.js` — lee el localStorage y devuelve `Map<animalId, { fecha, planId }>`. Solo incluye planes no completados con `fecha_planificada >= hoy`.
+  - La reserva desaparece automáticamente cuando el plan se marca como ✓ Hecho o se descarta.
+  - **Animales.jsx:** badge naranja `🗓 Reservado · DD/MM` junto al código del animal en la tabla
+  - **Stock.jsx (BloqueJaula):** badge naranja en la tarjeta del reproductor con fecha del apareamiento
+  - **Stock.jsx (ModalSacrificio / ModalEntrega):** banner de advertencia naranja si algún reproductor seleccionado está reservado. Muestra código y fecha. Permite continuar (no bloquea).
+  - **CamadaForm.jsx:** la opción en el select dice `H12 🗓 Reservada`; aviso naranja bajo el selector cuando el animal seleccionado tiene plan futuro.
+  - **SQL necesario:** ninguno — todo derivado del localStorage.
+
 ---
 
 ## Comportamientos de datos importantes
@@ -415,6 +446,8 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
 - **Temperatura sin dependencia de bioterio activo:** `Temperatura.jsx` hace queries directas a Supabase con IDs fijos (`'ratas'` e `IN ['ratones', 'ratones_balbc', 'ratones_c57', 'ratones_hibridos']`). Registros nuevos siempre usan `'ratas'` o `'ratones'`. Datos legacy de subgrupos siguen apareciendo en la tab de Ratones.
 - **ConsumoViruta — tasa adaptativa:** aprende del consumo real comparando pares de censos consecutivos. Tasa calibrada = `(consumo_bolsas / semanas) / uAvg`. Se guarda en localStorage. Si no hay historial suficiente, usa `TASA_DEFAULT = 0.08`. Predicción: disponible / consumo_estimado_sem / duración_semanas con alertas de color (crítico <2 sem, bajo <4 sem, ok).
 - **ResumenRatones — jaulas por categoría:** `calcularStockGrupo` devuelve `jaulasCrias`, `jaulasJovenes`, `jaulasAdultos` además del total. `TarjetaEdad` muestra "N jaulas" bajo el número. `MiniCat` muestra "cantidad (jaulas)" inline.
+- **Notas del calendario** se guardan en localStorage key `appMosca_notas_{bioterioActivo}`. Estructura: `{ id, bioterioActivo, fecha, titulo, descripcion, completada, created_at }`. Las notas completadas no generan punto en el grid pero siguen visibles en el panel lateral del día. El Dashboard solo muestra notas con `fecha <= hoy` y `completada: false`.
+- **getAnimalesReservados(bioterioActivo)** lee los planes de apareamiento del localStorage y devuelve un `Map<animalId, {fecha, planId}>` con animales reservados. Solo planes `!completado && fecha_planificada >= hoy`. Extrae el animal ID de `bloqueId.slice(2)` cuando `tipo === 'reproductor'`. Usada en Animales.jsx, Stock.jsx (BloqueJaula + ModalSacrificio + ModalEntrega) y CamadaForm.jsx. No bloquea operaciones — solo avisa.
 
 ---
 
