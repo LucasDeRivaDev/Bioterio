@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
-import { difDias, parseDate, hoy, formatFecha, calcularPerfilHembra, calcularRendimientoMacho } from '../utils/calculos'
+import { difDias, parseDate, hoy, formatFecha, calcularPerfilHembra, calcularRendimientoMacho, getAnimalesReservados } from '../utils/calculos'
 import { generarId } from '../utils/storage'
 import Modal from '../components/Modal'
 import { TestTube2, FlaskConical, Microscope, UserPlus } from 'lucide-react'
@@ -202,7 +202,7 @@ function MiniCalidad({ icono, codigo, calidad, animal }) {
   )
 }
 
-function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccionada = false }) {
+function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccionada = false, animalesReservados = new Map() }) {
   const cfg = CAT[bloque.categoria]
   const esStock = bloque.tipo === 'stock'
 
@@ -218,6 +218,11 @@ function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccio
   const calMadre = esStock && bloque.madre && camadas ? calidadHembra(bloque.madre.id, camadas) : null
   const calPadre = esStock && bloque.padre && camadas ? calidadMacho(bloque.padre.id, camadas)  : null
   const mostrarCalidad = esStock && (bloque.madre || bloque.padre)
+
+  // Reserva de apareamiento — solo aplica a reproductores
+  const reserva = bloque.tipo === 'reproductor' && bloque.animal
+    ? animalesReservados.get(bloque.animal.id) ?? null
+    : null
 
   return (
     <button
@@ -288,6 +293,19 @@ function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccio
         <div className="text-xs" style={{ color: '#4a5f7a' }}>
           {bloque.edad != null ? `${formatEdad(bloque.edad)} · ${bloque.edad}d` : '—'}
         </div>
+
+        {/* Badge: reservado para apareamiento planificado */}
+        {reserva && (() => {
+          const [, m, d] = reserva.fecha.split('-')
+          return (
+            <div
+              className="text-xs px-2 py-1 rounded-lg font-semibold"
+              style={{ background: 'rgba(251,146,60,0.10)', border: '1px solid rgba(251,146,60,0.3)', color: '#fb923c' }}
+            >
+              🗓 Reservado · {d}/{m}
+            </div>
+          )
+        })()}
 
         {/* Badge de jaula temporalmente vacía */}
         {esEnApareamiento && (
@@ -1001,7 +1019,7 @@ function ModalPlanificarApareamiento({ bloquesMacho, bloquesHembra, onGuardar, o
   )
 }
 
-function ModalSacrificio({ bloques, onConfirmar, onCerrar }) {
+function ModalSacrificio({ bloques, onConfirmar, onCerrar, animalesReservados = new Map() }) {
   const [fecha, setFecha]       = useState(hoy())
   const [notas, setNotas]       = useState('')
   const [guardando, setGuardando] = useState(false)
@@ -1012,6 +1030,11 @@ function ModalSacrificio({ bloques, onConfirmar, onCerrar }) {
 
   const tieneRepros = bloques.some(b => b.tipo === 'reproductor')
   const tieneStock  = bloques.some(b => b.tipo === 'stock')
+
+  // Reproductores reservados para apareamiento que se están intentando sacrificar
+  const reprosReservados = bloques.filter(
+    (b) => b.tipo === 'reproductor' && b.animal && animalesReservados.has(b.animal.id)
+  )
   const total       = bloques.reduce((s, b) => s + (parseInt(cantidades[b.id]) || 0), 0)
   const cantOk      = bloques.every((b) => {
     const v = parseInt(cantidades[b.id]) || 0
@@ -1040,6 +1063,33 @@ function ModalSacrificio({ bloques, onConfirmar, onCerrar }) {
   return (
     <Modal titulo="Confirmar sacrificio" onCerrar={onCerrar} ancho="max-w-md">
       <div className="space-y-4">
+
+        {/* Advertencia: animales reservados */}
+        {reprosReservados.length > 0 && (
+          <div className="flex items-start gap-3 px-4 py-3 rounded-xl"
+            style={{ background: 'rgba(251,146,60,0.10)', border: '1px solid rgba(251,146,60,0.35)' }}>
+            <span className="text-xl shrink-0">🗓</span>
+            <div>
+              <div className="font-bold text-sm" style={{ color: '#fb923c' }}>
+                {reprosReservados.length === 1 ? 'Animal reservado para apareamiento' : 'Animales reservados para apareamiento'}
+              </div>
+              <div className="text-xs mt-1 space-y-0.5" style={{ color: '#c9d4e0' }}>
+                {reprosReservados.map((b) => {
+                  const r = animalesReservados.get(b.animal.id)
+                  const [, m, d] = r.fecha.split('-')
+                  return (
+                    <div key={b.id} className="font-mono">
+                      {b.animal.codigo} — apareamiento planificado el <span style={{ color: '#fb923c' }}>{d}/{m}</span>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="text-xs mt-1.5" style={{ color: '#4a5f7a' }}>
+                Podés continuar, pero se perderá el plan de apareamiento.
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Advertencia */}
         <div className="flex items-start gap-3 px-4 py-3 rounded-xl"
@@ -1149,12 +1199,17 @@ function ModalSacrificio({ bloques, onConfirmar, onCerrar }) {
   )
 }
 
-function ModalEntrega({ bloques, onConfirmar, onCerrar }) {
+function ModalEntrega({ bloques, onConfirmar, onCerrar, animalesReservados = new Map() }) {
   const [fecha,        setFecha]        = useState(hoy())
   const [observaciones, setObservaciones] = useState('')
   const [guardando,    setGuardando]    = useState(false)
   const [cantidades,   setCantidades]   = useState(() =>
     Object.fromEntries(bloques.map((b) => [b.id, b.total]))
+  )
+
+  // Reproductores reservados para apareamiento que se están intentando entregar
+  const reprosReservados = bloques.filter(
+    (b) => b.tipo === 'reproductor' && b.animal && animalesReservados.has(b.animal.id)
   )
 
   const total  = bloques.reduce((s, b) => s + (parseInt(cantidades[b.id]) || 0), 0)
@@ -1179,6 +1234,33 @@ function ModalEntrega({ bloques, onConfirmar, onCerrar }) {
   return (
     <Modal titulo="Registrar entrega" onCerrar={onCerrar} ancho="max-w-md">
       <div className="space-y-4">
+
+        {/* Advertencia: animales reservados */}
+        {reprosReservados.length > 0 && (
+          <div className="flex items-start gap-3 px-4 py-3 rounded-xl"
+            style={{ background: 'rgba(251,146,60,0.10)', border: '1px solid rgba(251,146,60,0.35)' }}>
+            <span className="text-xl shrink-0">🗓</span>
+            <div>
+              <div className="font-bold text-sm" style={{ color: '#fb923c' }}>
+                {reprosReservados.length === 1 ? 'Animal reservado para apareamiento' : 'Animales reservados para apareamiento'}
+              </div>
+              <div className="text-xs mt-1 space-y-0.5" style={{ color: '#c9d4e0' }}>
+                {reprosReservados.map((b) => {
+                  const r = animalesReservados.get(b.animal.id)
+                  const [, m, d] = r.fecha.split('-')
+                  return (
+                    <div key={b.id} className="font-mono">
+                      {b.animal.codigo} — apareamiento planificado el <span style={{ color: '#fb923c' }}>{d}/{m}</span>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="text-xs mt-1.5" style={{ color: '#4a5f7a' }}>
+                Podés continuar, pero se perderá el plan de apareamiento.
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Info */}
         <div className="flex items-start gap-3 px-4 py-3 rounded-xl"
@@ -1478,6 +1560,13 @@ function CategoriaCard({ icono, titulo, subtitulo, total, grupos, gruposLabel, m
 export default function Stock() {
   const { animales, camadas, sacrificios, entregas, jaulas, bio, bioterioActivo, agregarAnimal, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, registrarSacrificio, registrarEntrega, entregarReproductor } = useBioterio()
   const esHibridos = bioterioActivo === 'ratones_hibridos'
+
+  // Mapa de animales reservados para apareamiento planificado (se recalcula con el bioterio)
+  const animalesReservados = useMemo(
+    () => getAnimalesReservados(bioterioActivo),
+    [bioterioActivo, animales] // eslint-disable-line react-hooks/exhaustive-deps
+  )
+
   const [vista, setVista] = useState('jaulas')
   const [subVista, setSubVista] = useState(null)
   const [detalle, setDetalle] = useState(null)
@@ -1965,6 +2054,7 @@ if (subVista === 'sacrificios') {
                   onClick={modoSeleccion ? toggleSeleccion : setDetalle}
                   modoSeleccion={modoSeleccion}
                   seleccionada={seleccionadas.has(b.id)}
+                  animalesReservados={animalesReservados}
                 />
               ))}
             </div>
@@ -2113,6 +2203,7 @@ if (subVista === 'sacrificios') {
           bloques={bloques.filter((b) => seleccionadas.has(b.id))}
           onConfirmar={ejecutarSacrificio}
           onCerrar={() => setModalSacrificio(false)}
+          animalesReservados={animalesReservados}
         />
       )}
 
@@ -2122,6 +2213,7 @@ if (subVista === 'sacrificios') {
           bloques={bloques.filter((b) => seleccionadas.has(b.id))}
           onConfirmar={ejecutarEntrega}
           onCerrar={() => setModalEntrega(false)}
+          animalesReservados={animalesReservados}
         />
       )}
 

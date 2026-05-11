@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
-import { calcularRangoParto, calcularDestete, formatFecha, hoy, difDias, parseDate } from '../utils/calculos'
+import { calcularRangoParto, calcularDestete, formatFecha, hoy, difDias, parseDate, getAnimalesReservados } from '../utils/calculos'
 import { MAX_APAREAMIENTOS } from '../utils/constants'
 
 const vacioCamada = {
@@ -77,6 +77,9 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
   const [form, setForm] = useState(camada ? normalizarCamada(camada) : vacioCamada)
   const [errores, setErrores] = useState({})
   const [modoHistorico, setModoHistorico] = useState(false)
+
+  // Mapa de animales con apareamiento planificado futuro
+  const animalesReservados = getAnimalesReservados(bioterioActivo)
 
   // En Híbridos, incluir también los animales exportados de BAL/C y C57
   const esHibridos    = bioterioActivo === 'ratones_hibridos'
@@ -294,10 +297,12 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
               const d        = dispHembra(a)
               const bloqueada = !d.ok && !esOriginalMadre(a)
               const colonia   = labelColonia(a.bioterio_id)
+              const reservada = animalesReservados.has(a.id)
               return (
                 <option key={a.id} value={a.id} disabled={bloqueada}>
                   {a.codigo}{colonia ? ` (${colonia})` : ''}
                   {bloqueada ? ` — ${d.motivo}` : esInactivo(a) ? ` (${etiquetaEstado[a.estado] ?? a.estado})` : ''}
+                  {!bloqueada && reservada ? ` 🗓 Reservada` : ''}
                 </option>
               )
             })}
@@ -310,6 +315,16 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
                 ⚠ Hembra no disponible: {d.motivo}
               </p>
             ) : null
+          })()}
+          {/* Aviso si la hembra seleccionada tiene un apareamiento planificado */}
+          {madreSelec && animalesReservados.has(madreSelec.id) && (() => {
+            const r = animalesReservados.get(madreSelec.id)
+            const [, m, d] = r.fecha.split('-')
+            return (
+              <p className="text-xs mt-1 px-2 py-1 rounded-lg" style={{ background: 'rgba(251,146,60,0.08)', border: '1px solid rgba(251,146,60,0.25)', color: '#fb923c' }}>
+                🗓 Reservada para apareamiento planificado el {d}/{m}
+              </p>
+            )
           })()}
           {esInactivo(madreSelec) && fechaEsPasada && (
             <p className="text-xs mt-1" style={{ color: '#ffb300' }}>
@@ -329,10 +344,12 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
               const d        = dispMacho(a)
               const bloqueado = !d.ok && !esOriginalPadre(a)
               const colonia   = labelColonia(a.bioterio_id)
+              const reservado = animalesReservados.has(a.id)
               return (
                 <option key={a.id} value={a.id} disabled={bloqueado}>
                   {a.codigo}{colonia ? ` (${colonia})` : ''}
                   {bloqueado ? ` — ${d.motivo}` : esInactivo(a) ? ` (${etiquetaEstado[a.estado] ?? a.estado})` : ''}
+                  {!bloqueado && reservado ? ` 🗓 Reservado` : ''}
                 </option>
               )
             })}
@@ -345,6 +362,16 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
                 ⚠ Macho no disponible: {d.motivo}
               </p>
             ) : null
+          })()}
+          {/* Aviso si el macho seleccionado tiene un apareamiento planificado */}
+          {padreSelec && animalesReservados.has(padreSelec.id) && (() => {
+            const r = animalesReservados.get(padreSelec.id)
+            const [, m, d] = r.fecha.split('-')
+            return (
+              <p className="text-xs mt-1 px-2 py-1 rounded-lg" style={{ background: 'rgba(251,146,60,0.08)', border: '1px solid rgba(251,146,60,0.25)', color: '#fb923c' }}>
+                🗓 Reservado para apareamiento planificado el {d}/{m}
+              </p>
+            )
           })()}
           {esInactivo(padreSelec) && fechaEsPasada && (
             <p className="text-xs mt-1" style={{ color: '#ffb300' }}>

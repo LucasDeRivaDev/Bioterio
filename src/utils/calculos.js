@@ -1002,6 +1002,36 @@ export function calcularGestacionEstral(extendidos, bio = BIO) {
 /**
  * Genera alertas de ciclo estral y gestación para el Dashboard.
  */
+/**
+ * Lee los planes de apareamiento del localStorage y devuelve un Map con los
+ * animales reproductores reservados: Map<animalId, { fecha, planId }>
+ * Solo incluye planes futuros (hoy en adelante) y no completados.
+ */
+export function getAnimalesReservados(bioterioActivo) {
+  try {
+    const planes = JSON.parse(
+      localStorage.getItem(`appMosca_apareamientos_${bioterioActivo}`) || '[]'
+    )
+    const hoyStr = hoy()
+    const mapa = new Map()
+    planes
+      .filter((p) => !p.completado && p.fecha_planificada >= hoyStr)
+      .forEach((p) => {
+        if (p.macho?.tipo === 'reproductor' && p.macho.bloqueId?.startsWith('r-')) {
+          const id = p.macho.bloqueId.slice(2)
+          if (!mapa.has(id)) mapa.set(id, { fecha: p.fecha_planificada, planId: p.id })
+        }
+        if (p.hembra?.tipo === 'reproductor' && p.hembra.bloqueId?.startsWith('r-')) {
+          const id = p.hembra.bloqueId.slice(2)
+          if (!mapa.has(id)) mapa.set(id, { fecha: p.fecha_planificada, planId: p.id })
+        }
+      })
+    return mapa
+  } catch {
+    return new Map()
+  }
+}
+
 export function generarAlertasEstrales(animales, extendidos, bio = BIO) {
   const alertas = []
   const hembrasActivas = animales.filter(

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { supabase } from '../lib/supabase'
-import { formatFecha, difDias, parseDate, hoy, calcularPerfilHembra, calcularConfiabilidadHembra, calcularRendimientoMacho, detectarBajaPerformanceMacho } from '../utils/calculos'
+import { formatFecha, difDias, parseDate, hoy, calcularPerfilHembra, calcularConfiabilidadHembra, calcularRendimientoMacho, detectarBajaPerformanceMacho, getAnimalesReservados } from '../utils/calculos'
 import { MAX_APAREAMIENTOS, MACHO_EDAD_LIMITE_DIAS, MACHO_EDAD_ALERTA_DIAS } from '../utils/constants'
 import Modal from '../components/Modal'
 import AnimalForm from '../components/AnimalForm'
@@ -42,6 +42,12 @@ export default function Animales() {
   const [subVista,         setSubVista]         = useState(null)
   const [modalExportar,    setModalExportar]    = useState(false)
   const hoyStr = hoy()
+
+  // Mapa de animales con apareamiento planificado futuro
+  const animalesReservados = useMemo(
+    () => getAnimalesReservados(bioterioActivo),
+    [bioterioActivo, animales] // eslint-disable-line react-hooks/exhaustive-deps
+  )
 
   const filtrados = useMemo(() => {
     return animales.filter((a) => {
@@ -463,6 +469,20 @@ return (
                           🧬 Híbridos
                         </span>
                       )}
+                      {/* Badge: reservado para apareamiento planificado */}
+                      {animalesReservados.has(animal.id) && (() => {
+                        const r = animalesReservados.get(animal.id)
+                        const [, m, d] = r.fecha.split('-')
+                        return (
+                          <span
+                            className="ml-2 text-xs px-1.5 py-0.5 rounded font-semibold"
+                            style={{ background: 'rgba(251,146,60,0.12)', color: '#fb923c', border: '1px solid rgba(251,146,60,0.3)', fontSize: '10px' }}
+                            title={`Reservado para apareamiento planificado el ${d}/${m}`}
+                          >
+                            🗓 Reservado · {d}/{m}
+                          </span>
+                        )
+                      })()}
                     </td>
                     <td className="px-4 py-3 font-medium text-xs">
                       <span style={{ color: animal.sexo === 'hembra' ? '#ce93d8' : '#40c4ff' }}>
