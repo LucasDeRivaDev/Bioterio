@@ -1063,6 +1063,36 @@ export function getJaulasReservadas(bioterioActivo) {
   }
 }
 
+/**
+ * Lee los planes de apareamiento de la colonia Híbridos y devuelve un Map con
+ * los bloques (reproductores o jaulas) que pertenecen a `bioterioId` (BALB/C o C57)
+ * y están reservados para cruces F1.
+ * Map<bloqueId, { fecha, planId }>
+ * Solo planes futuros (hoy en adelante) y no completados.
+ */
+export function getReservadosParaHibridos(bioterioId) {
+  try {
+    const planes = JSON.parse(
+      localStorage.getItem('appMosca_apareamientos_ratones_hibridos') || '[]'
+    )
+    const hoyStr = hoy()
+    const mapa = new Map()
+    planes
+      .filter((p) => !p.completado && p.fecha_planificada >= hoyStr)
+      .forEach((p) => {
+        ;[p.macho, p.hembra].filter(Boolean).forEach((item) => {
+          if (item.bioterioOrigen === bioterioId && item.bloqueId) {
+            if (!mapa.has(item.bloqueId))
+              mapa.set(item.bloqueId, { fecha: p.fecha_planificada, planId: p.id })
+          }
+        })
+      })
+    return mapa
+  } catch {
+    return new Map()
+  }
+}
+
 export function generarAlertasEstrales(animales, extendidos, bio = BIO) {
   const alertas = []
   const hembrasActivas = animales.filter(

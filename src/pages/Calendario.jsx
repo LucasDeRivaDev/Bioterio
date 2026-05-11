@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { generarEventosCalendario, parseDate, difDias, hoy } from '../utils/calculos'
+import { supabase } from '../lib/supabase'
 
 const TIPOS = {
   nacimiento:       { label: 'Nacimiento',          color: '#00e676', bg: 'rgba(0,230,118,0.12)',   borde: 'rgba(0,230,118,0.3)'   },
@@ -63,6 +64,10 @@ export default function Calendario() {
   const [modalPlan, setModalPlan] = useState(false)
   const [notas, setNotas]     = useState([])
   const [modalNota, setModalNota] = useState(false)
+  const [datosHibridos, setDatosHibridos] = useState(null)
+  const [cargandoHibridos, setCargandoHibridos] = useState(false)
+
+  const esHibridos = bioterioActivo === 'ratones_hibridos'
 
   const pad    = (n) => String(n).padStart(2, '0')
   const fStr   = (d) => `${anio}-${pad(mes + 1)}-${pad(d)}`
@@ -74,6 +79,43 @@ export default function Calendario() {
     setNotas(cargarNotas(bioterioActivo))
   }, [bioterioActivo])
 
+  // Cargar datos de BALB/C y C57 cuando estamos en Híbridos
+  useEffect(() => {
+    if (!esHibridos) { setDatosHibridos(null); return }
+    setCargandoHibridos(true)
+    Promise.all([
+      supabase.from('animales').select('*').eq('bioterio_id', 'ratones_balbc'),
+      supabase.from('animales').select('*').eq('bioterio_id', 'ratones_c57'),
+      supabase.from('jaulas').select('*').eq('bioterio_id', 'ratones_balbc'),
+      supabase.from('jaulas').select('*').eq('bioterio_id', 'ratones_c57'),
+      supabase.from('camadas').select('*').eq('bioterio_id', 'ratones_balbc'),
+      supabase.from('camadas').select('*').eq('bioterio_id', 'ratones_c57'),
+      supabase.from('sacrificios').select('*').eq('bioterio_id', 'ratones_balbc'),
+      supabase.from('sacrificios').select('*').eq('bioterio_id', 'ratones_c57'),
+      supabase.from('entregas').select('*').eq('bioterio_id', 'ratones_balbc'),
+      supabase.from('entregas').select('*').eq('bioterio_id', 'ratones_c57'),
+    ]).then(([
+      { data: animalesBalbc }, { data: animalesC57 },
+      { data: jaulasBalbc },   { data: jaulasC57 },
+      { data: camadasBalbc },  { data: camadasC57 },
+      { data: sacrificiosBalbc }, { data: sacrificiosC57 },
+      { data: entregasBalbc }, { data: entregasC57 },
+    ]) => {
+      setDatosHibridos({
+        animalesBalbc:    animalesBalbc    ?? [],
+        animalesC57:      animalesC57      ?? [],
+        jaulasBalbc:      jaulasBalbc      ?? [],
+        jaulasC57:        jaulasC57        ?? [],
+        camadasBalbc:     camadasBalbc     ?? [],
+        camadasC57:       camadasC57       ?? [],
+        sacrificiosBalbc: sacrificiosBalbc ?? [],
+        sacrificiosC57:   sacrificiosC57   ?? [],
+        entregasBalbc:    entregasBalbc    ?? [],
+        entregasC57:      entregasC57      ?? [],
+      })
+    }).catch(console.error).finally(() => setCargandoHibridos(false))
+  }, [esHibridos])
+
   const eventos = useMemo(() => generarEventosCalendario(camadas, animales, bio), [camadas, animales, bio])
 
   // Mapa fecha → eventos + planes + notas (solo pendientes para los puntos del grid)
@@ -84,10 +126,13 @@ export default function Calendario() {
       const f = p.fecha_planificada
       if (!f) return
       if (!m[f]) m[f] = []
+      const esF1 = !!(p.macho?.bioterioOrigen || p.hembra?.bioterioOrigen)
       m[f].push({
         id:     `plan-${p.id}`,
         tipo:   'plan_apareamiento',
-        titulo: `Apareamiento: ${p.macho?.codigo ?? '?'} × ${p.hembra?.codigo ?? '?'}`,
+        titulo: esF1
+          ? `🧬 F1: ${p.macho?.codigo ?? '?'} × ${p.hembra?.codigo ?? '?'}`
+          : `Apareamiento: ${p.macho?.codigo ?? '?'} × ${p.hembra?.codigo ?? '?'}`,
         plan:   p,
       })
     })
@@ -537,6 +582,9 @@ export default function Calendario() {
           fecha={fStr(diaSelec)}
           onGuardar={handleGuardarPlan}
           onCerrar={() => setModalPlan(false)}
+          esHibridos={esHibridos}
+          datosHibridos={datosHibridos}
+          cargandoHibridos={cargandoHibridos}
         />
       )}
 
@@ -557,9 +605,18 @@ export default function Calendario() {
 const CAT_LABELS = { crias: 'Crías', jovenes: 'Jóvenes', adultos: 'Adultos' }
 const CAT_ICONOS = { crias: '🐣', jovenes: '🐭', adultos: '🐁' }
 
-function ModalPlanificarApareamiento({ animales, camadas, jaulas, sacrificios, entregas, bio, fecha, onGuardar, onCerrar }) {
-  const machos  = animales.filter((a) => a.sexo === 'macho'  && a.estado === 'activo')
-  const hembras = animales.filter((a) => a.sexo === 'hembra' && a.estado === 'activo')
+function ModalPlanificarApareamiento({
+  animales, camadas, jaulas, sacrificios, entregas, bio,
+  fecha, onGuardar, onCerrar,
+  esHibridos = false, datosHibridos = null, cargandoHibridos = false,
+}) {
+  // Fuentes de animales según modo
+  const machos  = esHibridos
+    ? (datosHibridos?.animalesBalbc ?? []).filter((a) => a.sexo === 'macho'  && a.estado === 'activo')
+    : animales.filter((a) => a.sexo === 'macho'  && a.estado === 'activo')
+  const hembras = esHibridos
+    ? (datosHibridos?.animalesC57  ?? []).filter((a) => a.sexo === 'hembra' && a.estado === 'activo')
+    : animales.filter((a) => a.sexo === 'hembra' && a.estado === 'activo')
 
   // Selección de tipo de fuente por columna: 'reproductor' | 'stock'
   const [tipoMacho,  setTipoMacho]  = useState('reproductor')
@@ -581,53 +638,49 @@ function ModalPlanificarApareamiento({ animales, camadas, jaulas, sacrificios, e
     return difDias(parseDate(fechaNac), parseDate(hoy()))
   }
 
-  // Calcular stock restante de una camada (descontando sacrificios y entregas)
-  function stockCamada(camada) {
-    const sac = sacrificios.filter(s => s.camada_id === camada.id).reduce((s, x) => s + x.cantidad, 0)
-    const ent = entregas.filter(e => e.camada_id === camada.id).reduce((s, x) => s + x.cantidad, 0)
-    return Math.max(0, (camada.total_destetados ?? camada.total_crias ?? 0) - sac - ent)
-  }
-
   function categoriaStock(edad) {
     if (edad < 42) return 'crias'
     if (edad < (bio?.STOCK_ADULTOS_DIAS ?? 84)) return 'jovenes'
     return 'adultos'
   }
 
-  // Construir lista de bloques de stock disponibles
-  const bloquesStock = useMemo(() => {
+  // Helper: construye bloques de stock desde un dataset dado (para normal o híbridos)
+  function buildBloquesStock(animalesDS, camadasDS, jaulasDS, sacrificiosDS, entregasDS) {
+    function stockCamada(camada) {
+      const sac = (sacrificiosDS ?? []).filter(s => s.camada_id === camada.id).reduce((s, x) => s + x.cantidad, 0)
+      const ent = (entregasDS    ?? []).filter(e => e.camada_id === camada.id).reduce((s, x) => s + x.cantidad, 0)
+      return Math.max(0, (camada.total_destetados ?? camada.total_crias ?? 0) - sac - ent)
+    }
     const result = []
-    // Jaulas reales
-    jaulas.forEach((jaula) => {
-      const camada = camadas.find(c => c.id === jaula.camada_id)
+    ;(jaulasDS ?? []).forEach((jaula) => {
+      const camada = (camadasDS ?? []).find(c => c.id === jaula.camada_id)
       if (!camada?.fecha_nacimiento || jaula.total <= 0) return
-      const edad   = diasDesde(camada.fecha_nacimiento)
-      const madre  = animales.find(a => a.id === camada.id_madre)
-      const padre  = animales.find(a => a.id === camada.id_padre)
-      const cat    = categoriaStock(edad ?? 0)
+      const edad  = diasDesde(camada.fecha_nacimiento)
+      const madre = (animalesDS ?? []).find(a => a.id === camada.id_madre)
+      const padre = (animalesDS ?? []).find(a => a.id === camada.id_padre)
+      const cat   = categoriaStock(edad ?? 0)
       result.push({
-        id:         `j-${jaula.id}`,
-        tipo:       'stock',
-        categoria:  cat,
-        nombre:     `${madre?.codigo ?? '?'} × ${padre?.codigo ?? '?'}`,
-        total:      jaula.total,
-        machos:     jaula.machos,
-        hembras:    jaula.hembras,
+        id:        `j-${jaula.id}`,
+        tipo:      'stock',
+        categoria: cat,
+        nombre:    `${madre?.codigo ?? '?'} × ${padre?.codigo ?? '?'}`,
+        total:     jaula.total,
+        machos:    jaula.machos,
+        hembras:   jaula.hembras,
         edad,
-        camadaId:   camada.id,
-        jaulaId:    jaula.id,
+        camadaId:  camada.id,
+        jaulaId:   jaula.id,
       })
     })
-    // Bloques virtuales (camadas destetadas sin jaula asignada)
-    camadas.forEach((camada) => {
+    ;(camadasDS ?? []).forEach((camada) => {
       if (!camada.fecha_nacimiento || !camada.fecha_destete) return
       if (camada.incluir_en_stock === false) return
-      if (jaulas.some(j => j.camada_id === camada.id)) return
+      if ((jaulasDS ?? []).some(j => j.camada_id === camada.id)) return
       const stock = stockCamada(camada)
       if (stock <= 0) return
       const edad  = diasDesde(camada.fecha_nacimiento)
-      const madre = animales.find(a => a.id === camada.id_madre)
-      const padre = animales.find(a => a.id === camada.id_padre)
+      const madre = (animalesDS ?? []).find(a => a.id === camada.id_madre)
+      const padre = (animalesDS ?? []).find(a => a.id === camada.id_padre)
       const cat   = categoriaStock(edad ?? 0)
       result.push({
         id:        `v-${camada.id}`,
@@ -643,24 +696,62 @@ function ModalPlanificarApareamiento({ animales, camadas, jaulas, sacrificios, e
       })
     })
     return result
-  }, [animales, camadas, jaulas, sacrificios, entregas, bio]) // eslint-disable-line react-hooks/exhaustive-deps
+  }
 
-  // Filtrar por sexo: muestra si tiene machos/hembras > 0 o si el sexo no está registrado
+  // Construir lista de bloques de stock disponibles (modo normal o híbridos)
+  const bloquesStock = useMemo(() => {
+    if (esHibridos) return [] // en Híbridos hay dos sets separados
+    return buildBloquesStock(animales, camadas, jaulas, sacrificios, entregas)
+  }, [animales, camadas, jaulas, sacrificios, entregas, bio, esHibridos]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Bloques stock de BALB/C (fuente de machos en Híbridos)
+  const bloquesStockBalbc = useMemo(() => {
+    if (!esHibridos || !datosHibridos) return []
+    return buildBloquesStock(
+      datosHibridos.animalesBalbc,
+      datosHibridos.camadasBalbc,
+      datosHibridos.jaulasBalbc,
+      datosHibridos.sacrificiosBalbc,
+      datosHibridos.entregasBalbc,
+    )
+  }, [esHibridos, datosHibridos]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Bloques stock de C57 (fuente de hembras en Híbridos)
+  const bloquesStockC57 = useMemo(() => {
+    if (!esHibridos || !datosHibridos) return []
+    return buildBloquesStock(
+      datosHibridos.animalesC57,
+      datosHibridos.camadasC57,
+      datosHibridos.jaulasC57,
+      datosHibridos.sacrificiosC57,
+      datosHibridos.entregasC57,
+    )
+  }, [esHibridos, datosHibridos]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Filtrar por sexo (modo normal)
   const bloquesParaMachos  = bloquesStock.filter(b => b.machos == null || b.machos > 0)
   const bloquesParaHembras = bloquesStock.filter(b => b.hembras == null || b.hembras > 0)
+
+  // En híbridos: filtrar por sexo en cada colonia
+  const bloquesHibridosMachos  = bloquesStockBalbc.filter(b => b.machos  == null || b.machos  > 0)
+  const bloquesHibridosHembras = bloquesStockC57.filter(b => b.hembras == null || b.hembras > 0)
 
   // Limpiar selección de jaula al cambiar de tipo
   function cambiarTipoMacho(t)  { setTipoMacho(t);  setJaulaMachoSel(null) }
   function cambiarTipoHembra(t) { setTipoHembra(t); setJaulaHembraSel(null) }
 
   // Calcular los plan-items finales según lo seleccionado
-  const fuenteMacho = tipoMacho === 'reproductor'
-    ? (machoSel  ? { bloqueId: `r-${machoSel.id}`,  tipo: 'reproductor', codigo: machoSel.codigo,  total: 1,                edad: diasDesde(machoSel.fecha_nacimiento)  } : null)
-    : (jaulaMachoSel  ? { bloqueId: jaulaMachoSel.id,  tipo: 'stock', codigo: jaulaMachoSel.nombre,  categoria: jaulaMachoSel.categoria,  total: jaulaMachoSel.total,  edad: jaulaMachoSel.edad  } : null)
+  const fuenteMachoBase = tipoMacho === 'reproductor'
+    ? (machoSel      ? { bloqueId: `r-${machoSel.id}`,   tipo: 'reproductor', codigo: machoSel.codigo,       total: 1,                   edad: diasDesde(machoSel.fecha_nacimiento)      } : null)
+    : (jaulaMachoSel ? { bloqueId: jaulaMachoSel.id,     tipo: 'stock',       codigo: jaulaMachoSel.nombre,  categoria: jaulaMachoSel.categoria,  total: jaulaMachoSel.total,  edad: jaulaMachoSel.edad  } : null)
 
-  const fuenteHembra = tipoHembra === 'reproductor'
-    ? (hembraSel ? { bloqueId: `r-${hembraSel.id}`, tipo: 'reproductor', codigo: hembraSel.codigo, total: 1,                edad: diasDesde(hembraSel.fecha_nacimiento) } : null)
-    : (jaulaHembraSel ? { bloqueId: jaulaHembraSel.id, tipo: 'stock', codigo: jaulaHembraSel.nombre, categoria: jaulaHembraSel.categoria, total: jaulaHembraSel.total, edad: jaulaHembraSel.edad } : null)
+  const fuenteHembraBase = tipoHembra === 'reproductor'
+    ? (hembraSel      ? { bloqueId: `r-${hembraSel.id}`, tipo: 'reproductor', codigo: hembraSel.codigo,      total: 1,                   edad: diasDesde(hembraSel.fecha_nacimiento)     } : null)
+    : (jaulaHembraSel ? { bloqueId: jaulaHembraSel.id,   tipo: 'stock',       codigo: jaulaHembraSel.nombre, categoria: jaulaHembraSel.categoria, total: jaulaHembraSel.total, edad: jaulaHembraSel.edad } : null)
+
+  // Agregar bioterioOrigen cuando estamos en modo Híbridos
+  const fuenteMacho  = fuenteMachoBase  ? (esHibridos ? { ...fuenteMachoBase,  bioterioOrigen: 'ratones_balbc' } : fuenteMachoBase)  : null
+  const fuenteHembra = fuenteHembraBase ? (esHibridos ? { ...fuenteHembraBase, bioterioOrigen: 'ratones_c57'  } : fuenteHembraBase) : null
 
   const puedeGuardar = Boolean(fuenteMacho && fuenteHembra)
 
@@ -750,20 +841,37 @@ function ModalPlanificarApareamiento({ animales, camadas, jaulas, sacrificios, e
           className="px-6 py-4 shrink-0"
           style={{ borderBottom: '1px solid rgba(139,92,246,0.15)', background: 'rgba(139,92,246,0.06)' }}
         >
-          <div className="font-bold text-white text-sm">🔗 Planificar apareamiento</div>
+          <div className="font-bold text-white text-sm">
+            {esHibridos ? '🧬 Planificar cruce F1' : '🔗 Planificar apareamiento'}
+          </div>
           <div className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
             Fecha programada: <span style={{ color: '#a78bfa' }}>{fechaLabel}</span>
             {' '}· Solo registra la intención — no crea el apareamiento todavía
           </div>
+          {esHibridos && (
+            <div className="text-xs font-mono mt-1" style={{ color: '#a78bfa' }}>
+              ♂ BALB/C × ♀ C57 → crías F1 híbridas
+            </div>
+          )}
         </div>
 
+        {/* Estado de carga (solo Híbridos) */}
+        {esHibridos && cargandoHibridos && (
+          <div className="px-6 py-4 text-xs font-mono text-center" style={{ color: '#4a5f7a' }}>
+            Cargando datos de BALB/C y C57…
+          </div>
+        )}
+
         {/* Cuerpo — dos columnas */}
+        {(!esHibridos || !cargandoHibridos) && (
         <div className="flex-1 overflow-y-auto">
           <div className="grid grid-cols-2 gap-0" style={{ borderBottom: '1px solid rgba(30,51,82,0.4)' }}>
 
             {/* ── Columna Machos ── */}
             <div className="p-4 space-y-3" style={{ borderRight: '1px solid rgba(30,51,82,0.5)' }}>
-              <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#40c4ff' }}>♂ Fuente de machos</div>
+              <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#40c4ff' }}>
+                {esHibridos ? '♂ BALB/C — fuente de machos' : '♂ Fuente de machos'}
+              </div>
 
               {/* Tabs tipo */}
               <div className="flex gap-1.5">
@@ -801,9 +909,9 @@ function ModalPlanificarApareamiento({ animales, camadas, jaulas, sacrificios, e
                       )
                     })
                 ) : (
-                  bloquesParaMachos.length === 0
+                  (esHibridos ? bloquesHibridosMachos : bloquesParaMachos).length === 0
                     ? <div className="text-xs font-mono py-3 text-center" style={{ color: '#3d5068' }}>Sin jaulas con machos</div>
-                    : bloquesParaMachos.map((b) => (
+                    : (esHibridos ? bloquesHibridosMachos : bloquesParaMachos).map((b) => (
                       <BloqueStockItem
                         key={b.id}
                         bloque={b}
@@ -818,7 +926,9 @@ function ModalPlanificarApareamiento({ animales, camadas, jaulas, sacrificios, e
 
             {/* ── Columna Hembras ── */}
             <div className="p-4 space-y-3">
-              <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#ce93d8' }}>♀ Fuente de hembras</div>
+              <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#ce93d8' }}>
+                {esHibridos ? '♀ C57 — fuente de hembras' : '♀ Fuente de hembras'}
+              </div>
 
               {/* Tabs tipo */}
               <div className="flex gap-1.5">
@@ -856,9 +966,9 @@ function ModalPlanificarApareamiento({ animales, camadas, jaulas, sacrificios, e
                       )
                     })
                 ) : (
-                  bloquesParaHembras.length === 0
+                  (esHibridos ? bloquesHibridosHembras : bloquesParaHembras).length === 0
                     ? <div className="text-xs font-mono py-3 text-center" style={{ color: '#3d5068' }}>Sin jaulas con hembras</div>
-                    : bloquesParaHembras.map((b) => (
+                    : (esHibridos ? bloquesHibridosHembras : bloquesParaHembras).map((b) => (
                       <BloqueStockItem
                         key={b.id}
                         bloque={b}
@@ -910,6 +1020,7 @@ function ModalPlanificarApareamiento({ animales, camadas, jaulas, sacrificios, e
             />
           </div>
         </div>
+        )}
 
         {/* Footer */}
         <div
@@ -934,7 +1045,7 @@ function ModalPlanificarApareamiento({ animales, camadas, jaulas, sacrificios, e
               cursor:     puedeGuardar ? 'pointer' : 'not-allowed',
             }}
           >
-            🔗 Guardar planificación
+            {esHibridos ? '🧬 Guardar cruce F1' : '🔗 Guardar planificación'}
           </button>
         </div>
       </div>

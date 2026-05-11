@@ -433,6 +433,16 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
   - **Retrocompatibilidad:** planes existentes (creados desde Stock con bloques de stock) ya tenían `tipo: 'stock'`, así que `getJaulasReservadas` los detecta automáticamente. Planes de reproductores existentes siguen funcionando sin cambios.
   - **SQL necesario:** ninguno — todo localStorage y frontend.
 
+- **Planificación de cruces F1 desde el Calendario en modo Híbridos (11/05/2026):** cuando el bioterio activo es Híbridos, el modal de planificación carga datos de BALB/C y C57 para ofrecer los reproductores y stock correctos de cada cepa.
+  - **`Calendario.jsx` — useEffect de carga cruzada:** cuando `bioterioActivo === 'ratones_hibridos'`, hace un `Promise.all` de 10 queries a Supabase (animales, jaulas, camadas, sacrificios, entregas de BALB/C y de C57) y guarda el resultado en `datosHibridos`. Estado de carga: `cargandoHibridos`.
+  - **Modal en modo Híbridos:** columna izquierda = `♂ BALB/C — fuente de machos` (usa `datosHibridos.animalesBalbc` + `bloquesStockBalbc`); columna derecha = `♀ C57 — fuente de hembras` (usa `datosHibridos.animalesC57` + `bloquesStockC57`). Tabs iguales: "Reproductor" | "📦 Jaula de stock".
+  - **`bioterioOrigen` en el plan:** cuando se guarda un plan en modo Híbridos, `fuenteMacho.bioterioOrigen = 'ratones_balbc'` y `fuenteHembra.bioterioOrigen = 'ratones_c57'`.
+  - **`porFecha` en Calendario:** planes con `bioterioOrigen` presente muestran título `🧬 F1: MachodX × HembraY` en el calendario y panel lateral.
+  - **`getReservadosParaHibridos(bioterioId)` en `calculos.js`:** lee los planes del localStorage de Híbridos y devuelve `Map<bloqueId, { fecha, planId }>` para los animales/jaulas del `bioterioId` especificado (BALB/C o C57). Usada en Stock.jsx de cada colonia para mostrar badge `🧬 Destino F1`.
+  - **Stock en BALB/C y C57:** `reservadosHibridos` useMemo llama a `getReservadosParaHibridos` cuando el bioterio activo es BALB/C o C57. `BloqueJaula` muestra badge púrpura `🧬 Destino F1 · DD/MM`. `ModalSacrificio` y `ModalEntrega` muestran banner púrpura de advertencia cuando algún animal/jaula seleccionada tiene destino F1.
+  - **Estado de carga:** mientras `cargandoHibridos` es true, el modal muestra "Cargando datos de BALB/C y C57…" y oculta las columnas. El footer sigue visible con botón deshabilitado.
+  - **SQL necesario:** ninguno — queries a tablas existentes; localStorage para los planes.
+
 ---
 
 ## Comportamientos de datos importantes
@@ -458,6 +468,8 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
 - **Notas del calendario** se guardan en localStorage key `appMosca_notas_{bioterioActivo}`. Estructura: `{ id, bioterioActivo, fecha, titulo, descripcion, completada, created_at }`. Las notas completadas no generan punto en el grid pero siguen visibles en el panel lateral del día. El Dashboard solo muestra notas con `fecha <= hoy` y `completada: false`.
 - **getAnimalesReservados(bioterioActivo)** lee los planes de apareamiento del localStorage y devuelve un `Map<animalId, {fecha, planId}>` con animales reservados. Solo planes `!completado && fecha_planificada >= hoy`. Extrae el animal ID de `bloqueId.slice(2)` cuando `tipo === 'reproductor'`. Usada en Animales.jsx, Stock.jsx (BloqueJaula + ModalSacrificio + ModalEntrega) y CamadaForm.jsx. No bloquea operaciones — solo avisa.
 - **getJaulasReservadas(bioterioActivo)** lee los mismos planes y devuelve `Map<bloqueId, {fecha, planId}>` para bloques de `tipo === 'stock'`. `bloqueId` tiene prefijo `j-` (jaula real) o `v-` (bloque virtual). Usada en Stock.jsx (BloqueJaula + ModalSacrificio + ModalEntrega). Los planes de reproductores no están en este mapa — solo los de stock.
+- **getReservadosParaHibridos(bioterioId)** lee `appMosca_apareamientos_ratones_hibridos` y filtra los items cuyo `bioterioOrigen === bioterioId`. Devuelve `Map<bloqueId, {fecha, planId}>`. Solo planes `!completado && fecha >= hoy`. Usada en Stock.jsx de BALB/C y C57 para mostrar badges `🧬 Destino F1` y advertencias en ModalSacrificio/ModalEntrega.
+- **Plans F1 en Calendario:** cuando el plan tiene `macho.bioterioOrigen` o `hembra.bioterioOrigen`, el título en `porFecha` usa el prefijo `🧬 F1:` en lugar de `Apareamiento:`. Se guardan en la key `appMosca_apareamientos_ratones_hibridos`.
 
 ---
 

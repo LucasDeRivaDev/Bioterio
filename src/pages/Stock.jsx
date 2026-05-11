@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
-import { difDias, parseDate, hoy, formatFecha, calcularPerfilHembra, calcularRendimientoMacho, getAnimalesReservados, getJaulasReservadas } from '../utils/calculos'
+import { difDias, parseDate, hoy, formatFecha, calcularPerfilHembra, calcularRendimientoMacho, getAnimalesReservados, getJaulasReservadas, getReservadosParaHibridos } from '../utils/calculos'
 import { generarId } from '../utils/storage'
 import Modal from '../components/Modal'
 import { TestTube2, FlaskConical, Microscope, UserPlus } from 'lucide-react'
@@ -202,7 +202,7 @@ function MiniCalidad({ icono, codigo, calidad, animal }) {
   )
 }
 
-function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccionada = false, animalesReservados = new Map(), jaulasReservadas = new Map() }) {
+function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccionada = false, animalesReservados = new Map(), jaulasReservadas = new Map(), reservadosHibridos = new Map() }) {
   const cfg = CAT[bloque.categoria]
   const esStock = bloque.tipo === 'stock'
 
@@ -227,6 +227,13 @@ function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccio
   // Reserva de apareamiento — jaulas/bloques de stock
   const reservaJaula = bloque.tipo === 'stock'
     ? jaulasReservadas.get(bloque.id) ?? null
+    : null
+
+  // Reserva para cruce F1 en Híbridos (solo visible en BALB/C y C57)
+  const reservaF1 = bloque.tipo === 'reproductor' && bloque.animal
+    ? reservadosHibridos.get(`r-${bloque.animal.id}`) ?? null
+    : bloque.tipo === 'stock'
+    ? reservadosHibridos.get(bloque.id) ?? null
     : null
 
   return (
@@ -321,6 +328,19 @@ function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccio
               style={{ background: 'rgba(251,146,60,0.10)', border: '1px solid rgba(251,146,60,0.3)', color: '#fb923c' }}
             >
               🟡 Destino reproductivo · {d}/{m}
+            </div>
+          )
+        })()}
+
+        {/* Badge: reservado para cruce F1 en Híbridos */}
+        {reservaF1 && (() => {
+          const [, m, d] = reservaF1.fecha.split('-')
+          return (
+            <div
+              className="text-xs px-2 py-1 rounded-lg font-semibold"
+              style={{ background: 'rgba(167,139,250,0.10)', border: '1px solid rgba(167,139,250,0.3)', color: '#a78bfa' }}
+            >
+              🧬 Destino F1 · {d}/{m}
             </div>
           )
         })()}
@@ -1037,7 +1057,7 @@ function ModalPlanificarApareamiento({ bloquesMacho, bloquesHembra, onGuardar, o
   )
 }
 
-function ModalSacrificio({ bloques, onConfirmar, onCerrar, animalesReservados = new Map(), jaulasReservadas = new Map() }) {
+function ModalSacrificio({ bloques, onConfirmar, onCerrar, animalesReservados = new Map(), jaulasReservadas = new Map(), reservadosHibridos = new Map() }) {
   const [fecha, setFecha]       = useState(hoy())
   const [notas, setNotas]       = useState('')
   const [guardando, setGuardando] = useState(false)
@@ -1058,6 +1078,13 @@ function ModalSacrificio({ bloques, onConfirmar, onCerrar, animalesReservados = 
   const stockReservados = bloques.filter(
     (b) => b.tipo === 'stock' && jaulasReservadas.has(b.id)
   )
+
+  // Animales o jaulas reservados para cruce F1 en Híbridos
+  const f1Reservados = bloques.filter((b) => {
+    if (b.tipo === 'reproductor' && b.animal) return reservadosHibridos.has(`r-${b.animal.id}`)
+    if (b.tipo === 'stock') return reservadosHibridos.has(b.id)
+    return false
+  })
   const total       = bloques.reduce((s, b) => s + (parseInt(cantidades[b.id]) || 0), 0)
   const cantOk      = bloques.every((b) => {
     const v = parseInt(cantidades[b.id]) || 0
@@ -1136,6 +1163,37 @@ function ModalSacrificio({ bloques, onConfirmar, onCerrar, animalesReservados = 
               </div>
               <div className="text-xs mt-1.5" style={{ color: '#4a5f7a' }}>
                 Podés continuar, pero se perderá el plan de apareamiento.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Advertencia: reservados para cruce F1 en Híbridos */}
+        {f1Reservados.length > 0 && (
+          <div className="flex items-start gap-3 px-4 py-3 rounded-xl"
+            style={{ background: 'rgba(167,139,250,0.10)', border: '1px solid rgba(167,139,250,0.35)' }}>
+            <span className="text-xl shrink-0">🧬</span>
+            <div>
+              <div className="font-bold text-sm" style={{ color: '#a78bfa' }}>
+                {f1Reservados.length === 1 ? 'Animal / jaula reservada para F1' : 'Animales / jaulas reservadas para F1'}
+              </div>
+              <div className="text-xs mt-1 space-y-0.5" style={{ color: '#c9d4e0' }}>
+                {f1Reservados.map((b) => {
+                  const id  = b.tipo === 'reproductor' ? `r-${b.animal.id}` : b.id
+                  const r   = reservadosHibridos.get(id)
+                  const [, m, d] = r.fecha.split('-')
+                  const label = b.tipo === 'reproductor'
+                    ? b.animal.codigo
+                    : `${b.madre?.codigo ?? '?'} × ${b.padre?.codigo ?? '?'}`
+                  return (
+                    <div key={b.id} className="font-mono">
+                      {label} — cruce F1 planificado el <span style={{ color: '#a78bfa' }}>{d}/{m}</span>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="text-xs mt-1.5" style={{ color: '#4a5f7a' }}>
+                Podés continuar, pero se perderá el plan de cruce F1.
               </div>
             </div>
           </div>
@@ -1249,7 +1307,7 @@ function ModalSacrificio({ bloques, onConfirmar, onCerrar, animalesReservados = 
   )
 }
 
-function ModalEntrega({ bloques, onConfirmar, onCerrar, animalesReservados = new Map(), jaulasReservadas = new Map() }) {
+function ModalEntrega({ bloques, onConfirmar, onCerrar, animalesReservados = new Map(), jaulasReservadas = new Map(), reservadosHibridos = new Map() }) {
   const [fecha,        setFecha]        = useState(hoy())
   const [observaciones, setObservaciones] = useState('')
   const [guardando,    setGuardando]    = useState(false)
@@ -1266,6 +1324,13 @@ function ModalEntrega({ bloques, onConfirmar, onCerrar, animalesReservados = new
   const stockReservados = bloques.filter(
     (b) => b.tipo === 'stock' && jaulasReservadas.has(b.id)
   )
+
+  // Animales o jaulas reservados para cruce F1 en Híbridos
+  const f1Reservados = bloques.filter((b) => {
+    if (b.tipo === 'reproductor' && b.animal) return reservadosHibridos.has(`r-${b.animal.id}`)
+    if (b.tipo === 'stock') return reservadosHibridos.has(b.id)
+    return false
+  })
 
   const total  = bloques.reduce((s, b) => s + (parseInt(cantidades[b.id]) || 0), 0)
   const cantOk = bloques.every((b) => {
@@ -1339,6 +1404,37 @@ function ModalEntrega({ bloques, onConfirmar, onCerrar, animalesReservados = new
               </div>
               <div className="text-xs mt-1.5" style={{ color: '#4a5f7a' }}>
                 Podés continuar, pero se perderá el plan de apareamiento.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Advertencia: reservados para cruce F1 en Híbridos */}
+        {f1Reservados.length > 0 && (
+          <div className="flex items-start gap-3 px-4 py-3 rounded-xl"
+            style={{ background: 'rgba(167,139,250,0.10)', border: '1px solid rgba(167,139,250,0.35)' }}>
+            <span className="text-xl shrink-0">🧬</span>
+            <div>
+              <div className="font-bold text-sm" style={{ color: '#a78bfa' }}>
+                {f1Reservados.length === 1 ? 'Animal / jaula reservada para F1' : 'Animales / jaulas reservadas para F1'}
+              </div>
+              <div className="text-xs mt-1 space-y-0.5" style={{ color: '#c9d4e0' }}>
+                {f1Reservados.map((b) => {
+                  const id  = b.tipo === 'reproductor' ? `r-${b.animal.id}` : b.id
+                  const r   = reservadosHibridos.get(id)
+                  const [, m, d] = r.fecha.split('-')
+                  const label = b.tipo === 'reproductor'
+                    ? b.animal.codigo
+                    : `${b.madre?.codigo ?? '?'} × ${b.padre?.codigo ?? '?'}`
+                  return (
+                    <div key={b.id} className="font-mono">
+                      {label} — cruce F1 planificado el <span style={{ color: '#a78bfa' }}>{d}/{m}</span>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="text-xs mt-1.5" style={{ color: '#4a5f7a' }}>
+                Podés continuar, pero se perderá el plan de cruce F1.
               </div>
             </div>
           </div>
@@ -1654,6 +1750,12 @@ export default function Stock() {
     () => getJaulasReservadas(bioterioActivo),
     [bioterioActivo, jaulas] // eslint-disable-line react-hooks/exhaustive-deps
   )
+
+  // Mapa de bloques reservados para cruces F1 en Híbridos (solo visible en BALB/C y C57)
+  const reservadosHibridos = useMemo(() => {
+    if (bioterioActivo !== 'ratones_balbc' && bioterioActivo !== 'ratones_c57') return new Map()
+    return getReservadosParaHibridos(bioterioActivo)
+  }, [bioterioActivo, animales, jaulas]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const [vista, setVista] = useState('jaulas')
   const [subVista, setSubVista] = useState(null)
@@ -2144,6 +2246,7 @@ if (subVista === 'sacrificios') {
                   seleccionada={seleccionadas.has(b.id)}
                   animalesReservados={animalesReservados}
                   jaulasReservadas={jaulasReservadas}
+                  reservadosHibridos={reservadosHibridos}
                 />
               ))}
             </div>
@@ -2294,6 +2397,7 @@ if (subVista === 'sacrificios') {
           onCerrar={() => setModalSacrificio(false)}
           animalesReservados={animalesReservados}
           jaulasReservadas={jaulasReservadas}
+          reservadosHibridos={reservadosHibridos}
         />
       )}
 
@@ -2305,6 +2409,7 @@ if (subVista === 'sacrificios') {
           onCerrar={() => setModalEntrega(false)}
           animalesReservados={animalesReservados}
           jaulasReservadas={jaulasReservadas}
+          reservadosHibridos={reservadosHibridos}
         />
       )}
 
