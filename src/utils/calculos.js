@@ -1032,6 +1032,37 @@ export function getAnimalesReservados(bioterioActivo) {
   }
 }
 
+/**
+ * Lee los planes de apareamiento del localStorage y devuelve un Map con los
+ * bloques de stock (jaulas / bloques virtuales) reservados para apareamiento.
+ * Map<bloqueId, { fecha, planId }>
+ * Solo incluye planes futuros (hoy en adelante) y no completados.
+ */
+export function getJaulasReservadas(bioterioActivo) {
+  try {
+    const planes = JSON.parse(
+      localStorage.getItem(`appMosca_apareamientos_${bioterioActivo}`) || '[]'
+    )
+    const hoyStr = hoy()
+    const mapa = new Map()
+    planes
+      .filter((p) => !p.completado && p.fecha_planificada >= hoyStr)
+      .forEach((p) => {
+        if (p.macho?.tipo === 'stock' && p.macho.bloqueId) {
+          if (!mapa.has(p.macho.bloqueId))
+            mapa.set(p.macho.bloqueId, { fecha: p.fecha_planificada, planId: p.id })
+        }
+        if (p.hembra?.tipo === 'stock' && p.hembra.bloqueId) {
+          if (!mapa.has(p.hembra.bloqueId))
+            mapa.set(p.hembra.bloqueId, { fecha: p.fecha_planificada, planId: p.id })
+        }
+      })
+    return mapa
+  } catch {
+    return new Map()
+  }
+}
+
 export function generarAlertasEstrales(animales, extendidos, bio = BIO) {
   const alertas = []
   const hembrasActivas = animales.filter(

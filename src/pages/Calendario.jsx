@@ -54,7 +54,7 @@ function formatEdadCorta(dias) {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function Calendario() {
-  const { camadas, animales, bio, bioterioActivo } = useBioterio()
+  const { camadas, animales, jaulas, sacrificios, entregas, bio, bioterioActivo } = useBioterio()
   const hoyJs = new Date()
   const [anio, setAnio]       = useState(hoyJs.getFullYear())
   const [mes, setMes]         = useState(hoyJs.getMonth())
@@ -122,15 +122,15 @@ export default function Calendario() {
     ? notas.filter((n) => n.fecha === fStr(diaSelec))
     : []
 
-  // Guardar nuevo plan desde el modal
-  function handleGuardarPlan({ macho, hembra, observaciones }) {
+  // Guardar nuevo plan desde el modal (recibe los items ya construidos)
+  function handleGuardarPlan(machoPlan, hembraPlan, observaciones) {
     const nuevoPlan = {
       id:               Date.now().toString(),
       bioterioActivo,
       fecha_planificada: fStr(diaSelec),
       observaciones:    observaciones || null,
-      macho:  { bloqueId: `r-${macho.id}`,  tipo: 'reproductor', codigo: macho.codigo,  total: 1, edad: edadDias(macho.fecha_nacimiento)  },
-      hembra: { bloqueId: `r-${hembra.id}`, tipo: 'reproductor', codigo: hembra.codigo, total: 1, edad: edadDias(hembra.fecha_nacimiento) },
+      macho:  machoPlan,
+      hembra: hembraPlan,
       completado:  false,
       created_at:  new Date().toISOString(),
     }
@@ -529,6 +529,11 @@ export default function Calendario() {
       {modalPlan && (
         <ModalPlanificarApareamiento
           animales={animales}
+          camadas={camadas}
+          jaulas={jaulas}
+          sacrificios={sacrificios}
+          entregas={entregas}
+          bio={bio}
           fecha={fStr(diaSelec)}
           onGuardar={handleGuardarPlan}
           onCerrar={() => setModalPlan(false)}
@@ -549,18 +554,182 @@ export default function Calendario() {
 
 // ── Modal de planificación ────────────────────────────────────────────────────
 
-function ModalPlanificarApareamiento({ animales, fecha, onGuardar, onCerrar }) {
+const CAT_LABELS = { crias: 'Crías', jovenes: 'Jóvenes', adultos: 'Adultos' }
+const CAT_ICONOS = { crias: '🐣', jovenes: '🐭', adultos: '🐁' }
+
+function ModalPlanificarApareamiento({ animales, camadas, jaulas, sacrificios, entregas, bio, fecha, onGuardar, onCerrar }) {
   const machos  = animales.filter((a) => a.sexo === 'macho'  && a.estado === 'activo')
   const hembras = animales.filter((a) => a.sexo === 'hembra' && a.estado === 'activo')
 
-  const [machoSel,       setMachoSel]       = useState(null)
-  const [hembraSel,      setHembraSel]      = useState(null)
-  const [observaciones,  setObservaciones]  = useState('')
+  // Selección de tipo de fuente por columna: 'reproductor' | 'stock'
+  const [tipoMacho,  setTipoMacho]  = useState('reproductor')
+  const [tipoHembra, setTipoHembra] = useState('reproductor')
 
-  const puedeGuardar = machoSel && hembraSel
+  // Selección en columna Reproductor
+  const [machoSel,  setMachoSel]  = useState(null)
+  const [hembraSel, setHembraSel] = useState(null)
 
-  const [d, m, y] = fecha.split('-').reverse()
-  const fechaLabel = `${d}/${m}/${y}`
+  // Selección en columna Jaula de stock
+  const [jaulaMachoSel,  setJaulaMachoSel]  = useState(null)
+  const [jaulaHembraSel, setJaulaHembraSel] = useState(null)
+
+  const [observaciones, setObservaciones] = useState('')
+
+  // Calcular días desde nacimiento hasta hoy
+  function diasDesde(fechaNac) {
+    if (!fechaNac) return null
+    return difDias(parseDate(fechaNac), parseDate(hoy()))
+  }
+
+  // Calcular stock restante de una camada (descontando sacrificios y entregas)
+  function stockCamada(camada) {
+    const sac = sacrificios.filter(s => s.camada_id === camada.id).reduce((s, x) => s + x.cantidad, 0)
+    const ent = entregas.filter(e => e.camada_id === camada.id).reduce((s, x) => s + x.cantidad, 0)
+    return Math.max(0, (camada.total_destetados ?? camada.total_crias ?? 0) - sac - ent)
+  }
+
+  function categoriaStock(edad) {
+    if (edad < 42) return 'crias'
+    if (edad < (bio?.STOCK_ADULTOS_DIAS ?? 84)) return 'jovenes'
+    return 'adultos'
+  }
+
+  // Construir lista de bloques de stock disponibles
+  const bloquesStock = useMemo(() => {
+    const result = []
+    // Jaulas reales
+    jaulas.forEach((jaula) => {
+      const camada = camadas.find(c => c.id === jaula.camada_id)
+      if (!camada?.fecha_nacimiento || jaula.total <= 0) return
+      const edad   = diasDesde(camada.fecha_nacimiento)
+      const madre  = animales.find(a => a.id === camada.id_madre)
+      const padre  = animales.find(a => a.id === camada.id_padre)
+      const cat    = categoriaStock(edad ?? 0)
+      result.push({
+        id:         `j-${jaula.id}`,
+        tipo:       'stock',
+        categoria:  cat,
+        nombre:     `${madre?.codigo ?? '?'} × ${padre?.codigo ?? '?'}`,
+        total:      jaula.total,
+        machos:     jaula.machos,
+        hembras:    jaula.hembras,
+        edad,
+        camadaId:   camada.id,
+        jaulaId:    jaula.id,
+      })
+    })
+    // Bloques virtuales (camadas destetadas sin jaula asignada)
+    camadas.forEach((camada) => {
+      if (!camada.fecha_nacimiento || !camada.fecha_destete) return
+      if (camada.incluir_en_stock === false) return
+      if (jaulas.some(j => j.camada_id === camada.id)) return
+      const stock = stockCamada(camada)
+      if (stock <= 0) return
+      const edad  = diasDesde(camada.fecha_nacimiento)
+      const madre = animales.find(a => a.id === camada.id_madre)
+      const padre = animales.find(a => a.id === camada.id_padre)
+      const cat   = categoriaStock(edad ?? 0)
+      result.push({
+        id:        `v-${camada.id}`,
+        tipo:      'stock',
+        categoria: cat,
+        nombre:    `${madre?.codigo ?? '?'} × ${padre?.codigo ?? '?'}`,
+        total:     stock,
+        machos:    camada.crias_machos,
+        hembras:   camada.crias_hembras,
+        edad,
+        camadaId:  camada.id,
+        jaulaId:   null,
+      })
+    })
+    return result
+  }, [animales, camadas, jaulas, sacrificios, entregas, bio]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Filtrar por sexo: muestra si tiene machos/hembras > 0 o si el sexo no está registrado
+  const bloquesParaMachos  = bloquesStock.filter(b => b.machos == null || b.machos > 0)
+  const bloquesParaHembras = bloquesStock.filter(b => b.hembras == null || b.hembras > 0)
+
+  // Limpiar selección de jaula al cambiar de tipo
+  function cambiarTipoMacho(t)  { setTipoMacho(t);  setJaulaMachoSel(null) }
+  function cambiarTipoHembra(t) { setTipoHembra(t); setJaulaHembraSel(null) }
+
+  // Calcular los plan-items finales según lo seleccionado
+  const fuenteMacho = tipoMacho === 'reproductor'
+    ? (machoSel  ? { bloqueId: `r-${machoSel.id}`,  tipo: 'reproductor', codigo: machoSel.codigo,  total: 1,                edad: diasDesde(machoSel.fecha_nacimiento)  } : null)
+    : (jaulaMachoSel  ? { bloqueId: jaulaMachoSel.id,  tipo: 'stock', codigo: jaulaMachoSel.nombre,  categoria: jaulaMachoSel.categoria,  total: jaulaMachoSel.total,  edad: jaulaMachoSel.edad  } : null)
+
+  const fuenteHembra = tipoHembra === 'reproductor'
+    ? (hembraSel ? { bloqueId: `r-${hembraSel.id}`, tipo: 'reproductor', codigo: hembraSel.codigo, total: 1,                edad: diasDesde(hembraSel.fecha_nacimiento) } : null)
+    : (jaulaHembraSel ? { bloqueId: jaulaHembraSel.id, tipo: 'stock', codigo: jaulaHembraSel.nombre, categoria: jaulaHembraSel.categoria, total: jaulaHembraSel.total, edad: jaulaHembraSel.edad } : null)
+
+  const puedeGuardar = Boolean(fuenteMacho && fuenteHembra)
+
+  const [, mes, dia] = fecha.split('-')
+  const [anioLabel]  = fecha.split('-')
+  const fechaLabel   = `${dia}/${mes}/${anioLabel}`
+
+  function getNombreFuente(f) {
+    if (!f) return '—'
+    return f.codigo ?? '?'
+  }
+
+  // Componente de tab selector de tipo
+  function TabTipo({ valor, actual, color, onChange }) {
+    const activo = actual === valor
+    const labels = { reproductor: '♂♀ Reproductor', stock: '📦 Jaula de stock' }
+    return (
+      <button
+        onClick={() => onChange(valor)}
+        className="flex-1 py-1 rounded-lg text-xs font-semibold transition-all"
+        style={activo
+          ? { background: `${color}18`, border: `1px solid ${color}45`, color }
+          : { background: 'transparent', border: '1px solid rgba(30,51,82,0.5)', color: '#4a5f7a' }}
+      >
+        {labels[valor]}
+      </button>
+    )
+  }
+
+  // Fila de bloque de stock seleccionable
+  function BloqueStockItem({ bloque, seleccionado, color, onSelect }) {
+    const cat   = bloque.categoria
+    const sexInfo = bloque.machos != null && bloque.hembras != null
+      ? `${bloque.machos}♂ / ${bloque.hembras}♀`
+      : bloque.machos != null
+      ? `${bloque.machos}♂`
+      : bloque.hembras != null
+      ? `${bloque.hembras}♀`
+      : `${bloque.total} sin sexar`
+    const edadStr = bloque.edad != null ? formatEdadCorta(bloque.edad) : '—'
+    return (
+      <button
+        onClick={() => onSelect(seleccionado ? null : bloque)}
+        className="w-full text-left px-3 py-2.5 rounded-xl transition-all"
+        style={{
+          background: seleccionado ? `${color}14` : 'rgba(255,255,255,0.02)',
+          border:     `1.5px solid ${seleccionado ? color + '80' : 'rgba(30,51,82,0.5)'}`,
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <div
+            className="w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0"
+            style={{ borderColor: seleccionado ? color : 'rgba(30,51,82,0.8)', background: seleccionado ? color : 'transparent' }}
+          >
+            {seleccionado && <span style={{ color: '#050810', fontSize: '8px', fontWeight: 'bold' }}>✓</span>}
+          </div>
+          <span className="text-xs">{CAT_ICONOS[cat]}</span>
+          <span className="font-bold font-mono text-xs text-white flex-1 truncate">{bloque.nombre}</span>
+        </div>
+        <div className="text-xs font-mono mt-0.5 ml-5.5 flex gap-2" style={{ color: '#4a5f7a' }}>
+          <span style={{ color }}>{CAT_LABELS[cat]}</span>
+          <span>·</span>
+          <span>{bloque.total} animales ({sexInfo})</span>
+          <span>·</span>
+          <span>{edadStr}</span>
+        </div>
+      </button>
+    )
+  }
 
   return (
     <div
@@ -568,122 +737,168 @@ function ModalPlanificarApareamiento({ animales, fecha, onGuardar, onCerrar }) {
       style={{ background: 'rgba(5,8,16,0.88)', backdropFilter: 'blur(4px)' }}
     >
       <div
-        className="w-full max-w-lg rounded-2xl overflow-hidden flex flex-col"
+        className="w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col"
         style={{
           background:  'rgba(13,21,40,0.98)',
           border:      '1.5px solid rgba(139,92,246,0.35)',
           boxShadow:   '0 0 60px rgba(139,92,246,0.12)',
-          maxHeight:   '88vh',
+          maxHeight:   '90vh',
         }}
       >
         {/* Header */}
         <div
-          className="px-6 py-5 shrink-0"
+          className="px-6 py-4 shrink-0"
           style={{ borderBottom: '1px solid rgba(139,92,246,0.15)', background: 'rgba(139,92,246,0.06)' }}
         >
           <div className="font-bold text-white text-sm">🔗 Planificar apareamiento</div>
           <div className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
             Fecha programada: <span style={{ color: '#a78bfa' }}>{fechaLabel}</span>
-            {' '}· Solo animales activos disponibles
+            {' '}· Solo registra la intención — no crea el apareamiento todavía
           </div>
         </div>
 
         {/* Cuerpo — dos columnas */}
         <div className="flex-1 overflow-y-auto">
-          <div className="grid grid-cols-2 gap-0 divide-x" style={{ borderColor: 'rgba(30,51,82,0.5)' }}>
+          <div className="grid grid-cols-2 gap-0" style={{ borderBottom: '1px solid rgba(30,51,82,0.4)' }}>
 
-            {/* Machos */}
-            <div className="p-4 space-y-2">
-              <div className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#40c4ff' }}>
-                ♂ Macho
+            {/* ── Columna Machos ── */}
+            <div className="p-4 space-y-3" style={{ borderRight: '1px solid rgba(30,51,82,0.5)' }}>
+              <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#40c4ff' }}>♂ Fuente de machos</div>
+
+              {/* Tabs tipo */}
+              <div className="flex gap-1.5">
+                <TabTipo valor="reproductor" actual={tipoMacho} color="#40c4ff" onChange={cambiarTipoMacho} />
+                <TabTipo valor="stock"       actual={tipoMacho} color="#40c4ff" onChange={cambiarTipoMacho} />
               </div>
-              {machos.length === 0 ? (
-                <div className="text-xs font-mono py-4 text-center" style={{ color: '#3d5068' }}>
-                  Sin machos activos
-                </div>
-              ) : machos.map((a) => {
-                const sel  = machoSel?.id === a.id
-                const edad = formatEdadCorta(edadDias(a.fecha_nacimiento))
-                return (
-                  <button
-                    key={a.id}
-                    onClick={() => setMachoSel(sel ? null : a)}
-                    className="w-full text-left px-3 py-2.5 rounded-xl transition-all"
-                    style={{
-                      background: sel ? 'rgba(64,196,255,0.14)' : 'rgba(255,255,255,0.02)',
-                      border:    `1.5px solid ${sel ? 'rgba(64,196,255,0.5)' : 'rgba(30,51,82,0.5)'}`,
-                    }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0"
-                        style={{ borderColor: sel ? '#40c4ff' : 'rgba(30,51,82,0.8)', background: sel ? '#40c4ff' : 'transparent' }}
-                      >
-                        {sel && <span style={{ color: '#050810', fontSize: '8px', fontWeight: 'bold' }}>✓</span>}
-                      </div>
-                      <span className="font-bold font-mono text-xs text-white">{a.codigo}</span>
-                    </div>
-                    <div className="text-xs font-mono mt-0.5 ml-5.5" style={{ color: '#4a5f7a' }}>{edad}</div>
-                  </button>
-                )
-              })}
+
+              {/* Lista según tipo */}
+              <div className="space-y-1.5 max-h-52 overflow-y-auto">
+                {tipoMacho === 'reproductor' ? (
+                  machos.length === 0
+                    ? <div className="text-xs font-mono py-3 text-center" style={{ color: '#3d5068' }}>Sin machos activos</div>
+                    : machos.map((a) => {
+                      const sel  = machoSel?.id === a.id
+                      const edad = formatEdadCorta(diasDesde(a.fecha_nacimiento))
+                      return (
+                        <button
+                          key={a.id}
+                          onClick={() => setMachoSel(sel ? null : a)}
+                          className="w-full text-left px-3 py-2.5 rounded-xl transition-all"
+                          style={{
+                            background: sel ? 'rgba(64,196,255,0.14)' : 'rgba(255,255,255,0.02)',
+                            border:    `1.5px solid ${sel ? 'rgba(64,196,255,0.5)' : 'rgba(30,51,82,0.5)'}`,
+                          }}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0"
+                              style={{ borderColor: sel ? '#40c4ff' : 'rgba(30,51,82,0.8)', background: sel ? '#40c4ff' : 'transparent' }}>
+                              {sel && <span style={{ color: '#050810', fontSize: '8px', fontWeight: 'bold' }}>✓</span>}
+                            </div>
+                            <span className="font-bold font-mono text-xs text-white">{a.codigo}</span>
+                          </div>
+                          <div className="text-xs font-mono mt-0.5 ml-5" style={{ color: '#4a5f7a' }}>{edad}</div>
+                        </button>
+                      )
+                    })
+                ) : (
+                  bloquesParaMachos.length === 0
+                    ? <div className="text-xs font-mono py-3 text-center" style={{ color: '#3d5068' }}>Sin jaulas con machos</div>
+                    : bloquesParaMachos.map((b) => (
+                      <BloqueStockItem
+                        key={b.id}
+                        bloque={b}
+                        seleccionado={jaulaMachoSel?.id === b.id}
+                        color="#40c4ff"
+                        onSelect={setJaulaMachoSel}
+                      />
+                    ))
+                )}
+              </div>
             </div>
 
-            {/* Hembras */}
-            <div className="p-4 space-y-2">
-              <div className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#ce93d8' }}>
-                ♀ Hembra
+            {/* ── Columna Hembras ── */}
+            <div className="p-4 space-y-3">
+              <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#ce93d8' }}>♀ Fuente de hembras</div>
+
+              {/* Tabs tipo */}
+              <div className="flex gap-1.5">
+                <TabTipo valor="reproductor" actual={tipoHembra} color="#ce93d8" onChange={cambiarTipoHembra} />
+                <TabTipo valor="stock"       actual={tipoHembra} color="#ce93d8" onChange={cambiarTipoHembra} />
               </div>
-              {hembras.length === 0 ? (
-                <div className="text-xs font-mono py-4 text-center" style={{ color: '#3d5068' }}>
-                  Sin hembras activas
-                </div>
-              ) : hembras.map((a) => {
-                const sel  = hembraSel?.id === a.id
-                const edad = formatEdadCorta(edadDias(a.fecha_nacimiento))
-                return (
-                  <button
-                    key={a.id}
-                    onClick={() => setHembraSel(sel ? null : a)}
-                    className="w-full text-left px-3 py-2.5 rounded-xl transition-all"
-                    style={{
-                      background: sel ? 'rgba(206,147,216,0.14)' : 'rgba(255,255,255,0.02)',
-                      border:    `1.5px solid ${sel ? 'rgba(206,147,216,0.5)' : 'rgba(30,51,82,0.5)'}`,
-                    }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0"
-                        style={{ borderColor: sel ? '#ce93d8' : 'rgba(30,51,82,0.8)', background: sel ? '#ce93d8' : 'transparent' }}
-                      >
-                        {sel && <span style={{ color: '#050810', fontSize: '8px', fontWeight: 'bold' }}>✓</span>}
-                      </div>
-                      <span className="font-bold font-mono text-xs text-white">{a.codigo}</span>
-                    </div>
-                    <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>{edad}</div>
-                  </button>
-                )
-              })}
+
+              {/* Lista según tipo */}
+              <div className="space-y-1.5 max-h-52 overflow-y-auto">
+                {tipoHembra === 'reproductor' ? (
+                  hembras.length === 0
+                    ? <div className="text-xs font-mono py-3 text-center" style={{ color: '#3d5068' }}>Sin hembras activas</div>
+                    : hembras.map((a) => {
+                      const sel  = hembraSel?.id === a.id
+                      const edad = formatEdadCorta(diasDesde(a.fecha_nacimiento))
+                      return (
+                        <button
+                          key={a.id}
+                          onClick={() => setHembraSel(sel ? null : a)}
+                          className="w-full text-left px-3 py-2.5 rounded-xl transition-all"
+                          style={{
+                            background: sel ? 'rgba(206,147,216,0.14)' : 'rgba(255,255,255,0.02)',
+                            border:    `1.5px solid ${sel ? 'rgba(206,147,216,0.5)' : 'rgba(30,51,82,0.5)'}`,
+                          }}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0"
+                              style={{ borderColor: sel ? '#ce93d8' : 'rgba(30,51,82,0.8)', background: sel ? '#ce93d8' : 'transparent' }}>
+                              {sel && <span style={{ color: '#050810', fontSize: '8px', fontWeight: 'bold' }}>✓</span>}
+                            </div>
+                            <span className="font-bold font-mono text-xs text-white">{a.codigo}</span>
+                          </div>
+                          <div className="text-xs font-mono mt-0.5 ml-5" style={{ color: '#4a5f7a' }}>{edad}</div>
+                        </button>
+                      )
+                    })
+                ) : (
+                  bloquesParaHembras.length === 0
+                    ? <div className="text-xs font-mono py-3 text-center" style={{ color: '#3d5068' }}>Sin jaulas con hembras</div>
+                    : bloquesParaHembras.map((b) => (
+                      <BloqueStockItem
+                        key={b.id}
+                        bloque={b}
+                        seleccionado={jaulaHembraSel?.id === b.id}
+                        color="#ce93d8"
+                        onSelect={setJaulaHembraSel}
+                      />
+                    ))
+                )}
+              </div>
             </div>
           </div>
 
           {/* Resumen selección */}
-          {(machoSel || hembraSel) && (
+          {(fuenteMacho || fuenteHembra) && (
             <div
-              className="mx-4 mb-2 px-4 py-3 rounded-xl flex items-center gap-3 text-xs font-mono"
+              className="mx-4 mt-3 mb-1 px-4 py-3 rounded-xl flex items-center gap-3 text-xs font-mono"
               style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)' }}
             >
-              <span style={{ color: '#40c4ff' }}>♂ {machoSel?.codigo ?? '—'}</span>
+              <span style={{ color: '#40c4ff' }}>♂ {getNombreFuente(fuenteMacho)}</span>
               <span style={{ color: '#4a5f7a' }}>×</span>
-              <span style={{ color: '#ce93d8' }}>♀ {hembraSel?.codigo ?? '—'}</span>
+              <span style={{ color: '#ce93d8' }}>♀ {getNombreFuente(fuenteHembra)}</span>
+              {fuenteMacho?.tipo === 'stock' && (
+                <span className="px-1.5 py-0.5 rounded font-semibold" style={{ background: 'rgba(64,196,255,0.12)', color: '#40c4ff', fontSize: '10px' }}>
+                  {fuenteMacho.total} animales
+                </span>
+              )}
+              {fuenteHembra?.tipo === 'stock' && (
+                <span className="px-1.5 py-0.5 rounded font-semibold" style={{ background: 'rgba(206,147,216,0.12)', color: '#ce93d8', fontSize: '10px' }}>
+                  {fuenteHembra.total} animales
+                </span>
+              )}
             </div>
           )}
 
           {/* Observaciones */}
-          <div className="px-4 pb-4">
+          <div className="px-4 pb-4 pt-2">
             <input
               type="text"
-              placeholder="Observaciones (opcional)"
+              placeholder="Observaciones opcionales (protocolo, objetivo, investigador...)"
               value={observaciones}
               onChange={(e) => setObservaciones(e.target.value)}
               className="w-full px-3 py-2.5 text-xs font-mono focus:outline-none rounded-xl"
@@ -709,7 +924,7 @@ function ModalPlanificarApareamiento({ animales, fecha, onGuardar, onCerrar }) {
             Cancelar
           </button>
           <button
-            onClick={() => puedeGuardar && onGuardar({ macho: machoSel, hembra: hembraSel, observaciones })}
+            onClick={() => puedeGuardar && onGuardar(fuenteMacho, fuenteHembra, observaciones)}
             disabled={!puedeGuardar}
             className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all"
             style={{
@@ -719,7 +934,7 @@ function ModalPlanificarApareamiento({ animales, fecha, onGuardar, onCerrar }) {
               cursor:     puedeGuardar ? 'pointer' : 'not-allowed',
             }}
           >
-            Guardar planificación
+            🔗 Guardar planificación
           </button>
         </div>
       </div>

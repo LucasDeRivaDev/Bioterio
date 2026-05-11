@@ -424,6 +424,15 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
   - **CamadaForm.jsx:** la opción en el select dice `H12 🗓 Reservada`; aviso naranja bajo el selector cuando el animal seleccionado tiene plan futuro.
   - **SQL necesario:** ninguno — todo derivado del localStorage.
 
+- **Planificación de apareamientos desde jaulas de stock (11/05/2026):** expande el sistema de planificación para incluir jaulas y bloques de stock como fuentes de futuros reproductores, además de los reproductores actuales.
+  - **Calendario — `ModalPlanificarApareamiento` expandido:** cada columna (♂ Fuente de machos / ♀ Fuente de hembras) tiene dos tabs: "Reproductor" y "📦 Jaula de stock". Al elegir "Jaula de stock" se muestran todas las jaulas reales y bloques virtuales filtrados por disponibilidad de ese sexo (`machos > 0` o sin sexar para machos; ídem hembras). Cada item muestra categoría (Crías/Jóvenes/Adultos), código de padres, total de animales, distribución de sexo y edad.
+  - **Plan mixto:** se puede combinar un reproductor activo con una jaula de stock (p. ej. macho reproductor × jaula de jóvenes hembras). El plan item para stock usa `tipo: 'stock'` y `bloqueId` con prefijo `j-` (real) o `v-` (virtual), igual que los bloques de Stock.
+  - **`getJaulasReservadas(bioterioActivo)` en `calculos.js`:** nueva función paralela a `getAnimalesReservados`. Lee los planes del localStorage y devuelve `Map<bloqueId, { fecha, planId }>` para todos los bloques de `tipo: 'stock'` en planes activos. Solo planes `!completado && fecha >= hoy`.
+  - **Stock — `BloqueJaula`:** nuevo prop `jaulasReservadas`. Si el bloque de stock está en el mapa, muestra badge naranja `🟡 Destino reproductivo · DD/MM`.
+  - **Stock — `ModalSacrificio` / `ModalEntrega`:** nuevo prop `jaulasReservadas`. Detectan jaulas con destino reproductivo (`stockReservados`) y muestran banner de advertencia naranja `🟡 Jaula con destino reproductivo` con la fecha del plan. No bloquean la acción — solo avisan.
+  - **Retrocompatibilidad:** planes existentes (creados desde Stock con bloques de stock) ya tenían `tipo: 'stock'`, así que `getJaulasReservadas` los detecta automáticamente. Planes de reproductores existentes siguen funcionando sin cambios.
+  - **SQL necesario:** ninguno — todo localStorage y frontend.
+
 ---
 
 ## Comportamientos de datos importantes
@@ -448,6 +457,7 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
 - **ResumenRatones — jaulas por categoría:** `calcularStockGrupo` devuelve `jaulasCrias`, `jaulasJovenes`, `jaulasAdultos` además del total. `TarjetaEdad` muestra "N jaulas" bajo el número. `MiniCat` muestra "cantidad (jaulas)" inline.
 - **Notas del calendario** se guardan en localStorage key `appMosca_notas_{bioterioActivo}`. Estructura: `{ id, bioterioActivo, fecha, titulo, descripcion, completada, created_at }`. Las notas completadas no generan punto en el grid pero siguen visibles en el panel lateral del día. El Dashboard solo muestra notas con `fecha <= hoy` y `completada: false`.
 - **getAnimalesReservados(bioterioActivo)** lee los planes de apareamiento del localStorage y devuelve un `Map<animalId, {fecha, planId}>` con animales reservados. Solo planes `!completado && fecha_planificada >= hoy`. Extrae el animal ID de `bloqueId.slice(2)` cuando `tipo === 'reproductor'`. Usada en Animales.jsx, Stock.jsx (BloqueJaula + ModalSacrificio + ModalEntrega) y CamadaForm.jsx. No bloquea operaciones — solo avisa.
+- **getJaulasReservadas(bioterioActivo)** lee los mismos planes y devuelve `Map<bloqueId, {fecha, planId}>` para bloques de `tipo === 'stock'`. `bloqueId` tiene prefijo `j-` (jaula real) o `v-` (bloque virtual). Usada en Stock.jsx (BloqueJaula + ModalSacrificio + ModalEntrega). Los planes de reproductores no están en este mapa — solo los de stock.
 
 ---
 
