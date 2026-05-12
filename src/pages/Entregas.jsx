@@ -104,8 +104,8 @@ export default function Entregas() {
         <div className="space-y-2">
           {lista.map((e) => {
             const camada = camadas.find((c) => c.id === e.camada_id)
-            const madre  = camada ? animales.find((a) => a.id === camada.id_madre) : null
-            const padre  = camada ? animales.find((a) => a.id === camada.id_padre) : null
+            const madre  = camada ? todosAnimales.find((a) => a.id === camada.id_madre) : null
+            const padre  = camada ? todosAnimales.find((a) => a.id === camada.id_padre) : null
             const esRepro = !e.camada_id
             const estaEnProceso = cargando === e.id
 
@@ -136,9 +136,16 @@ export default function Entregas() {
                   )}
                 </div>
 
-                {/* Cantidad */}
-                <div className="font-mono font-bold text-base" style={{ color: '#ffb300' }}>
+                {/* Cantidad + sexo */}
+                <div className="font-mono font-bold text-base text-right" style={{ color: '#ffb300' }}>
                   {e.cantidad} {e.cantidad === 1 ? 'animal' : 'animales'}
+                  {(e.machos != null || e.hembras != null) && (
+                    <div className="font-normal text-xs mt-0.5" style={{ color: '#8a9bb0' }}>
+                      {e.machos != null && <span style={{ color: '#40c4ff' }}>♂ {e.machos}</span>}
+                      {e.machos != null && e.hembras != null && <span> · </span>}
+                      {e.hembras != null && <span style={{ color: '#ce93d8' }}>♀ {e.hembras}</span>}
+                    </div>
+                  )}
                 </div>
 
                 {/* Botón devolver */}

@@ -1993,9 +1993,15 @@ export default function Stock() {
         await entregarReproductor(b.animal, fecha, observaciones)
       } else {
         const cant = parseInt(cantidades?.[b.id]) || b.total
+        // Calcular machos/hembras entregados proporcionalmente
+        const totalJaula = b.jaula?.total || b.total
+        const machosEntregados  = b.jaula?.machos  != null ? Math.round(cant * (b.jaula.machos  / totalJaula)) : null
+        const hembraEntregadas  = b.jaula?.hembras != null ? cant - (machosEntregados ?? 0)                    : null
         await registrarEntrega({
           camada_id: b.camada.id,
           cantidad: cant,
+          machos: machosEntregados,
+          hembras: hembraEntregadas,
           fecha,
           observaciones: observaciones || null,
         })
@@ -2004,8 +2010,8 @@ export default function Stock() {
           if (resto <= 0) {
             await eliminarJaula(b.jaula.id)
           } else {
-            const nuevosMachos  = b.jaula.machos  != null ? Math.max(0, b.jaula.machos  - Math.round(cant * (b.jaula.machos  / b.jaula.total))) : null
-            const nuevasHembras = b.jaula.hembras != null ? Math.max(0, b.jaula.hembras - Math.round(cant * (b.jaula.hembras / b.jaula.total))) : null
+            const nuevosMachos  = b.jaula.machos  != null ? Math.max(0, b.jaula.machos  - (machosEntregados ?? 0)) : null
+            const nuevasHembras = b.jaula.hembras != null ? Math.max(0, b.jaula.hembras - (hembraEntregadas ?? 0)) : null
             await editarJaula({ ...b.jaula, total: resto, machos: nuevosMachos, hembras: nuevasHembras })
           }
         }
