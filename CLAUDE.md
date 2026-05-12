@@ -461,10 +461,35 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
 - **Fix: Rendimiento y Estadísticas de ratones en BAL/C, C57 e Híbridos (11/05/2026):** las páginas de Rendimiento y Estadísticas no mostraban datos para ningún ratón.
   - **Causa 1 — Híbridos:** `animales` del contexto en Híbridos = crías F1 (sin historial reproductivo). Los reproductores reales (machos BAL/C + hembras C57) están en `animalesExportados`. `Rendimiento.jsx` y `Estadísticas.jsx` solo usaban `animales`, ignorando los reproductores.
   - **Causa 2 — BAL/C y C57:** las camadas F1 se guardan con `bioterio_id = 'ratones_hibridos'`. Al entrar a BAL/C o C57, el contexto solo cargaba camadas propias de ese bioterio. Si todo el historial reproductivo de esos animales era en cruzas F1, el rendimiento aparecía vacío.
-  - **Fix en `BiotheriumContext.jsx`:** al cargar `ratones_balbc` o `ratones_c57`, detecta animales con `exportado_hibridos: true`, hace una query extra de camadas con `bioterio_id = 'ratones_hibridos'`, filtra las relevantes (donde esos animales son padre o madre) y las fusiona con las camadas propias del bioterio.
+  - **Fix en `BiotheriumContext.jsx`:** al cargar `ratones_balbc` o `ratones_c57`, detecta animales con `exportado_hibridos: true`, hace una query extra de camadas con `bioterio_id = 'ratones_hibridos'`, filtra las relevantes (donde esos animales son padre o madre) y las guarda en `camadasF1` (array separado — ver sesión 12/05/2026).
   - **Fix en `Rendimiento.jsx`:** cuando `esHibridos`, usa `animalesExportados` como fuente de rankings de machos y hembras. El lookup de madre en `historial()` busca en `[...animales, ...animalesExportados]`.
   - **Fix en `Estadísticas.jsx`:** cuando `esHibridos`, usa `animalesExportados` para los dropdowns de filtro por madre/padre. Los gráficos usan `camadas` (F1) que ya estaban correctos.
   - **SQL necesario:** ninguno — el cambio es en el frontend (context + páginas).
+
+- **Mejoras de sidebar portadas desde BioteríoPro (12/05/2026):**
+  - **Ficha biológica colapsable:** header siempre visible con botón toggle y `ChevronDown`. El contenido (referencias biológicas) se colapsa/expande. Arranca **cerrada** por defecto. Estado persistido en `localStorage` key `appMosca_ficha_visible`.
+  - **Madurez sexual sin decimales:** `Math.round(bio.MADUREZ_DIAS / 7)` semanas.
+  - **Preñadas filtran fallos:** contador 🫄 excluye camadas con `failure_flag: true`.
+  - **Separadores en nav:** líneas divisoras entre "Inicio" y "Panel de hoy", entre "Panel de hoy" y los grupos (Reproductores/Stock/Rendimiento), y entre los grupos y "Reportes".
+  - **Botón "Cambiar":** el ícono `RefreshCw` del bioterio activo fue reemplazado por un botón de texto "Cambiar".
+
+- **Fix: crías F1 solo visibles en Híbridos + progenitores en bloques de stock (12/05/2026):**
+  - **Causa del bug:** las camadas F1 (de `ratones_hibridos`) se mergeaban en el array principal de `camadas` al cargar BAL/C o C57. Esto hacía que el Stock generara bloques virtuales fantasma con crías F1 en esos bioterios.
+  - **Fix en `BiotheriumContext.jsx`:** `camadasF1` ahora es un array de estado separado (no se mezcla con `camadas`). Dispatch `SET_CAMADAS_F1`. Se limpia al cambiar de bioterio. Expuesto en el valor del contexto.
+  - **Fix en `Stock.jsx`:** `todosAnimales = useMemo([...animales, ...animalesExportados])` para buscar progenitores — en Híbridos los padres están en `animalesExportados`. Bloques virtuales filtran por `bioterio_id === bioterioActivo` para excluir camadas de otro bioterio.
+  - **Fix en `Rendimiento.jsx` y `Estadísticas.jsx`:** `todasCamadas = camadasF1.length > 0 ? [...camadas, ...camadasF1] : camadas`. Todos los cálculos de ranking, historial y gráficos usan `todasCamadas`.
+  - **Mejora en `BloqueJaula`:** display de progenitores reestructurado — `♀ H12 [BAL/C]` / `♂ M5 [C57]` en líneas separadas con color por sexo y badge de colonia cuando el progenitor viene de otra cepa. "desconocida/desconocido" en lugar de "?" cuando no hay dato.
+
+- **Fix: ResumenRatones filtra camadas fallidas (12/05/2026):** `calcularStockGrupo` en `ResumenRatones.jsx` ahora incluye `if (camada.failure_flag) continue` en el loop de bloques virtuales. Evita inflar el stock total si una camada fallida tiene `fecha_destete` cargada por error.
+
+- **Alerta de crías F1 listas para sacrificio en Dashboard (12/05/2026):** cuando el bioterio activo es Híbridos y una camada F1 tiene crías con ≥40 días sin destetar ni sacrificar, aparece una tarea en Panel de hoy:
+  - **40–49 días** → `PRÓXIMA` (azul)
+  - **50–54 días** → `HOY` (amarillo)
+  - **≥55 días** → `VENCIDA` (rojo)
+  - Descripción: `"Crías F1 listas para sacrificio — H23 × M41"` (con códigos de progenitores desde `animalesExportados`)
+  - Ícono: `Skull` de Lucide React. Descartable con ✕.
+  - Implementado como `tareasF1` useMemo separado en `Dashboard.jsx` (no en `generarTareas`) para poder acceder a `animalesExportados`.
+  - Nuevo tipo `SACRIFICIO_F1: 'sacrificio_f1'` en `constants.js`.
 
 ---
 
