@@ -146,7 +146,7 @@ function SinDatos() {
 
 // ── PÁGINA PRINCIPAL ──────────────────────────────────────────────────────────
 export default function Estadisticas() {
-  const { camadas, animales, animalesExportados, bio, bioterioActivo } = useBioterio()
+  const { camadas, camadasF1, animales, animalesExportados, bio, bioterioActivo } = useBioterio()
 
   // ── Filtros ────────────────────────────────────────────────────────────────
   const [desde,         setDesde]         = useState('')
@@ -159,13 +159,14 @@ export default function Estadisticas() {
   // Los dropdowns de filtro deben mostrar esos animales.
   const esHibridos = bioterioActivo === 'ratones_hibridos'
   const animalesParaFiltros = esHibridos ? animalesExportados : animales
+  const todasCamadas = camadasF1.length > 0 ? [...camadas, ...camadasF1] : camadas
 
   const hembras = animalesParaFiltros.filter((a) => a.sexo === 'hembra')
   const machos  = animalesParaFiltros.filter((a) => a.sexo === 'macho')
 
   // ── Camadas filtradas ──────────────────────────────────────────────────────
   const camadasFiltradas = useMemo(() => {
-    return camadas.filter((c) => {
+    return todasCamadas.filter((c) => {
       if (!c.fecha_copula) return false
       if (desde && c.fecha_copula < desde) return false
       if (hasta && c.fecha_copula > hasta) return false
@@ -173,7 +174,7 @@ export default function Estadisticas() {
       if (filtroPadreId && c.id_padre !== filtroPadreId) return false
       return true
     })
-  }, [camadas, desde, hasta, filtroMadreId, filtroPadreId])
+  }, [todasCamadas, desde, hasta, filtroMadreId, filtroPadreId])
 
   // ── 1. Partos vs Fallas ────────────────────────────────────────────────────
   const dataPartos = useMemo(() => {
@@ -201,7 +202,7 @@ export default function Estadisticas() {
     const idsMadres = [...new Set(camadasFiltradas.map((c) => c.id_madre).filter(Boolean))]
     const niveles = { Alta: 0, Media: 0, Baja: 0, 'En proceso': 0 }
     idsMadres.forEach((id) => {
-      const s = scorePromedioHembra(id, camadas) // score histórico completo
+      const s = scorePromedioHembra(id, todasCamadas) // score histórico completo
       const nivel = nivelScore(s)
       niveles[nivel === 'Sin datos' ? 'En proceso' : nivel]++
     })
@@ -211,7 +212,7 @@ export default function Estadisticas() {
       { name: 'Baja',       value: niveles['Baja'],       fill: C.rojo     },
       { name: 'En proceso', value: niveles['En proceso'], fill: C.gris     },
     ].filter((d) => d.value > 0)
-  }, [camadasFiltradas, camadas])
+  }, [camadasFiltradas, todasCamadas])
 
   // ── 3. Supervivencia ───────────────────────────────────────────────────────
   const dataSupervivencia = useMemo(() => {

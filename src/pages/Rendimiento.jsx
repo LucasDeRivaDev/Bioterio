@@ -132,7 +132,7 @@ function EdadMachoBadge({ macho }) {
 }
 
 export default function Rendimiento() {
-  const { animales, animalesExportados, camadas, bio, bioterioActivo } = useBioterio()
+  const { animales, animalesExportados, camadas, camadasF1, bio, bioterioActivo } = useBioterio()
   const [vista, setVista] = useState('activos')
   const [subVista, setSubVista] = useState(null)
 
@@ -147,6 +147,10 @@ export default function Rendimiento() {
   // poder buscar en ambos arrays (animales propios + exportados de Híbridos)
   const todosAnimales = esHibridos ? [...animales, ...animalesExportados] : animales
 
+  // camadasF1 contiene las camadas F1 de Híbridos donde estos animales participaron
+  // (solo tiene datos cuando el bioterio activo es BAL/C o C57)
+  const todasCamadas = camadasF1.length > 0 ? [...camadas, ...camadasF1] : camadas
+
   // ── Machos ──────────────────────────────────────────────────────────────────
   const machosHistorico = animalesParaRanking.filter((a) => a.sexo === 'macho')
   const machosActivos   = machosHistorico.filter(esActivo)
@@ -154,8 +158,8 @@ export default function Rendimiento() {
   function buildRankingMachos(lista) {
     return lista
       .map((macho) => {
-        const m = calcularRendimientoMacho(macho.id, camadas)
-        const camadasMacho = camadas.filter((c) => c.id_padre === macho.id && c.fecha_nacimiento)
+        const m = calcularRendimientoMacho(macho.id, todasCamadas)
+        const camadasMacho = todasCamadas.filter((c) => c.id_padre === macho.id && c.fecha_nacimiento)
         const totalMachos  = camadasMacho.reduce((s, c) => s + (c.crias_machos  ?? 0), 0)
         const totalHembras = camadasMacho.reduce((s, c) => s + (c.crias_hembras ?? 0), 0)
         return { macho, m, totalMachos, totalHembras }
@@ -168,8 +172,8 @@ export default function Rendimiento() {
       })
   }
 
-  const rankingHistorico = useMemo(() => buildRankingMachos(machosHistorico), [machosHistorico, camadas])
-  const rankingActivos   = useMemo(() => buildRankingMachos(machosActivos),   [machosActivos,   camadas])
+  const rankingHistorico = useMemo(() => buildRankingMachos(machosHistorico), [machosHistorico, todasCamadas])
+  const rankingActivos   = useMemo(() => buildRankingMachos(machosActivos),   [machosActivos,   todasCamadas])
   const ranking = vista === 'activos' ? rankingActivos : rankingHistorico
 
   const maxLat = useMemo(() => {
@@ -178,7 +182,7 @@ export default function Rendimiento() {
   }, [ranking])
 
   function historial(machoId) {
-    return camadas
+    return todasCamadas
       .filter((c) => c.id_padre === machoId)
       .map((c) => ({ ...c, madre: todosAnimales.find((a) => a.id === c.id_madre), lat: calcularLatencia(c, bio) }))
       .sort((a, b) => (a.fecha_copula ?? '').localeCompare(b.fecha_copula ?? ''))
@@ -188,9 +192,9 @@ export default function Rendimiento() {
   function buildHembraStats(lista) {
     return lista
       .map((h) => {
-        const sus    = camadas.filter((c) => c.id_madre === h.id && c.fecha_nacimiento)
-        const perfil = calcularPerfilHembra(h.id, camadas)
-        const conf   = calcularConfiabilidadHembra(h.id, camadas)
+        const sus    = todasCamadas.filter((c) => c.id_madre === h.id && c.fecha_nacimiento)
+        const perfil = calcularPerfilHembra(h.id, todasCamadas)
+        const conf   = calcularConfiabilidadHembra(h.id, todasCamadas)
         const crias        = sus.reduce((s, c) => s + (c.total_crias   ?? 0), 0)
         const criasMachos  = sus.reduce((s, c) => s + (c.crias_machos  ?? 0), 0)
         const criasHembras = sus.reduce((s, c) => s + (c.crias_hembras ?? 0), 0)
@@ -208,11 +212,11 @@ export default function Rendimiento() {
 
   const hembraStatsHistorico = useMemo(() =>
     buildHembraStats(animalesParaRanking.filter((a) => a.sexo === 'hembra')),
-  [animalesParaRanking, camadas])
+  [animalesParaRanking, todasCamadas])
 
   const hembraStatsActivos = useMemo(() =>
     buildHembraStats(animalesParaRanking.filter((a) => a.sexo === 'hembra' && esActivo(a))),
-  [animalesParaRanking, camadas])
+  [animalesParaRanking, todasCamadas])
 
   const hembraStats = vista === 'activos' ? hembraStatsActivos : hembraStatsHistorico
 
@@ -346,7 +350,7 @@ const btnSubTab = (v, label, color) => (
             {ranking.map(({ macho, m, totalMachos, totalHembras }, idx) => {
               const hist     = historial(macho.id)
               const edadInfo = esActivo(macho) ? edadMachoInfo(macho) : null
-              const bajaPerf = esActivo(macho) ? detectarBajaPerformanceMacho(macho.id, camadas) : null
+              const bajaPerf = esActivo(macho) ? detectarBajaPerformanceMacho(macho.id, todasCamadas) : null
               return (
                 <div key={macho.id} className="rounded-xl overflow-hidden" style={cardStyle}>
                   {/* Fila principal */}
@@ -569,7 +573,7 @@ const btnSubTab = (v, label, color) => (
       )}
 
       {/* Sin datos */}
-      {camadas.filter((c) => c.fecha_nacimiento).length === 0 && (
+      {todasCamadas.filter((c) => c.fecha_nacimiento).length === 0 && (
         <div
           className="rounded-xl p-8 text-center"
           style={{ background: 'rgba(255,179,0,0.05)', border: '1px solid rgba(255,179,0,0.15)' }}

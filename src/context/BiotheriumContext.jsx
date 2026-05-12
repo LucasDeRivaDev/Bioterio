@@ -17,6 +17,7 @@ function reducer(estado, accion) {
 
     // Animales exportados desde BAL/C y C57 hacia Híbridos
     case 'SET_ANIMALES_EXPORTADOS':   return { ...estado, animalesExportados: accion.payload }
+    case 'SET_CAMADAS_F1':            return { ...estado, camadasF1: accion.payload }
     case 'AGREGAR_ANIMAL_EXPORTADO':  return { ...estado, animalesExportados: [...estado.animalesExportados, accion.payload] }
     case 'REMOVER_ANIMAL_EXPORTADO':  return { ...estado, animalesExportados: estado.animalesExportados.filter((a) => a.id !== accion.payload) }
     case 'EDITAR_ANIMAL_EXPORTADO':   return { ...estado, animalesExportados: estado.animalesExportados.map((a) => a.id === accion.payload.id ? accion.payload : a) }
@@ -83,7 +84,7 @@ const BiotheriumCtx = createContext(null)
 
 export function BiotheriumProvider({ children }) {
   const { bioterioActivo, bio } = useBioterioActivo()
-  const [estado, dispatch] = useReducer(reducer, { animales: [], animalesExportados: [], camadas: [], sacrificios: [], entregas: [], jaulas: [], temperaturas: [], incidentes: [], extendidos: [] })
+  const [estado, dispatch] = useReducer(reducer, { animales: [], animalesExportados: [], camadas: [], camadasF1: [], sacrificios: [], entregas: [], jaulas: [], temperaturas: [], incidentes: [], extendidos: [] })
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
 
@@ -97,6 +98,7 @@ export function BiotheriumProvider({ children }) {
       dispatch({ type: 'SET_ANIMALES',             payload: [] })
       dispatch({ type: 'SET_ANIMALES_EXPORTADOS',  payload: [] })
       dispatch({ type: 'SET_CAMADAS',              payload: [] })
+      dispatch({ type: 'SET_CAMADAS_F1',           payload: [] })
       dispatch({ type: 'SET_SACRIFICIOS',          payload: [] })
       dispatch({ type: 'SET_ENTREGAS',             payload: [] })
       dispatch({ type: 'SET_JAULAS',               payload: [] })
@@ -139,25 +141,21 @@ export function BiotheriumProvider({ children }) {
 
         // Cuando el bioterio activo es BAL/C o C57, también traer las camadas F1
         // registradas en Híbridos donde esos animales aparecen como padre o madre.
-        // Esto permite ver el rendimiento real de los reproductores exportados.
+        // Se guardan en camadasF1 (separadas) para que Rendimiento y Estadísticas
+        // puedan usarlas, sin que aparezcan como bloques de stock en BAL/C ni C57.
         if (['ratones_balbc', 'ratones_c57'].includes(bioterioActivo)) {
           const exportados = (animales ?? []).filter((a) => a.exportado_hibridos)
           if (exportados.length > 0) {
             const exportadoIds = new Set(exportados.map((a) => a.id))
-            const { data: camadasF1 } = await supabase
+            const { data: camadasHib } = await supabase
               .from('camadas')
               .select('*')
               .eq('bioterio_id', 'ratones_hibridos')
               .order('fecha_copula', { ascending: true })
-            const relevantes = (camadasF1 ?? []).filter(
+            const relevantes = (camadasHib ?? []).filter(
               (c) => exportadoIds.has(c.id_padre) || exportadoIds.has(c.id_madre)
             )
-            if (relevantes.length > 0) {
-              const merged = [...(camadas ?? []), ...relevantes].sort((a, b) =>
-                (a.fecha_copula ?? '').localeCompare(b.fecha_copula ?? '')
-              )
-              dispatch({ type: 'SET_CAMADAS', payload: merged })
-            }
+            dispatch({ type: 'SET_CAMADAS_F1', payload: relevantes })
           }
         }
       } catch (e) {
@@ -676,6 +674,7 @@ export function BiotheriumProvider({ children }) {
       animales: estado.animales,
       animalesExportados: estado.animalesExportados,
       camadas: estado.camadas,
+      camadasF1: estado.camadasF1,
       sacrificios: estado.sacrificios,
       entregas: estado.entregas,
       jaulas: estado.jaulas,

@@ -295,9 +295,42 @@ function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccio
               )}
             </>
           ) : (
-            <span className="text-white">
-              {bloque.madre?.codigo ?? '?'} × {bloque.padre?.codigo ?? '?'}
-            </span>
+            <div className="space-y-0.5">
+              {bloque.madre ? (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold" style={{ color: '#ce93d8' }}>♀</span>
+                  <span className="font-mono text-sm text-white">{bloque.madre.codigo}</span>
+                  {bloque.madre.bioterio_id === 'ratones_balbc' && (
+                    <span className="text-xs px-1 rounded font-semibold" style={{ color: '#ce93d8', background: 'rgba(206,147,216,0.12)' }}>BAL/C</span>
+                  )}
+                  {bloque.madre.bioterio_id === 'ratones_c57' && (
+                    <span className="text-xs px-1 rounded font-semibold" style={{ color: '#40c4ff', background: 'rgba(64,196,255,0.12)' }}>C57</span>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold" style={{ color: '#4a5f7a' }}>♀</span>
+                  <span className="font-mono text-sm" style={{ color: '#4a5f7a' }}>desconocida</span>
+                </div>
+              )}
+              {bloque.padre ? (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold" style={{ color: '#40c4ff' }}>♂</span>
+                  <span className="font-mono text-sm text-white">{bloque.padre.codigo}</span>
+                  {bloque.padre.bioterio_id === 'ratones_balbc' && (
+                    <span className="text-xs px-1 rounded font-semibold" style={{ color: '#ce93d8', background: 'rgba(206,147,216,0.12)' }}>BAL/C</span>
+                  )}
+                  {bloque.padre.bioterio_id === 'ratones_c57' && (
+                    <span className="text-xs px-1 rounded font-semibold" style={{ color: '#40c4ff', background: 'rgba(64,196,255,0.12)' }}>C57</span>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold" style={{ color: '#4a5f7a' }}>♂</span>
+                  <span className="font-mono text-sm" style={{ color: '#4a5f7a' }}>desconocido</span>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
@@ -1736,8 +1769,10 @@ function CategoriaCard({ icono, titulo, subtitulo, total, grupos, gruposLabel, m
 
 
 export default function Stock() {
-  const { animales, camadas, sacrificios, entregas, jaulas, bio, bioterioActivo, agregarAnimal, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, registrarSacrificio, registrarEntrega, entregarReproductor } = useBioterio()
+  const { animales, animalesExportados, camadas, sacrificios, entregas, jaulas, bio, bioterioActivo, agregarAnimal, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, registrarSacrificio, registrarEntrega, entregarReproductor } = useBioterio()
   const esHibridos = bioterioActivo === 'ratones_hibridos'
+  // Para encontrar progenitores en Híbridos (están en animalesExportados, no en animales)
+  const todosAnimales = useMemo(() => [...animales, ...animalesExportados], [animales, animalesExportados])
 
   // Mapa de animales reservados para apareamiento planificado (se recalcula con el bioterio)
   const animalesReservados = useMemo(
@@ -1791,8 +1826,8 @@ export default function Stock() {
       const camada = camadas.find((c) => c.id === jaula.camada_id)
       if (!camada?.fecha_nacimiento || jaula.total <= 0) return
       const edad = edadDias(camada.fecha_nacimiento)
-      const madre = animales.find((a) => a.id === camada.id_madre)
-      const padre = animales.find((a) => a.id === camada.id_padre)
+      const madre = todosAnimales.find((a) => a.id === camada.id_madre)
+      const padre = todosAnimales.find((a) => a.id === camada.id_padre)
       result.push({
         tipo: 'stock',
         id: `j-${jaula.id}`,
@@ -1808,16 +1843,17 @@ export default function Stock() {
       })
     })
 
-    // 3. Bloques virtuales — camadas destetadas sin jaulas asignadas (datos históricos)
+    // 3. Bloques virtuales — solo camadas propias del bioterio activo (no F1 de otros)
     camadas.forEach((camada) => {
       if (!camada.fecha_nacimiento || !camada.fecha_destete) return
       if (camada.incluir_en_stock === false) return
+      if (camada.bioterio_id && camada.bioterio_id !== bioterioActivo) return
       if (jaulas.some((j) => j.camada_id === camada.id)) return
       const stock = stockCamada(camada, sacrificios, entregas)
       if (stock <= 0) return
       const edad = edadDias(camada.fecha_nacimiento)
-      const madre = animales.find((a) => a.id === camada.id_madre)
-      const padre = animales.find((a) => a.id === camada.id_padre)
+      const madre = todosAnimales.find((a) => a.id === camada.id_madre)
+      const padre = todosAnimales.find((a) => a.id === camada.id_padre)
       result.push({
         tipo: 'stock',
         id: `v-${camada.id}`,
@@ -1834,7 +1870,7 @@ export default function Stock() {
     })
 
     return result
-  }, [animales, camadas, jaulas, sacrificios, bio])
+  }, [todosAnimales, camadas, jaulas, sacrificios, bio, bioterioActivo])
 
   // ── Resumen por categoría ─────────────────────────────────────────────────
   const resumen = useMemo(() => {
