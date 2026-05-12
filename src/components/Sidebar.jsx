@@ -9,10 +9,8 @@ import {
 } from 'lucide-react'
 import GenERatsBrand from './GenERatsBrand'
 
-const links = [
-  { to: '/inicio',   label: 'Inicio',              icon: <Home size={15} /> },
-  { to: '/',         label: 'Panel de hoy',         icon: <LayoutDashboard size={15} /> },
-]
+const LINK_INICIO   = { to: '/inicio', label: 'Inicio',       icon: <Home size={15} /> }
+const LINK_DASHBOARD = { to: '/',      label: 'Panel de hoy', icon: <LayoutDashboard size={15} /> }
 
 const LINK_REPORTES = { to: '/reportes', label: 'Reportes e impresión', icon: <Printer size={15} /> }
 
@@ -344,36 +342,40 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 pb-3 space-y-1">
-        {links.map(({ to, label, icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/'}
-            onClick={onCerrarMenu}
-            style={({ isActive }) =>
-              isActive
-                ? {
-                    display: 'flex', alignItems: 'center', gap: '10px',
-                    padding: '8px 12px', borderRadius: '10px',
-                    background: 'rgba(0,230,118,0.12)',
-                    color: '#00e676',
-                    border: '1px solid rgba(0,230,118,0.25)',
-                    boxShadow: '0 0 12px rgba(0,230,118,0.1)',
-                    fontSize: '13px', fontWeight: 600, textDecoration: 'none',
-                  }
-                : {
-                    display: 'flex', alignItems: 'center', gap: '10px',
-                    padding: '8px 12px', borderRadius: '10px',
-                    color: '#8a9bb0',
-                    border: '1px solid transparent',
-                    fontSize: '13px', fontWeight: 500, textDecoration: 'none',
-                  }
-            }
-          >
-            <span style={{ width: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{icon}</span>
-            {label}
-          </NavLink>
-        ))}
+        {[LINK_INICIO, null, LINK_DASHBOARD].map((item, i) =>
+          item === null
+            ? <div key="sep-top" style={{ height: '1px', background: 'rgba(30,51,82,0.6)', margin: '6px 4px' }} />
+            : (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.to === '/'}
+                onClick={onCerrarMenu}
+                style={({ isActive }) =>
+                  isActive
+                    ? {
+                        display: 'flex', alignItems: 'center', gap: '10px',
+                        padding: '8px 12px', borderRadius: '10px',
+                        background: 'rgba(0,230,118,0.12)',
+                        color: '#00e676',
+                        border: '1px solid rgba(0,230,118,0.25)',
+                        boxShadow: '0 0 12px rgba(0,230,118,0.1)',
+                        fontSize: '13px', fontWeight: 600, textDecoration: 'none',
+                      }
+                    : {
+                        display: 'flex', alignItems: 'center', gap: '10px',
+                        padding: '8px 12px', borderRadius: '10px',
+                        color: '#8a9bb0',
+                        border: '1px solid transparent',
+                        fontSize: '13px', fontWeight: 500, textDecoration: 'none',
+                      }
+                }
+              >
+                <span style={{ width: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{item.icon}</span>
+                {item.label}
+              </NavLink>
+            )
+        )}
 
         {/* Separador */}
         <div style={{ height: '1px', background: 'rgba(30,51,82,0.6)', margin: '6px 4px' }} />
