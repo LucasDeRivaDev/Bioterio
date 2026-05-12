@@ -103,12 +103,15 @@ export default function Landing() {
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
       {/* ── NAVBAR ── */}
-      <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'rgba(5,8,16,0.85)', borderBottom: '1px solid rgba(0,230,118,0.1)', backdropFilter: 'blur(20px)' }}>
+      <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'rgba(5,8,16,0.85)', borderBottom: '1px solid rgba(0,230,118,0.1)', backdropFilter: 'blur(20px)', overflow: 'visible' }}>
+        {/* Logo — posicionado sobre el nav, se extiende hacia abajo */}
+        <div style={{ position: 'absolute', top: 0, left: '24px', zIndex: 102, pointerEvents: 'none' }}>
+          <ITeRatELogo height={88} />
+        </div>
+
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          {/* Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <ITeRatELogo height={88} />
-          </div>
+          {/* Espaciador para el logo */}
+          <div style={{ width: '90px', flexShrink: 0 }} />
 
           {/* Nav links — se ocultan en mobile */}
           <div className="landing-nav-links" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -191,7 +194,7 @@ export default function Landing() {
             <div style={{ position: 'relative', transform: 'translateX(24px)' }}>
               <div style={{ position: 'absolute', inset: '-30px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,230,118,0.08) 0%, transparent 70%)' }} />
               <div className="card" style={{ borderRadius: '32px', padding: '32px 38px', borderColor: 'rgba(0,230,118,0.2)', boxShadow: '0 0 60px rgba(0,230,118,0.1)' }}>
-                <ITeRatELogo height={330} />
+                <ITeRatELogo height={231} />
               </div>
             </div>
           </div>
