@@ -452,6 +452,20 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
   - **Estado de carga:** mientras `cargandoHibridos` es true, el modal muestra "Cargando datos de BALB/C y C57…" y oculta las columnas. El footer sigue visible con botón deshabilitado.
   - **SQL necesario:** ninguno — queries a tablas existentes; localStorage para los planes.
 
+- **Fix: badges de "Edad avanzada" y alertas de performance en animales inactivos (11/05/2026):** los badges de edad y los banners de baja performance aparecían en machos fallecidos/retirados porque las condiciones no chequeaban el estado del animal.
+  - **`Animales.jsx` — columna Edad:** badge "Edad avanzada" / "Próx. límite" solo se muestra si `estado` ∈ `['activo', 'en_apareamiento', 'en_cria']`. Animales inactivos muestran solo la edad en texto plano.
+  - **`Animales.jsx` — `PerfilAnimal`:** `esActivo` derivado del estado del animal. Banner "Fin de ciclo reproductivo — Recomendada para sacrificio" solo si `esActivo`. Banner "Posible baja de fertilidad — Evaluar reemplazo" solo si `esActivo` (macho).
+  - **`Rendimiento.jsx` — `EdadMachoBadge`:** renderizado solo si `esActivo(macho)`. En la vista histórica los inactivos muestran su badge de estado ("Fallecido"/"Retirado") sin el badge de edad.
+  - **Regla general:** ninguna alerta de acción recomendada ("sacrificar", "reemplazar", "evaluar") debe mostrarse en animales con estado `fallecido` o `retirado`. El check `ESTADOS_ACTIVOS.includes(estado)` es el punto único de control.
+
+- **Fix: Rendimiento y Estadísticas de ratones en BAL/C, C57 e Híbridos (11/05/2026):** las páginas de Rendimiento y Estadísticas no mostraban datos para ningún ratón.
+  - **Causa 1 — Híbridos:** `animales` del contexto en Híbridos = crías F1 (sin historial reproductivo). Los reproductores reales (machos BAL/C + hembras C57) están en `animalesExportados`. `Rendimiento.jsx` y `Estadísticas.jsx` solo usaban `animales`, ignorando los reproductores.
+  - **Causa 2 — BAL/C y C57:** las camadas F1 se guardan con `bioterio_id = 'ratones_hibridos'`. Al entrar a BAL/C o C57, el contexto solo cargaba camadas propias de ese bioterio. Si todo el historial reproductivo de esos animales era en cruzas F1, el rendimiento aparecía vacío.
+  - **Fix en `BiotheriumContext.jsx`:** al cargar `ratones_balbc` o `ratones_c57`, detecta animales con `exportado_hibridos: true`, hace una query extra de camadas con `bioterio_id = 'ratones_hibridos'`, filtra las relevantes (donde esos animales son padre o madre) y las fusiona con las camadas propias del bioterio.
+  - **Fix en `Rendimiento.jsx`:** cuando `esHibridos`, usa `animalesExportados` como fuente de rankings de machos y hembras. El lookup de madre en `historial()` busca en `[...animales, ...animalesExportados]`.
+  - **Fix en `Estadísticas.jsx`:** cuando `esHibridos`, usa `animalesExportados` para los dropdowns de filtro por madre/padre. Los gráficos usan `camadas` (F1) que ya estaban correctos.
+  - **SQL necesario:** ninguno — el cambio es en el frontend (context + páginas).
+
 ---
 
 ## Comportamientos de datos importantes
@@ -481,6 +495,9 @@ El código interno y Supabase usan `animales`/`camadas`. El usuario ve "Reproduc
 - **getJaulasReservadas(bioterioActivo)** lee los mismos planes y devuelve `Map<bloqueId, {fecha, planId}>` para bloques de `tipo === 'stock'`. `bloqueId` tiene prefijo `j-` (jaula real) o `v-` (bloque virtual). Usada en Stock.jsx (BloqueJaula + ModalSacrificio + ModalEntrega). Los planes de reproductores no están en este mapa — solo los de stock.
 - **getReservadosParaHibridos(bioterioId)** lee `appMosca_apareamientos_ratones_hibridos` y filtra los items cuyo `bioterioOrigen === bioterioId`. Devuelve `Map<bloqueId, {fecha, planId}>`. Solo planes `!completado && fecha >= hoy`. Usada en Stock.jsx de BALB/C y C57 para mostrar badges `🧬 Destino F1` y advertencias en ModalSacrificio/ModalEntrega.
 - **Plans F1 en Calendario:** cuando el plan tiene `macho.bioterioOrigen` o `hembra.bioterioOrigen`, el título en `porFecha` usa el prefijo `🧬 F1:` en lugar de `Apareamiento:`. Se guardan en la key `appMosca_apareamientos_ratones_hibridos`.
+- **Alertas de edad y performance solo en animales activos:** los badges "Edad avanzada" / "Próx. límite" y los banners de acción recomendada ("sacrificar", "reemplazar") solo se muestran si `estado ∈ ['activo', 'en_apareamiento', 'en_cria']`. Animales `fallecido` o `retirado` muestran la edad como texto plano sin alertas.
+- **Rendimiento e Estadísticas en Híbridos:** ambas páginas usan `animalesExportados` (no `animales`) como fuente de reproductores cuando `bioterioActivo === 'ratones_hibridos'`. Las camadas F1 del contexto tienen los IDs correctos de padre/madre → los scores se calculan correctamente.
+- **Camadas F1 visibles en BAL/C y C57:** el contexto carga adicionalmente las camadas de Híbridos donde aparecen como padre/madre los animales marcados como `exportado_hibridos: true`. Estas camadas se fusionan con las propias del bioterio antes del dispatch. Esto permite ver el rendimiento completo del animal aunque sus cruzas hayan sido F1.
 
 ---
 
