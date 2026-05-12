@@ -239,10 +239,23 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
   const { sesion } = useAuth()
   const emailUsuario = sesion?.user?.email ?? ''
 
+  const [fichaVisible, setFichaVisible] = useState(() => {
+    try { return localStorage.getItem('appMosca_ficha_visible') === 'true' }
+    catch { return false }
+  })
+
+  function toggleFicha() {
+    setFichaVisible(v => {
+      const nuevo = !v
+      localStorage.setItem('appMosca_ficha_visible', String(nuevo))
+      return nuevo
+    })
+  }
+
   const datosBio = bio ? [
     { label: 'Gestación',         valor: `${bio.GESTACION_DIAS} días` },
     { label: 'Destete',           valor: `${bio.DESTETE_DIAS} días post-nacimiento` },
-    { label: 'Madurez sexual',    valor: `${bio.MADUREZ_DIAS / 7} semanas` },
+    { label: 'Madurez sexual',    valor: `${Math.round(bio.MADUREZ_DIAS / 7)} semanas` },
     { label: 'Ciclo estral',      valor: `~${bio.CICLO_ESTRAL_DIAS} días` },
     { label: 'Camada promedio',   valor: config?.camadaPromedio ?? '—' },
     { label: 'Vida reproductiva', valor: config?.vidaReproductiva ?? '—' },
@@ -250,7 +263,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
 
   const hembrasActivas = animales.filter((a) => a.sexo === 'hembra' && (a.estado === 'activo' || a.estado === 'en_apareamiento' || a.estado === 'en_cria')).length
   const machosActivos  = animales.filter((a) => a.sexo === 'macho'  && (a.estado === 'activo' || a.estado === 'en_apareamiento' || a.estado === 'en_cria')).length
-  const prenadas       = camadas.filter((c) => c.fecha_copula && !c.fecha_nacimiento).length
+  const prenadas       = camadas.filter((c) => c.fecha_copula && !c.fecha_nacimiento && !c.failure_flag).length
 
   return (
     <aside
@@ -362,10 +375,16 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
           </NavLink>
         ))}
 
+        {/* Separador */}
+        <div style={{ height: '1px', background: 'rgba(30,51,82,0.6)', margin: '6px 4px' }} />
+
         {/* Grupos con sub-secciones */}
         {GRUPOS.map((grupo) => (
           <NavGrupo key={grupo.to} grupo={grupo} onCerrarMenu={onCerrarMenu} />
         ))}
+
+        {/* Separador */}
+        <div style={{ height: '1px', background: 'rgba(30,51,82,0.6)', margin: '6px 4px' }} />
 
         {/* Reportes al final */}
         <NavLink
@@ -403,35 +422,58 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
         <div className="mx-3 mb-3 rounded-xl overflow-hidden"
           style={{ border: '1px solid rgba(161,120,80,0.3)', background: 'rgba(161,120,80,0.05)' }}
         >
-          <div
-            className="px-4 py-3 flex items-center gap-2"
-            style={{ background: 'rgba(161,120,80,0.1)', borderBottom: '1px solid rgba(161,120,80,0.2)' }}
+          {/* Header siempre visible con botón toggle */}
+          <button
+            onClick={toggleFicha}
+            className="w-full px-4 py-3 flex items-center gap-2 text-left"
+            style={{
+              background: 'rgba(161,120,80,0.1)',
+              borderBottom: fichaVisible ? '1px solid rgba(161,120,80,0.2)' : 'none',
+              cursor: 'pointer',
+              border: 'none',
+            }}
           >
             <span className="text-xl">{config.icon}</span>
-            <div>
+            <div className="flex-1 min-w-0">
               <div className="font-bold text-sm" style={{ color: '#c9a87a' }}>{config.label}</div>
-              <div className="text-xs font-mono italic opacity-60" style={{ color: '#a17850' }}>{config.nombreCientifico}</div>
+              <div className="text-xs font-mono italic opacity-60 truncate" style={{ color: '#a17850' }}>{config.nombreCientifico}</div>
             </div>
-          </div>
+            <ChevronDown
+              size={13}
+              style={{
+                color: '#a17850',
+                flexShrink: 0,
+                transition: 'transform 0.2s',
+                transform: fichaVisible ? 'rotate(180deg)' : 'rotate(0deg)',
+              }}
+            />
+          </button>
 
-          <div className="px-4 py-3 space-y-2">
-            <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'rgba(161,120,80,0.5)' }}>
-              Referencias biológicas
-            </div>
-            {datosBio.map(({ label, valor }) => (
-              <div key={label} className="flex items-start justify-between gap-2">
-                <span className="text-xs leading-tight" style={{ color: '#6b7c94' }}>{label}</span>
-                <span className="text-xs font-mono font-semibold text-right" style={{ color: '#a17850' }}>{valor}</span>
+          {/* Contenido colapsable */}
+          {fichaVisible && (
+            <>
+              <div className="px-4 py-3 space-y-2">
+                <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'rgba(161,120,80,0.5)' }}>
+                  Referencias biológicas
+                </div>
+                {datosBio.map(({ label, valor }) => (
+                  <div key={label} className="flex items-start justify-between gap-2">
+                    <span className="text-xs leading-tight" style={{ color: '#6b7c94' }}>{label}</span>
+                    <span className="text-xs font-mono font-semibold text-right" style={{ color: '#a17850' }}>{valor}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          <div
-            className="px-4 py-2 text-xs text-center font-mono"
-            style={{ borderTop: '1px solid rgba(161,120,80,0.15)', color: 'rgba(107,124,148,0.5)' }}
-          >
-            {config.orden}
-          </div>
+              {config.orden && config.orden !== '—' && (
+                <div
+                  className="px-4 py-2 text-xs text-center font-mono"
+                  style={{ borderTop: '1px solid rgba(161,120,80,0.15)', color: 'rgba(107,124,148,0.5)' }}
+                >
+                  {config.orden}
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 
