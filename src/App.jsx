@@ -143,13 +143,13 @@ function AppLayout() {
             style={{
               position: 'fixed',
               bottom: '20px',
-              right: '20px',
+              right: '10px',
               zIndex: 10,
-              opacity: 0.55,
+              opacity: 1,
               pointerEvents: 'none',
             }}
           >
-            <ITeRatELogo height={117} />
+            <ITeRatELogo height={152} />
           </div>
 
           {/* Rutas */}
