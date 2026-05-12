@@ -3,7 +3,9 @@ import { useBioterio } from '../context/BiotheriumContext'
 import { formatFecha } from '../utils/calculos'
 
 export default function Entregas() {
-  const { entregas, camadas, animales, devolverEntrega } = useBioterio()
+  const { entregas, camadas, animales, animalesExportados, devolverEntrega } = useBioterio()
+  // En Híbridos los progenitores viven en animalesExportados — buscar en ambos
+  const todosAnimales = useMemo(() => [...animales, ...animalesExportados], [animales, animalesExportados])
   const [busqueda, setBusqueda] = useState('')
   const [menuAbierto, setMenuAbierto] = useState(null)   // id de la entrega con menú visible
   const [cargando, setCargando] = useState(null)          // id de la entrega en proceso
@@ -16,8 +18,8 @@ export default function Entregas() {
         const q = busqueda.toLowerCase()
         const obs = (e.observaciones ?? '').toLowerCase()
         const camada = camadas.find((c) => c.id === e.camada_id)
-        const madre = camada ? animales.find((a) => a.id === camada.id_madre) : null
-        const padre = camada ? animales.find((a) => a.id === camada.id_padre) : null
+        const madre = camada ? todosAnimales.find((a) => a.id === camada.id_madre) : null
+        const padre = camada ? todosAnimales.find((a) => a.id === camada.id_padre) : null
         return (
           obs.includes(q) ||
           (madre?.codigo ?? '').toLowerCase().includes(q) ||

@@ -66,9 +66,11 @@ function RegistrarFechaRepro({ animal, onGuardar }) {
 
 export default function Sacrificios() {
   const {
-    animales, camadas, sacrificios,
+    animales, animalesExportados, camadas, sacrificios,
     editarAnimal, eliminarSacrificio, registrarSacrificio, eliminarSacrificioReproductor,
   } = useBioterio()
+  // En Híbridos los progenitores viven en animalesExportados — buscar en ambos
+  const todosAnimales = useMemo(() => [...animales, ...animalesExportados], [animales, animalesExportados])
 
   const [confirmarEliminar, setConfirmarEliminar]         = useState(null) // animal reproductor
   const [confirmarEliminarStock, setConfirmarEliminarStock] = useState(null) // sacrificio de stock
@@ -87,8 +89,8 @@ export default function Sacrificios() {
       .sort((a, b) => (b.fecha ?? '').localeCompare(a.fecha ?? ''))
       .map((s) => {
         const camada = camadas.find((c) => c.id === s.camada_id)
-        const madre  = camada ? animales.find((a) => a.id === camada.id_madre) : null
-        const padre  = camada ? animales.find((a) => a.id === camada.id_padre) : null
+        const madre  = camada ? todosAnimales.find((a) => a.id === camada.id_madre) : null
+        const padre  = camada ? todosAnimales.find((a) => a.id === camada.id_padre) : null
         return { ...s, camada, madre, padre }
       }),
   [sacrificios, camadas, animales])
@@ -176,8 +178,8 @@ export default function Sacrificios() {
                 </thead>
                 <tbody>
                   {reproductoresSacrificados.map((a) => {
-                    const madre = animales.find(x => x.id === a.id_madre)
-                    const padre = animales.find(x => x.id === a.id_padre)
+                    const madre = todosAnimales.find(x => x.id === a.id_madre)
+                    const padre = todosAnimales.find(x => x.id === a.id_padre)
                     return (
                       <tr key={a.id} style={{ borderBottom: '1px solid rgba(30,51,82,0.4)' }}>
                         <td className="px-4 py-3 font-mono font-bold" style={{ color: '#c9d4e0' }}>

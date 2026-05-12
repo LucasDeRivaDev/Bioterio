@@ -269,7 +269,9 @@ function cargarDescartadas() {
 }
 
 export default function Dashboard() {
-  const { animales, camadas, extendidos, confirmarSeparacion, bio, bioterioActivo } = useBioterio()
+  const { animales, animalesExportados, camadas, extendidos, confirmarSeparacion, bio, bioterioActivo } = useBioterio()
+  // En Híbridos los progenitores viven en animalesExportados — buscar en ambos
+  const todosAnimales = useMemo(() => [...animales, ...animalesExportados], [animales, animalesExportados])
 
   // IDs de tareas descartadas por el usuario hoy (se resetean el día siguiente)
   const [descartadas, setDescartadas] = useState(() => cargarDescartadas())
@@ -386,7 +388,7 @@ export default function Dashboard() {
     .map((c) => {
       const rango = calcularRangoParto(c.fecha_copula)
       if (!rango) return null
-      const madre = animales.find((a) => a.id === c.id_madre)
+      const madre = todosAnimales.find((a) => a.id === c.id_madre)
       return { camada: c, rango, madre, diasHasta: difDias(hoyDate, rango.partoMin) }
     })
     .filter(Boolean)

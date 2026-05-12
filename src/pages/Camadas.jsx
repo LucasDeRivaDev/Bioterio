@@ -520,7 +520,9 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
 }
 
 export default function Camadas() {
-  const { camadas, animales, jaulas, agregarCamada, editarCamada, eliminarCamada, confirmarSeparacion, agregarJaula, editarJaula, eliminarJaula, bio } = useBioterio()
+  const { camadas, animales, animalesExportados, jaulas, agregarCamada, editarCamada, eliminarCamada, confirmarSeparacion, agregarJaula, editarJaula, eliminarJaula, bio } = useBioterio()
+  // En Híbridos los progenitores viven en animalesExportados — buscar en ambos
+  const todosAnimales = useMemo(() => [...animales, ...animalesExportados], [animales, animalesExportados])
   const [modal, setModal] = useState(null)
   const [confirmarEliminar, setConfirmarEliminar] = useState(null)
   const [filtro, setFiltro] = useState('todas')
@@ -863,7 +865,7 @@ export default function Camadas() {
                   <AnalisisReproductivo
                     camada={camada}
                     todasCamadas={camadas}
-                    animales={animales}
+                    animales={todosAnimales}
                   />
 
                   {/* Control de stock */}
