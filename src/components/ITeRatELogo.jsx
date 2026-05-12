@@ -1,8 +1,7 @@
-import iterateLogo from '../assets/iterate_logo.jpg'
+import iterateLogo from '../assets/iterate_logo.png'
 
 /**
- * Logo de ITeRatE — usa la imagen original con mix-blend-mode: screen
- * para que el fondo oscuro desaparezca sobre cualquier fondo oscuro.
+ * Logo de ITeRatE — PNG con fondo transparente real.
  *
  * Props:
  *   height    — alto en px (el ancho escala proporcional). Default: 60
@@ -16,7 +15,6 @@ export default function ITeRatELogo({ height = 60, style = {} }) {
       style={{
         height: `${height}px`,
         width: 'auto',
-        mixBlendMode: 'screen',
         display: 'block',
         ...style,
       }}
