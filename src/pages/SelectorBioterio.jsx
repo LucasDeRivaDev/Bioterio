@@ -11,13 +11,13 @@ export default function SelectorBioterio() {
       className="min-h-screen flex flex-col items-center justify-center p-6 gap-10"
       style={{ background: '#050810' }}
     >
-      {/* Logo */}
-      <ITeRatELogo height={165} />
-
-      {/* Título */}
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-white mb-2">Seleccioná el bioterio</h1>
-        <p className="text-sm" style={{ color: '#4a5f7a' }}>¿Con qué colonia vas a trabajar hoy?</p>
+      {/* Logo + Título juntos */}
+      <div className="flex flex-col items-center" style={{ gap: '20px' }}>
+        <ITeRatELogo height={165} />
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-white mb-2">Seleccioná el bioterio</h1>
+          <p className="text-sm" style={{ color: '#4a5f7a' }}>¿Con qué colonia vas a trabajar hoy?</p>
+        </div>
       </div>
 
       {/* Cards */}

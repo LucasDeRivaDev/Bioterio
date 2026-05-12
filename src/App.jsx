@@ -149,7 +149,7 @@ function AppLayout() {
               pointerEvents: 'none',
             }}
           >
-            <ITeRatELogo height={39} />
+            <ITeRatELogo height={117} />
           </div>
 
           {/* Rutas */}
