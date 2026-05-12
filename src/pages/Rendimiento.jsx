@@ -132,14 +132,23 @@ function EdadMachoBadge({ macho }) {
 }
 
 export default function Rendimiento() {
-  const { animales, camadas, bio } = useBioterio()
+  const { animales, animalesExportados, camadas, bio, bioterioActivo } = useBioterio()
   const [vista, setVista] = useState('activos')
   const [subVista, setSubVista] = useState(null)
 
   const esActivo = (a) => ESTADOS_ACTIVOS.has(a.estado)
 
+  // En Híbridos los reproductores reales son los animales exportados de BAL/C y C57,
+  // no las crías F1 que están en animales. En los demás bioterios se usa animales normal.
+  const esHibridos = bioterioActivo === 'ratones_hibridos'
+  const animalesParaRanking = esHibridos ? animalesExportados : animales
+
+  // Para buscar el nombre de la madre en el historial de un macho necesitamos
+  // poder buscar en ambos arrays (animales propios + exportados de Híbridos)
+  const todosAnimales = esHibridos ? [...animales, ...animalesExportados] : animales
+
   // ── Machos ──────────────────────────────────────────────────────────────────
-  const machosHistorico = animales.filter((a) => a.sexo === 'macho')
+  const machosHistorico = animalesParaRanking.filter((a) => a.sexo === 'macho')
   const machosActivos   = machosHistorico.filter(esActivo)
 
   function buildRankingMachos(lista) {
@@ -171,7 +180,7 @@ export default function Rendimiento() {
   function historial(machoId) {
     return camadas
       .filter((c) => c.id_padre === machoId)
-      .map((c) => ({ ...c, madre: animales.find((a) => a.id === c.id_madre), lat: calcularLatencia(c, bio) }))
+      .map((c) => ({ ...c, madre: todosAnimales.find((a) => a.id === c.id_madre), lat: calcularLatencia(c, bio) }))
       .sort((a, b) => (a.fecha_copula ?? '').localeCompare(b.fecha_copula ?? ''))
   }
 
@@ -198,12 +207,12 @@ export default function Rendimiento() {
   }
 
   const hembraStatsHistorico = useMemo(() =>
-    buildHembraStats(animales.filter((a) => a.sexo === 'hembra')),
-  [animales, camadas])
+    buildHembraStats(animalesParaRanking.filter((a) => a.sexo === 'hembra')),
+  [animalesParaRanking, camadas])
 
   const hembraStatsActivos = useMemo(() =>
-    buildHembraStats(animales.filter((a) => a.sexo === 'hembra' && esActivo(a))),
-  [animales, camadas])
+    buildHembraStats(animalesParaRanking.filter((a) => a.sexo === 'hembra' && esActivo(a))),
+  [animalesParaRanking, camadas])
 
   const hembraStats = vista === 'activos' ? hembraStatsActivos : hembraStatsHistorico
 

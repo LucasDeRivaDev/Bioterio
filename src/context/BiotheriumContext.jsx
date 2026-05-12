@@ -136,6 +136,30 @@ export function BiotheriumProvider({ children }) {
             .order('fecha_nacimiento', { ascending: true })
           dispatch({ type: 'SET_ANIMALES_EXPORTADOS', payload: exportados ?? [] })
         }
+
+        // Cuando el bioterio activo es BAL/C o C57, también traer las camadas F1
+        // registradas en Híbridos donde esos animales aparecen como padre o madre.
+        // Esto permite ver el rendimiento real de los reproductores exportados.
+        if (['ratones_balbc', 'ratones_c57'].includes(bioterioActivo)) {
+          const exportados = (animales ?? []).filter((a) => a.exportado_hibridos)
+          if (exportados.length > 0) {
+            const exportadoIds = new Set(exportados.map((a) => a.id))
+            const { data: camadasF1 } = await supabase
+              .from('camadas')
+              .select('*')
+              .eq('bioterio_id', 'ratones_hibridos')
+              .order('fecha_copula', { ascending: true })
+            const relevantes = (camadasF1 ?? []).filter(
+              (c) => exportadoIds.has(c.id_padre) || exportadoIds.has(c.id_madre)
+            )
+            if (relevantes.length > 0) {
+              const merged = [...(camadas ?? []), ...relevantes].sort((a, b) =>
+                (a.fecha_copula ?? '').localeCompare(b.fecha_copula ?? '')
+              )
+              dispatch({ type: 'SET_CAMADAS', payload: merged })
+            }
+          }
+        }
       } catch (e) {
         console.error('Error al cargar datos:', e)
         setError('No se pudieron cargar los datos. Verificá la conexión.')

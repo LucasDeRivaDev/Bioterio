@@ -146,7 +146,7 @@ function SinDatos() {
 
 // ── PÁGINA PRINCIPAL ──────────────────────────────────────────────────────────
 export default function Estadisticas() {
-  const { camadas, animales, bio } = useBioterio()
+  const { camadas, animales, animalesExportados, bio, bioterioActivo } = useBioterio()
 
   // ── Filtros ────────────────────────────────────────────────────────────────
   const [desde,         setDesde]         = useState('')
@@ -154,8 +154,14 @@ export default function Estadisticas() {
   const [filtroMadreId, setFiltroMadreId] = useState('')
   const [filtroPadreId, setFiltroPadreId] = useState('')
 
-  const hembras = animales.filter((a) => a.sexo === 'hembra')
-  const machos  = animales.filter((a) => a.sexo === 'macho')
+  // En Híbridos los reproductores reales (padres de las camadas F1) son los
+  // animalesExportados (machos BAL/C + hembras C57), no las crías F1.
+  // Los dropdowns de filtro deben mostrar esos animales.
+  const esHibridos = bioterioActivo === 'ratones_hibridos'
+  const animalesParaFiltros = esHibridos ? animalesExportados : animales
+
+  const hembras = animalesParaFiltros.filter((a) => a.sexo === 'hembra')
+  const machos  = animalesParaFiltros.filter((a) => a.sexo === 'macho')
 
   // ── Camadas filtradas ──────────────────────────────────────────────────────
   const camadasFiltradas = useMemo(() => {
