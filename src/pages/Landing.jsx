@@ -107,7 +107,7 @@ export default function Landing() {
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           {/* Logo */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <ITeRatELogo height={44} />
+            <ITeRatELogo height={88} />
           </div>
 
           {/* Nav links — se ocultan en mobile */}
@@ -191,7 +191,7 @@ export default function Landing() {
             <div style={{ position: 'relative', transform: 'translateX(24px)' }}>
               <div style={{ position: 'absolute', inset: '-30px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,230,118,0.08) 0%, transparent 70%)' }} />
               <div className="card" style={{ borderRadius: '32px', padding: '32px 38px', borderColor: 'rgba(0,230,118,0.2)', boxShadow: '0 0 60px rgba(0,230,118,0.1)' }}>
-                <ITeRatELogo height={220} />
+                <ITeRatELogo height={330} />
               </div>
             </div>
           </div>
@@ -387,7 +387,7 @@ export default function Landing() {
       {/* ── FOOTER ── */}
       <footer style={{ padding: '42px 24px 28px', borderTop: '1px solid rgba(30,51,82,0.5)', background: 'rgba(5,8,16,0.8)' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '18px' }}>
-          <ITeRatELogo height={160} />
+          <ITeRatELogo height={320} />
           <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
             <div className="mono" style={{ fontSize: '12px', color: '#4a5f7a', whiteSpace: 'nowrap', textAlign: 'right' }}>© 2026 ITeRatE</div>
           </div>
