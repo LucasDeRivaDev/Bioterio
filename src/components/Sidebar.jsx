@@ -5,7 +5,7 @@ import { useBioterioActivo } from '../context/BioterioActivoContext'
 import { useAuth } from '../context/AuthContext'
 import {
   Home, LayoutDashboard, Printer, Bug, Send, LogOut, ChevronUp, ChevronDown,
-  Dna, RefreshCw, Microscope, Archive, BarChart2, PackageCheck, Skull, TrendingUp,
+  Dna, Microscope, Archive, BarChart2, PackageCheck, Skull, TrendingUp,
 } from 'lucide-react'
 import GenERatsBrand from './GenERatsBrand'
 
@@ -307,11 +307,10 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
           </div>
           <button
             onClick={limpiarBioterio}
-            title="Cambiar bioterio"
-            className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+            className="shrink-0 px-2 py-1 rounded-lg text-xs font-semibold transition-all"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a', cursor: 'pointer' }}
           >
-            <RefreshCw size={12} />
+            Cambiar
           </button>
         </div>
       </div>
