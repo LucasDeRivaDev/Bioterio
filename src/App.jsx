@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { BiotheriumProvider } from './context/BiotheriumContext'
 import { BioterioActivoProvider, useBioterioActivo } from './context/BioterioActivoContext'
 import Sidebar from './components/Sidebar'
+import ITeRatELogo from './components/ITeRatELogo'
 import SelectorBioterio from './pages/SelectorBioterio'
 import ResumenRatones from './pages/ResumenRatones'
 import ConsumoAlimento from './pages/ConsumoAlimento'
@@ -135,6 +136,20 @@ function AppLayout() {
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#00e676' }} />
               ACTIVO
             </div>
+          </div>
+
+          {/* Logo flotante — esquina inferior derecha, se mueve con el scroll */}
+          <div
+            style={{
+              position: 'fixed',
+              bottom: '20px',
+              right: '20px',
+              zIndex: 10,
+              opacity: 0.55,
+              pointerEvents: 'none',
+            }}
+          >
+            <ITeRatELogo height={39} />
           </div>
 
           {/* Rutas */}

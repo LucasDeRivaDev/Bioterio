@@ -12,7 +12,7 @@ export default function SelectorBioterio() {
       style={{ background: '#050810' }}
     >
       {/* Logo */}
-      <ITeRatELogo height={110} />
+      <ITeRatELogo height={165} />
 
       {/* Título */}
       <div className="text-center">

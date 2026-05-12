@@ -515,17 +515,6 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
         </div>
       </div>
 
-      {/* Footer — Logo ITeRatE */}
-      <div
-        style={{
-          borderTop: '1px solid rgba(0,230,118,0.08)',
-          padding: '14px 12px 18px',
-          display: 'flex',
-          justifyContent: 'center',
-        }}
-      >
-        <ITeRatELogo height={52} />
-      </div>
     </aside>
   )
 }
