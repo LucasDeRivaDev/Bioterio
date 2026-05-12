@@ -58,6 +58,7 @@ export const TIPO_TAREA = {
   FIN_CICLO: 'fin_ciclo',           // 3er apareamiento completado → recomendar descarte
   EVALUAR_MACHO: 'evaluar_macho',   // macho alcanzó edad límite o baja performance
   RENOVAR_MACHOS: 'renovar_machos', // recordatorio periódico de renovación del stock de machos
+  SACRIFICIO_F1: 'sacrificio_f1',   // crías F1 de Híbridos alcanzaron edad de sacrificio (≥40 días)
 }
 
 export const PRIORIDAD = {

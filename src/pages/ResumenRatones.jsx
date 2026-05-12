@@ -63,6 +63,7 @@ function calcularStockGrupo(jaulas, camadas, sacrificios, entregas, animales = [
   // ── Bloques virtuales (camadas con destete pero sin jaula en DB) ──
   for (const camada of camadas) {
     if (!camada.fecha_destete) continue
+    if (camada.failure_flag) continue
     if (camada.incluir_en_stock === false) continue
     if (jaulasIds.has(camada.id)) continue  // ya tiene jaula real
 

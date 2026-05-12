@@ -7,7 +7,7 @@ import Badge from '../components/Badge'
 import {
   Scissors, Baby, Package, Activity, FlaskConical, AlertCircle, RefreshCcw,
   Calendar, FileWarning, Thermometer, Microscope,
-  CheckCircle2, Layers, Link2, UserMinus,
+  CheckCircle2, Layers, Link2, UserMinus, Skull,
 } from 'lucide-react'
 
 // Estilos por prioridad
@@ -57,6 +57,7 @@ const ICONO_TIPO = {
   fin_ciclo:      <RefreshCcw size={17} />,
   evaluar_macho:  <UserMinus size={17} />,
   renovar_machos: <RefreshCcw size={17} />,
+  sacrificio_f1:  <Skull size={17} />,
 }
 
 // ── Tarjeta de tarea con acción inline para separaciones ─────────────────────
@@ -358,7 +359,33 @@ export default function Dashboard() {
   const todasTareas = useMemo(() => generarTareas(camadas, animales, bio), [camadas, animales, bio])
   const alertasEstrales = useMemo(() => generarAlertasEstrales(animales, extendidos, bio), [animales, extendidos, bio])
   const alertasMachos   = useMemo(() => generarAlertasMachos(animales, camadas), [animales, camadas])
-  const tareas   = todasTareas.filter((t) => !descartadas.has(t.id))
+
+  // Alertas de crías F1 listas para sacrificio (solo en Híbridos, ≥40 días)
+  const tareasF1 = useMemo(() => {
+    if (bioterioActivo !== 'ratones_hibridos') return []
+    const hoyDate = parseDate(hoy())
+    return camadas
+      .filter((c) => c.fecha_nacimiento && !c.fecha_destete && !c.failure_flag && c.incluir_en_stock !== false)
+      .map((c) => {
+        const edad = difDias(parseDate(c.fecha_nacimiento), hoyDate)
+        if (edad < 40) return null
+        const madre = animalesExportados.find((a) => a.id === c.id_madre)
+        const padre = animalesExportados.find((a) => a.id === c.id_padre)
+        const progenitores = madre && padre ? `${madre.codigo} × ${padre.codigo}` : `camada ...${c.id.slice(-6)}`
+        return {
+          id: `f1-sacrificio-${c.id}`,
+          tipo: 'sacrificio_f1',
+          prioridad: edad >= 55 ? 'vencida' : edad >= 50 ? 'hoy' : 'proxima',
+          fecha: c.fecha_nacimiento,
+          descripcion: `Crías F1 listas para sacrificio — ${progenitores}`,
+          detalle: `${edad} días de edad. Recomendado sacrificio antes de los 55 días.`,
+          camadaId: c.id,
+        }
+      })
+      .filter(Boolean)
+  }, [bioterioActivo, camadas, animalesExportados])
+
+  const tareas   = [...todasTareas, ...tareasF1].filter((t) => !descartadas.has(t.id))
   const vencidas = tareas.filter((t) => t.prioridad === 'vencida')
   const deHoy    = tareas.filter((t) => t.prioridad === 'hoy')
   const proximas = tareas.filter((t) => t.prioridad === 'proxima')
