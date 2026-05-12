@@ -354,7 +354,7 @@ const btnSubTab = (v, label, color) => (
                           <span title={macho.notas} style={{ color: macho.nota_tipo === 'critica' ? '#ff1744' : '#ffb300', cursor: 'help' }}>⚠</span>
                         )}
                         <ScoreBadge score={m.score} />
-                        <EdadMachoBadge macho={macho} />
+                        {esActivo(macho) && <EdadMachoBadge macho={macho} />}
                         {vista === 'historico' && !esActivo(macho) && (
                           <Badge color={macho.estado === 'fallecido' ? 'rojo' : 'gris'}>
                             {macho.estado === 'fallecido' ? 'Fallecido' : 'Retirado'}

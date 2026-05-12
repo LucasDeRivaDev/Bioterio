@@ -139,9 +139,10 @@ export default function Animales() {
   }
 
   function PerfilAnimal({ animal }) {
+    const esActivo = ['activo', 'en_apareamiento', 'en_cria'].includes(animal.estado)
     if (animal.sexo === 'hembra') {
       const totalApareaminetos = camadas.filter((c) => c.id_madre === animal.id).length
-      const finCiclo = totalApareaminetos >= MAX_APAREAMIENTOS
+      const finCiclo = esActivo && totalApareaminetos >= MAX_APAREAMIENTOS
       const perfil = calcularPerfilHembra(animal.id, camadas)
       const conf   = calcularConfiabilidadHembra(animal.id, camadas)
       if (!perfil) return (
@@ -157,7 +158,7 @@ export default function Animales() {
       )
       return (
         <div className="space-y-2">
-          {/* Badge fin de ciclo */}
+          {/* Badge fin de ciclo — solo si sigue activa */}
           {finCiclo && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold"
               style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.3)', color: '#ff6b80' }}>
@@ -185,7 +186,7 @@ export default function Animales() {
       )
     } else {
       const rend     = calcularRendimientoMacho(animal.id, camadas)
-      const bajaPerf = detectarBajaPerformanceMacho(animal.id, camadas)
+      const bajaPerf = esActivo ? detectarBajaPerformanceMacho(animal.id, camadas) : null
       if (rend.total_camadas === 0) return (
         <div className="text-xs py-2" style={{ color: '#4a5f7a' }}>Sin camadas con parto registrado</div>
       )
@@ -495,7 +496,8 @@ return (
                     <td className="px-4 py-3 font-mono text-xs">
                       {(() => {
                         const edad = calcularEdad(animal.fecha_nacimiento)
-                        if (animal.sexo === 'macho' && animal.fecha_nacimiento) {
+                        const ESTADOS_ACTIVOS = ['activo', 'en_apareamiento', 'en_cria']
+                        if (animal.sexo === 'macho' && animal.fecha_nacimiento && ESTADOS_ACTIVOS.includes(animal.estado)) {
                           const dias = difDias(parseDate(animal.fecha_nacimiento), parseDate(hoyStr))
                           if (dias >= MACHO_EDAD_LIMITE_DIAS) return (
                             <span
