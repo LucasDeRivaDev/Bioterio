@@ -1,5 +1,5 @@
 import { useBioterioActivo, BIOTERIOS_CONFIG } from '../context/BioterioActivoContext'
-import GenERatsBrand from '../components/GenERatsBrand'
+import ITeRatELogo from '../components/ITeRatELogo'
 
 const GRUPOS_RATONES = ['ratones_balbc', 'ratones_c57', 'ratones_hibridos']
 
@@ -12,14 +12,7 @@ export default function SelectorBioterio() {
       style={{ background: '#050810' }}
     >
       {/* Logo */}
-      <GenERatsBrand
-        iconSize={56}
-        nameSize={36}
-        sloganSize={12}
-        align="center"
-        iconPrefix="selectorBrand"
-        showSubline={false}
-      />
+      <ITeRatELogo height={110} />
 
       {/* Título */}
       <div className="text-center">

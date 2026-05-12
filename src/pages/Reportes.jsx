@@ -578,7 +578,7 @@ function DocImprimible({ tituloPeriodo, datos, animales, camadas, secciones }) {
 
       {/* Footer */}
       <div style={{ borderTop: '0.5pt solid #bbb', marginTop: '16pt', paddingTop: '5pt', fontSize: '7pt', color: '#888', display: 'flex', justifyContent: 'space-between' }}>
-        <span>BIOTERIO — Sistema de Gestión de Colonia · GenERats</span>
+        <span>BIOTERIO — Sistema de Gestión de Colonia · ITeRatE</span>
         <span>Mus musculus (Ratón doméstico) · Documento de uso interno</span>
         <span>{ahora}</span>
       </div>

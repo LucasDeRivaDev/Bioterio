@@ -7,7 +7,7 @@ import {
   Home, LayoutDashboard, Printer, Bug, Send, LogOut, ChevronUp, ChevronDown,
   Dna, Microscope, Archive, BarChart2, PackageCheck, Skull, TrendingUp,
 } from 'lucide-react'
-import GenERatsBrand from './GenERatsBrand'
+import ITeRatELogo from './ITeRatELogo'
 
 const LINK_INICIO   = { to: '/inicio', label: 'Inicio',       icon: <Home size={15} /> }
 const LINK_DASHBOARD = { to: '/',      label: 'Panel de hoy', icon: <LayoutDashboard size={15} /> }
@@ -515,28 +515,16 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
         </div>
       </div>
 
-      {/* Footer — Logo GenERats */}
+      {/* Footer — Logo ITeRatE */}
       <div
         style={{
           borderTop: '1px solid rgba(0,230,118,0.08)',
           padding: '14px 12px 18px',
-          overflow: 'visible',
           display: 'flex',
           justifyContent: 'center',
         }}
       >
-        <GenERatsBrand
-          iconSize={52}
-          nameSize={30}
-          sloganSize={11}
-          sublineSize={0}
-          gap={10}
-          align="left"
-          showSubline={false}
-          allowWrap
-          iconPrefix="sidebarFooterBrand"
-          style={{ width: '100%', maxWidth: '100%' }}
-        />
+        <ITeRatELogo height={52} />
       </div>
     </aside>
   )

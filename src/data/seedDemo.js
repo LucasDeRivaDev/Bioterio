@@ -1,4 +1,4 @@
-// Datos de ejemplo para la demo de GenERats
+// Datos de ejemplo para la demo de ITeRatE
 // Representan una colonia real con historial reproductivo de 4 meses
 
 // ─── ANIMALES ────────────────────────────────────────────────────────────────

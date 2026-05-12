@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import GenERatsBrand from '../components/GenERatsBrand'
+import ITeRatELogo from '../components/ITeRatELogo'
 import { Dna, BarChart2, Archive, Calendar, Skull, Printer, GraduationCap, Microscope, FlaskConical, Building2 } from 'lucide-react'
 
 const CSS = `
@@ -74,7 +74,7 @@ export default function Landing() {
 
   useEffect(() => {
     const prev = document.title
-    document.title = 'GenERats — Sistema de Gestión de Bioterio'
+    document.title = 'ITeRatE — Sistema de Gestión de Bioterio'
     return () => { document.title = prev }
   }, [])
 
@@ -107,7 +107,7 @@ export default function Landing() {
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           {/* Logo */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <GenERatsBrand iconSize={44} nameSize={26} sloganSize={11} sublineSize={0} gap={10} showSlogan={false} showSubline={false} align="left" iconPrefix="navBrand" />
+            <ITeRatELogo height={44} />
           </div>
 
           {/* Nav links — se ocultan en mobile */}
@@ -164,7 +164,7 @@ export default function Landing() {
             </h1>
 
             <p className="landing-hero-subtitle" style={{ fontSize: '18px', lineHeight: 1.7, color: '#8a9bb0', marginBottom: '36px', maxWidth: '480px' }}>
-              GenERats centraliza el control de tu bioterio: reproductores, camadas, predicciones de parto, stock y reportes — todo en tiempo real, desde cualquier dispositivo.
+              ITeRatE centraliza el control de tu bioterio: reproductores, camadas, predicciones de parto, stock y reportes — todo en tiempo real, desde cualquier dispositivo.
             </p>
 
             <div className="landing-hero-ctas" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
@@ -191,16 +191,7 @@ export default function Landing() {
             <div style={{ position: 'relative', transform: 'translateX(24px)' }}>
               <div style={{ position: 'absolute', inset: '-30px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,230,118,0.08) 0%, transparent 70%)' }} />
               <div className="card" style={{ borderRadius: '32px', padding: '32px 38px', borderColor: 'rgba(0,230,118,0.2)', boxShadow: '0 0 60px rgba(0,230,118,0.1)' }}>
-                <GenERatsBrand
-                  iconSize={182}
-                  nameSize={64}
-                  sloganSize={24}
-                  sublineSize={13}
-                  gap={18}
-                  align="left"
-                  allowWrap
-                  iconPrefix="heroBrand"
-                />
+                <ITeRatELogo height={220} />
               </div>
             </div>
           </div>
@@ -271,7 +262,7 @@ export default function Landing() {
       <section style={{ padding: '100px 24px' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '60px' }}>
-            <h2 className="landing-section-h2" style={{ fontSize: '40px', fontWeight: 800, color: 'white', letterSpacing: '-1px', marginBottom: '16px' }}>¿Para quién es GenERats?</h2>
+            <h2 className="landing-section-h2" style={{ fontSize: '40px', fontWeight: 800, color: 'white', letterSpacing: '-1px', marginBottom: '16px' }}>¿Para quién es ITeRatE?</h2>
             <p style={{ fontSize: '16px', color: '#8a9bb0' }}>Diseñado para instituciones que trabajan con colonias de ratones de laboratorio</p>
           </div>
           <div className="landing-para-quien-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '16px' }}>
@@ -396,9 +387,9 @@ export default function Landing() {
       {/* ── FOOTER ── */}
       <footer style={{ padding: '42px 24px 28px', borderTop: '1px solid rgba(30,51,82,0.5)', background: 'rgba(5,8,16,0.8)' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '18px' }}>
-          <GenERatsBrand iconSize={132} nameSize={72} sloganSize={28} sublineSize={15} gap={20} align="left" iconPrefix="landingFooterBrand" />
+          <ITeRatELogo height={160} />
           <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
-            <div className="mono" style={{ fontSize: '12px', color: '#4a5f7a', whiteSpace: 'nowrap', textAlign: 'right' }}>© 2026 GenERats</div>
+            <div className="mono" style={{ fontSize: '12px', color: '#4a5f7a', whiteSpace: 'nowrap', textAlign: 'right' }}>© 2026 ITeRatE</div>
           </div>
         </div>
       </footer>
