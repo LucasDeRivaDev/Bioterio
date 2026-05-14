@@ -5,6 +5,7 @@ import {
   scorePorLatencia, formatFecha, difDias, parseDate, hoy,
   calcularPerfilHembra, calcularConfiabilidadHembra,
   detectarBajaPerformanceMacho, calcularTendenciaTamanoCamadas,
+  getEstadoCicloHembra,
 } from '../utils/calculos'
 import { MACHO_EDAD_LIMITE_DIAS, MACHO_EDAD_ALERTA_DIAS } from '../utils/constants'
 import Badge from '../components/Badge'
@@ -542,6 +543,7 @@ const btnSubTab = (v, label, color) => (
           <div className="space-y-3">
             {hembraStats.map(({ h, total, crias, criasMachos, criasHembras, perfil, conf, scoreTotal, tendencia_camada }, idx) => {
               const confCfg = conf ? CONF_CONFIG[conf.nivel] : null
+              const estadoCiclo = esActivo(h) ? getEstadoCicloHembra(h.id, todasCamadas) : 'normal'
               return (
                 <div key={h.id} className="rounded-xl overflow-hidden" style={cardStyle}>
                   {/* Header */}
@@ -565,6 +567,18 @@ const btnSubTab = (v, label, color) => (
                           </span>
                         )}
                         {tendencia_camada && <TendenciaBadge tendencia={tendencia_camada} />}
+                        {estadoCiclo === 'ultimo_ciclo' && (
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+                            style={{ background: 'rgba(255,179,0,0.12)', border: '1px solid rgba(255,179,0,0.35)', color: '#ffb300' }}>
+                            🟡 Último ciclo
+                          </span>
+                        )}
+                        {estadoCiclo === 'fin_ciclo' && (
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+                            style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.3)', color: '#ff6b80' }}>
+                            🔚 Fin de ciclo
+                          </span>
+                        )}
                         {vista === 'historico' && !esActivo(h) && (
                           <Badge color={h.estado === 'fallecido' ? 'rojo' : 'gris'}>
                             {h.estado === 'fallecido' ? 'Fallecida' : 'Retirada'}

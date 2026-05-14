@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
-import { difDias, parseDate, hoy, formatFecha, calcularPerfilHembra, calcularRendimientoMacho, getAnimalesReservados, getJaulasReservadas, getReservadosParaHibridos } from '../utils/calculos'
+import { difDias, parseDate, hoy, formatFecha, calcularPerfilHembra, calcularRendimientoMacho, getAnimalesReservados, getJaulasReservadas, getReservadosParaHibridos, getEstadoCicloHembra } from '../utils/calculos'
 import { generarId } from '../utils/storage'
 import Modal from '../components/Modal'
 import { TestTube2, FlaskConical, Microscope, UserPlus } from 'lucide-react'
@@ -207,6 +207,11 @@ function BloqueJaula({ bloque, camadas, onClick, onEliminar, modoSeleccion = fal
   const esStock = bloque.tipo === 'stock'
   const [confirmandoEliminar, setConfirmandoEliminar] = useState(false)
 
+  // Estado de ciclo reproductivo — solo para hembras reproductoras
+  const estadoCicloHembra = (bloque.tipo === 'reproductor' && bloque.animal?.sexo === 'hembra' && camadas)
+    ? getEstadoCicloHembra(bloque.animal.id, camadas)
+    : 'normal'
+
   // Hembra en período de apareamiento → jaula temporalmente vacía
   const esEnApareamiento = esFemEnApareamiento(bloque)
   const esSeleccionable  = modoSeleccion && !bloque.virtual && !esEnApareamiento
@@ -315,6 +320,16 @@ function BloqueJaula({ bloque, camadas, onClick, onEliminar, modoSeleccion = fal
         {esEnApareamiento && (
           <span className="text-xs px-1.5 py-0.5 rounded font-semibold" style={{ background: 'rgba(30,51,82,0.4)', color: '#3d5068' }}>
             En apareamiento
+          </span>
+        )}
+        {estadoCicloHembra === 'ultimo_ciclo' && (
+          <span className="text-xs px-1.5 py-0.5 rounded font-semibold" style={{ background: 'rgba(255,179,0,0.18)', border: '1px solid rgba(255,179,0,0.4)', color: '#ffb300' }}>
+            🟡 Último ciclo
+          </span>
+        )}
+        {estadoCicloHembra === 'fin_ciclo' && (
+          <span className="text-xs px-1.5 py-0.5 rounded font-semibold" style={{ background: 'rgba(255,61,87,0.12)', border: '1px solid rgba(255,61,87,0.35)', color: '#ff6b80' }}>
+            🔚 Fin de ciclo
           </span>
         )}
       </div>

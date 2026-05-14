@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { supabase } from '../lib/supabase'
-import { formatFecha, difDias, parseDate, hoy, calcularPerfilHembra, calcularConfiabilidadHembra, calcularRendimientoMacho, detectarBajaPerformanceMacho, getAnimalesReservados } from '../utils/calculos'
+import { formatFecha, difDias, parseDate, hoy, calcularPerfilHembra, calcularConfiabilidadHembra, calcularRendimientoMacho, detectarBajaPerformanceMacho, getAnimalesReservados, getEstadoCicloHembra } from '../utils/calculos'
 import { MAX_APAREAMIENTOS, MACHO_EDAD_LIMITE_DIAS, MACHO_EDAD_ALERTA_DIAS } from '../utils/constants'
 import Modal from '../components/Modal'
 import AnimalForm from '../components/AnimalForm'
@@ -142,15 +142,23 @@ export default function Animales() {
     const esActivo = ['activo', 'en_apareamiento', 'en_cria'].includes(animal.estado)
     if (animal.sexo === 'hembra') {
       const totalApareaminetos = camadas.filter((c) => c.id_madre === animal.id).length
-      const finCiclo = esActivo && totalApareaminetos >= MAX_APAREAMIENTOS
+      const estadoCiclo = esActivo ? getEstadoCicloHembra(animal.id, camadas) : 'normal'
+      const ultimoCiclo = estadoCiclo === 'ultimo_ciclo'
+      const finCiclo    = estadoCiclo === 'fin_ciclo'
       const perfil = calcularPerfilHembra(animal.id, camadas)
       const conf   = calcularConfiabilidadHembra(animal.id, camadas)
       if (!perfil) return (
         <div className="space-y-2">
+          {ultimoCiclo && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold"
+              style={{ background: 'rgba(255,179,0,0.09)', border: '1px solid rgba(255,179,0,0.35)', color: '#ffb300' }}>
+              🟡 Último ciclo reproductivo — no debe volver a aparearse. Preparar reemplazo.
+            </div>
+          )}
           {finCiclo && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold"
               style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.3)', color: '#ff6b80' }}>
-              🔚 Fin de ciclo reproductivo — {totalApareaminetos} apareamientos completados. Recomendada para sacrificio.
+              🔚 Fin de ciclo reproductivo — {totalApareaminetos} ciclos completados · crías destetadas · recomendada para sacrificio.
             </div>
           )}
           <div className="text-xs py-2" style={{ color: '#4a5f7a' }}>Sin camadas con parto registrado</div>
@@ -158,11 +166,17 @@ export default function Animales() {
       )
       return (
         <div className="space-y-2">
-          {/* Badge fin de ciclo — solo si sigue activa */}
+          {/* Badges de ciclo reproductivo — solo si sigue activa */}
+          {ultimoCiclo && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold"
+              style={{ background: 'rgba(255,179,0,0.09)', border: '1px solid rgba(255,179,0,0.35)', color: '#ffb300' }}>
+              🟡 Último ciclo reproductivo — no debe volver a aparearse. Preparar reemplazo.
+            </div>
+          )}
           {finCiclo && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold"
               style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.3)', color: '#ff6b80' }}>
-              🔚 Fin de ciclo reproductivo — {totalApareaminetos} apareamientos completados. Recomendada para sacrificio.
+              🔚 Fin de ciclo reproductivo — {totalApareaminetos} ciclos completados · crías destetadas · recomendada para sacrificio.
             </div>
           )}
           <div className="flex items-center gap-3 mb-3">
@@ -531,9 +545,27 @@ return (
                       {contarCamadas(animal.id)}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge color={colorEstado[animal.estado] ?? 'gris'}>
-                        {labelEstado[animal.estado] ?? animal.estado}
-                      </Badge>
+                      <div className="flex flex-col gap-1">
+                        <Badge color={colorEstado[animal.estado] ?? 'gris'}>
+                          {labelEstado[animal.estado] ?? animal.estado}
+                        </Badge>
+                        {animal.sexo === 'hembra' && ['activo', 'en_apareamiento', 'en_cria'].includes(animal.estado) && (() => {
+                          const ec = getEstadoCicloHembra(animal.id, camadas)
+                          if (ec === 'ultimo_ciclo') return (
+                            <span className="text-xs font-bold px-1.5 py-0.5 rounded"
+                              style={{ background: 'rgba(255,179,0,0.12)', border: '1px solid rgba(255,179,0,0.35)', color: '#ffb300', whiteSpace: 'nowrap' }}>
+                              🟡 Último ciclo
+                            </span>
+                          )
+                          if (ec === 'fin_ciclo') return (
+                            <span className="text-xs font-bold px-1.5 py-0.5 rounded"
+                              style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.3)', color: '#ff6b80', whiteSpace: 'nowrap' }}>
+                              🔚 Fin de ciclo
+                            </span>
+                          )
+                          return null
+                        })()}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button

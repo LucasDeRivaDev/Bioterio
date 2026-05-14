@@ -101,10 +101,10 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
     if (!ESTADOS_ACTIVOS.includes(a.estado))
       return { ok: false, motivo: etiquetaEstado[a.estado] ?? a.estado }
 
-    // Límite de apareamientos
+    // Límite de apareamientos — bloquear 4° ciclo
     const totalApareaminetos = camadas.filter((c) => c.id_madre === a.id).length
     if (totalApareaminetos >= MAX_APAREAMIENTOS)
-      return { ok: false, motivo: `Máximo de apareamientos alcanzado (${MAX_APAREAMIENTOS})` }
+      return { ok: false, motivo: `Hembra finalizó su ciclo reproductivo (${MAX_APAREAMIENTOS} ciclos). No puede ser apareada nuevamente.` }
 
     if (a.estado === 'en_apareamiento')
       return { ok: false, motivo: 'En pareja activa' }
@@ -380,6 +380,33 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
           )}
         </LabInput>
       </div>
+
+      {/* Advertencia: hembra en su último ciclo (2 camadas anteriores → esta será la 3°) */}
+      {!modoHistorico && madreSelec && (() => {
+        const nCamadas = camadas.filter((c) => c.id_madre === madreSelec.id).length
+        // Ya tiene MAX_APAREAMIENTOS - 1 camadas → esta sería la última
+        if (nCamadas !== MAX_APAREAMIENTOS - 1) return null
+        return (
+          <div
+            className="rounded-xl overflow-hidden"
+            style={{ border: '1.5px solid rgba(255,179,0,0.45)', background: 'rgba(255,179,0,0.07)' }}
+          >
+            <div className="px-4 py-3 flex items-start gap-3">
+              <span className="text-xl mt-0.5">🟡</span>
+              <div>
+                <p className="text-sm font-bold mb-0.5" style={{ color: '#ffb300' }}>
+                  Último ciclo reproductivo
+                </p>
+                <p className="text-xs" style={{ color: '#ffd06e' }}>
+                  {madreSelec.codigo} tiene {nCamadas} ciclo{nCamadas !== 1 ? 's' : ''} previo{nCamadas !== 1 ? 's' : ''}.
+                  {' '}Este será su último apareamiento permitido. No podrá ser apareada nuevamente.
+                  {' '}Preparar reemplazo reproductivo.
+                </p>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Alerta de consanguinidad */}
       {consanguinidad && (

@@ -395,7 +395,8 @@ export function generarTareas(camadas, animales, bio = BIO) {
     }
   })
 
-  // 6. Fin de ciclo reproductivo: hembra con MAX_APAREAMIENTOS apareamientos y último ya destetado
+  // 6. Fin de ciclo reproductivo: hembra con MAX_APAREAMIENTOS apareamientos
+  //    Solo notificar DESPUÉS del destete de la última (3°) camada — no antes
   const hembraIds = [...new Set(camadas.filter((c) => c.id_madre).map((c) => c.id_madre))]
   hembraIds.forEach((hembraId) => {
     const madre = animales.find((a) => a.id === hembraId)
@@ -405,20 +406,22 @@ export function generarTareas(camadas, animales, bio = BIO) {
     const camadasMadre = camadas.filter((c) => c.id_madre === hembraId)
     if (camadasMadre.length < MAX_APAREAMIENTOS) return
 
-    // La última camada debe estar destetada para que el ciclo esté "completo"
-    const ultimaDestetada = camadasMadre
-      .filter((c) => c.fecha_destete)
-      .sort((a, b) => b.fecha_destete.localeCompare(a.fecha_destete))[0]
-    if (!ultimaDestetada) return
+    // Tomar la camada MÁS RECIENTE (por fecha_copula) — esa es la que define si el ciclo terminó
+    const ultimaCamada = [...camadasMadre]
+      .sort((a, b) => (b.fecha_copula ?? '').localeCompare(a.fecha_copula ?? ''))[0]
+
+    // Si la última camada todavía NO tiene destete → hembra en último ciclo (en curso)
+    // El recordatorio de sacrificio se genera solo cuando el destete ya ocurrió
+    if (!ultimaCamada?.fecha_destete) return
 
     const nombreMadre = madre.codigo
     tareas.push({
       id: `fin-ciclo-${hembraId}`,
       tipo: 'fin_ciclo',
       prioridad: 'vencida',
-      fecha: ultimaDestetada.fecha_destete,
+      fecha: ultimaCamada.fecha_destete,
       descripcion: `Fin de ciclo reproductivo — ${nombreMadre}`,
-      detalle: `${camadasMadre.length} apareamientos completados (máx. ${MAX_APAREAMIENTOS}). Recomendada para sacrificio.`,
+      detalle: `${camadasMadre.length} ciclos completados (máx. ${MAX_APAREAMIENTOS}). Crías destetadas — hembra lista para descarte.`,
       madreId: hembraId,
     })
   })
@@ -1189,4 +1192,22 @@ export function generarAlertasEstrales(animales, extendidos, bio = BIO) {
   }
 
   return alertas
+}
+
+// ── Estado de ciclo reproductivo de una hembra ───────────────────────────────
+// Retorna: 'normal' | 'ultimo_ciclo' | 'fin_ciclo'
+//   normal      → menos de MAX_APAREAMIENTOS camadas
+//   ultimo_ciclo → tiene MAX_APAREAMIENTOS camadas pero la última NO tiene destete todavía
+//                  (todavía en apareamiento / preñada / lactando)
+//   fin_ciclo   → tiene MAX_APAREAMIENTOS camadas Y la última ya fue destetada
+//                  (ciclo completo — recomendar sacrificio)
+export function getEstadoCicloHembra(hembraId, camadasTodas) {
+  const camadasMadre = camadasTodas.filter((c) => c.id_madre === hembraId)
+  if (camadasMadre.length < MAX_APAREAMIENTOS) return 'normal'
+
+  const ultimaCamada = [...camadasMadre]
+    .sort((a, b) => (b.fecha_copula ?? '').localeCompare(a.fecha_copula ?? ''))[0]
+
+  if (ultimaCamada?.fecha_destete) return 'fin_ciclo'
+  return 'ultimo_ciclo'
 }
