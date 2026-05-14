@@ -92,7 +92,7 @@ function AppLayout() {
 
   return (
     <BiotheriumProvider>
-      <div className="flex min-h-screen">
+      <div className="flex min-h-screen" style={{ backgroundImage: 'linear-gradient(rgba(0,230,118,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,230,118,0.03) 1px, transparent 1px)', backgroundSize: '40px 40px' }}>
 
         {/* Overlay oscuro en mobile cuando el sidebar está abierto */}
         {sidebarAbierto && (

@@ -68,7 +68,7 @@ export default function Login() {
   // Si viene de invitación y ya tiene sesión activa → mostrar formulario de crear contraseña
   if (esInvitado && sesion) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(0,230,118,0.04) 0%, #050810 60%)' }}>
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#050810', backgroundImage: 'linear-gradient(rgba(0,230,118,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,230,118,0.03) 1px, transparent 1px)', backgroundSize: '40px 40px' }}>
         <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.95)', border: '1px solid rgba(0,230,118,0.2)', boxShadow: '0 0 60px rgba(0,230,118,0.06)' }}>
           <div className="px-8 py-7 text-center" style={{ borderBottom: '1px solid rgba(0,230,118,0.1)', background: 'rgba(0,230,118,0.03)' }}>
             <div className="text-3xl mb-3">🔑</div>
@@ -114,7 +114,9 @@ export default function Login() {
     <div
       className="min-h-screen flex items-center justify-center p-4"
       style={{
-        background: 'radial-gradient(ellipse at 50% 0%, rgba(0,230,118,0.04) 0%, #050810 60%)',
+        background: '#050810',
+        backgroundImage: 'linear-gradient(rgba(0,230,118,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,230,118,0.03) 1px, transparent 1px)',
+        backgroundSize: '40px 40px',
       }}
     >
       {/* Patrón de puntos de fondo */}

@@ -105,14 +105,23 @@ export default function Landing() {
 
       {/* ── NAVBAR ── */}
       <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'rgba(5,8,16,0.85)', borderBottom: '1px solid rgba(0,230,118,0.1)', backdropFilter: 'blur(20px)', overflow: 'visible' }}>
-        {/* Logo — centrado en el nav de 96px */}
+        {/* Ícono pestaña — centrado en el nav de 96px */}
         <div style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: '24px', zIndex: 102, pointerEvents: 'none' }}>
-          <ITeRatELogo height={96} />
+          <div style={{
+            background: 'rgb(4, 26, 31)',
+            borderRadius: '16px',
+            border: '1.5px solid rgba(0,230,118,0.2)',
+            boxShadow: '0 0 60px rgba(0,230,118,0.18), 0 8px 40px rgba(0,0,0,0.5)',
+            padding: '6px',
+            display: 'inline-flex',
+          }}>
+            <img src="/favicon.png" alt="ITeRatE" style={{ height: '60px', width: 'auto', display: 'block' }} />
+          </div>
         </div>
 
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px', height: '96px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           {/* Espaciador para el logo */}
-          <div style={{ width: '230px', flexShrink: 0 }} />
+          <div style={{ width: '100px', flexShrink: 0 }} />
 
           {/* Nav links — se ocultan en mobile */}
           <div className="landing-nav-links" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -153,7 +162,7 @@ export default function Landing() {
         <div style={{ position: 'absolute', top: '20%', left: '50%', transform: 'translateX(-50%)', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(0,230,118,0.06) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', top: '40%', left: '20%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(64,196,255,0.05) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
-        <div className="landing-hero-grid" style={{ maxWidth: '1200px', margin: '0 auto', padding: '80px 24px', display: 'grid', gridTemplateColumns: 'minmax(0, 1.15fr) minmax(320px, 0.85fr)', gap: '56px', alignItems: 'center' }}>
+        <div className="landing-hero-grid" style={{ maxWidth: '1200px', margin: '0 auto', padding: '80px 24px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '56px', alignItems: 'center' }}>
           {/* Left */}
           <div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '20px', background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)', marginBottom: '24px' }}>
@@ -198,8 +207,9 @@ export default function Landing() {
                 src={iterateLogoOriginal}
                 alt="ITeRatE"
                 style={{
-                  width: '340px',
+                  width: '100%',
                   height: 'auto',
+                  maxWidth: '680px',
                   borderRadius: '32px',
                   display: 'block',
                   boxShadow: '0 0 60px rgba(0,230,118,0.18), 0 8px 40px rgba(0,0,0,0.5)',
