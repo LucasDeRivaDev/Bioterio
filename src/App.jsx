@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { BiotheriumProvider } from './context/BiotheriumContext'
 import { BioterioActivoProvider, useBioterioActivo } from './context/BioterioActivoContext'
+import { ThemeProvider, useTheme } from './context/ThemeContext'
 import Sidebar from './components/Sidebar'
 import iterateNavLogo from './assets/iterate_nav_logo.png'
 import SelectorBioterio from './pages/SelectorBioterio'
@@ -242,41 +243,93 @@ function PantallaCrearPassword() {
   )
 }
 
+// ── Botón de brillo — fijo abajo a la izquierda, fuera del div filtrado ─────
+function BotонBrillo() {
+  const { modoBrillo, toggleBrillo } = useTheme()
+  return (
+    <button
+      onClick={toggleBrillo}
+      title={modoBrillo ? 'Cambiar a modo oscuro' : 'Cambiar a modo luminoso'}
+      style={{
+        position: 'fixed',
+        bottom: '20px',
+        left: '20px',
+        zIndex: 9999,
+        width: '42px',
+        height: '42px',
+        borderRadius: '12px',
+        border: modoBrillo
+          ? '1.5px solid rgba(255,210,0,0.5)'
+          : '1.5px solid rgba(0,230,118,0.3)',
+        background: modoBrillo
+          ? 'rgba(20,32,24,0.97)'
+          : 'rgba(8,13,26,0.97)',
+        backdropFilter: 'blur(12px)',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '20px',
+        boxShadow: modoBrillo
+          ? '0 0 20px rgba(255,210,0,0.2), 0 4px 16px rgba(0,0,0,0.5)'
+          : '0 0 16px rgba(0,230,118,0.12), 0 4px 16px rgba(0,0,0,0.5)',
+        transition: 'all 0.25s ease',
+      }}
+    >
+      {modoBrillo ? '🌙' : '☀️'}
+    </button>
+  )
+}
+
 // ── Root del router con manejo de auth ──────────────────────────────────────
 function RutaRaiz() {
   const { sesion, cargando, necesitaPassword } = useAuth()
-  if (cargando) return <PantallaCarga />
-  // Si viene de invitación y ya tiene sesión → mostrar pantalla de crear contraseña
-  if (necesitaPassword && sesion) return <PantallaCrearPassword />
-  // Sin sesión → mostrar Landing en "/" y Login en "/login"
-  if (!sesion) {
+  const { modoBrillo } = useTheme()
+
+  function renderContenido() {
+    if (cargando) return <PantallaCarga />
+    if (necesitaPassword && sesion) return <PantallaCrearPassword />
+    if (!sesion) {
+      return (
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      )
+    }
     return (
       <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/login"  element={<Navigate to="/" replace />} />
+        <Route path="/inicio" element={<Landing />} />
+        <Route path="/*"      element={<AppLayout />} />
       </Routes>
     )
   }
-  // Con sesión → app normal
+
   return (
-    <Routes>
-      <Route path="/login"  element={<Navigate to="/" replace />} />
-      <Route path="/inicio" element={<Landing />} />
-      <Route path="/*"      element={<AppLayout />} />
-    </Routes>
+    <>
+      {/* Todo el contenido con el filtro de brillo aplicado */}
+      <div style={{ filter: modoBrillo ? 'brightness(1.45) contrast(0.82)' : 'none' }}>
+        {renderContenido()}
+      </div>
+      {/* Botón fuera del div filtrado → siempre se ve correcto */}
+      <BotонBrillo />
+    </>
   )
 }
 
 // ── App principal ────────────────────────────────────────────────────────────
 export default function App() {
   return (
-    <AuthProvider>
-      <BioterioActivoProvider>
-        <BrowserRouter>
-          <RutaRaiz />
-        </BrowserRouter>
-      </BioterioActivoProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <BioterioActivoProvider>
+          <BrowserRouter>
+            <RutaRaiz />
+          </BrowserRouter>
+        </BioterioActivoProvider>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
