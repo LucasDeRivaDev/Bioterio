@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import ITeRatELogo from '../components/ITeRatELogo'
 import iterateLogoOriginal from '../assets/iterate_logo.jpg'
+import iterateTextLogo from '../assets/iterate_text_logo.png'
 import { Dna, BarChart2, Archive, Calendar, Skull, Printer, GraduationCap, Microscope, FlaskConical, Building2 } from 'lucide-react'
 
 const CSS = `
@@ -223,21 +224,19 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* Right: Logo con fondo original — oculto en mobile */}
+          {/* Right: Logo sin fondo — oculto en mobile */}
           <div className="landing-hero-right float" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', paddingLeft: '18px' }}>
-            <div style={{ position: 'relative', transform: 'translateX(24px)' }}>
-              <div style={{ position: 'absolute', inset: '-30px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,230,118,0.08) 0%, transparent 70%)' }} />
+            <div style={{ position: 'relative' }}>
+              <div style={{ position: 'absolute', inset: '-40px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,230,118,0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
               <img
-                src={iterateLogoOriginal}
+                src={iterateTextLogo}
                 alt="ITeRatE"
                 style={{
                   width: '100%',
                   height: 'auto',
-                  maxWidth: '1020px',
-                  borderRadius: '32px',
+                  maxWidth: '520px',
                   display: 'block',
-                  boxShadow: '0 0 60px rgba(0,230,118,0.18), 0 8px 40px rgba(0,0,0,0.5)',
-                  border: '1.5px solid rgba(0,230,118,0.2)',
+                  filter: 'drop-shadow(0 0 30px rgba(0,230,118,0.25))',
                 }}
               />
             </div>
@@ -435,16 +434,15 @@ export default function Landing() {
       <footer style={{ padding: '42px 24px 28px', borderTop: '1px solid rgba(30,51,82,0.5)', background: 'rgba(5,8,16,0.8)' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '18px' }}>
           <img
-            src={iterateLogoOriginal}
+            src={iterateTextLogo}
             alt="ITeRatE"
             style={{
-              width: '680px',
+              width: '480px',
               maxWidth: '100%',
               height: 'auto',
-              borderRadius: '32px',
               display: 'block',
-              boxShadow: '0 0 60px rgba(0,230,118,0.18), 0 8px 40px rgba(0,0,0,0.5)',
-              border: '1.5px solid rgba(0,230,118,0.2)',
+              filter: 'drop-shadow(0 0 20px rgba(0,230,118,0.2))',
+              opacity: 0.85,
             }}
           />
           <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>

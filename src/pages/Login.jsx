@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import iterateIconOnly from '../assets/iterate_icon_only.jpg'
+import iterateTextLogo from '../assets/iterate_text_logo.png'
 import { useAuth } from '../context/AuthContext'
 
 export default function Login() {
@@ -268,11 +269,15 @@ export default function Login() {
 
           {/* Footer */}
           <div
-            className="px-8 py-4 text-center"
+            className="px-8 py-5 text-center"
             style={{ borderTop: '1px solid rgba(30,51,82,0.6)' }}
           >
-            <div className="flex items-center justify-center gap-1.5 text-xs" style={{ color: 'rgba(74,95,122,0.6)' }}>
-              <span>🐀</span>
+            <img
+              src={iterateTextLogo}
+              alt="ITeRatE"
+              style={{ width: '160px', maxWidth: '100%', height: 'auto', margin: '0 auto 8px', display: 'block', opacity: 0.6, filter: 'drop-shadow(0 0 8px rgba(0,230,118,0.15))' }}
+            />
+            <div className="flex items-center justify-center gap-1.5 text-xs" style={{ color: 'rgba(74,95,122,0.5)' }}>
               <span className="font-mono italic">Mus musculus · Ratón doméstico</span>
             </div>
           </div>
