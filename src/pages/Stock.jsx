@@ -1825,6 +1825,10 @@ export default function Stock() {
     jaulas.forEach((jaula) => {
       const camada = camadas.find((c) => c.id === jaula.camada_id)
       if (!camada?.fecha_nacimiento || jaula.total <= 0) return
+      // Red de seguridad: si todos los animales fueron sacrificados/entregados,
+      // no mostrar la jaula aunque siga en DB (cubre casos donde eliminarJaula falló)
+      const stockEfectivo = stockCamada(camada, sacrificios, entregas)
+      if (stockEfectivo <= 0) return
       const edad = edadDias(camada.fecha_nacimiento)
       const madre = todosAnimales.find((a) => a.id === camada.id_madre)
       const padre = todosAnimales.find((a) => a.id === camada.id_padre)
@@ -1870,7 +1874,7 @@ export default function Stock() {
     })
 
     return result
-  }, [todosAnimales, camadas, jaulas, sacrificios, bio, bioterioActivo])
+  }, [todosAnimales, camadas, jaulas, sacrificios, entregas, bio, bioterioActivo])
 
   // ── Resumen por categoría ─────────────────────────────────────────────────
   const resumen = useMemo(() => {
@@ -2421,7 +2425,7 @@ if (subVista === 'sacrificios') {
           bloque={detalle}
           jaulas={jaulas}
           camadas={camadas}
-          animales={animales}
+          animales={todosAnimales}
           onCerrar={() => setDetalle(null)}
           editarJaula={editarJaula}
           agregarJaula={agregarJaula}
