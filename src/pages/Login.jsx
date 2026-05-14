@@ -145,7 +145,10 @@ export default function Login() {
             style={{ borderBottom: '1px solid rgba(0,230,118,0.1)', background: 'rgba(0,230,118,0.03)' }}
           >
             {/* Logo */}
-            <style>{`@keyframes floatLogin { 0%,100% { transform: translateY(0px); } 50% { transform: translateY(-8px); } }`}</style>
+            <style>{`
+              @keyframes floatLogin { 0%,100% { transform: translateY(0px); } 50% { transform: translateY(-8px); } }
+              @media (max-width: 480px) { .login-logo-img { height: 130px !important; } }
+            `}</style>
             <div className="flex justify-center mb-4">
               <div style={{
                 borderRadius: '24px',
@@ -158,6 +161,7 @@ export default function Login() {
                 <img
                   src={iterateIconOnly}
                   alt="ITeRatE"
+                  className="login-logo-img"
                   style={{
                     height: '200px',
                     width: 'auto',

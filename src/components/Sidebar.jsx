@@ -274,19 +274,20 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
       {/* Logo + bioterio activo */}
       <div className="px-4 py-4" style={{ borderBottom: '1px solid rgba(0,230,118,0.1)' }}>
         <div className="flex items-center gap-3 mb-3">
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-            style={{
-              background: 'rgba(0,230,118,0.1)',
-              border: '1px solid rgba(0,230,118,0.3)',
-              boxShadow: '0 0 12px rgba(0,230,118,0.15)',
-            }}
-          >
-            <Dna size={18} style={{ color: '#00e676' }} />
+          <div style={{
+            background: 'rgb(4, 26, 31)',
+            borderRadius: '10px',
+            border: '1.5px solid rgba(0,230,118,0.2)',
+            boxShadow: '0 0 60px rgba(0,230,118,0.18), 0 8px 40px rgba(0,0,0,0.5)',
+            padding: '3px',
+            display: 'inline-flex',
+            shrink: 0,
+          }}>
+            <img src="/favicon.png" alt="ITeRatE" style={{ height: '32px', width: 'auto', display: 'block' }} />
           </div>
           <div>
             <div className="font-bold text-white text-sm tracking-wide">BIOTERIO</div>
-            <div className="text-xs font-mono" style={{ color: 'rgba(0,230,118,0.6)' }}>v1.0 · ACTIVO</div>
+            <div className="text-xs font-mono" style={{ color: 'rgba(0,230,118,0.6)' }}>v2.0 · ACTIVO</div>
           </div>
         </div>
         {/* Bioterio activo + botón cambiar */}
@@ -316,7 +317,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
       </div>
 
       {/* Stats rápidas */}
-      <div className="px-4 py-3 grid grid-cols-3 gap-2" style={{ borderBottom: '1px solid rgba(30,51,82,0.6)' }}>
+      <div className="px-4 py-3 grid grid-cols-3 gap-1" style={{ borderBottom: '1px solid rgba(30,51,82,0.6)' }}>
         {[
           { val: hembrasActivas, label: '♀', color: '#ce93d8' },
           { val: machosActivos,  label: '♂', color: '#40c4ff' },

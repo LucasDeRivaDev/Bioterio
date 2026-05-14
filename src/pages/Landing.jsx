@@ -36,8 +36,8 @@ const CSS = `
     .landing-nav-links { display: none !important; }
     .landing-hero-grid { grid-template-columns: 1fr !important; }
     .landing-hero-right { display: none !important; }
-    .landing-hero-title { font-size: 38px !important; letter-spacing: -0.5px !important; }
-    .landing-hero-subtitle { font-size: 16px !important; }
+    .landing-hero-title { font-size: 36px !important; letter-spacing: -0.5px !important; }
+    .landing-hero-subtitle { font-size: 16px !important; max-width: 100% !important; }
     .landing-hero-ctas { flex-direction: column !important; }
     .landing-hero-ctas a { text-align: center !important; }
     .landing-hero-stats { gap: 24px !important; flex-wrap: wrap !important; }
@@ -48,11 +48,35 @@ const CSS = `
     .landing-pricing-grid { grid-template-columns: 1fr !important; }
     .landing-form-grid { grid-template-columns: 1fr !important; }
     .landing-section-h2 { font-size: 28px !important; letter-spacing: -0.5px !important; }
+    .landing-nav { height: 64px !important; }
+    .landing-nav-inner { height: 64px !important; }
+    .landing-nav-logo img { height: 38px !important; }
+    .landing-nav-logo { padding: 4px !important; border-radius: 10px !important; }
+    .landing-nav-spacer { width: 62px !important; }
+    .landing-section-pad { padding: 60px 20px !important; }
+    .landing-hero-pad { padding: 40px 20px !important; padding-top: 64px !important; }
+    .landing-hero-section { padding-top: 64px !important; }
+    .landing-pricing-card { padding: 28px !important; }
+    .landing-footer-logo { width: min(480px, 100%) !important; }
   }
   @media (max-width: 480px) {
-    .landing-hero-title { font-size: 30px !important; }
+    .landing-hero-title { font-size: 28px !important; letter-spacing: -0.5px !important; }
     .landing-para-quien-grid { grid-template-columns: 1fr !important; }
-    .landing-root nav > div { padding: 0 16px !important; }
+    .landing-root nav > div { padding: 0 12px !important; }
+    .landing-nav { height: 56px !important; }
+    .landing-nav-inner { height: 56px !important; }
+    .landing-nav-logo img { height: 30px !important; }
+    .landing-nav-logo { padding: 3px !important; border-radius: 8px !important; }
+    .landing-nav-spacer { width: 50px !important; }
+    .landing-hero-section { padding-top: 56px !important; }
+    .landing-hero-pad { padding: 32px 16px !important; padding-top: 56px !important; }
+    .landing-section-pad { padding: 48px 16px !important; }
+    .landing-hero-stats { gap: 16px !important; }
+    .landing-pricing-card { padding: 20px !important; }
+    .landing-footer-logo { width: 100% !important; max-width: 100% !important; }
+    .landing-section-h2 { font-size: 24px !important; }
+    .landing-hero-subtitle { font-size: 15px !important; }
+    .landing-cta-btn { padding: 12px 20px !important; font-size: 14px !important; }
   }
 `
 
@@ -104,10 +128,10 @@ export default function Landing() {
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
       {/* ── NAVBAR ── */}
-      <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'rgba(5,8,16,0.85)', borderBottom: '1px solid rgba(0,230,118,0.1)', backdropFilter: 'blur(20px)', overflow: 'visible' }}>
+      <nav className="landing-nav" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: 'rgba(5,8,16,0.85)', borderBottom: '1px solid rgba(0,230,118,0.1)', backdropFilter: 'blur(20px)', overflow: 'visible' }}>
         {/* Ícono pestaña — centrado en el nav de 96px */}
         <div style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: '24px', zIndex: 102, pointerEvents: 'none' }}>
-          <div style={{
+          <div className="landing-nav-logo" style={{
             background: 'rgb(4, 26, 31)',
             borderRadius: '16px',
             border: '1.5px solid rgba(0,230,118,0.2)',
@@ -119,9 +143,9 @@ export default function Landing() {
           </div>
         </div>
 
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px', height: '96px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="landing-nav-inner" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px', height: '96px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           {/* Espaciador para el logo */}
-          <div style={{ width: '100px', flexShrink: 0 }} />
+          <div className="landing-nav-spacer" style={{ width: '100px', flexShrink: 0 }} />
 
           {/* Nav links — se ocultan en mobile */}
           <div className="landing-nav-links" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -158,11 +182,11 @@ export default function Landing() {
       </nav>
 
       {/* ── HERO ── */}
-      <section className="grid-bg" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', paddingTop: '96px', position: 'relative', overflow: 'hidden' }}>
+      <section className="grid-bg landing-hero-section" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', paddingTop: '96px', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: '20%', left: '50%', transform: 'translateX(-50%)', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(0,230,118,0.06) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', top: '40%', left: '20%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(64,196,255,0.05) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
-        <div className="landing-hero-grid" style={{ maxWidth: '1200px', margin: '0 auto', padding: '80px 24px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '56px', alignItems: 'center' }}>
+        <div className="landing-hero-grid landing-hero-pad" style={{ maxWidth: '1200px', margin: '0 auto', padding: '80px 24px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '56px', alignItems: 'center' }}>
           {/* Left */}
           <div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '20px', background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)', marginBottom: '24px' }}>
@@ -222,7 +246,7 @@ export default function Landing() {
       </section>
 
       {/* ── FEATURES ── */}
-      <section id="features" style={{ padding: '100px 24px' }}>
+      <section id="features" className="landing-section-pad" style={{ padding: '100px 24px' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '60px' }}>
             <div style={{ display: 'inline-block', padding: '5px 14px', borderRadius: '20px', background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.2)', marginBottom: '16px' }}>
@@ -255,7 +279,7 @@ export default function Landing() {
       </section>
 
       {/* ── CÓMO FUNCIONA ── */}
-      <section id="como-funciona" style={{ padding: '100px 24px', background: 'rgba(13,21,40,0.3)', borderTop: '1px solid rgba(30,51,82,0.5)', borderBottom: '1px solid rgba(30,51,82,0.5)' }}>
+      <section id="como-funciona" className="landing-section-pad" style={{ padding: '100px 24px', background: 'rgba(13,21,40,0.3)', borderTop: '1px solid rgba(30,51,82,0.5)', borderBottom: '1px solid rgba(30,51,82,0.5)' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto', textAlign: 'center' }}>
           <div style={{ display: 'inline-block', padding: '5px 14px', borderRadius: '20px', background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.2)', marginBottom: '16px' }}>
             <span style={{ fontSize: '12px', fontWeight: 600, color: '#00e676', letterSpacing: '1px', textTransform: 'uppercase' }}>Simple desde el día 1</span>
@@ -282,7 +306,7 @@ export default function Landing() {
       </section>
 
       {/* ── PARA QUIÉN ── */}
-      <section style={{ padding: '100px 24px' }}>
+      <section className="landing-section-pad" style={{ padding: '100px 24px' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '60px' }}>
             <h2 className="landing-section-h2" style={{ fontSize: '40px', fontWeight: 800, color: 'white', letterSpacing: '-1px', marginBottom: '16px' }}>¿Para quién es ITeRatE?</h2>
@@ -306,7 +330,7 @@ export default function Landing() {
       </section>
 
       {/* ── PRICING ── */}
-      <section id="pricing" style={{ padding: '100px 24px', background: 'rgba(13,21,40,0.3)', borderTop: '1px solid rgba(30,51,82,0.5)', borderBottom: '1px solid rgba(30,51,82,0.5)' }}>
+      <section id="pricing" className="landing-section-pad" style={{ padding: '100px 24px', background: 'rgba(13,21,40,0.3)', borderTop: '1px solid rgba(30,51,82,0.5)', borderBottom: '1px solid rgba(30,51,82,0.5)' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto', textAlign: 'center' }}>
           <div style={{ display: 'inline-block', padding: '5px 14px', borderRadius: '20px', background: 'rgba(206,147,216,0.08)', border: '1px solid rgba(206,147,216,0.2)', marginBottom: '16px' }}>
             <span style={{ fontSize: '12px', fontWeight: 600, color: '#ce93d8', letterSpacing: '1px', textTransform: 'uppercase' }}>Planes</span>
@@ -316,7 +340,7 @@ export default function Landing() {
 
           <div className="landing-pricing-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
             {/* Licencia */}
-            <div className="card" style={{ borderRadius: '24px', padding: '40px', textAlign: 'left' }}>
+            <div className="card landing-pricing-card" style={{ borderRadius: '24px', padding: '40px', textAlign: 'left' }}>
               <div style={{ fontSize: '13px', fontWeight: 600, color: '#8a9bb0', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Licencia única</div>
               <div style={{ fontSize: '40px', fontWeight: 900, color: 'white', marginBottom: '8px' }}>A consultar</div>
               <div style={{ fontSize: '14px', color: '#4a5f7a', marginBottom: '32px' }}>Pago único · sin mensualidades</div>
@@ -336,7 +360,7 @@ export default function Landing() {
             </div>
 
             {/* SaaS */}
-            <div style={{ borderRadius: '24px', padding: '40px', textAlign: 'left', position: 'relative', overflow: 'hidden', background: 'rgba(13,21,40,0.95)', border: '1.5px solid rgba(0,230,118,0.35)', boxShadow: '0 0 40px rgba(0,230,118,0.1)' }}>
+            <div className="landing-pricing-card" style={{ borderRadius: '24px', padding: '40px', textAlign: 'left', position: 'relative', overflow: 'hidden', background: 'rgba(13,21,40,0.95)', border: '1.5px solid rgba(0,230,118,0.35)', boxShadow: '0 0 40px rgba(0,230,118,0.1)' }}>
               <div style={{ position: 'absolute', top: '20px', right: '20px', padding: '4px 12px', borderRadius: '20px', background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.3)' }}>
                 <span style={{ fontSize: '11px', fontWeight: 700, color: '#00e676', textTransform: 'uppercase', letterSpacing: '1px' }}>⭐ Recomendado</span>
               </div>
@@ -360,7 +384,7 @@ export default function Landing() {
       </section>
 
       {/* ── CONTACTO ── */}
-      <section id="contacto" style={{ padding: '100px 24px' }}>
+      <section id="contacto" className="landing-section-pad" style={{ padding: '100px 24px' }}>
         <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
           <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'center' }}><Dna size={48} style={{ color: '#00e676' }} /></div>
           <h2 className="landing-section-h2" style={{ fontSize: '40px', fontWeight: 800, color: 'white', letterSpacing: '-1px', marginBottom: '16px' }}>Pedí tu demo gratuito</h2>
@@ -415,6 +439,7 @@ export default function Landing() {
             alt="ITeRatE"
             style={{
               width: '680px',
+              maxWidth: '100%',
               height: 'auto',
               borderRadius: '32px',
               display: 'block',

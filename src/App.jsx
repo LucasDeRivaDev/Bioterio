@@ -138,8 +138,9 @@ function AppLayout() {
             </div>
           </div>
 
-          {/* Logo flotante — esquina inferior derecha, se mueve con el scroll */}
+          {/* Logo flotante — esquina inferior derecha, oculto en mobile */}
           <div
+            className="hidden md:block"
             style={{
               position: 'fixed',
               bottom: '20px',
