@@ -1,15 +1,19 @@
 import { useBioterioActivo, BIOTERIOS_CONFIG } from '../context/BioterioActivoContext'
-import ITeRatELogo from '../components/ITeRatELogo'
+import iterateTitleLogo from '../assets/iterate_title_logo.png'
 import { useEffect, useState } from 'react'
 
 const GRUPOS_RATONES = ['ratones_balbc', 'ratones_c57', 'ratones_hibridos']
 
+const CSS = `
+  @keyframes floatSelector { 0%,100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
+`
+
 export default function SelectorBioterio() {
   const { setBioterioActivo } = useBioterioActivo()
-  const [logoH, setLogoH] = useState(330)
+  const [logoW, setLogoW] = useState(340)
 
   useEffect(() => {
-    const update = () => setLogoH(window.innerWidth < 480 ? 160 : window.innerWidth < 768 ? 220 : 330)
+    const update = () => setLogoW(window.innerWidth < 480 ? 200 : window.innerWidth < 768 ? 260 : 340)
     update()
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
@@ -20,9 +24,24 @@ export default function SelectorBioterio() {
       className="min-h-screen flex flex-col items-center justify-center p-4 md:p-6 gap-6 md:gap-10"
       style={{ background: '#050810', backgroundImage: 'linear-gradient(rgba(0,230,118,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,230,118,0.03) 1px, transparent 1px)', backgroundSize: '40px 40px' }}
     >
+      <style dangerouslySetInnerHTML={{ __html: CSS }} />
+
       {/* Logo + Título juntos */}
       <div className="flex flex-col items-center" style={{ gap: '20px' }}>
-        <ITeRatELogo height={logoH} />
+        {/* Logo con mismo estilo que el hero de Landing */}
+        <div style={{ position: 'relative', animation: 'floatSelector 4s ease-in-out infinite' }}>
+          <div style={{ position: 'absolute', inset: '-40px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,230,118,0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
+          <img
+            src={iterateTitleLogo}
+            alt="ITeRatE"
+            style={{
+              width: `${logoW}px`,
+              height: 'auto',
+              display: 'block',
+              filter: 'drop-shadow(0 0 30px rgba(0,230,118,0.25))',
+            }}
+          />
+        </div>
         <div className="text-center">
           <h1 className="text-2xl font-bold text-white mb-2">Seleccioná el bioterio</h1>
           <p className="text-sm" style={{ color: '#4a5f7a' }}>¿Con qué colonia vas a trabajar hoy?</p>

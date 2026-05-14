@@ -5,6 +5,7 @@ import ITeRatELogo from '../components/ITeRatELogo'
 import iterateLogoOriginal from '../assets/iterate_logo.jpg'
 import iterateTextLogo from '../assets/iterate_text_logo.png'
 import iterateTitleLogo from '../assets/iterate_title_logo.png'
+import iterateNavLogo from '../assets/iterate_nav_logo.png'
 import { Dna, BarChart2, Archive, Calendar, Skull, Printer, GraduationCap, Microscope, FlaskConical, Building2 } from 'lucide-react'
 
 const CSS = `
@@ -141,7 +142,7 @@ export default function Landing() {
             padding: '6px 10px',
             display: 'inline-flex',
           }}>
-            <img src={iterateTitleLogo} alt="ITeRatE" style={{ height: '60px', width: 'auto', display: 'block', filter: 'drop-shadow(0 0 8px rgba(0,230,118,0.3))' }} />
+            <img src={iterateNavLogo} alt="ITeRatE" style={{ height: '60px', width: 'auto', display: 'block', filter: 'drop-shadow(0 0 8px rgba(0,230,118,0.3))' }} />
           </div>
         </div>
 
