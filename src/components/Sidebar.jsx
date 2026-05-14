@@ -289,6 +289,11 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
               style={{ height: '48px', width: 'auto', display: 'block', filter: 'drop-shadow(0 0 6px rgba(0,230,118,0.25))' }}
             />
           </div>
+          <div>
+            <div className="font-bold text-white text-sm tracking-wide">BIOTERIO</div>
+            <div className="text-xs font-mono" style={{ color: 'rgba(0,230,118,0.6)' }}>v2.0</div>
+            <div className="text-xs font-mono" style={{ color: 'rgba(0,230,118,0.45)' }}>ACTIVO</div>
+          </div>
         </div>
         {/* Bioterio activo + botón cambiar */}
         <div
