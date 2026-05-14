@@ -4,7 +4,7 @@ import {
   calcularRendimientoMacho, calcularLatencia, interpretarLatencia,
   scorePorLatencia, formatFecha, difDias, parseDate, hoy,
   calcularPerfilHembra, calcularConfiabilidadHembra,
-  detectarBajaPerformanceMacho,
+  detectarBajaPerformanceMacho, calcularTendenciaTamanoCamadas,
 } from '../utils/calculos'
 import { MACHO_EDAD_LIMITE_DIAS, MACHO_EDAD_ALERTA_DIAS } from '../utils/constants'
 import Badge from '../components/Badge'
@@ -58,14 +58,32 @@ function Medalla({ pos }) {
   return <span className="font-mono font-bold text-sm w-8 text-center" style={{ color: '#4a5f7a' }}>#{pos}</span>
 }
 
-function Metric({ label, valor, color }) {
+function Metric({ label, valor, color, suffix = 'd' }) {
   return (
     <div className="text-center px-3">
       <div className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5f7a' }}>{label}</div>
       <div className="font-mono font-bold text-xl" style={{ color: color ?? '#8a9bb0' }}>
-        {valor !== null && valor !== undefined ? `${valor}d` : '—'}
+        {valor !== null && valor !== undefined ? `${valor}${suffix}` : '—'}
       </div>
     </div>
+  )
+}
+
+function TendenciaBadge({ tendencia }) {
+  if (!tendencia) return null
+  const cfg = {
+    mejorando:    { color: '#00e676', icon: '↑', label: 'Mejorando' },
+    estable:      { color: '#40c4ff', icon: '→', label: 'Estable' },
+    disminuyendo: { color: '#ff6b80', icon: '↓', label: 'Disminuyendo' },
+  }
+  const { color, icon, label } = cfg[tendencia]
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full"
+      style={{ background: `${color}15`, border: `1px solid ${color}35`, color }}
+    >
+      {icon} {label}
+    </span>
   )
 }
 
@@ -165,10 +183,15 @@ export default function Rendimiento() {
         return { macho, m, totalMachos, totalHembras }
       })
       .sort((a, b) => {
-        if (a.m.promedio_latencia === null && b.m.promedio_latencia === null) return 0
-        if (a.m.promedio_latencia === null) return 1
-        if (b.m.promedio_latencia === null) return -1
-        return a.m.promedio_latencia - b.m.promedio_latencia
+        // Ordenar por score total (latencia + camada) de mayor a menor
+        const stA = a.m.score_total
+        const stB = b.m.score_total
+        if (stA === null && stB === null) return 0
+        if (stA === null) return 1
+        if (stB === null) return -1
+        if (stB !== stA) return stB - stA
+        // Desempate: mayor cantidad de camadas
+        return b.m.total_camadas - a.m.total_camadas
       })
   }
 
@@ -189,6 +212,14 @@ export default function Rendimiento() {
   }
 
   // ── Hembras ─────────────────────────────────────────────────────────────────
+  function sumaScoresHembra(perfil) {
+    if (!perfil) return 0
+    return (perfil.avg_time_score       ?? 0)
+         + (perfil.avg_litter_size_score ?? 0)
+         + (perfil.avg_sex_ratio_score   ?? 0)
+         + (perfil.avg_survival_score    ?? 0)
+  }
+
   function buildHembraStats(lista) {
     return lista
       .map((h) => {
@@ -198,15 +229,18 @@ export default function Rendimiento() {
         const crias        = sus.reduce((s, c) => s + (c.total_crias   ?? 0), 0)
         const criasMachos  = sus.reduce((s, c) => s + (c.crias_machos  ?? 0), 0)
         const criasHembras = sus.reduce((s, c) => s + (c.crias_hembras ?? 0), 0)
-        return { h, total: sus.length, crias, criasMachos, criasHembras, perfil, conf }
+        const scoreTotal   = perfil ? Math.round(sumaScoresHembra(perfil) * 10) / 10 : null
+        const tendencia_camada = calcularTendenciaTamanoCamadas(sus)
+        return { h, total: sus.length, crias, criasMachos, criasHembras, perfil, conf, scoreTotal, tendencia_camada }
       })
       .filter((x) => x.total > 0)
       .sort((a, b) => {
-        const avgA = a.perfil ? [a.perfil.avg_time_score, a.perfil.avg_litter_size_score, a.perfil.avg_survival_score].filter(Boolean) : []
-        const avgB = b.perfil ? [b.perfil.avg_time_score, b.perfil.avg_litter_size_score, b.perfil.avg_survival_score].filter(Boolean) : []
-        const scoreA = avgA.length ? avgA.reduce((s,v) => s+v, 0) / avgA.length : 0
-        const scoreB = avgB.length ? avgB.reduce((s,v) => s+v, 0) / avgB.length : 0
-        return scoreB - scoreA
+        // Ordenar por suma de los 4 scores promedios de mayor a menor
+        const stA = a.scoreTotal ?? 0
+        const stB = b.scoreTotal ?? 0
+        if (stB !== stA) return stB - stA
+        // Desempate: mayor cantidad de partos
+        return b.total - a.total
       })
   }
 
@@ -265,7 +299,7 @@ const btnSubTab = (v, label, color) => (
           <div>
             <h1 className="text-xl font-bold text-white">Rendimiento reproductivo</h1>
             <p className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>
-              Menor latencia = mejor desempeño del macho
+              Mayor score total = mejor posición en ranking
             </p>
           </div>
         </div>
@@ -314,22 +348,22 @@ const btnSubTab = (v, label, color) => (
         style={{ background: 'rgba(64,196,255,0.06)', border: '1px solid rgba(64,196,255,0.15)' }}
       >
         <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: '#40c4ff' }}>
-          🧮 Cómo se calcula la latencia
+          🧮 Cómo se calcula el score total — Machos
         </div>
         <div className="space-y-1 text-sm font-mono" style={{ color: 'rgba(64,196,255,0.7)' }}>
           <div>
-            <span style={{ color: '#8a9bb0' }}>Concepción estimada</span>{' = '}
-            <span style={{ color: '#40c4ff' }}>Fecha de nacimiento</span>{' − '}
-            <span style={{ color: '#ce93d8' }}>23 días</span>
+            <span style={{ color: '#8a9bb0' }}>Score total</span>{' = '}
+            <span style={{ color: '#40c4ff' }}>Score latencia</span>{' + '}
+            <span style={{ color: '#00e676' }}>Score camada</span>
+            <span style={{ color: '#4a5f7a' }}>{' (máx 20 pts)'}</span>
           </div>
-          <div>
-            <span style={{ color: '#8a9bb0' }}>Latencia</span>{' = '}
-            <span style={{ color: '#40c4ff' }}>Concepción estimada</span>{' − '}
-            <span style={{ color: '#ce93d8' }}>Fecha de cópula</span>
+          <div className="text-xs mt-1 space-y-0.5">
+            <div><span style={{ color: '#40c4ff' }}>Score latencia:</span><span style={{ color: '#4a5f7a' }}> 0–5d→10pts · 6–10d→7pts · 11–15d→5pts</span></div>
+            <div><span style={{ color: '#00e676' }}>Score camada:</span><span style={{ color: '#4a5f7a' }}> ≥10 crías→10pts · 8–9→7pts · &lt;8→0pts</span></div>
           </div>
         </div>
         <div className="text-xs mt-2" style={{ color: 'rgba(64,196,255,0.4)' }}>
-          Ejemplo: cópula día 1 · nacimiento día 26 → concepción día 3 → latencia 2 días (🥇 excelente)
+          Latencia = (Fecha nacimiento − gestación) − Fecha cópula · Gestación default: 23d
         </div>
       </div>
 
@@ -367,6 +401,7 @@ const btnSubTab = (v, label, color) => (
                           <span title={macho.notas} style={{ color: macho.nota_tipo === 'critica' ? '#ff1744' : '#ffb300', cursor: 'help' }}>⚠</span>
                         )}
                         <ScoreBadge score={m.score} />
+                        {m.tendencia_camada && <TendenciaBadge tendencia={m.tendencia_camada} />}
                         {esActivo(macho) && <EdadMachoBadge macho={macho} />}
                         {vista === 'historico' && !esActivo(macho) && (
                           <Badge color={macho.estado === 'fallecido' ? 'rojo' : 'gris'}>
@@ -384,19 +419,28 @@ const btnSubTab = (v, label, color) => (
                             <span style={{ color: '#ce93d8' }}>{totalHembras}♀</span>
                           </span>
                         )}
+                        {m.avg_litter_size !== null && (
+                          <span className="ml-2">· prom. <span style={{ color: '#00e676' }}>{m.avg_litter_size} crías</span></span>
+                        )}
                       </div>
                     </div>
                     {/* Métricas numéricas */}
                     <div className="hidden md:flex items-center divide-x" style={{ divideColor: 'rgba(30,51,82,0.6)' }}>
                       <div className="text-center px-3">
-                        <div className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5f7a' }}>Score prom.</div>
-                        <div className="font-mono font-bold text-xl" style={{ color: m.score_promedio !== null ? '#00e676' : '#8a9bb0' }}>
+                        <div className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5f7a' }}>Score total</div>
+                        <div className="font-mono font-bold text-xl" style={{ color: m.score_total !== null ? '#00e676' : '#8a9bb0' }}>
+                          {m.score_total !== null ? m.score_total : '—'}
+                          <span className="text-xs font-normal ml-0.5" style={{ color: '#4a5f7a' }}>/20</span>
+                        </div>
+                      </div>
+                      <div className="text-center px-3">
+                        <div className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5f7a' }}>Lat. score</div>
+                        <div className="font-mono font-bold text-xl" style={{ color: m.score_promedio !== null ? '#40c4ff' : '#8a9bb0' }}>
                           {m.score_promedio !== null ? m.score_promedio : '—'}
                         </div>
                       </div>
+                      <Metric label="Camada score" valor={m.avg_litter_score} color="#00e676" suffix="" />
                       <Metric label="Lat. prom." valor={m.promedio_latencia} color="#40c4ff" />
-                      <Metric label="Mínimo" valor={m.min_latencia} color="#00e676" />
-                      <Metric label="Máximo" valor={m.max_latencia} color="#ff6b80" />
                     </div>
                     {/* Barra */}
                     <div className="w-36">
@@ -496,7 +540,7 @@ const btnSubTab = (v, label, color) => (
             {vista === 'activos' ? 'Perfil de hembras — solo activas' : 'Perfil histórico de hembras'}
           </div>
           <div className="space-y-3">
-            {hembraStats.map(({ h, total, crias, criasMachos, criasHembras, perfil, conf }, idx) => {
+            {hembraStats.map(({ h, total, crias, criasMachos, criasHembras, perfil, conf, scoreTotal, tendencia_camada }, idx) => {
               const confCfg = conf ? CONF_CONFIG[conf.nivel] : null
               return (
                 <div key={h.id} className="rounded-xl overflow-hidden" style={cardStyle}>
@@ -520,6 +564,7 @@ const btnSubTab = (v, label, color) => (
                             {conf.nivel !== 'ok' ? `⚠ ${confCfg.label}` : `✓ ${confCfg.label}`}
                           </span>
                         )}
+                        {tendencia_camada && <TendenciaBadge tendencia={tendencia_camada} />}
                         {vista === 'historico' && !esActivo(h) && (
                           <Badge color={h.estado === 'fallecido' ? 'rojo' : 'gris'}>
                             {h.estado === 'fallecido' ? 'Fallecida' : 'Retirada'}
@@ -537,6 +582,16 @@ const btnSubTab = (v, label, color) => (
                         )}
                       </div>
                     </div>
+                    {/* Score total hembra */}
+                    {scoreTotal !== null && (
+                      <div className="text-center px-3 hidden md:block">
+                        <div className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5f7a' }}>Score total</div>
+                        <div className="font-mono font-bold text-xl" style={{ color: '#ce93d8' }}>
+                          {scoreTotal}
+                          <span className="text-xs font-normal ml-0.5" style={{ color: '#4a5f7a' }}>/40</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Scores de la hembra */}

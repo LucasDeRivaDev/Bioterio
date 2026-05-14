@@ -127,6 +127,28 @@ export function interpretarLatencia(dias) {
 // ─── MÉTRICAS DE RENDIMIENTO MACHO ───────────────────────────────────────────
 
 /**
+ * Analiza la tendencia del tamaño de camada comparando primera mitad vs segunda mitad
+ * del historial ordenado cronológicamente.
+ * Requiere al menos 3 camadas con total_crias registrado.
+ * Retorna: 'mejorando' | 'estable' | 'disminuyendo' | null
+ */
+export function calcularTendenciaTamanoCamadas(historial) {
+  const conDatos = historial
+    .filter((c) => c.total_crias != null)
+    .sort((a, b) => (a.fecha_copula ?? '').localeCompare(b.fecha_copula ?? ''))
+  if (conDatos.length < 3) return null
+  const mitad    = Math.floor(conDatos.length / 2)
+  const primeras = conDatos.slice(0, mitad)
+  const ultimas  = conDatos.slice(-mitad)
+  const avgPrim  = primeras.reduce((s, c) => s + c.total_crias, 0) / primeras.length
+  const avgUlt   = ultimas.reduce((s, c)  => s + c.total_crias, 0) / ultimas.length
+  const diff = avgUlt - avgPrim
+  if (diff > 1.5)  return 'mejorando'
+  if (diff < -1.5) return 'disminuyendo'
+  return 'estable'
+}
+
+/**
  * Asigna un score discreto a una latencia de fertilización.
  * Reglas:
  *   0–5 días  → 10 (fecundación inmediata o 1er ciclo, óptimo)
@@ -164,6 +186,10 @@ export function calcularRendimientoMacho(machoId, camadas) {
       max_latencia: null,
       score_promedio: null,
       score: null,
+      avg_litter_score: null,
+      avg_litter_size: null,
+      tendencia_camada: null,
+      score_total: null,
     }
   }
 
@@ -183,6 +209,27 @@ export function calcularRendimientoMacho(machoId, camadas) {
       ? Math.round(scores_individuales.reduce((a, b) => a + b, 0) / scores_individuales.length * 10) / 10
       : null
 
+  // Calidad promedio de camadas
+  const litterScores = camadasMacho
+    .map((c) => scoreTamanoCamada(c.total_crias))
+    .filter((s) => s !== null)
+
+  const avg_litter_score = litterScores.length > 0
+    ? Math.round(litterScores.reduce((a, b) => a + b, 0) / litterScores.length * 10) / 10
+    : null
+
+  const criasPorCamada = camadasMacho.map((c) => c.total_crias).filter((v) => v != null)
+  const avg_litter_size = criasPorCamada.length > 0
+    ? Math.round(criasPorCamada.reduce((a, b) => a + b, 0) / criasPorCamada.length * 10) / 10
+    : null
+
+  const tendencia_camada = calcularTendenciaTamanoCamadas(camadasMacho)
+
+  // Score total = score latencia (0–10) + score camada (0–10) → máx 20
+  const score_total = (score_promedio !== null || avg_litter_score !== null)
+    ? Math.round(((score_promedio ?? 0) + (avg_litter_score ?? 0)) * 10) / 10
+    : null
+
   return {
     machoId,
     total_camadas: camadasMacho.length,
@@ -192,7 +239,11 @@ export function calcularRendimientoMacho(machoId, camadas) {
     min_latencia: latencias.length > 0 ? Math.min(...latencias) : null,
     max_latencia: latencias.length > 0 ? Math.max(...latencias) : null,
     score_promedio,
-    score: score_promedio, // alias para compatibilidad
+    score: score_promedio,
+    avg_litter_score,
+    avg_litter_size,
+    tendencia_camada,
+    score_total,
   }
 }
 
