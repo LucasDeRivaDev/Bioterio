@@ -1,7 +1,7 @@
-import iterateLogo from '../assets/iterate_logo.png'
+import iterateLogo from '../assets/iterate_logo.jpg'
 
 /**
- * Logo de ITeRatE — PNG con fondo transparente real.
+ * Logo de ITeRatE — imagen con texto "ITeRatE + Intelligence Telemetry for Rats Evaluation".
  *
  * Props:
  *   height    — alto en px (el ancho escala proporcional). Default: 60
