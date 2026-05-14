@@ -202,9 +202,10 @@ function MiniCalidad({ icono, codigo, calidad, animal }) {
   )
 }
 
-function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccionada = false, animalesReservados = new Map(), jaulasReservadas = new Map(), reservadosHibridos = new Map() }) {
+function BloqueJaula({ bloque, camadas, onClick, onEliminar, modoSeleccion = false, seleccionada = false, animalesReservados = new Map(), jaulasReservadas = new Map(), reservadosHibridos = new Map() }) {
   const cfg = CAT[bloque.categoria]
   const esStock = bloque.tipo === 'stock'
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState(false)
 
   // Hembra en período de apareamiento → jaula temporalmente vacía
   const esEnApareamiento = esFemEnApareamiento(bloque)
@@ -237,6 +238,42 @@ function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccio
     : null
 
   return (
+    <div style={{ position: 'relative' }}>
+
+    {/* Botón X para eliminar jaula — solo para bloques de stock, fuera del modo selección */}
+    {onEliminar && esStock && !modoSeleccion && !esEnApareamiento && (
+      <div
+        style={{
+          position: 'absolute', top: 4, right: 4, zIndex: 20,
+          display: 'flex', alignItems: 'center', gap: 4,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {confirmandoEliminar ? (
+          <>
+            <span className="text-xs" style={{ color: '#8a9bb0' }}>¿Eliminar?</span>
+            <button
+              onClick={() => { onEliminar(bloque); setConfirmandoEliminar(false) }}
+              className="text-xs px-1.5 py-0.5 rounded font-bold"
+              style={{ background: 'rgba(255,23,68,0.18)', border: '1px solid rgba(255,23,68,0.5)', color: '#ff1744', cursor: 'pointer' }}
+            >✓</button>
+            <button
+              onClick={() => setConfirmandoEliminar(false)}
+              className="text-xs px-1.5 py-0.5 rounded"
+              style={{ background: 'rgba(30,51,82,0.5)', border: '1px solid rgba(30,51,82,0.8)', color: '#4a5f7a', cursor: 'pointer' }}
+            >✕</button>
+          </>
+        ) : (
+          <button
+            onClick={() => setConfirmandoEliminar(true)}
+            title="Eliminar jaula"
+            className="w-5 h-5 rounded flex items-center justify-center text-xs font-bold transition-all hover:scale-110"
+            style={{ background: 'rgba(30,51,82,0.7)', border: '1px solid rgba(30,51,82,0.9)', color: '#4a5f7a', cursor: 'pointer' }}
+          >✕</button>
+        )}
+      </div>
+    )}
+
     <button
       onClick={() => onClick(bloque)}
       disabled={false}
@@ -424,6 +461,8 @@ function BloqueJaula({ bloque, camadas, onClick, modoSeleccion = false, seleccio
         )}
       </div>
     </button>
+
+    </div>
   )
 }
 
@@ -1769,7 +1808,7 @@ function CategoriaCard({ icono, titulo, subtitulo, total, grupos, gruposLabel, m
 
 
 export default function Stock() {
-  const { animales, animalesExportados, camadas, sacrificios, entregas, jaulas, bio, bioterioActivo, agregarAnimal, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, registrarSacrificio, registrarEntrega, entregarReproductor } = useBioterio()
+  const { animales, animalesExportados, camadas, sacrificios, entregas, jaulas, bio, bioterioActivo, agregarAnimal, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, editarCamada, registrarSacrificio, registrarEntrega, entregarReproductor } = useBioterio()
   const esHibridos = bioterioActivo === 'ratones_hibridos'
   // Para encontrar progenitores en Híbridos (están en animalesExportados, no en animales)
   const todosAnimales = useMemo(() => [...animales, ...animalesExportados], [animales, animalesExportados])
@@ -1957,6 +1996,18 @@ export default function Stock() {
   function salirModoSeleccion() {
     setModoSeleccion(false)
     setSeleccionadas(new Set())
+  }
+
+  // Eliminar jaula individualmente (botón X en cada bloque)
+  // - Jaula real: elimina la fila en Supabase
+  // - Bloque virtual: desactiva incluir_en_stock en la camada → deja de aparecer
+  async function eliminarBloque(bloque) {
+    if (bloque.tipo !== 'stock') return
+    if (!bloque.virtual && bloque.jaula?.id) {
+      await eliminarJaula(bloque.jaula.id)
+    } else if (bloque.virtual && bloque.camada) {
+      await editarCamada({ ...bloque.camada, incluir_en_stock: false })
+    }
   }
 
   async function ejecutarSacrificio(fecha, notas, cantidades) {
@@ -2288,6 +2339,7 @@ if (subVista === 'sacrificios') {
                   bloque={b}
                   camadas={camadas}
                   onClick={modoSeleccion ? toggleSeleccion : setDetalle}
+                  onEliminar={eliminarBloque}
                   modoSeleccion={modoSeleccion}
                   seleccionada={seleccionadas.has(b.id)}
                   animalesReservados={animalesReservados}
