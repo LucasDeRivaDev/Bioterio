@@ -255,28 +255,32 @@ function BotонBrillo() {
         bottom: '20px',
         left: '20px',
         zIndex: 9999,
-        width: '42px',
-        height: '42px',
-        borderRadius: '12px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '7px',
+        padding: '8px 13px',
+        borderRadius: '20px',
         border: modoBrillo
-          ? '1.5px solid rgba(255,210,0,0.5)'
+          ? '1.5px solid rgba(30,100,200,0.45)'
           : '1.5px solid rgba(0,230,118,0.3)',
         background: modoBrillo
-          ? 'rgba(20,32,24,0.97)'
+          ? 'rgba(230,240,255,0.97)'
           : 'rgba(8,13,26,0.97)',
         backdropFilter: 'blur(12px)',
         cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '20px',
+        fontSize: '13px',
+        fontWeight: 600,
+        fontFamily: 'Inter, sans-serif',
+        color: modoBrillo ? '#1a3a6a' : '#00e676',
         boxShadow: modoBrillo
-          ? '0 0 20px rgba(255,210,0,0.2), 0 4px 16px rgba(0,0,0,0.5)'
-          : '0 0 16px rgba(0,230,118,0.12), 0 4px 16px rgba(0,0,0,0.5)',
+          ? '0 2px 16px rgba(30,100,200,0.2), 0 4px 12px rgba(0,0,0,0.15)'
+          : '0 0 16px rgba(0,230,118,0.12), 0 4px 12px rgba(0,0,0,0.5)',
         transition: 'all 0.25s ease',
+        letterSpacing: '0.3px',
       }}
     >
-      {modoBrillo ? '🌙' : '☀️'}
+      <span style={{ fontSize: '15px', lineHeight: 1 }}>{modoBrillo ? '🌙' : '☀️'}</span>
+      <span>{modoBrillo ? 'Oscuro' : 'Claro'}</span>
     </button>
   )
 }
@@ -309,8 +313,8 @@ function RutaRaiz() {
 
   return (
     <>
-      {/* Todo el contenido con el filtro de brillo aplicado */}
-      <div style={{ filter: modoBrillo ? 'brightness(1.45) contrast(0.82)' : 'none' }}>
+      {/* Todo el contenido — invert+hue-rotate convierte dark→light manteniendo los colores */}
+      <div style={{ filter: modoBrillo ? 'invert(0.9) hue-rotate(180deg) saturate(1.1) brightness(1.05)' : 'none' }}>
         {renderContenido()}
       </div>
       {/* Botón fuera del div filtrado → siempre se ve correcto */}
