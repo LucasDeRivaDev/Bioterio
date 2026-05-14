@@ -4,7 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { BiotheriumProvider } from './context/BiotheriumContext'
 import { BioterioActivoProvider, useBioterioActivo } from './context/BioterioActivoContext'
 import Sidebar from './components/Sidebar'
-import ITeRatELogo from './components/ITeRatELogo'
+import iterateNavLogo from './assets/iterate_nav_logo.png'
 import SelectorBioterio from './pages/SelectorBioterio'
 import ResumenRatones from './pages/ResumenRatones'
 import ConsumoAlimento from './pages/ConsumoAlimento'
@@ -150,7 +150,7 @@ function AppLayout() {
               pointerEvents: 'none',
             }}
           >
-            <ITeRatELogo height={99} />
+            <img src={iterateNavLogo} alt="ITeRatE" style={{ height: '99px', width: 'auto', display: 'block', filter: 'drop-shadow(0 0 8px rgba(0,230,118,0.2))', opacity: 0.85 }} />
           </div>
 
           {/* Rutas */}
