@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 import ITeRatELogo from '../components/ITeRatELogo'
 import iterateLogoOriginal from '../assets/iterate_logo.jpg'
 import iterateTextLogo from '../assets/iterate_text_logo.png'
@@ -81,6 +82,33 @@ const CSS = `
     .landing-hero-subtitle { font-size: 15px !important; }
     .landing-cta-btn { padding: 12px 20px !important; font-size: 14px !important; }
   }
+
+  /* ── MODO CLARO ────────────────────────────────── */
+  html.modo-claro .landing-root {
+    background: #edf2f7 !important;
+    color: #0d1e30 !important;
+  }
+  html.modo-claro .landing-root .grid-bg {
+    background-color: #edf2f7 !important;
+    background-image: linear-gradient(rgba(0,120,80,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,120,80,0.04) 1px, transparent 1px) !important;
+  }
+  html.modo-claro .landing-root nav {
+    background: rgba(237,242,247,0.94) !important;
+    border-bottom-color: rgba(0,130,90,0.2) !important;
+  }
+  html.modo-claro .landing-root .card {
+    background: rgba(255,255,255,0.92) !important;
+    border-color: rgba(0,100,160,0.18) !important;
+    color: #0d1e30 !important;
+  }
+  html.modo-claro .landing-root h1,
+  html.modo-claro .landing-root h2,
+  html.modo-claro .landing-root h3,
+  html.modo-claro .landing-root h4 { color: #0d1e30 !important; }
+  html.modo-claro .landing-root p  { color: #2a4a65 !important; }
+  html.modo-claro .landing-root .text-white { color: #0d1e30 !important; }
+  html.modo-claro .landing-root footer { background: #dce8f5 !important; border-color: rgba(0,120,80,0.15) !important; }
+  html.modo-claro .landing-root section { background-color: #edf2f7 !important; }
 `
 
 const NavLink = ({ href, children }) => (
@@ -99,6 +127,7 @@ const inputStyle = {
 
 export default function Landing() {
   const { sesion } = useAuth()
+  const { tema } = useTheme()
 
   useEffect(() => {
     const prev = document.title
@@ -433,7 +462,7 @@ export default function Landing() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer style={{ padding: '42px 24px 28px', borderTop: '1px solid rgba(30,51,82,0.5)', background: 'rgba(5,8,16,0.8)' }}>
+      <footer style={{ padding: '42px 24px 28px', borderTop: `1px solid ${tema.bgCardBorde}`, background: tema.bgMain }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '18px' }}>
           <img
             src={iterateTextLogo}

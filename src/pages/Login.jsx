@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import iterateIconOnly from '../assets/iterate_icon_only.jpg'
 import iterateTextLogo from '../assets/iterate_text_logo.png'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 
 export default function Login() {
   const { iniciarSesion, actualizarPassword, sesion } = useAuth()
+  const { tema } = useTheme()
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [error, setError]       = useState('')
@@ -57,9 +59,9 @@ export default function Login() {
 
   const inputStyle = {
     width: '100%',
-    background: 'rgba(8,13,26,0.9)',
-    border: '1px solid rgba(30,51,82,0.9)',
-    color: '#c9d4e0',
+    background: tema.bgCard,
+    border: `1px solid ${tema.bgCardBorde}`,
+    color: tema.textPrimary,
     borderRadius: '12px',
     padding: '12px 16px',
     fontSize: '14px',
@@ -116,8 +118,8 @@ export default function Login() {
     <div
       className="min-h-screen flex items-center justify-center p-4"
       style={{
-        background: '#050810',
-        backgroundImage: 'linear-gradient(rgba(0,230,118,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,230,118,0.03) 1px, transparent 1px)',
+        background: tema.bgMain,
+        backgroundImage: tema.bgMainGrad,
         backgroundSize: '40px 40px',
       }}
     >
@@ -135,15 +137,15 @@ export default function Login() {
         <div
           className="rounded-2xl overflow-hidden"
           style={{
-            background: 'rgba(13,21,40,0.95)',
-            border: '1px solid rgba(0,230,118,0.2)',
-            boxShadow: '0 0 60px rgba(0,230,118,0.06), 0 32px 64px rgba(0,0,0,0.6)',
+            background: tema.bgCard,
+            border: `1px solid ${tema.greenBorde}`,
+            boxShadow: '0 0 60px rgba(0,180,100,0.06), 0 32px 64px rgba(0,0,0,0.15)',
           }}
         >
           {/* Header */}
           <div
             className="px-8 py-7 text-center"
-            style={{ borderBottom: '1px solid rgba(0,230,118,0.1)', background: 'rgba(0,230,118,0.03)' }}
+            style={{ borderBottom: `1px solid ${tema.greenBorde}`, background: tema.greenDim }}
           >
             {/* Logo */}
             <style>{`
@@ -173,8 +175,8 @@ export default function Login() {
               </div>
             </div>
 
-            <h1 className="text-xl font-bold text-white tracking-wide">BIOTERIO</h1>
-            <p className="text-xs mt-1 font-mono" style={{ color: 'rgba(0,230,118,0.6)' }}>
+            <h1 className="text-xl font-bold tracking-wide" style={{ color: tema.textPrimary }}>BIOTERIO</h1>
+            <p className="text-xs mt-1 font-mono" style={{ color: tema.green, opacity: 0.8 }}>
               Sistema de Gestión de Colonia
             </p>
 
@@ -190,7 +192,7 @@ export default function Login() {
           {/* Formulario */}
           <form onSubmit={manejarLogin} className="px-8 py-7 space-y-4">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
                 Email
               </label>
               <input
@@ -205,7 +207,7 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
                 Contraseña
               </label>
               <div className="relative">
@@ -270,7 +272,7 @@ export default function Login() {
           {/* Footer */}
           <div
             className="px-8 py-5 text-center"
-            style={{ borderTop: '1px solid rgba(30,51,82,0.6)' }}
+            style={{ borderTop: `1px solid ${tema.bgCardBorde}` }}
           >
             <img
               src={iterateTextLogo}

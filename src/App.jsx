@@ -69,10 +69,24 @@ function PantallaCargaDatos() {
   )
 }
 
+// ── CSS global inyectado para modo claro (overrides estructurales) ───────────
+const CSS_MODO_CLARO = `
+  html.modo-claro body { background: #edf2f7 !important; color: #0d1e30 !important; }
+  html.modo-claro #root { background: #edf2f7 !important; }
+  html.modo-claro .text-white { color: #0d1e30 !important; }
+  html.modo-claro .text-rat-light { color: #0d1e30 !important; }
+  html.modo-claro .bg-lab-950 { background: #edf2f7 !important; }
+  html.modo-claro .bg-lab-900 { background: #e2eef8 !important; }
+  html.modo-claro .min-h-screen.flex.flex-col { background: #edf2f7 !important; }
+  html.modo-claro main.flex-1 { background: #edf2f7 !important; }
+  html.modo-claro .flex.min-h-screen { background: #edf2f7 !important; }
+`
+
 // ── Layout principal (solo si hay sesión) ────────────────────────────────────
 function AppLayout() {
   const { sesion, cerrarSesion } = useAuth()
   const { bioterioActivo } = useBioterioActivo()
+  const { tema } = useTheme()
   const [sidebarAbierto, setSidebarAbierto] = useState(false)
 
   if (!sesion) return <Navigate to="/login" replace />
@@ -93,7 +107,7 @@ function AppLayout() {
 
   return (
     <BiotheriumProvider>
-      <div className="flex min-h-screen" style={{ backgroundImage: 'linear-gradient(rgba(0,230,118,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,230,118,0.03) 1px, transparent 1px)', backgroundSize: '40px 40px' }}>
+      <div className="flex min-h-screen" style={{ background: tema.bgMain, backgroundImage: tema.bgMainGrad, backgroundSize: '40px 40px' }}>
 
         {/* Overlay oscuro en mobile cuando el sidebar está abierto */}
         {sidebarAbierto && (
@@ -120,7 +134,7 @@ function AppLayout() {
           {/* Topbar solo en mobile */}
           <div
             className="sticky top-0 z-20 flex items-center gap-3 px-4 py-3 md:hidden shrink-0"
-            style={{ background: '#050810', borderBottom: '1px solid rgba(0,230,118,0.12)' }}
+            style={{ background: tema.bgTopbar, borderBottom: `1px solid ${tema.bgTopbarBorde}` }}
           >
             <button
               onClick={() => setSidebarAbierto(true)}
@@ -129,7 +143,7 @@ function AppLayout() {
             >
               ☰
             </button>
-            <span className="font-bold text-white text-sm tracking-wide">BIOTERIO</span>
+            <span className="font-bold text-sm tracking-wide" style={{ color: tema.textPrimary }}>BIOTERIO</span>
             <div
               className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono shrink-0"
               style={{ background: 'rgba(0,230,118,0.07)', border: '1px solid rgba(0,230,118,0.2)', color: '#00e676' }}
@@ -313,11 +327,9 @@ function RutaRaiz() {
 
   return (
     <>
-      {/* Todo el contenido — invert+hue-rotate convierte dark→light manteniendo los colores */}
-      <div style={{ filter: modoBrillo ? 'invert(0.9) hue-rotate(180deg) saturate(1.1) brightness(1.05)' : 'none' }}>
-        {renderContenido()}
-      </div>
-      {/* Botón fuera del div filtrado → siempre se ve correcto */}
+      {/* CSS global inyectado para modo claro */}
+      {modoBrillo && <style dangerouslySetInnerHTML={{ __html: CSS_MODO_CLARO }} />}
+      {renderContenido()}
       <BotонBrillo />
     </>
   )

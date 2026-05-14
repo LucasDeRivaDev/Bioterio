@@ -1,6 +1,7 @@
 import { useBioterioActivo, BIOTERIOS_CONFIG } from '../context/BioterioActivoContext'
 import iterateTitleLogo from '../assets/iterate_title_logo.png'
 import { useEffect, useState } from 'react'
+import { useTheme } from '../context/ThemeContext'
 
 const GRUPOS_RATONES = ['ratones_balbc', 'ratones_c57', 'ratones_hibridos']
 
@@ -10,6 +11,7 @@ const CSS = `
 
 export default function SelectorBioterio() {
   const { setBioterioActivo } = useBioterioActivo()
+  const { tema } = useTheme()
   const [logoW, setLogoW] = useState(340)
 
   useEffect(() => {
@@ -22,7 +24,7 @@ export default function SelectorBioterio() {
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center p-4 md:p-6 gap-6 md:gap-10"
-      style={{ background: '#050810', backgroundImage: 'linear-gradient(rgba(0,230,118,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,230,118,0.03) 1px, transparent 1px)', backgroundSize: '40px 40px' }}
+      style={{ background: tema.bgMain, backgroundImage: tema.bgMainGrad, backgroundSize: '40px 40px' }}
     >
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
@@ -43,8 +45,8 @@ export default function SelectorBioterio() {
           />
         </div>
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-2">Seleccioná el bioterio</h1>
-          <p className="text-sm" style={{ color: '#4a5f7a' }}>¿Con qué colonia vas a trabajar hoy?</p>
+          <h1 className="text-2xl font-bold mb-2" style={{ color: tema.textPrimary }}>Seleccioná el bioterio</h1>
+          <p className="text-sm" style={{ color: tema.textMuted }}>¿Con qué colonia vas a trabajar hoy?</p>
         </div>
       </div>
 

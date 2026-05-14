@@ -8,6 +8,7 @@ import {
   Dna, Microscope, Archive, BarChart2, PackageCheck, Skull, TrendingUp,
 } from 'lucide-react'
 import iterateNavLogo from '../assets/iterate_nav_logo.png'
+import { useTheme } from '../context/ThemeContext'
 
 const LINK_INICIO   = { to: '/inicio', label: 'Inicio',       icon: <Home size={15} /> }
 const LINK_DASHBOARD = { to: '/',      label: 'Panel de hoy', icon: <LayoutDashboard size={15} /> }
@@ -44,6 +45,7 @@ const GRUPOS = [
 
 function NavGrupo({ grupo, onCerrarMenu }) {
   const location = useLocation()
+  const { tema } = useTheme()
   const rutasGrupo = [grupo.to, ...grupo.hijos.map((h) => h.to)]
   const estaActivo = rutasGrupo.some((r) => location.pathname === r)
   const [abierto, setAbierto] = useState(estaActivo)
@@ -56,13 +58,13 @@ function NavGrupo({ grupo, onCerrarMenu }) {
   }
   const estiloActivo = {
     ...estiloBase,
-    background: 'rgba(0,230,118,0.12)',
-    color: '#00e676',
-    border: '1px solid rgba(0,230,118,0.25)',
-    boxShadow: '0 0 12px rgba(0,230,118,0.1)',
+    background: tema.greenDim,
+    color: tema.green,
+    border: `1px solid ${tema.greenBorde}`,
+    boxShadow: '0 0 12px rgba(0,180,100,0.1)',
     fontWeight: 600,
   }
-  const estiloInactivo = { ...estiloBase, color: '#8a9bb0' }
+  const estiloInactivo = { ...estiloBase, color: tema.textSecondary }
 
   return (
     <div>
@@ -70,7 +72,7 @@ function NavGrupo({ grupo, onCerrarMenu }) {
       <div
         className="flex items-center rounded-[10px] overflow-hidden"
         style={estaActivo
-          ? { background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.25)', boxShadow: '0 0 12px rgba(0,230,118,0.1)' }
+          ? { background: tema.greenDim, border: `1px solid ${tema.greenBorde}`, boxShadow: '0 0 12px rgba(0,180,100,0.1)' }
           : { border: '1px solid transparent' }
         }
       >
@@ -102,7 +104,7 @@ function NavGrupo({ grupo, onCerrarMenu }) {
 
       {/* Sub-items */}
       {abierto && (
-        <div className="mt-1 ml-4 space-y-0.5" style={{ borderLeft: '1px solid rgba(30,51,82,0.6)', paddingLeft: '12px' }}>
+        <div className="mt-1 ml-4 space-y-0.5" style={{ borderLeft: `1px solid ${tema.bgCardBorde}`, paddingLeft: '12px' }}>
           {grupo.hijos.map((hijo) => (
             <NavLink
               key={hijo.to}
@@ -234,6 +236,7 @@ function ReportarError() {
 export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
   const { animales, camadas, bio } = useBioterio()
   const { config, limpiarBioterio } = useBioterioActivo()
+  const { tema } = useTheme()
   const { sesion } = useAuth()
   const emailUsuario = sesion?.user?.email ?? ''
 
@@ -267,18 +270,18 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
     <aside
       className="w-64 h-full flex flex-col shrink-0"
       style={{
-        background: 'linear-gradient(180deg, #080d1a 0%, #050810 100%)',
-        borderRight: '1px solid rgba(0,230,118,0.12)',
+        background: tema.bgSidebar,
+        borderRight: `1px solid ${tema.bgSidebarBorde}`,
       }}
     >
       {/* Logo + bioterio activo */}
-      <div className="px-4 py-4" style={{ borderBottom: '1px solid rgba(0,230,118,0.1)' }}>
+      <div className="px-4 py-4" style={{ borderBottom: `1px solid ${tema.bgSidebarBorde}` }}>
         <div className="flex items-center gap-3 mb-3">
           <div style={{
-            background: 'rgb(4, 26, 31)',
+            background: tema.bgCard,
             borderRadius: '10px',
-            border: '1.5px solid rgba(0,230,118,0.2)',
-            boxShadow: '0 0 60px rgba(0,230,118,0.18), 0 8px 40px rgba(0,0,0,0.5)',
+            border: `1.5px solid ${tema.greenBorde}`,
+            boxShadow: '0 0 40px rgba(0,230,118,0.12), 0 4px 20px rgba(0,0,0,0.2)',
             padding: '5px 8px',
             display: 'inline-flex',
             flexShrink: 0,
@@ -286,13 +289,13 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
             <img
               src={iterateNavLogo}
               alt="ITeRatE"
-              style={{ height: '48px', width: 'auto', display: 'block', filter: 'drop-shadow(0 0 6px rgba(0,230,118,0.25))' }}
+              style={{ height: '48px', width: 'auto', display: 'block', filter: 'drop-shadow(0 0 6px rgba(0,180,100,0.3))' }}
             />
           </div>
           <div>
-            <div className="font-bold text-white text-sm tracking-wide">BIOTERIO</div>
-            <div className="text-xs font-mono" style={{ color: 'rgba(0,230,118,0.6)' }}>v2.0</div>
-            <div className="text-xs font-mono" style={{ color: 'rgba(0,230,118,0.45)' }}>ACTIVO</div>
+            <div className="font-bold text-sm tracking-wide" style={{ color: tema.textPrimary }}>BIOTERIO</div>
+            <div className="text-xs font-mono" style={{ color: tema.green, opacity: 0.8 }}>v2.0</div>
+            <div className="text-xs font-mono" style={{ color: tema.green, opacity: 0.55 }}>ACTIVO</div>
           </div>
         </div>
         {/* Bioterio activo + botón cambiar */}
@@ -314,7 +317,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
           <button
             onClick={limpiarBioterio}
             className="shrink-0 px-2 py-1 rounded-lg text-xs font-semibold transition-all"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a', cursor: 'pointer' }}
+            style={{ background: tema.greenDim, border: `1px solid ${tema.greenBorde}`, color: tema.textMuted, cursor: 'pointer' }}
           >
             Cambiar
           </button>
@@ -322,7 +325,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
       </div>
 
       {/* Stats rápidas */}
-      <div className="px-4 py-3 grid grid-cols-3 gap-1" style={{ borderBottom: '1px solid rgba(30,51,82,0.6)' }}>
+      <div className="px-4 py-3 grid grid-cols-3 gap-1" style={{ borderBottom: `1px solid ${tema.bgCardBorde}` }}>
         {[
           { val: hembrasActivas, label: '♀', color: '#ce93d8' },
           { val: machosActivos,  label: '♂', color: '#40c4ff' },
@@ -331,17 +334,17 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
           <div
             key={label}
             className="rounded-lg py-2 text-center"
-            style={{ background: 'rgba(30,51,82,0.3)', border: '1px solid rgba(30,51,82,0.6)' }}
+            style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}
           >
             <div className="font-mono font-bold text-base" style={{ color }}>{val}</div>
-            <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>{label}</div>
+            <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>{label}</div>
           </div>
         ))}
       </div>
 
       {/* Módulos navegación */}
       <div className="px-4 pt-4 pb-1">
-        <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'rgba(138,155,176,0.4)' }}>
+        <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: tema.textMuted, opacity: 0.6 }}>
           Módulos
         </div>
       </div>
@@ -349,7 +352,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
       <nav className="flex-1 overflow-y-auto px-3 pb-3 space-y-1">
         {[LINK_INICIO, null, LINK_DASHBOARD].map((item, i) =>
           item === null
-            ? <div key="sep-top" style={{ height: '1px', background: 'rgba(30,51,82,0.6)', margin: '6px 4px' }} />
+            ? <div key="sep-top" style={{ height: "1px", background: tema.bgCardBorde, margin: "6px 4px" }} />
             : (
               <NavLink
                 key={item.to}
@@ -361,7 +364,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
                     ? {
                         display: 'flex', alignItems: 'center', gap: '10px',
                         padding: '8px 12px', borderRadius: '10px',
-                        background: 'rgba(0,230,118,0.12)',
+                        background: tema.greenDim,
                         color: '#00e676',
                         border: '1px solid rgba(0,230,118,0.25)',
                         boxShadow: '0 0 12px rgba(0,230,118,0.1)',
@@ -370,7 +373,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
                     : {
                         display: 'flex', alignItems: 'center', gap: '10px',
                         padding: '8px 12px', borderRadius: '10px',
-                        color: '#8a9bb0',
+                        color: tema.textSecondary,
                         border: '1px solid transparent',
                         fontSize: '13px', fontWeight: 500, textDecoration: 'none',
                       }
@@ -383,7 +386,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
         )}
 
         {/* Separador */}
-        <div style={{ height: '1px', background: 'rgba(30,51,82,0.6)', margin: '6px 4px' }} />
+        <div style={{ height: "1px", background: tema.bgCardBorde, margin: "6px 4px" }} />
 
         {/* Grupos con sub-secciones */}
         {GRUPOS.map((grupo) => (
@@ -391,7 +394,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
         ))}
 
         {/* Separador */}
-        <div style={{ height: '1px', background: 'rgba(30,51,82,0.6)', margin: '6px 4px' }} />
+        <div style={{ height: "1px", background: tema.bgCardBorde, margin: "6px 4px" }} />
 
         {/* Reportes al final */}
         <NavLink
@@ -402,7 +405,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
               ? {
                   display: 'flex', alignItems: 'center', gap: '10px',
                   padding: '8px 12px', borderRadius: '10px',
-                  background: 'rgba(0,230,118,0.12)',
+                  background: tema.greenDim,
                   color: '#00e676',
                   border: '1px solid rgba(0,230,118,0.25)',
                   boxShadow: '0 0 12px rgba(0,230,118,0.1)',
@@ -411,7 +414,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
               : {
                   display: 'flex', alignItems: 'center', gap: '10px',
                   padding: '8px 12px', borderRadius: '10px',
-                  color: '#8a9bb0',
+                  color: tema.textSecondary,
                   border: '1px solid transparent',
                   fontSize: '13px', fontWeight: 500, textDecoration: 'none',
                 }
@@ -490,7 +493,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
       {/* Usuario + Cerrar sesión */}
       <div
         className="mx-3 mb-3 rounded-xl px-4 py-3"
-        style={{ background: 'rgba(30,51,82,0.2)', border: '1px solid rgba(30,51,82,0.5)' }}
+        style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}
       >
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
@@ -499,8 +502,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
             </div>
             <div
               className="text-xs font-mono truncate"
-              style={{ color: '#8a9bb0' }}
-              title={emailUsuario}
+              style={{ color: tema.textSecondary }}
             >
               {emailUsuario}
             </div>
