@@ -533,11 +533,11 @@ export default function Camadas() {
   const hoyDate = parseDate(hoy())
 
   function nombreAnimal(id) {
-    return animales.find((a) => a.id === id)?.codigo ?? '?'
+    return todosAnimales.find((a) => a.id === id)?.codigo ?? '?'
   }
 
   function animalObj(id) {
-    return animales.find((a) => a.id === id) ?? null
+    return todosAnimales.find((a) => a.id === id) ?? null
   }
 
   function CodigoAnimal({ id, color }) {
