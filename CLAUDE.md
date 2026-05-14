@@ -66,7 +66,8 @@ src/
 ├── App.jsx                          — Router + layout responsive + rutas especiales (resumen_ratones, alimento_global, viruta_global)
 ├── context/
 │   ├── BiotheriumContext.jsx        — Estado global (animales, camadas, jaulas, sacrificios, entregas, temperaturas, extendidos, animalesExportados, camadasF1)
-│   └── BioterioActivoContext.jsx    — Bioterio activo en localStorage (bioterioActivo, bio, config)
+│   ├── BioterioActivoContext.jsx    — Bioterio activo en localStorage (bioterioActivo, bio, config)
+│   └── ThemeContext.jsx             — Tema claro/oscuro. TEMA_OSCURO + TEMA_CLARO. Toggle persiste en localStorage ('appMosca_brillo'). Clase 'modo-claro' en <html>
 ├── utils/calculos.js                — Motor predictivo, scores reproductivos, confiabilidad de hembras
 ├── utils/constants.js               — Constantes biológicas (BIO_RATAS, BIO_RATONES, BIO, ESTADO_ANIMAL, TIPO_TAREA)
 ├── components/
@@ -192,6 +193,7 @@ extendidos
 - **stockCamada:** descuenta sacrificios Y entregas de la misma `camada_id`
 - **incluir_en_stock:** si `false`, no se crea jaula al destetar. Badge amarillo "Sin stock". Botones Agregar/Remover en detalle expandido
 - **Hembras en apareamiento:** bloque gris con opacidad 60%, no seleccionable. No cuenta en `totalJaulas` pero sí en `totalAnimales`
+- **Eliminar jaula individual (botón ✕):** abre `ModalEliminarJaula` en overlay, no confirmación inline. Solo visible fuera del modo selección y en bloques de stock. Estado `jaulaAEliminar` en `Stock`.
 - **Ciclo de estado automático vía `editarCamada`:** `fecha_separacion` → madre `en_cria` | `fecha_nacimiento` → idem (safety net) | `fecha_destete` → madre `activo`
 
 **Multi-bioterio:**
@@ -302,6 +304,10 @@ extendidos
 - **Progenitores en bloques de stock (12/05/2026):** `todosAnimales = [...animales, ...animalesExportados]` para buscar padre/madre. Display `♀ H12 [BAL/C]` / `♂ M5 [C57]` con color por sexo y badge de colonia.
 
 - **Alerta de crías F1 listas para sacrificio en Dashboard (12/05/2026):** en Híbridos, camadas F1 con ≥40 días sin destetar ni sacrificar generan tarea `SACRIFICIO_F1` con prioridad según días (40–49 → próxima / 50–54 → hoy / ≥55 → vencida). `tareasF1` useMemo separado en `Dashboard.jsx`.
+
+- **Paleta modo claro biomédica/institucional (14/05/2026):** `TEMA_CLARO` rediseñado en `ThemeContext.jsx`. Fondos: `#F1F5F9` / `#EAF2F7` (gris frío, sin azul cielo). Textos Slate (`#1E293B` / `#64748B` / `#94A3B8`). Verde institucional `#059669` (Emerald 600, legible sobre blanco). Bloque `.modo-claro` en `index.css` cubre scrollbar, selección de texto, `.glow-green` → sombra suave sin neon, `.bg-dots`, `.border-neon` y `color-scheme: light` en inputs nativos.
+
+- **ModalEliminarJaula — confirmación overlay al eliminar jaula individual (14/05/2026):** reemplaza el antiguo "¿Eliminar? ✓ ✕" inline dentro del bloque. El botón ✕ en cada jaula de stock ahora abre `ModalEliminarJaula`: muestra progenitores, categoría, edad y total de animales de la jaula. Advertencia roja "Esta acción no se puede deshacer" con mensaje diferente para jaulas reales vs virtuales. Botones: Cancelar / ✕ Eliminar jaula. Mismo estilo visual que `ModalSacrificio`.
 
 ---
 
