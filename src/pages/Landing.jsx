@@ -209,7 +209,7 @@ export default function Landing() {
                 style={{
                   width: '100%',
                   height: 'auto',
-                  maxWidth: '680px',
+                  maxWidth: '1020px',
                   borderRadius: '32px',
                   display: 'block',
                   boxShadow: '0 0 60px rgba(0,230,118,0.18), 0 8px 40px rgba(0,0,0,0.5)',
@@ -414,7 +414,7 @@ export default function Landing() {
             src={iterateLogoOriginal}
             alt="ITeRatE"
             style={{
-              width: '340px',
+              width: '680px',
               height: 'auto',
               borderRadius: '32px',
               display: 'block',

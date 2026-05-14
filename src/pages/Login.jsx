@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import iterateIconOnly from '../assets/iterate_icon_only.jpg'
 import { useAuth } from '../context/AuthContext'
 
 export default function Login() {
@@ -143,17 +144,27 @@ export default function Login() {
             className="px-8 py-7 text-center"
             style={{ borderBottom: '1px solid rgba(0,230,118,0.1)', background: 'rgba(0,230,118,0.03)' }}
           >
-            {/* Logo animado */}
+            {/* Logo */}
+            <style>{`@keyframes floatLogin { 0%,100% { transform: translateY(0px); } 50% { transform: translateY(-8px); } }`}</style>
             <div className="flex justify-center mb-4">
-              <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl"
-                style={{
-                  background: 'rgba(0,230,118,0.1)',
-                  border: '1.5px solid rgba(0,230,118,0.3)',
-                  boxShadow: '0 0 24px rgba(0,230,118,0.15)',
-                }}
-              >
-                🧬
+              <div style={{
+                borderRadius: '24px',
+                border: '1.5px solid rgba(0,230,118,0.2)',
+                boxShadow: '0 0 60px rgba(0,230,118,0.18), 0 8px 40px rgba(0,0,0,0.5)',
+                animation: 'floatLogin 4s ease-in-out infinite',
+                overflow: 'hidden',
+                display: 'inline-flex',
+              }}>
+                <img
+                  src={iterateIconOnly}
+                  alt="ITeRatE"
+                  style={{
+                    height: '200px',
+                    width: 'auto',
+                    display: 'block',
+                    marginTop: '-30px',
+                  }}
+                />
               </div>
             </div>
 
