@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import ITeRatELogo from '../components/ITeRatELogo'
 import iterateLogoOriginal from '../assets/iterate_logo.jpg'
 import iterateTextLogo from '../assets/iterate_text_logo.png'
+import iterateTitleLogo from '../assets/iterate_title_logo.png'
 import { Dna, BarChart2, Archive, Calendar, Skull, Printer, GraduationCap, Microscope, FlaskConical, Building2 } from 'lucide-react'
 
 const CSS = `
@@ -51,9 +52,9 @@ const CSS = `
     .landing-section-h2 { font-size: 28px !important; letter-spacing: -0.5px !important; }
     .landing-nav { height: 64px !important; }
     .landing-nav-inner { height: 64px !important; }
-    .landing-nav-logo img { height: 38px !important; }
-    .landing-nav-logo { padding: 4px !important; border-radius: 10px !important; }
-    .landing-nav-spacer { width: 62px !important; }
+    .landing-nav-logo img { height: 36px !important; }
+    .landing-nav-logo { padding: 4px 8px !important; border-radius: 10px !important; }
+    .landing-nav-spacer { width: 90px !important; }
     .landing-section-pad { padding: 60px 20px !important; }
     .landing-hero-pad { padding: 40px 20px !important; padding-top: 64px !important; }
     .landing-hero-section { padding-top: 64px !important; }
@@ -66,9 +67,9 @@ const CSS = `
     .landing-root nav > div { padding: 0 12px !important; }
     .landing-nav { height: 56px !important; }
     .landing-nav-inner { height: 56px !important; }
-    .landing-nav-logo img { height: 30px !important; }
-    .landing-nav-logo { padding: 3px !important; border-radius: 8px !important; }
-    .landing-nav-spacer { width: 50px !important; }
+    .landing-nav-logo img { height: 28px !important; }
+    .landing-nav-logo { padding: 3px 7px !important; border-radius: 8px !important; }
+    .landing-nav-spacer { width: 72px !important; }
     .landing-hero-section { padding-top: 56px !important; }
     .landing-hero-pad { padding: 32px 16px !important; padding-top: 56px !important; }
     .landing-section-pad { padding: 48px 16px !important; }
@@ -137,16 +138,16 @@ export default function Landing() {
             borderRadius: '16px',
             border: '1.5px solid rgba(0,230,118,0.2)',
             boxShadow: '0 0 60px rgba(0,230,118,0.18), 0 8px 40px rgba(0,0,0,0.5)',
-            padding: '6px',
+            padding: '6px 10px',
             display: 'inline-flex',
           }}>
-            <img src="/favicon.png" alt="ITeRatE" style={{ height: '60px', width: 'auto', display: 'block' }} />
+            <img src={iterateTitleLogo} alt="ITeRatE" style={{ height: '60px', width: 'auto', display: 'block', filter: 'drop-shadow(0 0 8px rgba(0,230,118,0.3))' }} />
           </div>
         </div>
 
         <div className="landing-nav-inner" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px', height: '96px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           {/* Espaciador para el logo */}
-          <div className="landing-nav-spacer" style={{ width: '100px', flexShrink: 0 }} />
+          <div className="landing-nav-spacer" style={{ width: '130px', flexShrink: 0 }} />
 
           {/* Nav links — se ocultan en mobile */}
           <div className="landing-nav-links" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -229,7 +230,7 @@ export default function Landing() {
             <div style={{ position: 'relative' }}>
               <div style={{ position: 'absolute', inset: '-40px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,230,118,0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
               <img
-                src={iterateTextLogo}
+                src={iterateTitleLogo}
                 alt="ITeRatE"
                 style={{
                   width: '100%',
