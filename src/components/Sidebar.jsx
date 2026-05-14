@@ -7,7 +7,7 @@ import {
   Home, LayoutDashboard, Printer, Bug, Send, LogOut, ChevronUp, ChevronDown,
   Dna, Microscope, Archive, BarChart2, PackageCheck, Skull, TrendingUp,
 } from 'lucide-react'
-import ITeRatELogo from './ITeRatELogo'
+import iterateNavLogo from '../assets/iterate_nav_logo.png'
 
 const LINK_INICIO   = { to: '/inicio', label: 'Inicio',       icon: <Home size={15} /> }
 const LINK_DASHBOARD = { to: '/',      label: 'Panel de hoy', icon: <LayoutDashboard size={15} /> }
@@ -279,15 +279,15 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
             borderRadius: '10px',
             border: '1.5px solid rgba(0,230,118,0.2)',
             boxShadow: '0 0 60px rgba(0,230,118,0.18), 0 8px 40px rgba(0,0,0,0.5)',
-            padding: '3px',
+            padding: '5px 8px',
             display: 'inline-flex',
-            shrink: 0,
+            flexShrink: 0,
           }}>
-            <img src="/favicon.png" alt="ITeRatE" style={{ height: '32px', width: 'auto', display: 'block' }} />
-          </div>
-          <div>
-            <div className="font-bold text-white text-sm tracking-wide">BIOTERIO</div>
-            <div className="text-xs font-mono" style={{ color: 'rgba(0,230,118,0.6)' }}>v2.0 · ACTIVO</div>
+            <img
+              src={iterateNavLogo}
+              alt="ITeRatE"
+              style={{ height: '48px', width: 'auto', display: 'block', filter: 'drop-shadow(0 0 6px rgba(0,230,118,0.25))' }}
+            />
           </div>
         </div>
         {/* Bioterio activo + botón cambiar */}
