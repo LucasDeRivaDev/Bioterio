@@ -1,4 +1,4 @@
-import iterateLogo from '../assets/iterate_logo.jpg'
+import iterateLogo from '../assets/iterate_logo.png'
 
 /**
  * Logo de ITeRatE — imagen con texto "ITeRatE + Intelligence Telemetry for Rats Evaluation".
