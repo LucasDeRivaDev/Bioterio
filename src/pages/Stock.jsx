@@ -205,8 +205,6 @@ function MiniCalidad({ icono, codigo, calidad, animal }) {
 function BloqueJaula({ bloque, camadas, onClick, onEliminar, modoSeleccion = false, seleccionada = false, animalesReservados = new Map(), jaulasReservadas = new Map(), reservadosHibridos = new Map() }) {
   const cfg = CAT[bloque.categoria]
   const esStock = bloque.tipo === 'stock'
-  const [confirmandoEliminar, setConfirmandoEliminar] = useState(false)
-
   // Estado de ciclo reproductivo — solo para hembras reproductoras
   const estadoCicloHembra = (bloque.tipo === 'reproductor' && bloque.animal?.sexo === 'hembra' && camadas)
     ? getEstadoCicloHembra(bloque.animal.id, camadas)
@@ -248,34 +246,15 @@ function BloqueJaula({ bloque, camadas, onClick, onEliminar, modoSeleccion = fal
     {/* Botón X para eliminar jaula — solo para bloques de stock, fuera del modo selección */}
     {onEliminar && esStock && !modoSeleccion && !esEnApareamiento && (
       <div
-        style={{
-          position: 'absolute', top: 4, right: 4, zIndex: 20,
-          display: 'flex', alignItems: 'center', gap: 4,
-        }}
+        style={{ position: 'absolute', top: 4, right: 4, zIndex: 20 }}
         onClick={(e) => e.stopPropagation()}
       >
-        {confirmandoEliminar ? (
-          <>
-            <span className="text-xs" style={{ color: '#8a9bb0' }}>¿Eliminar?</span>
-            <button
-              onClick={() => { onEliminar(bloque); setConfirmandoEliminar(false) }}
-              className="text-xs px-1.5 py-0.5 rounded font-bold"
-              style={{ background: 'rgba(255,23,68,0.18)', border: '1px solid rgba(255,23,68,0.5)', color: '#ff1744', cursor: 'pointer' }}
-            >✓</button>
-            <button
-              onClick={() => setConfirmandoEliminar(false)}
-              className="text-xs px-1.5 py-0.5 rounded"
-              style={{ background: 'rgba(30,51,82,0.5)', border: '1px solid rgba(30,51,82,0.8)', color: '#4a5f7a', cursor: 'pointer' }}
-            >✕</button>
-          </>
-        ) : (
-          <button
-            onClick={() => setConfirmandoEliminar(true)}
-            title="Eliminar jaula"
-            className="w-5 h-5 rounded flex items-center justify-center text-xs font-bold transition-all hover:scale-110"
-            style={{ background: 'rgba(30,51,82,0.7)', border: '1px solid rgba(30,51,82,0.9)', color: '#4a5f7a', cursor: 'pointer' }}
-          >✕</button>
-        )}
+        <button
+          onClick={() => onEliminar(bloque)}
+          title="Eliminar jaula"
+          className="w-5 h-5 rounded flex items-center justify-center text-xs font-bold transition-all hover:scale-110"
+          style={{ background: 'rgba(30,51,82,0.7)', border: '1px solid rgba(30,51,82,0.9)', color: '#4a5f7a', cursor: 'pointer' }}
+        >✕</button>
       </div>
     )}
 
@@ -1822,6 +1801,76 @@ function CategoriaCard({ icono, titulo, subtitulo, total, grupos, gruposLabel, m
 // ── Página principal ──────────────────────────────────────────────────────────
 
 
+function ModalEliminarJaula({ bloque, onConfirmar, onCerrar }) {
+  const [guardando, setGuardando] = useState(false)
+  const cfg = CAT[bloque.categoria]
+
+  async function confirmar() {
+    if (guardando) return
+    setGuardando(true)
+    try { await onConfirmar() }
+    finally { setGuardando(false) }
+  }
+
+  const etiqueta = bloque.madre || bloque.padre
+    ? `${bloque.madre?.codigo ?? '?'} × ${bloque.padre?.codigo ?? '?'}`
+    : 'Sin progenitores registrados'
+
+  return (
+    <Modal titulo="Eliminar jaula" onCerrar={guardando ? null : onCerrar} ancho="max-w-sm">
+      <div className="space-y-4">
+
+        {/* Info de la jaula */}
+        <div className="px-4 py-3 rounded-xl" style={{ background: 'rgba(5,8,16,0.5)', border: `1px solid ${cfg.borde}` }}>
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">{cfg.icono}</span>
+            <div>
+              <div className="font-mono font-semibold text-sm" style={{ color: cfg.color }}>{etiqueta}</div>
+              <div className="text-xs mt-0.5" style={{ color: '#8a9bb0' }}>
+                {cfg.label}{bloque.edad != null ? ` · ${bloque.edad}d` : ''} · {bloque.total} animales
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Advertencia */}
+        <div className="flex items-start gap-3 px-4 py-3 rounded-xl"
+          style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)' }}>
+          <span className="text-xl shrink-0">⚠️</span>
+          <div>
+            <div className="font-bold text-sm" style={{ color: '#ff6b80' }}>Esta acción no se puede deshacer</div>
+            <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>
+              {bloque.virtual
+                ? 'La jaula dejará de aparecer en stock. La camada queda registrada pero sin asignación de jaula.'
+                : 'La jaula y sus datos de stock serán eliminados permanentemente de la base de datos.'}
+            </div>
+          </div>
+        </div>
+
+        {/* Botones */}
+        <div className="flex gap-3">
+          <button onClick={onCerrar} disabled={guardando}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+            style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: '#8a9bb0', cursor: 'pointer' }}>
+            Cancelar
+          </button>
+          <button onClick={confirmar} disabled={guardando}
+            className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+            style={{
+              background: guardando ? 'rgba(30,51,82,0.3)' : 'rgba(255,61,87,0.15)',
+              border: `1.5px solid ${guardando ? 'rgba(30,51,82,0.5)' : 'rgba(255,61,87,0.4)'}`,
+              color: guardando ? '#4a5f7a' : '#ff6b80',
+              cursor: guardando ? 'not-allowed' : 'pointer',
+            }}>
+            {guardando ? 'Eliminando...' : '✕ Eliminar jaula'}
+          </button>
+        </div>
+
+      </div>
+    </Modal>
+  )
+}
+
 export default function Stock() {
   const { animales, animalesExportados, camadas, sacrificios, entregas, jaulas, bio, bioterioActivo, agregarAnimal, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, editarCamada, registrarSacrificio, registrarEntrega, entregarReproductor } = useBioterio()
   const esHibridos = bioterioActivo === 'ratones_hibridos'
@@ -1856,6 +1905,7 @@ export default function Stock() {
   const [modalEntrega,     setModalEntrega]     = useState(false)
   const [modalPromover,    setModalPromover]    = useState(false)
   const [modalPlanificar,  setModalPlanificar]  = useState(false)
+  const [jaulaAEliminar,   setJaulaAEliminar]   = useState(null)
 
   // ── Bloques de jaulas (reproductores + stock) ─────────────────────────────
   const bloques = useMemo(() => {
@@ -2354,7 +2404,7 @@ if (subVista === 'sacrificios') {
                   bloque={b}
                   camadas={camadas}
                   onClick={modoSeleccion ? toggleSeleccion : setDetalle}
-                  onEliminar={eliminarBloque}
+                  onEliminar={(b) => setJaulaAEliminar(b)}
                   modoSeleccion={modoSeleccion}
                   seleccionada={seleccionadas.has(b.id)}
                   animalesReservados={animalesReservados}
@@ -2523,6 +2573,15 @@ if (subVista === 'sacrificios') {
           animalesReservados={animalesReservados}
           jaulasReservadas={jaulasReservadas}
           reservadosHibridos={reservadosHibridos}
+        />
+      )}
+
+      {/* Modal eliminar jaula individual */}
+      {jaulaAEliminar && (
+        <ModalEliminarJaula
+          bloque={jaulaAEliminar}
+          onConfirmar={() => { eliminarBloque(jaulaAEliminar); setJaulaAEliminar(null) }}
+          onCerrar={() => setJaulaAEliminar(null)}
         />
       )}
 

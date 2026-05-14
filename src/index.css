@@ -205,3 +205,55 @@ body {
 input[type=text], input[type=date], input[type=number], select, textarea {
   color-scheme: dark;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MODO CLARO — overrides sobre las clases base del modo oscuro
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Texto del body */
+html.modo-claro body {
+  color: #1E293B;
+}
+
+/* Scrollbar — claro institucional */
+html.modo-claro ::-webkit-scrollbar-track { background: #EAF2F7; }
+html.modo-claro ::-webkit-scrollbar-thumb { background: #D8E3EA; border-radius: 3px; }
+html.modo-claro ::-webkit-scrollbar-thumb:hover { background: #059669; }
+
+/* Selección de texto */
+html.modo-claro ::selection {
+  background: rgba(5,150,105,0.18);
+  color: #1E293B;
+}
+
+/* Glow → sombra suave sin efecto neon */
+html.modo-claro .glow-green {
+  box-shadow: 0 2px 8px rgba(15,23,42,0.08);
+}
+
+/* Puntos de fondo — sutil en claro */
+html.modo-claro .bg-dots {
+  background-image: radial-gradient(circle, rgba(216,227,234,0.9) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Borde activo → elegante, sin brillo */
+html.modo-claro .border-neon {
+  border-color: rgba(5,150,105,0.28);
+  box-shadow: none;
+}
+
+/* Tabla científica — cabecera verde apagado */
+html.modo-claro .table-lab thead tr {
+  background: rgba(5,150,105,0.04);
+  border-bottom: 1px solid rgba(5,150,105,0.15);
+}
+
+/* Inputs → esquema claro (quita el fondo oscuro del date picker, etc.) */
+html.modo-claro input[type=text],
+html.modo-claro input[type=date],
+html.modo-claro input[type=number],
+html.modo-claro select,
+html.modo-claro textarea {
+  color-scheme: light;
+}

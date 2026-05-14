@@ -18,22 +18,22 @@ export const TEMA_OSCURO = {
   greenBorde:     'rgba(0,230,118,0.25)',
 }
 
-// ── Paleta clara (científica) ───────────────────────────────────────────────
+// ── Paleta clara (biomédica / institucional) ────────────────────────────────
 export const TEMA_CLARO = {
-  bgMain:         '#edf2f7',
-  bgMainGrad:     'linear-gradient(rgba(0,120,80,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,120,80,0.04) 1px, transparent 1px)',
-  bgSidebar:      'linear-gradient(180deg, #d6e8f7 0%, #dff0f9 100%)',
-  bgSidebarBorde: 'rgba(0,130,90,0.2)',
-  bgTopbar:       '#e2eef8',
-  bgTopbarBorde:  'rgba(0,130,90,0.2)',
-  bgCard:         'rgba(255,255,255,0.95)',
-  bgCardBorde:    'rgba(0,100,160,0.15)',
-  textPrimary:    '#0d1e30',
-  textSecondary:  '#2a4a65',
-  textMuted:      '#4a6e88',
-  green:          '#007a4d',
-  greenDim:       'rgba(0,122,77,0.1)',
-  greenBorde:     'rgba(0,122,77,0.35)',
+  bgMain:         '#F1F5F9',
+  bgMainGrad:     'linear-gradient(rgba(5,150,105,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(5,150,105,0.03) 1px, transparent 1px)',
+  bgSidebar:      'linear-gradient(180deg, #EAF2F7 0%, #F1F5F9 100%)',
+  bgSidebarBorde: 'rgba(5,150,105,0.10)',
+  bgTopbar:       '#F1F5F9',
+  bgTopbarBorde:  'rgba(5,150,105,0.10)',
+  bgCard:         '#FFFFFF',
+  bgCardBorde:    '#D8E3EA',
+  textPrimary:    '#1E293B',
+  textSecondary:  '#64748B',
+  textMuted:      '#94A3B8',
+  green:          '#059669',
+  greenDim:       'rgba(5,150,105,0.06)',
+  greenBorde:     'rgba(5,150,105,0.18)',
 }
 
 const ThemeContext = createContext()
