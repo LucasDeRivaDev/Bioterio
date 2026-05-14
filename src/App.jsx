@@ -143,7 +143,7 @@ function AppLayout() {
             style={{
               position: 'fixed',
               bottom: '20px',
-              right: '15px',
+              right: '10px',
               zIndex: 10,
               opacity: 1,
               pointerEvents: 'none',
