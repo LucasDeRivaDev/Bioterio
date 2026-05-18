@@ -113,7 +113,7 @@ export function BiotheriumProvider({ children }) {
           supabase.from('entregas').select('*').eq('bioterio_id', bioterioActivo).order('fecha', { ascending: true }),
           supabase.from('jaulas').select('*').eq('bioterio_id', bioterioActivo).order('created_at', { ascending: true }),
           supabase.from('temperature_logs').select('*').eq('bioterio_id', bioterioActivo).order('date', { ascending: false }).order('time', { ascending: false }),
-          supabase.from('incidentes').select('*').eq('bioterio_id', bioterioActivo).order('fecha', { ascending: false }),
+          supabase.from('incidentes').select('*').order('fecha', { ascending: false }).order('created_at', { ascending: false }),
           supabase.from('extendidos').select('*').eq('bioterio_id', bioterioActivo).order('fecha', { ascending: true }),
         ])
         if (errA) throw errA
