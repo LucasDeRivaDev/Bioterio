@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
-import iterateIconOnly from '../assets/iterate_icon_only.jpg'
-import iterateTextLogo from '../assets/iterate_text_logo.png'
+import iterateIconOnly      from '../assets/iterate_icon_only.jpg'
+import iterateIconLight     from '../assets/iterate_icon_light.png'
+import iterateTextLogo      from '../assets/iterate_text_logo.png'
+import iterateTextLogoLight from '../assets/iterate_text_logo_light.png'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 
 export default function Login() {
   const { iniciarSesion, actualizarPassword, sesion } = useAuth()
-  const { tema } = useTheme()
+  const { tema, modoBrillo } = useTheme()
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [error, setError]       = useState('')
@@ -162,7 +164,7 @@ export default function Login() {
                 display: 'inline-flex',
               }}>
                 <img
-                  src={iterateIconOnly}
+                  src={modoBrillo ? iterateIconLight : iterateIconOnly}
                   alt="ITeRatE"
                   className="login-logo-img"
                   style={{
@@ -275,9 +277,9 @@ export default function Login() {
             style={{ borderTop: `1px solid ${tema.bgCardBorde}` }}
           >
             <img
-              src={iterateTextLogo}
+              src={modoBrillo ? iterateTextLogoLight : iterateTextLogo}
               alt="ITeRatE"
-              style={{ width: '160px', maxWidth: '100%', height: 'auto', margin: '0 auto 8px', display: 'block', opacity: 0.6, filter: 'drop-shadow(0 0 8px rgba(0,230,118,0.15))' }}
+              style={{ width: '160px', maxWidth: '100%', height: 'auto', margin: '0 auto 8px', display: 'block', opacity: modoBrillo ? 0.85 : 0.6, filter: modoBrillo ? 'none' : 'drop-shadow(0 0 8px rgba(0,230,118,0.15))' }}
             />
             <div className="flex items-center justify-center gap-1.5 text-xs" style={{ color: 'rgba(74,95,122,0.5)' }}>
               <span className="font-mono italic">Mus musculus · Ratón doméstico</span>

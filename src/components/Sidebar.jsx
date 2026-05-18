@@ -7,7 +7,8 @@ import {
   Home, LayoutDashboard, Printer, Bug, Send, LogOut, ChevronUp, ChevronDown,
   Dna, Microscope, Archive, BarChart2, PackageCheck, Skull, TrendingUp,
 } from 'lucide-react'
-import iterateNavLogo from '../assets/iterate_nav_logo.png'
+import iterateNavLogo      from '../assets/iterate_nav_logo.png'
+import iterateNavLogoLight from '../assets/iterate_icon_light.png'
 import { useTheme } from '../context/ThemeContext'
 
 const LINK_INICIO   = { to: '/inicio', label: 'Inicio',       icon: <Home size={15} /> }
@@ -287,9 +288,9 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
             flexShrink: 0,
           }}>
             <img
-              src={iterateNavLogo}
+              src={modoBrillo ? iterateNavLogoLight : iterateNavLogo}
               alt="ITeRatE"
-              style={{ height: '48px', width: 'auto', display: 'block', filter: 'drop-shadow(0 0 6px rgba(0,180,100,0.3))' }}
+              style={{ height: '48px', width: 'auto', display: 'block', filter: modoBrillo ? 'none' : 'drop-shadow(0 0 6px rgba(0,180,100,0.3))' }}
             />
           </div>
           <div>

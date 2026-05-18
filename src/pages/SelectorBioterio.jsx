@@ -1,5 +1,6 @@
 import { useBioterioActivo, BIOTERIOS_CONFIG } from '../context/BioterioActivoContext'
-import iterateTitleLogo from '../assets/iterate_title_logo.png'
+import iterateTitleLogo      from '../assets/iterate_title_logo.png'
+import iterateTitleLogoLight from '../assets/iterate_logo_light.png'
 import { useEffect, useState } from 'react'
 import { useTheme } from '../context/ThemeContext'
 
@@ -11,7 +12,7 @@ const CSS = `
 
 export default function SelectorBioterio() {
   const { setBioterioActivo } = useBioterioActivo()
-  const { tema } = useTheme()
+  const { tema, modoBrillo } = useTheme()
   const [logoW, setLogoW] = useState(340)
 
   useEffect(() => {
@@ -34,13 +35,13 @@ export default function SelectorBioterio() {
         <div style={{ position: 'relative', animation: 'floatSelector 4s ease-in-out infinite' }}>
           <div style={{ position: 'absolute', inset: '-40px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,230,118,0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
           <img
-            src={iterateTitleLogo}
+            src={modoBrillo ? iterateTitleLogoLight : iterateTitleLogo}
             alt="ITeRatE"
             style={{
               width: `${logoW}px`,
               height: 'auto',
               display: 'block',
-              filter: 'drop-shadow(0 0 30px rgba(0,230,118,0.25))',
+              filter: modoBrillo ? 'drop-shadow(0 2px 8px rgba(0,100,60,0.15))' : 'drop-shadow(0 0 30px rgba(0,230,118,0.25))',
             }}
           />
         </div>

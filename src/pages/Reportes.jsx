@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { formatFecha, calcularLatencia } from '../utils/calculos'
 import { TrendingUp, Microscope, Dna, BarChart2, Archive, Skull, PackageCheck, Thermometer, FileWarning, Printer, Calendar, CalendarDays } from 'lucide-react'
-import iterateTitleLogo from '../assets/iterate_title_logo.png'
+import iterateTitleLogoLight from '../assets/iterate_logo_light.png'
 
 const LABEL_BIOTERIO = {
   ratas:            'Ratas',
@@ -332,9 +332,9 @@ function DocImprimible({ tituloPeriodo, datos, animales, camadas, secciones, bio
         {/* Logo Iterate */}
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <img
-            src={iterateTitleLogo}
+            src={iterateTitleLogoLight}
             alt="ITeRatE"
-            style={{ height: '42pt', width: 'auto', display: 'block', marginLeft: 'auto' }}
+            style={{ height: '48pt', width: 'auto', display: 'block', marginLeft: 'auto' }}
           />
         </div>
       </div>
