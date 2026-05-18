@@ -2,6 +2,14 @@ import { useState, useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { formatFecha, calcularLatencia } from '../utils/calculos'
 import { TrendingUp, Microscope, Dna, BarChart2, Archive, Skull, PackageCheck, Thermometer, FileWarning, Printer, Calendar, CalendarDays } from 'lucide-react'
+import iterateTitleLogo from '../assets/iterate_title_logo.png'
+
+const LABEL_BIOTERIO = {
+  ratas:            'Ratas',
+  ratones_balbc:    'BALB/C',
+  ratones_c57:      'C57',
+  ratones_hibridos: 'Híbridos',
+}
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
@@ -28,7 +36,7 @@ function inicioSemana() {
 const cardStyle = { background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }
 
 export default function Reportes() {
-  const { animales, camadas, jaulas, sacrificios, entregas, temperaturas, incidentes, bio } = useBioterio()
+  const { animales, camadas, jaulas, sacrificios, entregas, temperaturas, incidentes, bio, bioterioActivo } = useBioterio()
   const hoyDate = new Date()
 
   const [periodo, setPeriodo]   = useState('mensual')
@@ -83,10 +91,23 @@ export default function Reportes() {
     const totalDest  = camPeriodo.reduce((s,c) => s + (c.total_destetados ?? 0), 0)
     const supervRate = totalCrias > 0 ? Math.round(totalDest / totalCrias * 100) : null
 
+    // Bloques virtuales: camadas con destete pero sin jaula real en DB
+    const jaulasIds = new Set(jaulas.map(j => j.camada_id))
+    const bloquesVirt = camadas
+      .filter(c => c.fecha_destete && c.incluir_en_stock !== false && !c.failure_flag && !jaulasIds.has(c.id))
+      .map(c => {
+        const sac   = sacrificios.filter(s => s.camada_id === c.id).reduce((s, x) => s + x.cantidad, 0)
+        const ent   = entregas.filter(e => e.camada_id === c.id).reduce((s, x) => s + x.cantidad, 0)
+        const total = Math.max(0, (c.total_destetados ?? c.total_crias ?? 0) - sac - ent)
+        if (total <= 0) return null
+        return { id: `v-${c.id}`, camada_id: c.id, total, machos: c.crias_machos, hembras: c.crias_hembras, notas: null, virtual: true }
+      })
+      .filter(Boolean)
+
     return {
       reproducPeriodo, camPeriodo, machoRanking,
       efectivos, fallidos, enCurso, totalCrias, totalDest, supervRate,
-      stockActual:  jaulas,
+      stockActual:  [...jaulas, ...bloquesVirt],
       sacrPeriodo:  sacrificios.filter(s => enPeriodo(s.fecha)),
       entPeriodo:   entregas.filter(e => enPeriodo(e.fecha)),
       tempPeriodo:  temperaturas.filter(t => enPeriodo(t.date)).sort((a,b) => a.date.localeCompare(b.date)),
@@ -259,6 +280,7 @@ export default function Reportes() {
           animales={animales}
           camadas={camadas}
           secciones={secciones}
+          bioterioActivo={bioterioActivo}
         />
       </div>
     </div>
@@ -269,7 +291,7 @@ export default function Reportes() {
 // Documento imprimible
 // ─────────────────────────────────────────────────────────────────────────────
 
-function DocImprimible({ tituloPeriodo, datos, animales, camadas, secciones }) {
+function DocImprimible({ tituloPeriodo, datos, animales, camadas, secciones, bioterioActivo }) {
   const ahora = new Date().toLocaleDateString('es-AR', {
     day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
   })
@@ -294,10 +316,11 @@ function DocImprimible({ tituloPeriodo, datos, animales, camadas, secciones }) {
     <div style={{ ...base, padding: '0' }}>
 
       {/* ── Encabezado del documento ── */}
-      <div style={{ borderBottom: '2pt solid #111', paddingBottom: '10pt', marginBottom: '12pt', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
+      <div style={{ borderBottom: '2pt solid #111', paddingBottom: '10pt', marginBottom: '12pt', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12pt' }}>
+        <div style={{ flex: 1 }}>
           <div style={{ fontSize: '7pt', color: '#666', fontFamily: 'monospace', marginBottom: '3pt', letterSpacing: '0.5pt' }}>
-            BIOTERIO · SISTEMA DE GESTIÓN DE COLONIA · Mus musculus
+            BIOTERIO · SISTEMA DE GESTIÓN DE COLONIA
+            {bioterioActivo && ` · ${(LABEL_BIOTERIO[bioterioActivo] ?? bioterioActivo).toUpperCase()}`}
           </div>
           <div style={{ fontSize: '15pt', fontWeight: 900, color: '#111', letterSpacing: '-0.3pt', marginBottom: '2pt' }}>
             INFORME DE COLONIA — {tituloPeriodo.toUpperCase()}
@@ -306,11 +329,13 @@ function DocImprimible({ tituloPeriodo, datos, animales, camadas, secciones }) {
             Generado: {ahora} &nbsp;·&nbsp; Secciones: {secActivas.map(s => s.label).join(' · ')}
           </div>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: '16pt', fontWeight: 900, color: '#111', letterSpacing: '-0.5pt' }}>
-            Gen<span style={{ color: '#2e7d52' }}>E</span>R<span style={{ color: '#0277bd' }}>ats</span>
-          </div>
-          <div style={{ fontSize: '7pt', color: '#666' }}>Sistema de Bioterio</div>
+        {/* Logo Iterate */}
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <img
+            src={iterateTitleLogo}
+            alt="ITeRatE"
+            style={{ height: '42pt', width: 'auto', display: 'block', marginLeft: 'auto' }}
+          />
         </div>
       </div>
 
@@ -484,7 +509,13 @@ function DocImprimible({ tituloPeriodo, datos, animales, camadas, secciones }) {
                       <td>{formatFecha(s.fecha)||'—'}</td>
                       <td>{s.categoria === 'reproductor' ? 'Reproductor' : 'Stock'}</td>
                       <td>{s.cantidad ?? '—'}</td>
-                      <td>{s.camada_id ? parejaStr(s.camada_id) : '—'}</td>
+                      <td>
+                        {s.camada_id
+                          ? parejaStr(s.camada_id)
+                          : s.animal_id
+                            ? (animales.find(a => a.id === s.animal_id)?.codigo ?? s.animal_id.slice(-6))
+                            : '—'}
+                      </td>
                       <td>{s.notas || '—'}</td>
                     </tr>
                   ))}
@@ -561,11 +592,18 @@ function DocImprimible({ tituloPeriodo, datos, animales, camadas, secciones }) {
             ? <p className="rpt-empty">Sin incidentes en el período.</p>
             : (
               <table className="rpt-table">
-                <thead><tr><th style={{ width: '75pt' }}>Fecha</th><th>Descripción</th></tr></thead>
+                <thead><tr>
+                  <th style={{ width: '72pt' }}>Fecha</th>
+                  <th style={{ width: '50pt' }}>Origen</th>
+                  <th>Descripción</th>
+                </tr></thead>
                 <tbody>
                   {incPeriodo.map(i => (
                     <tr key={i.id}>
                       <td style={{ whiteSpace: 'nowrap' }}>{formatFecha(i.fecha)||'—'}</td>
+                      <td style={{ whiteSpace: 'nowrap', fontWeight: 600 }}>
+                        {LABEL_BIOTERIO[i.bioterio_id] ?? i.bioterio_id ?? '—'}
+                      </td>
                       <td>{i.descripcion}</td>
                     </tr>
                   ))}
@@ -577,9 +615,9 @@ function DocImprimible({ tituloPeriodo, datos, animales, camadas, secciones }) {
       )}
 
       {/* Footer */}
-      <div style={{ borderTop: '0.5pt solid #bbb', marginTop: '16pt', paddingTop: '5pt', fontSize: '7pt', color: '#888', display: 'flex', justifyContent: 'space-between' }}>
-        <span>BIOTERIO — Sistema de Gestión de Colonia · ITeRatE</span>
-        <span>Mus musculus (Ratón doméstico) · Documento de uso interno</span>
+      <div style={{ borderTop: '0.5pt solid #bbb', marginTop: '16pt', paddingTop: '5pt', fontSize: '7pt', color: '#888', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>ITeRatE · Sistema de Gestión de Bioterio</span>
+        <span>Documento de uso interno · {bioterioActivo ? LABEL_BIOTERIO[bioterioActivo] ?? bioterioActivo : 'Colonia'}</span>
         <span>{ahora}</span>
       </div>
     </div>
