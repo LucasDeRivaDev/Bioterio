@@ -225,39 +225,48 @@ export default function ConsumoAlimento() {
     ? ultimoCenso.kg + ingresosPostCenso.reduce((s, i) => s + i.kg, 0)
     : null
 
-  // ── Calibración adaptativa ──
+  // ── Calibración adaptativa con EWMA y confianza ──
   const calibracion = useMemo(() => {
     if (censosOrdenados.length < 2) return null
+    const ahoraDate = parseDate(hoy())
     const pares = []
+
     for (let i = 0; i < censosOrdenados.length - 1; i++) {
       const prev = censosOrdenados[i]
       const cur  = censosOrdenados[i + 1]
       const dias = difDias(parseDate(prev.fecha), parseDate(cur.fecha))
       if (dias <= 0) continue
 
-      // Ingresos realizados entre este par de censos
       const ingresosEnPeriodo = ingresos
         .filter(c => c.fecha >= prev.fecha && c.fecha < cur.fecha)
         .reduce((s, c) => s + c.kg, 0)
 
       const consumidoG = (prev.kg + ingresosEnPeriodo - cur.kg) * 1000
-      if (consumidoG <= 0) continue  // censo sin sentido (compras superan consumo)
-
-      const realGDia = consumidoG / dias
+      if (consumidoG <= 0) continue
       if (!prev.consumoEstimadoGDia || prev.consumoEstimadoGDia <= 0) continue
 
-      pares.push({
-        fechaInicio: prev.fecha,
-        fechaFin: cur.fecha,
-        dias,
-        realGDia,
-        estimadoGDia: prev.consumoEstimadoGDia,
-        factor: realGDia / prev.consumoEstimadoGDia,
-      })
+      const realGDia   = consumidoG / dias
+      const factor     = realGDia / prev.consumoEstimadoGDia
+      // Peso EWMA: vida media ~90 días → datos recientes pesan más
+      const diasAtras  = Math.max(0, difDias(parseDate(cur.fecha), ahoraDate))
+      const peso       = Math.exp(-diasAtras / 90)
+
+      pares.push({ fechaInicio: prev.fecha, fechaFin: cur.fecha, dias, realGDia, estimadoGDia: prev.consumoEstimadoGDia, factor, peso })
     }
+
     if (pares.length === 0) return null
-    const factorPromedio = pares.reduce((s, p) => s + p.factor, 0) / pares.length
-    return { factor: factorPromedio, muestras: pares.length, pares }
+
+    const pesoTotal  = pares.reduce((s, p) => s + p.peso, 0)
+    const factorEWMA = pares.reduce((s, p) => s + p.factor * p.peso, 0) / pesoTotal
+
+    // Confianza: crece con más pares, decrece si el último censo es viejo
+    const diasDesdeUltimo  = Math.max(0, difDias(parseDate(censosOrdenados[censosOrdenados.length - 1].fecha), ahoraDate))
+    const confianzaBase    = Math.min(75, pares.length * 20)
+    const bonusCalidad     = pares.length >= 4 ? 10 : 0
+    const penalizacion     = diasDesdeUltimo > 30 ? Math.min(35, (diasDesdeUltimo - 30) * 0.7) : 0
+    const confianza        = Math.round(Math.max(5, confianzaBase + bonusCalidad - penalizacion))
+
+    return { factor: factorEWMA, muestras: pares.length, pares, confianza }
   }, [censosOrdenados, ingresos])
 
   const consumoBase     = global?.mid ?? 0
@@ -278,6 +287,95 @@ export default function ConsumoAlimento() {
     d.setDate(d.getDate() + diasEstimados)
     return formatFecha(d)
   }, [diasEstimados])
+
+  // ── Insights por categoría (esperado bibliográfico vs adaptado) ──
+  const categoryInsights = useMemo(() => {
+    if (!datosBioterios || !calibracion) return null
+    const factor = calibracion.factor
+    const resultado = []
+
+    TODOS_BIOTERIOS.forEach(({ id, especie }) => {
+      const d   = datosBioterios[id]
+      const cfg = BIOTERIOS_CONFIG[id]
+      const tasas = TASAS[especie]
+
+      const cats = [
+        { key: 'lactantes', label: 'Hembras lactantes', dato: d.reproLactantes, tasa: tasas.lactante, color: '#ce93d8' },
+        { key: 'repro',     label: 'Reproductores',     dato: d.reproOtros,     tasa: tasas.repro,    color: '#40c4ff' },
+        { key: 'crias',     label: 'Crías',             dato: d.stockCrias,     tasa: tasas.crias,    color: '#00e676' },
+        { key: 'jovenes',   label: 'Jóvenes',           dato: d.stockJovenes,   tasa: tasas.jovenes,  color: '#ffb300' },
+        { key: 'adultos',   label: 'Adultos',           dato: d.stockAdultos,   tasa: tasas.adultos,  color: '#ff6b80' },
+      ].filter(c => c.dato.count > 0)
+
+      if (cats.length === 0) return
+
+      cats.forEach(c => {
+        const midBiblio   = mid(c.tasa)
+        const midAdaptado = midBiblio * factor
+        const pct         = (factor - 1) * 100
+        resultado.push({
+          bioId: id, bioLabel: cfg.labelCorto, bioColor: cfg.color, bioIcon: cfg.icon,
+          label: c.label, color: c.color, count: c.dato.count,
+          midBiblio, midAdaptado, pct,
+          totalBiblio: c.dato.mid, totalAdaptado: c.dato.mid * factor,
+        })
+      })
+    })
+
+    return resultado
+  }, [datosBioterios, calibracion])
+
+  // ── Eventos especiales detectados ──
+  const eventosEspeciales = useMemo(() => {
+    if (!datosBioterios) return []
+    const eventos = []
+
+    TODOS_BIOTERIOS.forEach(({ id }) => {
+      const d   = datosBioterios[id]
+      const cfg = BIOTERIOS_CONFIG[id]
+      if (d.totalMid === 0) return
+
+      const totalRepro = d.reproLactantes.count + d.reproOtros.count
+      const totalStock = d.stockCrias.count + d.stockJovenes.count + d.stockAdultos.count
+
+      if (d.reproLactantes.count > 0) {
+        const pctLact = totalRepro > 0 ? (d.reproLactantes.count / totalRepro) * 100 : 0
+        if (pctLact > 35) {
+          eventos.push({
+            icon: '🍼', color: '#ce93d8',
+            label: `Alta lactancia — ${cfg.labelCorto}`,
+            detalle: `${d.reproLactantes.count} hembras amamantando (${Math.round(pctLact)}% del plantel reproductor) → mayor consumo real esperado`,
+          })
+        }
+      }
+
+      if (totalStock > 0 && totalRepro > 0 && totalStock / totalRepro > 6) {
+        eventos.push({
+          icon: '📦', color: '#ffb300',
+          label: `Población de stock alta — ${cfg.labelCorto}`,
+          detalle: `${totalStock} animales en jaulas de stock vs ${totalRepro} reproductores`,
+        })
+      }
+    })
+
+    if (calibracion) {
+      if (calibracion.factor > 1.2) {
+        eventos.push({
+          icon: '⬆️', color: '#ff6b80',
+          label: 'Consumo real supera lo bibliográfico',
+          detalle: `+${Math.round((calibracion.factor - 1) * 100)}% sobre el valor de referencia — el modelo ya incorpora este ajuste`,
+        })
+      } else if (calibracion.factor < 0.85) {
+        eventos.push({
+          icon: '⬇️', color: '#40c4ff',
+          label: 'Consumo real por debajo de lo bibliográfico',
+          detalle: `${Math.round((1 - calibracion.factor) * 100)}% menos que el valor de referencia — posible excedente de stock`,
+        })
+      }
+    }
+
+    return eventos
+  }, [datosBioterios, calibracion])
 
   // ── Línea temporal de movimientos ──
   const movimientos = useMemo(() => {
@@ -407,50 +505,97 @@ export default function ConsumoAlimento() {
               <div className="px-6 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(255,179,0,0.15)', background: 'rgba(255,179,0,0.05)' }}>
                 <Wheat size={20} style={{ color: '#ffb300' }} />
                 <div className="flex-1">
-                  <div className="font-bold text-white text-sm">Consumo diario estimado — todos los bioterios</div>
+                  <div className="font-bold text-white text-sm">Consumo diario — todos los bioterios</div>
                   <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
-                    Rango: {Math.round(global.min)} – {Math.round(global.max)} g/día
-                    {calibracion && <span style={{ color: '#40c4ff' }}> · Ajustado por {calibracion.muestras} pares de censos</span>}
+                    Rango bibliográfico: {Math.round(global.min)} – {Math.round(global.max)} g/día
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-2xl font-bold font-mono" style={{ color: '#ffb300' }}>
-                    {consumoAjustado >= 1000
-                      ? `${(consumoAjustado / 1000).toFixed(2)} kg`
-                      : `${Math.round(consumoAjustado)} g`}
+              </div>
+
+              {/* Esperado / Adaptado / Confianza */}
+              <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 divide-x" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                {/* Consumo esperado (bibliográfico) */}
+                <div className="px-6 py-4 text-center">
+                  <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#4a5f7a' }}>Consumo esperado</div>
+                  <div className="text-2xl font-bold font-mono" style={{ color: '#c9d4e0' }}>
+                    {consumoBase >= 1000 ? `${(consumoBase / 1000).toFixed(2)} kg` : `${Math.round(consumoBase)} g`}
                   </div>
-                  <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>por día</div>
+                  <div className="text-xs font-mono mt-0.5" style={{ color: '#3d5068' }}>referencia bibliográfica</div>
+                </div>
+
+                {/* Consumo adaptado (aprendido) */}
+                <div className="px-6 py-4 text-center" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                  <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: calibracion ? '#40c4ff' : '#4a5f7a' }}>
+                    Consumo adaptado
+                  </div>
+                  <div className="text-2xl font-bold font-mono" style={{ color: calibracion ? '#ffb300' : '#3d5068' }}>
+                    {calibracion
+                      ? (consumoAjustado >= 1000 ? `${(consumoAjustado / 1000).toFixed(2)} kg` : `${Math.round(consumoAjustado)} g`)
+                      : '—'}
+                  </div>
+                  <div className="text-xs font-mono mt-0.5" style={{ color: '#3d5068' }}>
+                    {calibracion
+                      ? `${calibracion.factor > 1 ? '+' : ''}${Math.round((calibracion.factor - 1) * 100)}% vs bibliográfico · ×${calibracion.factor.toFixed(2)}`
+                      : 'sin censos aún'}
+                  </div>
+                </div>
+
+                {/* Confianza */}
+                <div className="px-6 py-4 text-center" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                  <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#4a5f7a' }}>Confianza del modelo</div>
+                  {calibracion ? (
+                    <>
+                      <div
+                        className="text-2xl font-bold font-mono"
+                        style={{ color: calibracion.confianza >= 60 ? '#00e676' : calibracion.confianza >= 35 ? '#ffb300' : '#ff6b80' }}
+                      >
+                        {calibracion.confianza}%
+                      </div>
+                      {/* Barra de confianza */}
+                      <div className="mt-2 mx-auto w-24 h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${calibracion.confianza}%`,
+                            background: calibracion.confianza >= 60 ? '#00e676' : calibracion.confianza >= 35 ? '#ffb300' : '#ff6b80',
+                          }}
+                        />
+                      </div>
+                      <div className="text-xs font-mono mt-1" style={{ color: '#3d5068' }}>
+                        {calibracion.muestras} par{calibracion.muestras !== 1 ? 'es' : ''} de censos
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-2xl font-bold font-mono" style={{ color: '#3d5068' }}>—</div>
+                      <div className="text-xs font-mono mt-1" style={{ color: '#3d5068' }}>necesitás ≥2 censos</div>
+                    </>
+                  )}
                 </div>
               </div>
 
               {/* Desglose rápido por bioterio */}
-              <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+              <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0" style={{ borderColor: 'rgba(255,255,255,0.05)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                 {TODOS_BIOTERIOS.map(({ id }) => {
                   const cfg = BIOTERIOS_CONFIG[id]
-                  const d = datosBioterios[id]
+                  const d   = datosBioterios[id]
+                  const adj = calibracion ? d.totalMid * calibracion.factor : d.totalMid
                   return (
                     <div key={id} className="px-4 py-3 text-center" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-                      <div className="text-xs font-mono mb-1" style={{ color: cfg.color }}>{cfg.labelCorto}</div>
-                      <div className="font-bold font-mono" style={{ color: '#c9d4e0' }}>
-                        {d.totalMid >= 1000
-                          ? `${(d.totalMid / 1000).toFixed(2)} kg`
-                          : `${Math.round(d.totalMid)} g`}
+                      <div className="text-xs font-mono mb-1" style={{ color: cfg.color }}>{cfg.icon} {cfg.labelCorto}</div>
+                      <div className="font-bold font-mono text-sm" style={{ color: '#c9d4e0' }}>
+                        {adj >= 1000 ? `${(adj / 1000).toFixed(2)} kg` : `${Math.round(adj)} g`}
                       </div>
+                      {calibracion && (
+                        <div className="text-xs font-mono" style={{ color: '#3d5068' }}>
+                          biblio: {d.totalMid >= 1000 ? `${(d.totalMid / 1000).toFixed(2)} kg` : `${Math.round(d.totalMid)} g`}
+                        </div>
+                      )}
                       <div className="text-xs" style={{ color: '#3d5068' }}>/día</div>
                     </div>
                   )
                 })}
               </div>
-
-              {calibracion && (
-                <div className="px-6 py-2 flex items-center gap-2 text-xs font-mono" style={{ borderTop: '1px solid rgba(64,196,255,0.1)', background: 'rgba(64,196,255,0.03)', color: '#40c4ff' }}>
-                  <TrendingUp size={12} />
-                  Factor de calibración: ×{calibracion.factor.toFixed(2)}
-                  {calibracion.factor > 1
-                    ? ' — los animales consumen más de lo estimado'
-                    : ' — los animales consumen menos de lo estimado'}
-                </div>
-              )}
             </div>
 
             {/* ── Panel de stock y predicción ── */}
@@ -539,6 +684,94 @@ export default function ConsumoAlimento() {
                 </div>
               )}
             </div>
+
+            {/* ── Eventos especiales ── */}
+            {eventosEspeciales.length > 0 && (
+              <div className="space-y-2">
+                <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>
+                  Eventos detectados
+                </h2>
+                {eventosEspeciales.map((ev, i) => (
+                  <div
+                    key={i}
+                    className="rounded-xl px-4 py-3 flex items-start gap-3"
+                    style={{ background: `${ev.color}0e`, border: `1px solid ${ev.color}30` }}
+                  >
+                    <span className="text-base shrink-0">{ev.icon}</span>
+                    <div>
+                      <div className="text-sm font-semibold" style={{ color: ev.color }}>{ev.label}</div>
+                      <div className="text-xs font-mono mt-0.5" style={{ color: '#6a8099' }}>{ev.detalle}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* ── Insights por categoría ── */}
+            {categoryInsights && categoryInsights.length > 0 && (
+              <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(64,196,255,0.18)' }}>
+                <div className="px-6 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(64,196,255,0.12)', background: 'rgba(64,196,255,0.04)' }}>
+                  <TrendingUp size={18} style={{ color: '#40c4ff' }} />
+                  <div>
+                    <div className="font-bold text-sm text-white">Adaptación por categoría</div>
+                    <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
+                      Valores bibliográficos ajustados al consumo real observado · confianza {calibracion?.confianza ?? 0}%
+                    </div>
+                  </div>
+                </div>
+                <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+                  {categoryInsights.map((ins, i) => (
+                    <div key={i} className="px-5 py-3 flex items-center gap-3 flex-wrap">
+                      {/* Bio label */}
+                      <span
+                        className="text-xs font-semibold px-2 py-0.5 rounded shrink-0"
+                        style={{ background: `${ins.bioColor}18`, color: ins.bioColor, minWidth: '52px', textAlign: 'center' }}
+                      >
+                        {ins.bioIcon} {ins.bioLabel}
+                      </span>
+
+                      {/* Categoría */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: ins.color }} />
+                        <span className="text-xs" style={{ color: '#8a9bb0' }}>{ins.label}</span>
+                        <span className="text-xs font-mono" style={{ color: '#3d5068' }}>×{ins.count}</span>
+                      </div>
+
+                      {/* Esperado → Adaptado */}
+                      <div className="flex items-center gap-2 flex-1 flex-wrap">
+                        <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                          Biblio: <span style={{ color: '#c9d4e0' }}>{ins.midBiblio.toFixed(1)} g/día</span>
+                        </div>
+                        <span className="text-xs" style={{ color: '#3d5068' }}>→</span>
+                        <div className="text-xs font-mono font-semibold" style={{ color: ins.pct > 5 ? '#ff6b80' : ins.pct < -5 ? '#40c4ff' : '#00e676' }}>
+                          Adaptado: {ins.midAdaptado.toFixed(1)} g/día
+                        </div>
+                        <span
+                          className="text-xs font-mono px-1.5 py-0.5 rounded"
+                          style={{
+                            background: ins.pct > 5 ? 'rgba(255,107,128,0.12)' : ins.pct < -5 ? 'rgba(64,196,255,0.12)' : 'rgba(0,230,118,0.10)',
+                            color: ins.pct > 5 ? '#ff6b80' : ins.pct < -5 ? '#40c4ff' : '#00e676',
+                          }}
+                        >
+                          {ins.pct > 0 ? '+' : ''}{Math.round(ins.pct)}%
+                        </span>
+                      </div>
+
+                      {/* Total de la categoría */}
+                      <div className="text-xs font-mono font-bold shrink-0" style={{ color: ins.color }}>
+                        {ins.totalAdaptado >= 1000
+                          ? `${(ins.totalAdaptado / 1000).toFixed(2)} kg/día`
+                          : `${Math.round(ins.totalAdaptado)} g/día`}
+                        <span className="font-normal ml-1" style={{ color: '#3d5068' }}>total</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="px-6 py-2 text-xs font-mono" style={{ borderTop: '1px solid rgba(255,255,255,0.04)', color: '#3d5068' }}>
+                  El ajuste se aplica a todas las categorías en igual proporción hasta acumular suficientes censos para discriminar por grupo
+                </div>
+              </div>
+            )}
 
             {/* ── Desglose por bioterio ── */}
             <div>
@@ -715,11 +948,20 @@ export default function ConsumoAlimento() {
               </div>
             )}
 
-            {/* Nota */}
-            <div className="rounded-xl px-5 py-4 text-xs font-mono space-y-1" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', color: '#4a5f7a' }}>
-              <div className="font-semibold" style={{ color: '#6a8099' }}>Acerca de los valores</div>
-              <div>Los rangos de consumo son promedios de referencia. Variaciones por temperatura, estado reproductivo y tipo de alimento son normales.</div>
-              <div>Ratas lactantes: 30–40 g/día · Ratones lactantes: 10–15 g/día · Reproductores ratas: 20–35 g/día · Reproductores ratones: 6–8 g/día</div>
+            {/* Nota / leyenda del sistema adaptativo */}
+            <div className="rounded-xl px-5 py-4 text-xs font-mono space-y-1.5" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', color: '#4a5f7a' }}>
+              <div className="font-semibold" style={{ color: '#6a8099' }}>Sistema adaptativo de aprendizaje</div>
+              <div>
+                El modelo parte de valores bibliográficos y aprende del consumo real usando censos periódicos.
+                Cuantos más censos, mayor es la confianza y más precisa la predicción.
+              </div>
+              <div className="space-y-0.5" style={{ color: '#3d5068' }}>
+                <div><span style={{ color: '#4a5f7a' }}>Ratas:</span> crías 5–14g · jóvenes 10–20g · adultos 20–35g · lactantes 30–40g</div>
+                <div><span style={{ color: '#4a5f7a' }}>Ratones:</span> crías 3–5g · jóvenes 5–7g · adultos 6–8g · lactantes 10–15g</div>
+              </div>
+              <div style={{ color: '#2a3a50' }}>
+                Ajuste EWMA — los últimos 3 meses tienen el doble de peso que los datos de hace 6 meses.
+              </div>
             </div>
           </>
         )}
