@@ -237,7 +237,7 @@ function ReportarError() {
 export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
   const { animales, camadas, bio } = useBioterio()
   const { config, limpiarBioterio } = useBioterioActivo()
-  const { tema } = useTheme()
+  const { tema, modoBrillo } = useTheme()
   const { sesion } = useAuth()
   const emailUsuario = sesion?.user?.email ?? ''
 
