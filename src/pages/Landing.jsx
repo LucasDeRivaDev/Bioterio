@@ -3,10 +3,13 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import ITeRatELogo from '../components/ITeRatELogo'
-import iterateLogoOriginal from '../assets/iterate_logo.jpg'
-import iterateTextLogo from '../assets/iterate_text_logo.png'
-import iterateTitleLogo from '../assets/iterate_title_logo.png'
-import iterateNavLogo from '../assets/iterate_nav_logo.png'
+import iterateLogoOriginal  from '../assets/iterate_logo.jpg'
+import iterateTextLogo       from '../assets/iterate_text_logo.png'
+import iterateTextLogoLight  from '../assets/iterate_text_logo_light.png'
+import iterateTitleLogo      from '../assets/iterate_title_logo.png'
+import iterateTitleLogoLight from '../assets/iterate_logo_light.png'
+import iterateNavLogo        from '../assets/iterate_nav_logo.png'
+import iterateNavLogoLight   from '../assets/iterate_icon_light.png'
 import { Dna, BarChart2, Archive, Calendar, Skull, Printer, GraduationCap, Microscope, FlaskConical, Building2 } from 'lucide-react'
 
 const CSS = `
@@ -127,7 +130,7 @@ const inputStyle = {
 
 export default function Landing() {
   const { sesion } = useAuth()
-  const { tema } = useTheme()
+  const { tema, modoBrillo } = useTheme()
 
   useEffect(() => {
     const prev = document.title
@@ -171,7 +174,7 @@ export default function Landing() {
             padding: '6px 10px',
             display: 'inline-flex',
           }}>
-            <img src={iterateNavLogo} alt="ITeRatE" style={{ height: '60px', width: 'auto', display: 'block', filter: 'drop-shadow(0 0 8px rgba(0,230,118,0.3))' }} />
+            <img src={modoBrillo ? iterateNavLogoLight : iterateNavLogo} alt="ITeRatE" style={{ height: '60px', width: 'auto', display: 'block', filter: modoBrillo ? 'none' : 'drop-shadow(0 0 8px rgba(0,230,118,0.3))' }} />
           </div>
         </div>
 
@@ -260,14 +263,14 @@ export default function Landing() {
             <div style={{ position: 'relative' }}>
               <div style={{ position: 'absolute', inset: '-40px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,230,118,0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
               <img
-                src={iterateTitleLogo}
+                src={modoBrillo ? iterateTitleLogoLight : iterateTitleLogo}
                 alt="ITeRatE"
                 style={{
                   width: '100%',
                   height: 'auto',
                   maxWidth: '520px',
                   display: 'block',
-                  filter: 'drop-shadow(0 0 30px rgba(0,230,118,0.25))',
+                  filter: modoBrillo ? 'drop-shadow(0 2px 8px rgba(0,80,40,0.15))' : 'drop-shadow(0 0 30px rgba(0,230,118,0.25))',
                 }}
               />
             </div>
@@ -465,15 +468,15 @@ export default function Landing() {
       <footer style={{ padding: '42px 24px 28px', borderTop: `1px solid ${tema.bgCardBorde}`, background: tema.bgMain }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '18px' }}>
           <img
-            src={iterateTextLogo}
+            src={modoBrillo ? iterateTextLogoLight : iterateTextLogo}
             alt="ITeRatE"
             style={{
               width: '480px',
               maxWidth: '100%',
               height: 'auto',
               display: 'block',
-              filter: 'drop-shadow(0 0 20px rgba(0,230,118,0.2))',
-              opacity: 0.85,
+              filter: modoBrillo ? 'none' : 'drop-shadow(0 0 20px rgba(0,230,118,0.2))',
+              opacity: modoBrillo ? 0.9 : 0.85,
             }}
           />
           <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>

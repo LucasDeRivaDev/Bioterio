@@ -6,7 +6,7 @@ import { BioterioActivoProvider, useBioterioActivo } from './context/BioterioAct
 import { ThemeProvider, useTheme } from './context/ThemeContext'
 import Sidebar from './components/Sidebar'
 import iterateNavLogo      from './assets/iterate_nav_logo.png'
-import iterateNavLogoLight from './assets/iterate_icon_light.png'
+import iterateNavLogoLight from './assets/iterate_logo_light.png'
 import SelectorBioterio from './pages/SelectorBioterio'
 import ResumenRatones from './pages/ResumenRatones'
 import ConsumoAlimento from './pages/ConsumoAlimento'
@@ -169,7 +169,7 @@ function AppLayout() {
             <img
               src={modoBrillo ? iterateNavLogoLight : iterateNavLogo}
               alt="ITeRatE"
-              style={{ height: '99px', width: 'auto', display: 'block', filter: modoBrillo ? 'drop-shadow(0 2px 6px rgba(0,80,40,0.12))' : 'drop-shadow(0 0 8px rgba(0,230,118,0.2))', opacity: modoBrillo ? 0.7 : 0.85 }}
+              style={{ height: '99px', width: 'auto', display: 'block', filter: modoBrillo ? 'drop-shadow(0 2px 8px rgba(0,80,40,0.12))' : 'drop-shadow(0 0 8px rgba(0,230,118,0.2))', opacity: 0.85 }}
             />
           </div>
 
