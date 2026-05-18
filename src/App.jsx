@@ -169,7 +169,7 @@ function AppLayout() {
             <img
               src={modoBrillo ? iterateNavLogoLight : iterateNavLogo}
               alt="ITeRatE"
-              style={{ height: '99px', width: 'auto', display: 'block', filter: modoBrillo ? 'drop-shadow(0 2px 8px rgba(0,80,40,0.12))' : 'drop-shadow(0 0 8px rgba(0,230,118,0.2))', opacity: 0.85 }}
+              style={{ height: '99px', width: 'auto', display: 'block', filter: modoBrillo ? 'none' : 'drop-shadow(0 0 8px rgba(0,230,118,0.2))', opacity: 0.85, mixBlendMode: modoBrillo ? 'multiply' : 'normal' }}
             />
           </div>
 

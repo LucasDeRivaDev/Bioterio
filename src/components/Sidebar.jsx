@@ -290,7 +290,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
             <img
               src={modoBrillo ? iterateNavLogoLight : iterateNavLogo}
               alt="ITeRatE"
-              style={{ height: '48px', width: 'auto', display: 'block', filter: modoBrillo ? 'none' : 'drop-shadow(0 0 6px rgba(0,180,100,0.3))' }}
+              style={{ height: '48px', width: 'auto', display: 'block', filter: modoBrillo ? 'none' : 'drop-shadow(0 0 6px rgba(0,180,100,0.3))', mixBlendMode: modoBrillo ? 'multiply' : 'normal' }}
             />
           </div>
           <div>

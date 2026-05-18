@@ -41,7 +41,8 @@ export default function SelectorBioterio() {
               width: `${logoW}px`,
               height: 'auto',
               display: 'block',
-              filter: modoBrillo ? 'drop-shadow(0 2px 8px rgba(0,100,60,0.15))' : 'drop-shadow(0 0 30px rgba(0,230,118,0.25))',
+              filter: modoBrillo ? 'none' : 'drop-shadow(0 0 30px rgba(0,230,118,0.25))',
+              mixBlendMode: modoBrillo ? 'multiply' : 'normal',
             }}
           />
         </div>

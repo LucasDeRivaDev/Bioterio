@@ -270,7 +270,8 @@ export default function Landing() {
                   height: 'auto',
                   maxWidth: '520px',
                   display: 'block',
-                  filter: modoBrillo ? 'drop-shadow(0 2px 8px rgba(0,80,40,0.15))' : 'drop-shadow(0 0 30px rgba(0,230,118,0.25))',
+                  filter: modoBrillo ? 'none' : 'drop-shadow(0 0 30px rgba(0,230,118,0.25))',
+                  mixBlendMode: modoBrillo ? 'multiply' : 'normal',
                 }}
               />
             </div>
@@ -476,7 +477,8 @@ export default function Landing() {
               height: 'auto',
               display: 'block',
               filter: modoBrillo ? 'none' : 'drop-shadow(0 0 20px rgba(0,230,118,0.2))',
-              opacity: modoBrillo ? 0.9 : 0.85,
+              opacity: 0.85,
+              mixBlendMode: modoBrillo ? 'multiply' : 'normal',
             }}
           />
           <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
