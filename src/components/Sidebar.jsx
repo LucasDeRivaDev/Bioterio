@@ -8,7 +8,7 @@ import {
   Dna, Microscope, Archive, BarChart2, PackageCheck, Skull, TrendingUp,
 } from 'lucide-react'
 import iterateNavLogo      from '../assets/iterate_nav_logo.png'
-import iterateNavLogoLight from '../assets/iterate_icon_light.png'
+import iterateNavLogoLight from '../assets/iterate_logo_light.png'
 import { useTheme } from '../context/ThemeContext'
 
 const LINK_INICIO   = { to: '/inicio', label: 'Inicio',       icon: <Home size={15} /> }
@@ -290,7 +290,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
             <img
               src={modoBrillo ? iterateNavLogoLight : iterateNavLogo}
               alt="ITeRatE"
-              style={{ height: '48px', width: 'auto', display: 'block', filter: modoBrillo ? 'none' : 'drop-shadow(0 0 6px rgba(0,180,100,0.3))', mixBlendMode: modoBrillo ? 'multiply' : 'normal' }}
+              style={{ height: '48px', width: '80px', objectFit: 'contain', objectPosition: 'center', display: 'block', filter: modoBrillo ? 'none' : 'drop-shadow(0 0 6px rgba(0,180,100,0.3))', mixBlendMode: modoBrillo ? 'multiply' : 'normal' }}
             />
           </div>
           <div>
