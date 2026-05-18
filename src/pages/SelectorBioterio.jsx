@@ -39,9 +39,7 @@ export default function SelectorBioterio() {
             alt="ITeRatE"
             style={{
               width: `${logoW}px`,
-              aspectRatio: '1224 / 847',
-              objectFit: 'contain',
-              objectPosition: 'center',
+              height: 'auto',
               display: 'block',
               filter: modoBrillo ? 'none' : 'drop-shadow(0 0 30px rgba(0,230,118,0.25))',
               mixBlendMode: modoBrillo ? 'multiply' : 'normal',

@@ -174,7 +174,7 @@ export default function Landing() {
             padding: '6px 10px',
             display: 'inline-flex',
           }}>
-            <img src={modoBrillo ? iterateNavLogoLight : iterateNavLogo} alt="ITeRatE" style={{ height: '60px', width: '100px', objectFit: 'contain', objectPosition: 'center', display: 'block', filter: modoBrillo ? 'none' : 'drop-shadow(0 0 8px rgba(0,230,118,0.3))', mixBlendMode: modoBrillo ? 'multiply' : 'normal' }} />
+            <img src={modoBrillo ? iterateNavLogoLight : iterateNavLogo} alt="ITeRatE" style={{ height: '60px', width: 'auto', display: 'block', filter: modoBrillo ? 'none' : 'drop-shadow(0 0 8px rgba(0,230,118,0.3))', mixBlendMode: modoBrillo ? 'multiply' : 'normal' }} />
           </div>
         </div>
 
@@ -267,10 +267,8 @@ export default function Landing() {
                 alt="ITeRatE"
                 style={{
                   width: '100%',
+                  height: 'auto',
                   maxWidth: '520px',
-                  aspectRatio: '1224 / 847',
-                  objectFit: 'contain',
-                  objectPosition: 'center',
                   display: 'block',
                   filter: modoBrillo ? 'none' : 'drop-shadow(0 0 30px rgba(0,230,118,0.25))',
                   mixBlendMode: modoBrillo ? 'multiply' : 'normal',
@@ -476,9 +474,7 @@ export default function Landing() {
             style={{
               width: '480px',
               maxWidth: '100%',
-              aspectRatio: '1392 / 416',
-              objectFit: 'contain',
-              objectPosition: 'center',
+              height: 'auto',
               display: 'block',
               filter: modoBrillo ? 'none' : 'drop-shadow(0 0 20px rgba(0,230,118,0.2))',
               opacity: 0.85,

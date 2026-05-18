@@ -169,9 +169,7 @@ export default function Login() {
                   className="login-logo-img"
                   style={{
                     height: '200px',
-                    width: '328px',
-                    objectFit: 'contain',
-                    objectPosition: 'center',
+                    width: 'auto',
                     display: 'block',
                     marginTop: '-30px',
                     mixBlendMode: modoBrillo ? 'multiply' : 'normal',
@@ -282,7 +280,7 @@ export default function Login() {
             <img
               src={modoBrillo ? iterateTextLogoLight : iterateTextLogo}
               alt="ITeRatE"
-              style={{ width: '160px', maxWidth: '100%', aspectRatio: '1392 / 416', objectFit: 'contain', objectPosition: 'center', margin: '0 auto 8px', display: 'block', opacity: modoBrillo ? 0.85 : 0.6, filter: modoBrillo ? 'none' : 'drop-shadow(0 0 8px rgba(0,230,118,0.15))', mixBlendMode: modoBrillo ? 'multiply' : 'normal' }}
+              style={{ width: '160px', maxWidth: '100%', height: 'auto', margin: '0 auto 8px', display: 'block', opacity: modoBrillo ? 0.85 : 0.6, filter: modoBrillo ? 'none' : 'drop-shadow(0 0 8px rgba(0,230,118,0.15))', mixBlendMode: modoBrillo ? 'multiply' : 'normal' }}
             />
             <div className="flex items-center justify-center gap-1.5 text-xs" style={{ color: 'rgba(74,95,122,0.5)' }}>
               <span className="font-mono italic">Mus musculus · Ratón doméstico</span>
