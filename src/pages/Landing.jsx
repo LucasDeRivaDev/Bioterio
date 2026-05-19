@@ -6,8 +6,8 @@ import ITeRatELogo from '../components/ITeRatELogo'
 import iterateLogoOriginal  from '../assets/iterate_logo.jpg'
 import iterateTextLogo       from '../assets/iterate_text_logo.png'
 import iterateTextLogoLight  from '../assets/iterate_text_logo_light.png'
-import iterateTitleLogo      from '../assets/iterate_title_logo.png'
-import iterateTitleLogoLight from '../assets/iterate_logo_light.png'
+import iterateTitleLogo      from '../assets/iterate_logo.png'
+import iterateTitleLogoLight from '../assets/iterate_title_logo_light.png'
 import iterateNavLogo        from '../assets/iterate_nav_logo.png'
 import iterateNavLogoLight   from '../assets/iterate_logo_light.png'
 import { Dna, BarChart2, Archive, Calendar, Skull, Printer, GraduationCap, Microscope, FlaskConical, Building2 } from 'lucide-react'
@@ -88,30 +88,30 @@ const CSS = `
 
   /* ── MODO CLARO ────────────────────────────────── */
   html.modo-claro .landing-root {
-    background: #edf2f7 !important;
-    color: #0d1e30 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
   }
   html.modo-claro .landing-root .grid-bg {
-    background-color: #edf2f7 !important;
-    background-image: linear-gradient(rgba(0,120,80,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,120,80,0.04) 1px, transparent 1px) !important;
+    background-color: #ffffff !important;
+    background-image: none !important;
   }
   html.modo-claro .landing-root nav {
-    background: rgba(237,242,247,0.94) !important;
-    border-bottom-color: rgba(0,130,90,0.2) !important;
+    background: rgba(255,255,255,0.96) !important;
+    border-bottom-color: rgba(0,0,0,0.08) !important;
   }
   html.modo-claro .landing-root .card {
-    background: rgba(255,255,255,0.92) !important;
-    border-color: rgba(0,100,160,0.18) !important;
-    color: #0d1e30 !important;
+    background: #ffffff !important;
+    border-color: rgba(0,0,0,0.1) !important;
+    color: #000000 !important;
   }
   html.modo-claro .landing-root h1,
   html.modo-claro .landing-root h2,
   html.modo-claro .landing-root h3,
-  html.modo-claro .landing-root h4 { color: #0d1e30 !important; }
-  html.modo-claro .landing-root p  { color: #2a4a65 !important; }
-  html.modo-claro .landing-root .text-white { color: #0d1e30 !important; }
-  html.modo-claro .landing-root footer { background: #dce8f5 !important; border-color: rgba(0,120,80,0.15) !important; }
-  html.modo-claro .landing-root section { background-color: #edf2f7 !important; }
+  html.modo-claro .landing-root h4 { color: #000000 !important; }
+  html.modo-claro .landing-root p  { color: #333333 !important; }
+  html.modo-claro .landing-root .text-white { color: #000000 !important; }
+  html.modo-claro .landing-root footer { background: #ffffff !important; border-color: rgba(0,0,0,0.08) !important; }
+  html.modo-claro .landing-root section { background-color: #ffffff !important; }
 `
 
 const NavLink = ({ href, children }) => (
@@ -167,14 +167,16 @@ export default function Landing() {
         {/* Ícono pestaña — centrado en el nav de 96px */}
         <div style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: '24px', zIndex: 102, pointerEvents: 'none' }}>
           <div className="landing-nav-logo" style={{
-            background: 'rgb(4, 26, 31)',
+            background: modoBrillo ? '#ffffff' : 'rgb(4, 26, 31)',
             borderRadius: '16px',
-            border: '1.5px solid rgba(0,230,118,0.2)',
-            boxShadow: '0 0 60px rgba(0,230,118,0.18), 0 8px 40px rgba(0,0,0,0.5)',
+            border: modoBrillo ? '1.5px solid rgba(0,0,0,0.08)' : '1.5px solid rgba(0,230,118,0.2)',
+            boxShadow: modoBrillo ? '0 2px 12px rgba(0,0,0,0.08)' : '0 0 60px rgba(0,230,118,0.18), 0 8px 40px rgba(0,0,0,0.5)',
             padding: '6px 10px',
             display: 'inline-flex',
+            overflow: modoBrillo ? 'hidden' : 'visible',
+            height: modoBrillo ? '105px' : 'auto',
           }}>
-            <img src={modoBrillo ? iterateNavLogoLight : iterateNavLogo} alt="ITeRatE" style={{ height: '60px', width: 'auto', display: 'block', filter: modoBrillo ? 'none' : 'drop-shadow(0 0 8px rgba(0,230,118,0.3))', mixBlendMode: modoBrillo ? 'multiply' : 'normal' }} />
+            <img src={modoBrillo ? iterateNavLogoLight : iterateNavLogo} alt="ITeRatE" style={{ height: modoBrillo ? '120px' : '60px', width: 'auto', display: 'block', filter: modoBrillo ? 'none' : 'drop-shadow(0 0 8px rgba(0,230,118,0.3))', mixBlendMode: 'normal' }} />
           </div>
         </div>
 
@@ -218,8 +220,8 @@ export default function Landing() {
 
       {/* ── HERO ── */}
       <section className="grid-bg landing-hero-section" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', paddingTop: '96px', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: '20%', left: '50%', transform: 'translateX(-50%)', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(0,230,118,0.06) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', top: '40%', left: '20%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(64,196,255,0.05) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        {!modoBrillo && <div style={{ position: 'absolute', top: '20%', left: '50%', transform: 'translateX(-50%)', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(0,230,118,0.06) 0%, transparent 70%)', pointerEvents: 'none' }} />}
+        {!modoBrillo && <div style={{ position: 'absolute', top: '40%', left: '20%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(64,196,255,0.05) 0%, transparent 70%)', pointerEvents: 'none' }} />}
 
         <div className="landing-hero-grid landing-hero-pad" style={{ maxWidth: '1200px', margin: '0 auto', padding: '80px 24px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '56px', alignItems: 'center' }}>
           {/* Left */}
@@ -230,9 +232,9 @@ export default function Landing() {
             </div>
 
             <h1 className="landing-hero-title" style={{ fontSize: '52px', fontWeight: 900, lineHeight: 1.1, letterSpacing: '-1.5px', marginBottom: '20px' }}>
-              <span style={{ color: 'white' }}>Gestión inteligente</span><br />
+              <span style={{ color: modoBrillo ? '#000000' : 'white' }}>Gestión inteligente</span><br />
               <span className="gradient-text">de tu colonia</span><br />
-              <span style={{ color: 'white' }}>de laboratorio</span>
+              <span style={{ color: modoBrillo ? '#000000' : 'white' }}>de laboratorio</span>
             </h1>
 
             <p className="landing-hero-subtitle" style={{ fontSize: '18px', lineHeight: 1.7, color: '#8a9bb0', marginBottom: '36px', maxWidth: '480px' }}>
@@ -243,12 +245,12 @@ export default function Landing() {
               <a href="#contacto" style={{ padding: '14px 28px', borderRadius: '12px', fontSize: '15px', fontWeight: 700, textDecoration: 'none', color: '#050810', background: 'linear-gradient(135deg, #00e676, #40c4ff)', boxShadow: '0 4px 24px rgba(0,230,118,0.3)' }}>
                 Solicitar demo gratuito
               </a>
-              <a href="#features" style={{ padding: '14px 28px', borderRadius: '12px', fontSize: '15px', fontWeight: 600, textDecoration: 'none', color: '#c9d4e0', background: 'rgba(30,51,82,0.4)', border: '1px solid rgba(30,51,82,0.8)' }}>
+              <a href="#features" style={{ padding: '14px 28px', borderRadius: '12px', fontSize: '15px', fontWeight: 600, textDecoration: 'none', color: modoBrillo ? '#374151' : '#c9d4e0', background: modoBrillo ? 'transparent' : 'rgba(30,51,82,0.4)', border: modoBrillo ? '1px solid rgba(0,0,0,0.2)' : '1px solid rgba(30,51,82,0.8)' }}>
                 Ver funciones →
               </a>
             </div>
 
-            <div className="landing-hero-stats" style={{ display: 'flex', gap: '32px', marginTop: '48px', paddingTop: '32px', borderTop: '1px solid rgba(30,51,82,0.6)' }}>
+            <div className="landing-hero-stats" style={{ display: 'flex', gap: '32px', marginTop: '48px', paddingTop: '32px', borderTop: modoBrillo ? '1px solid rgba(0,0,0,0.12)' : '1px solid rgba(30,51,82,0.6)' }}>
               {[['100%','#00e676','Digital, sin papel'],['24/7','#40c4ff','Acceso desde cualquier lugar'],['∞','#ce93d8','Historial de datos']].map(([val, color, label]) => (
                 <div key={label}>
                   <div className="mono" style={{ fontSize: '28px', fontWeight: 700, color }}>{val}</div>
@@ -259,16 +261,16 @@ export default function Landing() {
           </div>
 
           {/* Right: Logo sin fondo — oculto en mobile */}
-          <div className="landing-hero-right float" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', paddingLeft: '18px' }}>
-            <div style={{ position: 'relative' }}>
-              <div style={{ position: 'absolute', inset: '-40px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,230,118,0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
+          <div className="landing-hero-right float" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', paddingLeft: modoBrillo ? '0' : '18px' }}>
+            <div style={{ position: 'relative', width: '100%' }}>
+              {!modoBrillo && <div style={{ position: 'absolute', inset: '-40px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,230,118,0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />}
               <img
                 src={modoBrillo ? iterateTitleLogoLight : iterateTitleLogo}
                 alt="ITeRatE"
                 style={{
                   width: '100%',
                   height: 'auto',
-                  maxWidth: '520px',
+                  maxWidth: modoBrillo ? 'none' : '520px',
                   display: 'block',
                   filter: modoBrillo ? 'none' : 'drop-shadow(0 0 30px rgba(0,230,118,0.25))',
                   mixBlendMode: modoBrillo ? 'multiply' : 'normal',
