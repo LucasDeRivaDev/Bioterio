@@ -212,12 +212,13 @@ input[type=text], input[type=date], input[type=number], select, textarea {
 
 /* Texto del body */
 html.modo-claro body {
-  color: #1E293B;
+  background: #ffffff !important;
+  color: #000000;
 }
 
-/* Scrollbar — claro institucional */
-html.modo-claro ::-webkit-scrollbar-track { background: #EAF2F7; }
-html.modo-claro ::-webkit-scrollbar-thumb { background: #D8E3EA; border-radius: 3px; }
+/* Scrollbar — claro */
+html.modo-claro ::-webkit-scrollbar-track { background: #f1f1f1; }
+html.modo-claro ::-webkit-scrollbar-thumb { background: #cccccc; border-radius: 3px; }
 html.modo-claro ::-webkit-scrollbar-thumb:hover { background: #059669; }
 
 /* Selección de texto */
