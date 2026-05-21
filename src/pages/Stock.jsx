@@ -42,6 +42,9 @@ const CAT = {
   adultos:      { label: 'Adultos',             color: '#ff6b80', bg: 'rgba(255,61,87,0.08)',   borde: 'rgba(255,61,87,0.25)', icono: '🐁' },
 }
 
+// Orden fijo de categorías para visualización del stock
+const ORDEN_CAT = ['hembra_repro', 'macho_repro', 'crias', 'jovenes', 'adultos']
+
 function categoriaStock(edad, adultosDias) {
   if (edad < 42) return 'crias'
   if (edad < adultosDias) return 'jovenes'
@@ -2396,7 +2399,8 @@ if (subVista === 'sacrificios') {
               <div className="text-4xl mb-3">📦</div>
               <div className="text-sm">Sin jaulas en esta categoría</div>
             </div>
-          ) : (
+          ) : filtroCat !== 'todas' ? (
+            /* Vista filtrada por categoría — grid simple sin subtítulos */
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {bloquesFiltrados.map((b) => (
                 <BloqueJaula
@@ -2412,6 +2416,53 @@ if (subVista === 'sacrificios') {
                   reservadosHibridos={reservadosHibridos}
                 />
               ))}
+            </div>
+          ) : (
+            /* Vista "Todas" — agrupado por categoría con subtítulos separadores */
+            <div className="space-y-6">
+              {ORDEN_CAT.map((cat) => {
+                const bloquesCat = bloquesFiltrados.filter((b) => b.categoria === cat)
+                if (bloquesCat.length === 0) return null
+                const cfg = CAT[cat]
+                const totalAnimalesCat = bloquesCat.reduce((s, b) => s + b.total, 0)
+                return (
+                  <div key={cat}>
+                    {/* Separador de categoría */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="h-px flex-1" style={{ background: `${cfg.color}28` }} />
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs font-bold uppercase tracking-widest" style={{ color: cfg.color }}>
+                          {cfg.icono} {cfg.label}
+                        </span>
+                        <span
+                          className="text-xs font-mono px-2 py-0.5 rounded-full"
+                          style={{ background: `${cfg.color}14`, color: cfg.color, border: `1px solid ${cfg.color}30` }}
+                        >
+                          {totalAnimalesCat} · {bloquesCat.length} {bloquesCat.length === 1 ? 'jaula' : 'jaulas'}
+                        </span>
+                      </div>
+                      <div className="h-px flex-1" style={{ background: `${cfg.color}28` }} />
+                    </div>
+                    {/* Grid de la categoría */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                      {bloquesCat.map((b) => (
+                        <BloqueJaula
+                          key={b.id}
+                          bloque={b}
+                          camadas={camadas}
+                          onClick={modoSeleccion ? toggleSeleccion : setDetalle}
+                          onEliminar={(b) => setJaulaAEliminar(b)}
+                          modoSeleccion={modoSeleccion}
+                          seleccionada={seleccionadas.has(b.id)}
+                          animalesReservados={animalesReservados}
+                          jaulasReservadas={jaulasReservadas}
+                          reservadosHibridos={reservadosHibridos}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
         </>
