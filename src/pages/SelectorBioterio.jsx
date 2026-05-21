@@ -162,30 +162,6 @@ export default function SelectorBioterio() {
               )
             })}
 
-            {/* Botón de resumen global */}
-            <button
-              onClick={() => setBioterioActivo('resumen_ratones')}
-              className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all duration-150"
-              style={{
-                background: 'rgba(255,255,255,0.02)',
-                border: '1px solid rgba(64,196,255,0.2)',
-                color: '#c9d4e0',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(64,196,255,0.08)'
-                e.currentTarget.style.border = '1px solid rgba(64,196,255,0.45)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.02)'
-                e.currentTarget.style.border = '1px solid rgba(64,196,255,0.2)'
-              }}
-            >
-              <span className="text-sm">📊</span>
-              <span className="font-semibold text-sm" style={{ color: '#40c4ff' }}>
-                Ver resumen total de ratones
-              </span>
-              <span className="ml-auto text-xs" style={{ color: 'rgba(64,196,255,0.5)' }}>›</span>
-            </button>
           </div>
         </div>
 
