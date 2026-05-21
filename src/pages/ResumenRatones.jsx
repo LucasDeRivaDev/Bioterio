@@ -1,7 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useBioterioActivo, BIOTERIOS_CONFIG } from '../context/BioterioActivoContext'
-import { difDias, parseDate, hoy, formatFecha } from '../utils/calculos'
+import {
+  difDias, parseDate, hoy, formatFecha,
+  generarTareas, generarAlertasMachos,
+} from '../utils/calculos'
 import { BIO_RATONES } from '../utils/constants'
 import { generarId } from '../utils/storage'
 import { ArrowLeft, RefreshCw } from 'lucide-react'
@@ -9,19 +12,39 @@ import { ArrowLeft, RefreshCw } from 'lucide-react'
 // ── Grupos de ratones ─────────────────────────────────────────────────────────
 const GRUPOS = ['ratones_balbc', 'ratones_c57', 'ratones_hibridos']
 
-// Cutoffs de edad para ratones (días desde nacimiento) — desde BIO_RATONES
-const CUTOFF_JOVENES  = 42                              // 6 semanas — fijo para todas las especies
-const CUTOFF_ADULTOS  = BIO_RATONES.STOCK_ADULTOS_DIAS  // 10 semanas para ratones
+const CUTOFF_JOVENES = 42
+const CUTOFF_ADULTOS = BIO_RATONES.STOCK_ADULTOS_DIAS
 
-// Colores de colonia para badges
 const COLOR_COLONIA = {
-  ratones_balbc:    BIOTERIOS_CONFIG.ratones_balbc.color,    // #40c4ff
-  ratones_c57:      BIOTERIOS_CONFIG.ratones_c57.color,      // #a78bfa
-  ratones_hibridos: BIOTERIOS_CONFIG.ratones_hibridos.color, // #ffb300
+  ratones_balbc:    BIOTERIOS_CONFIG.ratones_balbc.color,
+  ratones_c57:      BIOTERIOS_CONFIG.ratones_c57.color,
+  ratones_hibridos: BIOTERIOS_CONFIG.ratones_hibridos.color,
 }
 
 const LABEL_CATEGORIA = {
   cria: 'Cría', joven: 'Joven', adulto_nr: 'Adulto NR', reproductor: 'Reproductor', otro: 'Otro',
+}
+
+// ── Config visual de notificaciones ──────────────────────────────────────────
+
+const TIPO_CONFIG = {
+  separacion:        { icono: '✂',  label: 'Separar pareja'      },
+  control_parto:     { icono: '🐣', label: 'Parto próximo'       },
+  destete:           { icono: '🍼', label: 'Destete'             },
+  renovacion_machos: { icono: '♻',  label: 'Renovar machos'      },
+  SACRIFICIO_F1:     { icono: '🗡', label: 'Sacrificio F1'       },
+  edad_limite:       { icono: '⚠',  label: 'Macho: límite edad'  },
+  edad_proxima:      { icono: '⏰', label: 'Macho: edad próxima'  },
+  baja_performance:  { icono: '📉', label: 'Baja performance'     },
+  nota:              { icono: '📝', label: 'Recordatorio'         },
+  apareamiento_plan: { icono: '🔗', label: 'Apareamiento plan.'   },
+}
+
+const PRIORIDAD_CONFIG = {
+  vencida: { label: 'Vencida', color: '#ff5252', bg: 'rgba(255,82,82,0.12)',    borde: 'rgba(255,82,82,0.35)',   orden: 0 },
+  hoy:     { label: 'Hoy',     color: '#ff9800', bg: 'rgba(255,152,0,0.12)',    borde: 'rgba(255,152,0,0.35)',   orden: 1 },
+  proxima: { label: 'Próxima', color: '#ffb300', bg: 'rgba(255,179,0,0.10)',    borde: 'rgba(255,179,0,0.30)',   orden: 2 },
+  info:    { label: 'Info',    color: '#8a9bb0', bg: 'rgba(138,155,176,0.08)', borde: 'rgba(138,155,176,0.25)', orden: 3 },
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -39,91 +62,77 @@ function clasificarEdad(dias) {
 }
 
 function stockCamada(camada, sacrificios, entregas) {
-  const sacCount = sacrificios
-    .filter((s) => s.camada_id === camada.id)
-    .reduce((sum, s) => sum + s.cantidad, 0)
-  const entCount = entregas
-    .filter((e) => e.camada_id === camada.id)
-    .reduce((sum, e) => sum + e.cantidad, 0)
+  const sacCount = sacrificios.filter((s) => s.camada_id === camada.id).reduce((sum, s) => sum + s.cantidad, 0)
+  const entCount = entregas.filter((e) => e.camada_id === camada.id).reduce((sum, e) => sum + e.cantidad, 0)
   const base = camada.total_destetados ?? camada.total_crias ?? 0
   return Math.max(0, base - sacCount - entCount)
 }
 
-// Calcula el desglose de stock por categoría de edad para un grupo
-function calcularStockGrupo(jaulas, camadas, sacrificios, entregas, animales = []) {
+function calcularStockGrupo(jaulas, camadas, sacrificios, entregas, animalesActivos = []) {
   const result = {
     crias: 0, jovenes: 0, adultos: 0, sin_fecha: 0, total: 0, jaulas: 0,
     jaulasCrias: 0, jaulasJovenes: 0, jaulasAdultos: 0, jaulasSin_fecha: 0,
   }
-
   const camadasMap = Object.fromEntries(camadas.map((c) => [c.id, c]))
   const jaulasIds  = new Set(jaulas.map((j) => j.camada_id))
 
-  // ── Jaulas reales ──
   for (const jaula of jaulas) {
     const camada = camadasMap[jaula.camada_id]
     if (!camada || camada.incluir_en_stock === false) continue
     const edad = edadDias(camada.fecha_nacimiento)
     const cat  = clasificarEdad(edad)
-    result[cat] += jaula.total
-    result.total += jaula.total
-    result.jaulas++
+    result[cat] += jaula.total; result.total += jaula.total; result.jaulas++
     result[`jaulas${cat.charAt(0).toUpperCase()}${cat.slice(1)}`]++
   }
 
-  // ── Bloques virtuales (camadas con destete pero sin jaula en DB) ──
   for (const camada of camadas) {
-    if (!camada.fecha_destete) continue
-    if (camada.failure_flag) continue
-    if (camada.incluir_en_stock === false) continue
+    if (!camada.fecha_destete || camada.failure_flag || camada.incluir_en_stock === false) continue
     if (jaulasIds.has(camada.id)) continue
-
     const stock = stockCamada(camada, sacrificios, entregas)
     if (stock <= 0) continue
-
     const edad = edadDias(camada.fecha_nacimiento)
     const cat  = clasificarEdad(edad)
-    result[cat] += stock
-    result.total += stock
-    result.jaulas++
+    result[cat] += stock; result.total += stock; result.jaulas++
     result[`jaulas${cat.charAt(0).toUpperCase()}${cat.slice(1)}`]++
   }
 
-  // ── Reproductores activos → siempre cuentan como adultos ──
-  for (const animal of animales) {
-    result.adultos += 1
-    result.total   += 1
+  for (const animal of animalesActivos) {
+    result.adultos += 1; result.total += 1
     const jaulaVacia = animal.sexo === 'hembra' && animal.estado === 'en_apareamiento'
-    if (!jaulaVacia) {
-      result.jaulas++
-      result.jaulasAdultos++
-    }
+    if (!jaulaVacia) { result.jaulas++; result.jaulasAdultos++ }
   }
-
   return result
 }
 
-// ── Sub-componente: badge de colonia ─────────────────────────────────────────
+// Lee planes de apareamiento de localStorage para un bioterio
+function leerPlanesApareamiento(bioId) {
+  try { return JSON.parse(localStorage.getItem(`appMosca_apareamientos_${bioId}`) || '[]') }
+  catch { return [] }
+}
+
+// Lee notas pendientes de localStorage para un bioterio
+function leerNotasPendientes(bioId) {
+  const hoyStr = hoy()
+  try {
+    const todas = JSON.parse(localStorage.getItem(`appMosca_notas_${bioId}`) || '[]')
+    return todas.filter((n) => !n.completada && n.fecha <= hoyStr)
+  } catch { return [] }
+}
+
+// ── Sub-componentes ───────────────────────────────────────────────────────────
 
 function OrigenBadge({ bioterioId }) {
   const cfg = BIOTERIOS_CONFIG[bioterioId]
   if (!cfg) return null
   return (
     <span
-      className="text-xs font-mono font-semibold px-2 py-0.5 rounded-full"
-      style={{
-        background: `${cfg.color}18`,
-        border: `1px solid ${cfg.color}40`,
-        color: cfg.color,
-        whiteSpace: 'nowrap',
-      }}
+      className="text-xs font-mono font-semibold px-2 py-0.5 rounded-full shrink-0"
+      style={{ background: `${cfg.color}18`, border: `1px solid ${cfg.color}40`, color: cfg.color, whiteSpace: 'nowrap' }}
     >
       {cfg.labelCorto}
     </span>
   )
 }
-
-// ── Sub-componente: menú de confirmación de restauración ─────────────────────
 
 function MenuRestaurar({ labelRestaurar, onRestaurar, onSoloBorrar, onCerrar }) {
   return (
@@ -131,8 +140,7 @@ function MenuRestaurar({ labelRestaurar, onRestaurar, onSoloBorrar, onCerrar }) 
       className="absolute right-0 top-8 z-50 rounded-xl overflow-hidden shadow-2xl"
       style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(30,51,82,0.9)', minWidth: '230px' }}
     >
-      <button
-        onClick={onRestaurar}
+      <button onClick={onRestaurar}
         className="w-full text-left px-4 py-3 text-sm transition-colors"
         style={{ color: '#e2e8f0', borderBottom: '1px solid rgba(30,51,82,0.8)', cursor: 'pointer', background: 'transparent' }}
         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,230,118,0.07)'}
@@ -141,8 +149,7 @@ function MenuRestaurar({ labelRestaurar, onRestaurar, onSoloBorrar, onCerrar }) 
         <div className="font-semibold" style={{ color: '#00e676' }}>{labelRestaurar}</div>
         <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>El animal vuelve a su estado anterior</div>
       </button>
-      <button
-        onClick={onSoloBorrar}
+      <button onClick={onSoloBorrar}
         className="w-full text-left px-4 py-3 text-sm transition-colors"
         style={{ color: '#e2e8f0', cursor: 'pointer', background: 'transparent' }}
         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,61,87,0.07)'}
@@ -151,8 +158,7 @@ function MenuRestaurar({ labelRestaurar, onRestaurar, onSoloBorrar, onCerrar }) 
         <div className="font-semibold" style={{ color: '#ff5252' }}>✕ Solo borrar registro</div>
         <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>Borra solo el registro, sin restaurar</div>
       </button>
-      <button
-        onClick={onCerrar}
+      <button onClick={onCerrar}
         className="w-full text-left px-4 py-3 text-sm transition-colors"
         style={{ color: '#4a5f7a', borderTop: '1px solid rgba(30,51,82,0.6)', cursor: 'pointer', background: 'transparent' }}
         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(74,95,122,0.06)'}
@@ -169,21 +175,23 @@ function MenuRestaurar({ labelRestaurar, onRestaurar, onSoloBorrar, onCerrar }) 
 export default function ResumenRatones() {
   const { limpiarBioterio, setBioterioActivo } = useBioterioActivo()
 
-  const [datos,    setDatos]    = useState(null)   // stock calculado por grupo
-  const [rawData,  setRawData]  = useState(null)   // datos crudos para sacrificios
+  const [datos,    setDatos]    = useState(null)
+  const [rawData,  setRawData]  = useState(null)
   const [cargando, setCargando] = useState(true)
   const [error,    setError]    = useState(null)
 
-  // ── Estado de la sección sacrificios ──────────────────────────────────────
+  // Sacrificios
   const [filtroColonia, setFiltroColonia] = useState('todas')
   const [menuAbierto,   setMenuAbierto]   = useState(null)
   const [cargandoSac,   setCargandoSac]   = useState(null)
+
+  // Notificaciones
+  const [filtroNotif, setFiltroNotif] = useState('todas')
 
   async function cargarDatos() {
     setCargando(true)
     setError(null)
     try {
-      // Fetch paralelo para los 3 grupos
       const resultados = await Promise.all(
         GRUPOS.map((gid) =>
           Promise.all([
@@ -191,12 +199,10 @@ export default function ResumenRatones() {
             supabase.from('camadas').select('*').eq('bioterio_id', gid),
             supabase.from('sacrificios').select('*').eq('bioterio_id', gid),
             supabase.from('entregas').select('*').eq('bioterio_id', gid),
-            // Solo activos para el cálculo de stock
             supabase.from('animales')
-              .select('id, sexo, estado, fecha_nacimiento')
+              .select('id, sexo, estado, fecha_nacimiento, codigo, id_madre, id_padre')
               .eq('bioterio_id', gid)
               .in('estado', ['activo', 'en_apareamiento', 'en_cria']),
-            // Todos (incluye fallecidos) para lookup de sacrificios
             supabase.from('animales')
               .select('id, codigo, sexo, estado, id_madre, id_padre')
               .eq('bioterio_id', gid),
@@ -212,16 +218,14 @@ export default function ResumenRatones() {
           { data: entregas }, { data: animalesActivos }, { data: animalesTodos },
         ] = resultados[i]
 
-        // Stock calculado (para la tarjeta de totales)
         nuevosDatos[gid] = calcularStockGrupo(
           jaulas ?? [], camadas ?? [], sacrificios ?? [], entregas ?? [], animalesActivos ?? []
         )
-
-        // Datos crudos (para la sección de sacrificios)
         nuevoRaw[gid] = {
-          sacrificios:   sacrificios ?? [],
-          camadas:       camadas ?? [],
-          animalesTodos: animalesTodos ?? [],
+          sacrificios:     sacrificios     ?? [],
+          camadas:         camadas         ?? [],
+          animalesActivos: animalesActivos ?? [],
+          animalesTodos:   animalesTodos   ?? [],
         }
       })
 
@@ -243,46 +247,109 @@ export default function ResumenRatones() {
     return GRUPOS.reduce(
       (acc, gid) => {
         const g = datos[gid]
-        acc.crias          += g.crias
-        acc.jovenes        += g.jovenes
-        acc.adultos        += g.adultos
-        acc.sin_fecha      += g.sin_fecha
-        acc.total          += g.total
-        acc.jaulas         += g.jaulas
-        acc.jaulasCrias    += g.jaulasCrias
-        acc.jaulasJovenes  += g.jaulasJovenes
-        acc.jaulasAdultos  += g.jaulasAdultos
-        acc.jaulasSin_fecha += g.jaulasSin_fecha
+        acc.crias   += g.crias;   acc.jovenes += g.jovenes; acc.adultos += g.adultos
+        acc.sin_fecha += g.sin_fecha; acc.total += g.total; acc.jaulas  += g.jaulas
+        acc.jaulasCrias += g.jaulasCrias; acc.jaulasJovenes += g.jaulasJovenes
+        acc.jaulasAdultos += g.jaulasAdultos; acc.jaulasSin_fecha += g.jaulasSin_fecha
         return acc
       },
-      {
-        crias: 0, jovenes: 0, adultos: 0, sin_fecha: 0, total: 0, jaulas: 0,
-        jaulasCrias: 0, jaulasJovenes: 0, jaulasAdultos: 0, jaulasSin_fecha: 0,
-      }
+      { crias:0, jovenes:0, adultos:0, sin_fecha:0, total:0, jaulas:0,
+        jaulasCrias:0, jaulasJovenes:0, jaulasAdultos:0, jaulasSin_fecha:0 }
     )
   }, [datos])
 
-  // ── Sacrificios enriquecidos y unificados ─────────────────────────────────
+  // ── Notificaciones unificadas ─────────────────────────────────────────────
+  const notificaciones = useMemo(() => {
+    if (!rawData) return []
+    const hoyStr  = hoy()
+    const lista   = []
+
+    GRUPOS.forEach((gid) => {
+      const { camadas, animalesActivos } = rawData[gid]
+
+      // 1. Tareas reproductivas (separación, parto, destete)
+      generarTareas(camadas, animalesActivos, BIO_RATONES).forEach((t) => {
+        lista.push({ ...t, bioterioId: gid })
+      })
+
+      // 2. Alertas de machos (edad, performance)
+      generarAlertasMachos(animalesActivos, camadas).forEach((a) => {
+        lista.push({
+          id:          `macho-${a.machoId}-${gid}`,
+          tipo:        a.tipo,
+          prioridad:   a.tipo === 'edad_limite' ? 'vencida' : 'proxima',
+          descripcion: a.mensaje,
+          detalle:     a.detalle ?? null,
+          fecha:       null,
+          bioterioId:  gid,
+        })
+      })
+
+      // 3. Notas pendientes del calendario (localStorage)
+      leerNotasPendientes(gid).forEach((n) => {
+        const prioridad = n.fecha < hoyStr ? 'vencida' : n.fecha === hoyStr ? 'hoy' : 'proxima'
+        lista.push({
+          id:          `nota-${n.id}`,
+          tipo:        'nota',
+          prioridad,
+          descripcion: n.titulo,
+          detalle:     n.descripcion || null,
+          fecha:       n.fecha,
+          bioterioId:  gid,
+        })
+      })
+
+      // 4. Planes de apareamiento próximos ≤7 días (localStorage)
+      leerPlanesApareamiento(gid).forEach((p) => {
+        if (!p.fechaPlanificada) return
+        const diasHasta = difDias(parseDate(hoyStr), parseDate(p.fechaPlanificada))
+        if (diasHasta < 0 || diasHasta > 7) return
+        lista.push({
+          id:          `plan-${p.id ?? p.fechaPlanificada}-${gid}`,
+          tipo:        'apareamiento_plan',
+          prioridad:   diasHasta === 0 ? 'hoy' : 'proxima',
+          descripcion: `Apareamiento planificado — ${formatFecha(p.fechaPlanificada)}`,
+          detalle:     p.observaciones || null,
+          fecha:       p.fechaPlanificada,
+          bioterioId:  gid,
+        })
+      })
+    })
+
+    // Ordenar: vencida → hoy → proxima → info
+    lista.sort((a, b) => {
+      const oa = PRIORIDAD_CONFIG[a.prioridad]?.orden ?? 9
+      const ob = PRIORIDAD_CONFIG[b.prioridad]?.orden ?? 9
+      return oa !== ob ? oa - ob : (a.fecha ?? '').localeCompare(b.fecha ?? '')
+    })
+
+    return lista
+  }, [rawData])
+
+  const notifFiltradas = useMemo(() =>
+    filtroNotif === 'todas' ? notificaciones : notificaciones.filter((n) => n.bioterioId === filtroNotif),
+  [notificaciones, filtroNotif])
+
+  const notifPorColonia = useMemo(() => {
+    const map = {}
+    GRUPOS.forEach((gid) => { map[gid] = 0 })
+    notificaciones.forEach((n) => { map[n.bioterioId] = (map[n.bioterioId] ?? 0) + 1 })
+    return map
+  }, [notificaciones])
+
+  // ── Sacrificios enriquecidos ──────────────────────────────────────────────
   const sacEnriquecidos = useMemo(() => {
     if (!rawData) return []
-
-    // Aplanar todos los animales de los 3 grupos para lookup
     const animalesMap = {}
     GRUPOS.forEach((gid) => {
       ;(rawData[gid].animalesTodos ?? []).forEach((a) => { animalesMap[a.id] = a })
     })
-
     const lista = []
     GRUPOS.forEach((gid) => {
       const { sacrificios, camadas } = rawData[gid]
       const camadasMap = Object.fromEntries(camadas.map((c) => [c.id, c]))
-
       sacrificios.forEach((s) => {
-        // Lookup según tipo
-        let animalInfo = null
-        let madre = null
-        let padre = null
-
+        let animalInfo = null, madre = null, padre = null
         if (s.categoria === 'reproductor' && s.animal_id) {
           animalInfo = animalesMap[s.animal_id] ?? null
         } else if (s.camada_id) {
@@ -292,69 +359,33 @@ export default function ResumenRatones() {
             padre = camada.id_padre ? animalesMap[camada.id_padre] ?? null : null
           }
         }
-
         lista.push({ ...s, animalInfo, madre, padre, bioterioId: gid })
       })
     })
-
-    // Ordenar por fecha descendente
     lista.sort((a, b) => (b.fecha ?? '').localeCompare(a.fecha ?? ''))
     return lista
   }, [rawData])
 
-  // Aplica filtro de colonia
   const sacFiltrados = useMemo(() =>
-    filtroColonia === 'todas'
-      ? sacEnriquecidos
-      : sacEnriquecidos.filter((s) => s.bioterioId === filtroColonia),
+    filtroColonia === 'todas' ? sacEnriquecidos : sacEnriquecidos.filter((s) => s.bioterioId === filtroColonia),
   [sacEnriquecidos, filtroColonia])
 
-  // Total de animales sacrificados por colonia (para tabs)
-  const totalPorColonia = useMemo(() => {
-    const map = {}
-    GRUPOS.forEach((gid) => { map[gid] = 0 })
-    sacEnriquecidos.forEach((s) => { map[s.bioterioId] = (map[s.bioterioId] ?? 0) + s.cantidad })
-    return map
-  }, [sacEnriquecidos])
-
-  // ── Restaurar sacrificio — Supabase directo (fuera del BiotheriumContext) ──
+  // ── Restaurar sacrificio ─────────────────────────────────────────────────
   async function handleRestaurarSac(sacrificio, restaurar) {
     setCargandoSac(sacrificio.id)
     setMenuAbierto(null)
     try {
-      // 1. Borrar el registro de sacrificio
       const { error: errDel } = await supabase.from('sacrificios').delete().eq('id', sacrificio.id)
       if (errDel) { console.error('Error al borrar sacrificio:', errDel); return }
-
       if (restaurar) {
         if (sacrificio.categoria === 'reproductor' && sacrificio.animal_id) {
-          // 2a. Restaurar reproductor: volver a activo
-          const { error: errAnimal } = await supabase.from('animales').update({
-            estado: 'activo',
-            fecha_sacrificio: null,
-            motivo_sacrificio: null,
-          }).eq('id', sacrificio.animal_id)
-          if (errAnimal) console.error('Error al restaurar reproductor:', errAnimal)
+          await supabase.from('animales').update({ estado: 'activo', fecha_sacrificio: null, motivo_sacrificio: null }).eq('id', sacrificio.animal_id)
         } else if (sacrificio.camada_id && sacrificio.cantidad > 0) {
-          // 2b. Restaurar stock: recrear jaula con los animales sacrificados
-          const { error: errJaula } = await supabase.from('jaulas').insert({
-            id: generarId(),
-            camada_id: sacrificio.camada_id,
-            total: sacrificio.cantidad,
-            machos: null,
-            hembras: null,
-            notas: 'Sacrificio revertido',
-            bioterio_id: sacrificio.bioterio_id,
-          })
-          if (errJaula) console.error('Error al recrear jaula:', errJaula)
+          await supabase.from('jaulas').insert({ id: generarId(), camada_id: sacrificio.camada_id, total: sacrificio.cantidad, machos: null, hembras: null, notas: 'Sacrificio revertido', bioterio_id: sacrificio.bioterio_id })
         }
       }
-
-      // Refrescar datos
       await cargarDatos()
-    } finally {
-      setCargandoSac(null)
-    }
+    } finally { setCargandoSac(null) }
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -365,38 +396,26 @@ export default function ResumenRatones() {
       style={{ background: '#050810' }}
       onClick={() => setMenuAbierto(null)}
     >
-
       {/* Header */}
-      <div
-        className="flex items-center gap-4 px-6 py-4 shrink-0"
-        style={{ borderBottom: '1px solid rgba(64,196,255,0.15)', background: 'rgba(13,21,40,0.6)' }}
-      >
-        <button
-          onClick={limpiarBioterio}
+      <div className="flex items-center gap-4 px-6 py-4 shrink-0"
+        style={{ borderBottom: '1px solid rgba(64,196,255,0.15)', background: 'rgba(13,21,40,0.6)' }}>
+        <button onClick={limpiarBioterio}
           className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-mono transition-colors"
           style={{ background: 'rgba(64,196,255,0.07)', border: '1px solid rgba(64,196,255,0.2)', color: '#40c4ff' }}
           onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(64,196,255,0.14)' }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(64,196,255,0.07)' }}
         >
-          <ArrowLeft size={14} />
-          Volver al selector
+          <ArrowLeft size={14} /> Volver al selector
         </button>
-
         <div className="flex-1">
           <h1 className="font-bold text-white text-base">Resumen total de ratones</h1>
-          <p className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
-            Balb/C · C57 · Híbridos — Stock unificado
-          </p>
+          <p className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Balb/C · C57 · Híbridos — Stock · Notificaciones · Sacrificios</p>
         </div>
-
-        <button
-          onClick={cargarDatos}
-          disabled={cargando}
+        <button onClick={cargarDatos} disabled={cargando}
           className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono transition-colors"
           style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a', cursor: cargando ? 'not-allowed' : 'pointer' }}
         >
-          <RefreshCw size={12} className={cargando ? 'animate-spin' : ''} />
-          Actualizar
+          <RefreshCw size={12} className={cargando ? 'animate-spin' : ''} /> Actualizar
         </button>
       </div>
 
@@ -414,15 +433,13 @@ export default function ResumenRatones() {
           <div className="flex items-center justify-center gap-3 py-16">
             <span className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin"
               style={{ borderColor: '#40c4ff', borderTopColor: 'transparent' }} />
-            <span className="text-sm font-mono" style={{ color: '#4a5f7a' }}>
-              Cargando datos de las 3 colonias...
-            </span>
+            <span className="text-sm font-mono" style={{ color: '#4a5f7a' }}>Cargando datos de las 3 colonias...</span>
           </div>
         )}
 
         {totales && (
           <>
-            {/* ── Tarjeta total global de stock ── */}
+            {/* ── STOCK TOTAL ── */}
             <div className="rounded-2xl overflow-hidden"
               style={{ background: 'rgba(13,21,40,0.8)', border: '1.5px solid rgba(64,196,255,0.3)', boxShadow: '0 0 30px rgba(64,196,255,0.06)' }}>
               <div className="px-6 py-4 flex items-center gap-3"
@@ -434,9 +451,7 @@ export default function ResumenRatones() {
                     {totales.jaulas} {totales.jaulas === 1 ? 'jaula' : 'jaulas'} · Balb/C + C57 + Híbridos
                   </div>
                 </div>
-                <div className="text-3xl font-bold font-mono" style={{ color: '#40c4ff' }}>
-                  {totales.total}
-                </div>
+                <div className="text-3xl font-bold font-mono" style={{ color: '#40c4ff' }}>{totales.total}</div>
               </div>
               <div className="px-6 py-5 grid grid-cols-3 gap-3">
                 <TarjetaEdad label="Crías"   subtitulo="< 6 semanas"    icono="🐣" cantidad={totales.crias}   jaulas={totales.jaulasCrias}   color="#00e676" />
@@ -447,32 +462,114 @@ export default function ResumenRatones() {
                 <div className="px-6 py-3 flex items-center gap-2 text-xs font-mono"
                   style={{ borderTop: '1px solid rgba(255,255,255,0.05)', color: '#4a5f7a' }}>
                   <span>⚠</span>
-                  <span>{totales.sin_fecha} animales sin fecha de nacimiento registrada — no clasificados por edad</span>
+                  <span>{totales.sin_fecha} animales sin fecha de nacimiento — no clasificados por edad</span>
                 </div>
               )}
             </div>
 
-            {/* ── Distribución por colonia ── */}
+            {/* ── DISTRIBUCIÓN POR COLONIA ── */}
             <div>
-              <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#4a5f7a' }}>
-                Distribución por colonia
-              </h2>
+              <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#4a5f7a' }}>Distribución por colonia</h2>
               <div className="space-y-3">
                 {GRUPOS.map((gid) => (
-                  <FilaColonia
-                    key={gid}
-                    cfg={BIOTERIOS_CONFIG[gid]}
-                    grupo={datos[gid]}
-                    totalGlobal={totales.total}
-                    onEntrar={() => setBioterioActivo(gid)}
-                  />
+                  <FilaColonia key={gid} cfg={BIOTERIOS_CONFIG[gid]} grupo={datos[gid]} totalGlobal={totales.total} onEntrar={() => setBioterioActivo(gid)} />
                 ))}
               </div>
             </div>
 
-            {/* ── Historial unificado de sacrificios ── */}
+            {/* ── PANEL DE NOTIFICACIONES UNIFICADO ── */}
             <div>
-              {/* Encabezado de sección */}
+              {/* Header sección */}
+              <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-5 rounded-full" style={{ background: '#ffb300' }} />
+                  <span className="text-xs font-bold uppercase tracking-widest" style={{ color: '#ffb300' }}>
+                    🔔 Notificaciones
+                  </span>
+                  {notificaciones.length > 0 && (
+                    <span className="text-xs font-mono px-2 py-0.5 rounded-full"
+                      style={{ background: 'rgba(255,179,0,0.12)', color: '#ffb300', border: '1px solid rgba(255,179,0,0.3)' }}>
+                      {notificaciones.length} pendientes
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Filtros */}
+              <div className="flex gap-2 flex-wrap mb-4">
+                {[
+                  { id: 'todas', label: 'Todas', color: '#8a9bb0', count: notificaciones.length },
+                  ...GRUPOS.map((gid) => ({
+                    id: gid, label: BIOTERIOS_CONFIG[gid].labelCorto,
+                    color: COLOR_COLONIA[gid], count: notifPorColonia[gid],
+                  })),
+                ].map(({ id, label, color, count }) => (
+                  <button key={id} onClick={() => setFiltroNotif(id)}
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+                    style={filtroNotif === id
+                      ? { background: `${color}18`, border: `1px solid ${color}50`, color }
+                      : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }}
+                  >
+                    {label}
+                    <span className="ml-1.5 font-mono opacity-60">({count})</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Lista de notificaciones */}
+              {notifFiltradas.length === 0 ? (
+                <div className="rounded-2xl p-10 text-center"
+                  style={{ background: 'rgba(255,179,0,0.03)', border: '1px dashed rgba(255,179,0,0.2)' }}>
+                  <div className="text-2xl mb-2">✅</div>
+                  <div className="font-semibold text-sm" style={{ color: '#ffb300' }}>
+                    {notificaciones.length === 0 ? 'Sin notificaciones pendientes' : 'Sin notificaciones en esta colonia'}
+                  </div>
+                  <div className="text-xs mt-1" style={{ color: '#4a5f7a' }}>Todas las colonias están al día</div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {notifFiltradas.map((n) => {
+                    const pCfg = PRIORIDAD_CONFIG[n.prioridad] ?? PRIORIDAD_CONFIG.info
+                    const tCfg = TIPO_CONFIG[n.tipo] ?? { icono: '🔔', label: n.tipo }
+                    return (
+                      <div key={n.id}
+                        className="rounded-xl px-4 py-3 flex items-start gap-3"
+                        style={{ background: 'rgba(13,21,40,0.7)', border: `1px solid ${pCfg.borde}` }}
+                      >
+                        {/* Icono de tipo */}
+                        <span className="text-lg shrink-0 mt-0.5">{tCfg.icono}</span>
+
+                        {/* Contenido */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-sm text-white">{n.descripcion}</span>
+                          </div>
+                          {n.detalle && (
+                            <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>{n.detalle}</div>
+                          )}
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <span className="text-xs font-mono px-1.5 py-0.5 rounded"
+                              style={{ background: pCfg.bg, color: pCfg.color, border: `1px solid ${pCfg.borde}` }}>
+                              {pCfg.label}
+                            </span>
+                            <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{tCfg.label}</span>
+                            {n.fecha && (
+                              <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>· {formatFecha(n.fecha)}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Badge de colonia */}
+                        <OrigenBadge bioterioId={n.bioterioId} />
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* ── SACRIFICIOS UNIFICADOS ── */}
+            <div>
               <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
                 <div className="flex items-center gap-2">
                   <div className="w-1 h-5 rounded-full" style={{ background: '#ff6b80' }} />
@@ -486,46 +583,32 @@ export default function ResumenRatones() {
                 </div>
               </div>
 
-              {/* Filtros por colonia */}
+              {/* Filtros sacrificios */}
               <div className="flex gap-2 flex-wrap mb-4">
                 {[
-                  { id: 'todas', label: 'Todos', color: '#8a9bb0' },
+                  { id: 'todas', label: 'Todos', color: '#8a9bb0', count: sacEnriquecidos.length },
                   ...GRUPOS.map((gid) => ({
-                    id: gid,
-                    label: BIOTERIOS_CONFIG[gid].labelCorto,
-                    color: COLOR_COLONIA[gid],
+                    id: gid, label: BIOTERIOS_CONFIG[gid].labelCorto,
+                    color: COLOR_COLONIA[gid], count: sacEnriquecidos.filter(s => s.bioterioId === gid).length,
                   })),
-                ].map(({ id, label, color }) => {
-                  const activo = filtroColonia === id
-                  const count = id === 'todas'
-                    ? sacEnriquecidos.length
-                    : sacEnriquecidos.filter(s => s.bioterioId === id).length
-                  return (
-                    <button
-                      key={id}
-                      onClick={() => setFiltroColonia(id)}
-                      className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
-                      style={activo
-                        ? { background: `${color}18`, border: `1px solid ${color}50`, color }
-                        : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }}
-                    >
-                      {label}
-                      <span className="ml-1.5 font-mono opacity-60">({count})</span>
-                    </button>
-                  )
-                })}
+                ].map(({ id, label, color, count }) => (
+                  <button key={id} onClick={() => setFiltroColonia(id)}
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+                    style={filtroColonia === id
+                      ? { background: `${color}18`, border: `1px solid ${color}50`, color }
+                      : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }}
+                  >
+                    {label} <span className="ml-1.5 font-mono opacity-60">({count})</span>
+                  </button>
+                ))}
               </div>
 
-              {/* Tabla de sacrificios */}
               {sacFiltrados.length === 0 ? (
                 <div className="rounded-2xl p-10 text-center"
                   style={{ background: 'rgba(255,107,128,0.04)', border: '1px dashed rgba(255,107,128,0.2)' }}>
                   <div className="text-2xl mb-2">📋</div>
                   <div className="font-semibold text-sm" style={{ color: '#ff6b80' }}>
                     {sacEnriquecidos.length === 0 ? 'Sin sacrificios registrados' : 'Sin sacrificios en esta colonia'}
-                  </div>
-                  <div className="text-xs mt-1" style={{ color: '#4a5f7a' }}>
-                    Los sacrificios se registran desde Stock dentro de cada colonia
                   </div>
                 </div>
               ) : (
@@ -538,8 +621,7 @@ export default function ResumenRatones() {
                       <thead>
                         <tr style={{ borderBottom: '1px solid rgba(30,51,82,0.6)', background: 'rgba(0,0,0,0.1)' }}>
                           {['Fecha', 'Colonia', 'Animal / Grupo', 'Cant.', 'Categoría', 'Notas', ''].map((h, i) => (
-                            <th key={i} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest"
-                              style={{ color: '#4a5f7a' }}>{h}</th>
+                            <th key={i} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -548,18 +630,8 @@ export default function ResumenRatones() {
                           const enProceso = cargandoSac === s.id
                           return (
                             <tr key={s.id} style={{ borderBottom: '1px solid rgba(30,51,82,0.4)' }}>
-
-                              {/* Fecha */}
-                              <td className="px-4 py-3 font-mono text-xs" style={{ color: '#8a9bb0', whiteSpace: 'nowrap' }}>
-                                {formatFecha(s.fecha)}
-                              </td>
-
-                              {/* Colonia */}
-                              <td className="px-4 py-3">
-                                <OrigenBadge bioterioId={s.bioterioId} />
-                              </td>
-
-                              {/* Animal o progenitores */}
+                              <td className="px-4 py-3 font-mono text-xs" style={{ color: '#8a9bb0', whiteSpace: 'nowrap' }}>{formatFecha(s.fecha)}</td>
+                              <td className="px-4 py-3"><OrigenBadge bioterioId={s.bioterioId} /></td>
                               <td className="px-4 py-3">
                                 {s.categoria === 'reproductor' && s.animalInfo ? (
                                   <div>
@@ -578,45 +650,27 @@ export default function ResumenRatones() {
                                   <span style={{ color: '#4a5f7a' }}>—</span>
                                 )}
                               </td>
-
-                              {/* Cantidad */}
-                              <td className="px-4 py-3 font-mono font-bold text-lg" style={{ color: '#ff6b80' }}>
-                                {s.cantidad}
-                              </td>
-
-                              {/* Categoría */}
+                              <td className="px-4 py-3 font-mono font-bold text-lg" style={{ color: '#ff6b80' }}>{s.cantidad}</td>
                               <td className="px-4 py-3 text-xs" style={{ color: '#8a9bb0' }}>
                                 {s.categoria ? (LABEL_CATEGORIA[s.categoria] ?? s.categoria) : '—'}
                               </td>
-
-                              {/* Notas */}
-                              <td className="px-4 py-3 text-xs" style={{ color: '#4a5f7a', maxWidth: '180px' }}>
-                                {s.notas ?? '—'}
-                              </td>
-
-                              {/* Botón Restaurar */}
+                              <td className="px-4 py-3 text-xs" style={{ color: '#4a5f7a', maxWidth: '180px' }}>{s.notas ?? '—'}</td>
                               <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                                 <div className="relative inline-block">
                                   <button
                                     onClick={() => { if (!enProceso) setMenuAbierto(prev => prev === s.id ? null : s.id) }}
                                     className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
                                     style={{
-                                      background: 'rgba(0,230,118,0.08)',
-                                      border: '1px solid rgba(0,230,118,0.3)',
+                                      background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.3)',
                                       color: enProceso ? '#4a5f7a' : '#00e676',
-                                      cursor: enProceso ? 'default' : 'pointer',
-                                      whiteSpace: 'nowrap',
+                                      cursor: enProceso ? 'default' : 'pointer', whiteSpace: 'nowrap',
                                     }}
                                   >
                                     {enProceso ? '...' : '↩ Restaurar'}
                                   </button>
                                   {menuAbierto === s.id && (
                                     <MenuRestaurar
-                                      labelRestaurar={
-                                        s.categoria === 'reproductor'
-                                          ? '↩ Restaurar como activo'
-                                          : '↩ Restaurar al stock'
-                                      }
+                                      labelRestaurar={s.categoria === 'reproductor' ? '↩ Restaurar como activo' : '↩ Restaurar al stock'}
                                       onRestaurar={() => handleRestaurarSac(s, true)}
                                       onSoloBorrar={() => handleRestaurarSac(s, false)}
                                       onCerrar={() => setMenuAbierto(null)}
@@ -634,13 +688,13 @@ export default function ResumenRatones() {
               )}
             </div>
 
-            {/* ── Nota de uso ── */}
+            {/* ── NOTA DE USO ── */}
             <div className="rounded-xl px-5 py-4 text-xs font-mono space-y-1"
               style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', color: '#4a5f7a' }}>
               <div className="font-semibold" style={{ color: '#6a8099' }}>Nota</div>
-              <div>Los animales siguen perteneciendo a sus colonias originales.</div>
-              <div>Este resumen unifica visualmente stock y sacrificios de las 3 colonias.</div>
-              <div>Cliqueá una colonia para entrar y gestionar sus animales.</div>
+              <div>Las notificaciones también siguen apareciendo dentro de cada colonia individual.</div>
+              <div>Este panel las centraliza para ver el estado global sin entrar a cada una.</div>
+              <div>Cliqueá en una colonia para gestionar sus animales.</div>
             </div>
           </>
         )}
@@ -657,11 +711,7 @@ function TarjetaEdad({ label, subtitulo, icono, cantidad, jaulas, color }) {
       style={{ background: `${color}09`, border: `1px solid ${color}25` }}>
       <span className="text-xl">{icono}</span>
       <div className="text-2xl font-bold font-mono" style={{ color }}>{cantidad}</div>
-      {jaulas > 0 && (
-        <div className="text-xs font-mono" style={{ color: `${color}99` }}>
-          {jaulas} {jaulas === 1 ? 'jaula' : 'jaulas'}
-        </div>
-      )}
+      {jaulas > 0 && <div className="text-xs font-mono" style={{ color: `${color}99` }}>{jaulas} {jaulas === 1 ? 'jaula' : 'jaulas'}</div>}
       <div className="text-xs font-semibold" style={{ color: '#c9d4e0' }}>{label}</div>
       <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{subtitulo}</div>
     </div>
@@ -671,28 +721,23 @@ function TarjetaEdad({ label, subtitulo, icono, cantidad, jaulas, color }) {
 function FilaColonia({ cfg, grupo, totalGlobal, onEntrar }) {
   const pct = totalGlobal > 0 ? Math.round((grupo.total / totalGlobal) * 100) : 0
   return (
-    <div className="rounded-xl overflow-hidden"
-      style={{ background: 'rgba(13,21,40,0.6)', border: `1px solid ${cfg.color}25` }}>
+    <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.6)', border: `1px solid ${cfg.color}25` }}>
       <div className="px-5 py-3 flex items-center gap-3"
         style={{ borderBottom: `1px solid ${cfg.color}15`, background: `${cfg.color}07` }}>
         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: cfg.color }} />
         <span className="font-bold text-sm text-white flex-1">{cfg.labelCorto}</span>
         <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{pct}% del total</span>
         <span className="text-lg font-bold font-mono" style={{ color: cfg.color }}>{grupo.total}</span>
-        <button
-          onClick={onEntrar}
+        <button onClick={onEntrar}
           className="ml-2 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-colors"
           style={{ background: `${cfg.color}12`, border: `1px solid ${cfg.color}35`, color: cfg.color }}
           onMouseEnter={(e) => { e.currentTarget.style.background = `${cfg.color}22` }}
           onMouseLeave={(e) => { e.currentTarget.style.background = `${cfg.color}12` }}
-        >
-          Entrar ›
-        </button>
+        >Entrar ›</button>
       </div>
       <div className="px-5 py-1" style={{ background: 'rgba(0,0,0,0.2)' }}>
         <div className="w-full h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.05)' }}>
-          <div className="h-1 rounded-full transition-all duration-500"
-            style={{ width: `${pct}%`, background: cfg.color }} />
+          <div className="h-1 rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: cfg.color }} />
         </div>
       </div>
       <div className="px-5 py-3 grid grid-cols-3 gap-3 text-center">
@@ -715,9 +760,7 @@ function MiniCat({ label, cantidad, jaulas, color }) {
     <div className="flex flex-col items-center gap-0.5">
       <div className="text-base font-bold font-mono" style={{ color: cantidad > 0 ? color : '#2a3a50' }}>
         {cantidad}
-        {jaulas > 0 && (
-          <span className="text-xs font-normal" style={{ color: `${color}80` }}> ({jaulas})</span>
-        )}
+        {jaulas > 0 && <span className="text-xs font-normal" style={{ color: `${color}80` }}> ({jaulas})</span>}
       </div>
       <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{label}</div>
     </div>

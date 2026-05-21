@@ -109,12 +109,21 @@ export default function SelectorBioterio() {
             style={{ borderBottom: '1px solid rgba(64,196,255,0.15)', background: 'rgba(64,196,255,0.04)' }}
           >
             <span className="text-3xl">🐭</span>
-            <div>
+            <div className="flex-1">
               <div className="font-bold text-white text-sm">Bioterio de Ratones</div>
               <div className="text-xs font-mono italic" style={{ color: 'rgba(64,196,255,0.6)' }}>
                 <span className="hidden sm:inline">Mus musculus · </span>Gestación 21d · Madurez 8 sem.
               </div>
             </div>
+            <button
+              onClick={() => setBioterioActivo('resumen_ratones')}
+              className="shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
+              style={{ background: 'rgba(64,196,255,0.12)', border: '1px solid rgba(64,196,255,0.35)', color: '#40c4ff' }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(64,196,255,0.22)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(64,196,255,0.12)' }}
+            >
+              📊 Resumen
+            </button>
           </div>
 
           {/* Subgrupos */}
