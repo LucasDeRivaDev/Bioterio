@@ -1877,6 +1877,8 @@ function ModalEliminarJaula({ bloque, onConfirmar, onCerrar }) {
 export default function Stock() {
   const { animales, animalesExportados, camadas, sacrificios, entregas, jaulas, bio, bioterioActivo, agregarAnimal, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, editarCamada, registrarSacrificio, registrarEntrega, entregarReproductor } = useBioterio()
   const esHibridos = bioterioActivo === 'ratones_hibridos'
+  // Sacrificios de ratones se manejan desde el Resumen global de ratones
+  const esSubgrupoRatones = bioterioActivo === 'ratones_balbc' || bioterioActivo === 'ratones_c57' || bioterioActivo === 'ratones_hibridos'
   // Para encontrar progenitores en Híbridos (están en animalesExportados, no en animales)
   const todosAnimales = useMemo(() => [...animales, ...animalesExportados], [animales, animalesExportados])
 
@@ -2272,7 +2274,7 @@ const btnTab = (v, label) => (
         </div>
         <div className="flex gap-2 flex-wrap">
           {btnSubTab('entregas', '📦 Entregas', '#ffb300')}
-          {btnSubTab('sacrificios', '🗡 Sacrificios', '#ff6b80')}
+          {!esSubgrupoRatones && btnSubTab('sacrificios', '🗡 Sacrificios', '#ff6b80')}
           <button
             onClick={() => setSubVista(null)}
             className="px-4 py-2 rounded-2xl text-3xs font-bold"
@@ -2295,7 +2297,7 @@ if (subVista === 'sacrificios') {
         </div>
         <div className="flex gap-2 flex-wrap">
           {btnSubTab('entregas', '📦 Entregas', '#ffb300')}
-          {btnSubTab('sacrificios', '🗡 Sacrificios', '#ff6b80')}
+          {!esSubgrupoRatones && btnSubTab('sacrificios', '🗡 Sacrificios', '#ff6b80')}
           <button
             onClick={() => setSubVista(null)}
             className="px-4 py-2 rounded-2xl text-3xs font-bold"
@@ -2321,7 +2323,7 @@ if (subVista === 'sacrificios') {
       {/* ── TABS DE SUB-SECCIÓN ──────────────────────────────────────────── */}
       <div className="flex gap-2 flex-wrap">
         {btnSubTab('entregas', '📦 Entregas', '#ffb300')}
-        {btnSubTab('sacrificios', '🗡 Sacrificios', '#ff6b80')}
+        {!esSubgrupoRatones && btnSubTab('sacrificios', '🗡 Sacrificios', '#ff6b80')}
       </div>
 
       {/* ── RESUMEN SUPERIOR ───────────────────────────────────────────────── */}
