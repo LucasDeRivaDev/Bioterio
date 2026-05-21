@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { formatFecha } from '../utils/calculos'
 
@@ -12,20 +12,73 @@ const labelCategoria = {
   otro: 'Otro',
 }
 
-export default function Sacrificios() {
-  const { animales, animalesExportados, camadas, sacrificios } = useBioterio()
+// ── Menú de confirmación de restauración ─────────────────────────────────────
 
-  // En Híbridos los progenitores viven en animalesExportados — buscar en ambos
+function MenuRestaurar({ onRestaurar, onSoloBorrar, onCerrar, labelRestaurar, labelBorrar }) {
+  return (
+    <div
+      className="absolute right-0 top-8 z-50 rounded-xl overflow-hidden shadow-2xl"
+      style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(30,51,82,0.9)', minWidth: '230px' }}
+    >
+      {/* Restaurar con stock */}
+      <button
+        onClick={onRestaurar}
+        className="w-full text-left px-4 py-3 text-sm transition-colors"
+        style={{ color: '#e2e8f0', borderBottom: '1px solid rgba(30,51,82,0.8)', cursor: 'pointer', background: 'transparent' }}
+        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,230,118,0.07)'}
+        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+      >
+        <div className="font-semibold" style={{ color: '#00e676' }}>{labelRestaurar}</div>
+        <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>El animal vuelve a su estado anterior</div>
+      </button>
+
+      {/* Solo borrar registro */}
+      <button
+        onClick={onSoloBorrar}
+        className="w-full text-left px-4 py-3 text-sm transition-colors"
+        style={{ color: '#e2e8f0', cursor: 'pointer', background: 'transparent' }}
+        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,61,87,0.07)'}
+        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+      >
+        <div className="font-semibold" style={{ color: '#ff5252' }}>{labelBorrar}</div>
+        <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>Borra solo el registro, sin restaurar</div>
+      </button>
+
+      {/* Cancelar */}
+      <button
+        onClick={onCerrar}
+        className="w-full text-left px-4 py-3 text-sm transition-colors"
+        style={{ color: '#4a5f7a', borderTop: '1px solid rgba(30,51,82,0.6)', cursor: 'pointer', background: 'transparent' }}
+        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(74,95,122,0.06)'}
+        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+      >
+        Cancelar
+      </button>
+    </div>
+  )
+}
+
+// ── Página principal ──────────────────────────────────────────────────────────
+
+export default function Sacrificios() {
+  const {
+    animales, animalesExportados, camadas, sacrificios,
+    eliminarSacrificio, eliminarSacrificioReproductor,
+  } = useBioterio()
+
   const todosAnimales = useMemo(() => [...animales, ...animalesExportados], [animales, animalesExportados])
 
-  // ── Reproductores sacrificados (estado === 'fallecido') ───────────────────
+  const [menuAbierto, setMenuAbierto] = useState(null)   // id del registro con menú visible
+  const [cargando,   setCargando]   = useState(null)   // id en proceso
+
+  // ── Reproductores sacrificados ────────────────────────────────────────────
   const reproductoresSacrificados = useMemo(() =>
     [...animales]
       .filter((a) => a.estado === 'fallecido')
       .sort((a, b) => (b.fecha_sacrificio ?? b.fecha_nacimiento ?? '').localeCompare(a.fecha_sacrificio ?? a.fecha_nacimiento ?? '')),
   [animales])
 
-  // ── Historial de camadas sacrificadas ─────────────────────────────────────
+  // ── Sacrificios de stock / camadas ────────────────────────────────────────
   const listaEnriquecida = useMemo(() =>
     [...sacrificios]
       .filter((s) => s.categoria !== 'reproductor')
@@ -40,8 +93,53 @@ export default function Sacrificios() {
 
   const totalSacrificados = sacrificios.filter(s => s.categoria !== 'reproductor').reduce((sum, s) => sum + s.cantidad, 0)
 
+  // ── Handlers ──────────────────────────────────────────────────────────────
+
+  async function handleRestaurarStock(sacrificio, restaurar) {
+    setCargando(sacrificio.id)
+    setMenuAbierto(null)
+    try { await eliminarSacrificio(sacrificio.id, restaurar) }
+    finally { setCargando(null) }
+  }
+
+  async function handleRestaurarReproductor(animal, restaurar) {
+    setCargando(animal.id)
+    setMenuAbierto(null)
+    try { await eliminarSacrificioReproductor(animal, restaurar) }
+    finally { setCargando(null) }
+  }
+
+  function toggleMenu(id) {
+    setMenuAbierto(prev => prev === id ? null : id)
+  }
+
+  const btnRestaurar = (id, onClick) => {
+    const enProceso = cargando === id
+    return (
+      <div className="relative inline-block">
+        <button
+          onClick={() => { if (!enProceso) toggleMenu(id) }}
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+          style={{
+            background: 'rgba(0,230,118,0.08)',
+            border: '1px solid rgba(0,230,118,0.3)',
+            color: enProceso ? '#4a5f7a' : '#00e676',
+            cursor: enProceso ? 'default' : 'pointer',
+          }}
+        >
+          {enProceso ? '...' : '↩ Restaurar'}
+        </button>
+        {menuAbierto === id && onClick}
+      </div>
+    )
+  }
+
   return (
-    <div className="p-4 md:p-6 space-y-6 min-h-screen" style={{ background: '#050810' }}>
+    <div
+      className="p-4 md:p-6 space-y-6 min-h-screen"
+      style={{ background: '#050810' }}
+      onClick={() => setMenuAbierto(null)}  // cerrar menú al hacer click fuera
+    >
 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -96,11 +194,11 @@ export default function Sacrificios() {
         ) : (
           <div className="rounded-2xl overflow-hidden" style={cardStyle}>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm" style={{ minWidth: '420px' }}>
+              <table className="w-full text-sm" style={{ minWidth: '480px' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(30,51,82,0.6)', background: 'rgba(0,0,0,0.1)' }}>
-                    {['Código', 'Sexo', 'Fecha sacrificio', 'Progenitores', 'Notas / Motivo'].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest"
+                    {['Código', 'Sexo', 'Fecha sacrificio', 'Progenitores', 'Notas / Motivo', ''].map((h, i) => (
+                      <th key={i} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest"
                         style={{ color: '#4a5f7a' }}>{h}</th>
                     ))}
                   </tr>
@@ -109,6 +207,7 @@ export default function Sacrificios() {
                   {reproductoresSacrificados.map((a) => {
                     const madre = todosAnimales.find(x => x.id === a.id_madre)
                     const padre = todosAnimales.find(x => x.id === a.id_padre)
+                    const enProceso = cargando === a.id
                     return (
                       <tr key={a.id} style={{ borderBottom: '1px solid rgba(30,51,82,0.4)' }}>
                         <td className="px-4 py-3 font-mono font-bold" style={{ color: '#c9d4e0' }}>
@@ -129,6 +228,31 @@ export default function Sacrificios() {
                         </td>
                         <td className="px-4 py-3 text-xs" style={{ color: '#4a5f7a', maxWidth: '200px' }}>
                           {a.motivo_sacrificio ?? a.notas ?? '—'}
+                        </td>
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <div className="relative inline-block">
+                            <button
+                              onClick={() => { if (!enProceso) toggleMenu(a.id) }}
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                              style={{
+                                background: 'rgba(0,230,118,0.08)',
+                                border: '1px solid rgba(0,230,118,0.3)',
+                                color: enProceso ? '#4a5f7a' : '#00e676',
+                                cursor: enProceso ? 'default' : 'pointer',
+                              }}
+                            >
+                              {enProceso ? '...' : '↩ Restaurar'}
+                            </button>
+                            {menuAbierto === a.id && (
+                              <MenuRestaurar
+                                labelRestaurar="↩ Restaurar como activo"
+                                labelBorrar="✕ Solo borrar registro"
+                                onRestaurar={() => handleRestaurarReproductor(a, true)}
+                                onSoloBorrar={() => handleRestaurarReproductor(a, false)}
+                                onCerrar={() => setMenuAbierto(null)}
+                              />
+                            )}
+                          </div>
                         </td>
                       </tr>
                     )
@@ -164,48 +288,76 @@ export default function Sacrificios() {
         ) : (
           <div className="rounded-2xl overflow-hidden" style={cardStyle}>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm" style={{ minWidth: '480px' }}>
+              <table className="w-full text-sm" style={{ minWidth: '560px' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(30,51,82,0.6)', background: 'rgba(0,0,0,0.1)' }}>
-                    {['Fecha', 'Grupo / Emparejamiento', 'Cantidad', 'Categoría', 'Notas'].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest"
+                    {['Fecha', 'Grupo / Emparejamiento', 'Cantidad', 'Categoría', 'Notas', ''].map((h, i) => (
+                      <th key={i} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest"
                         style={{ color: '#4a5f7a' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {listaEnriquecida.map((s) => (
-                    <tr key={s.id} style={{ borderBottom: '1px solid rgba(30,51,82,0.4)' }}>
-                      <td className="px-4 py-3 font-mono text-sm" style={{ color: '#8a9bb0' }}>
-                        {formatFecha(s.fecha)}
-                      </td>
-                      <td className="px-4 py-3">
-                        {s.madre && s.padre ? (
-                          <span className="font-mono font-semibold">
-                            <span style={{ color: '#ce93d8' }}>{s.madre.codigo}</span>
-                            <span style={{ color: '#4a5f7a' }}> × </span>
-                            <span style={{ color: '#40c4ff' }}>{s.padre.codigo}</span>
-                          </span>
-                        ) : (
-                          <span style={{ color: '#4a5f7a' }}>—</span>
-                        )}
-                        {s.camada?.fecha_nacimiento && (
-                          <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
-                            nac. {formatFecha(s.camada.fecha_nacimiento)}
+                  {listaEnriquecida.map((s) => {
+                    const enProceso = cargando === s.id
+                    return (
+                      <tr key={s.id} style={{ borderBottom: '1px solid rgba(30,51,82,0.4)' }}>
+                        <td className="px-4 py-3 font-mono text-sm" style={{ color: '#8a9bb0' }}>
+                          {formatFecha(s.fecha)}
+                        </td>
+                        <td className="px-4 py-3">
+                          {s.madre && s.padre ? (
+                            <span className="font-mono font-semibold">
+                              <span style={{ color: '#ce93d8' }}>{s.madre.codigo}</span>
+                              <span style={{ color: '#4a5f7a' }}> × </span>
+                              <span style={{ color: '#40c4ff' }}>{s.padre.codigo}</span>
+                            </span>
+                          ) : (
+                            <span style={{ color: '#4a5f7a' }}>—</span>
+                          )}
+                          {s.camada?.fecha_nacimiento && (
+                            <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
+                              nac. {formatFecha(s.camada.fecha_nacimiento)}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 font-mono font-bold text-lg" style={{ color: '#ff6b80' }}>
+                          {s.cantidad}
+                        </td>
+                        <td className="px-4 py-3 text-xs" style={{ color: '#8a9bb0' }}>
+                          {s.categoria ? labelCategoria[s.categoria] ?? s.categoria : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-xs" style={{ color: '#4a5f7a', maxWidth: '200px' }}>
+                          {s.notas ?? '—'}
+                        </td>
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <div className="relative inline-block">
+                            <button
+                              onClick={() => { if (!enProceso) toggleMenu(s.id) }}
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                              style={{
+                                background: 'rgba(0,230,118,0.08)',
+                                border: '1px solid rgba(0,230,118,0.3)',
+                                color: enProceso ? '#4a5f7a' : '#00e676',
+                                cursor: enProceso ? 'default' : 'pointer',
+                              }}
+                            >
+                              {enProceso ? '...' : '↩ Restaurar'}
+                            </button>
+                            {menuAbierto === s.id && (
+                              <MenuRestaurar
+                                labelRestaurar="↩ Restaurar al stock"
+                                labelBorrar="✕ Solo borrar registro"
+                                onRestaurar={() => handleRestaurarStock(s, true)}
+                                onSoloBorrar={() => handleRestaurarStock(s, false)}
+                                onCerrar={() => setMenuAbierto(null)}
+                              />
+                            )}
                           </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 font-mono font-bold text-lg" style={{ color: '#ff6b80' }}>
-                        {s.cantidad}
-                      </td>
-                      <td className="px-4 py-3 text-xs" style={{ color: '#8a9bb0' }}>
-                        {s.categoria ? labelCategoria[s.categoria] ?? s.categoria : '—'}
-                      </td>
-                      <td className="px-4 py-3 text-xs" style={{ color: '#4a5f7a', maxWidth: '200px' }}>
-                        {s.notas ?? '—'}
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
