@@ -1,5 +1,5 @@
 import { useBioterioActivo, BIOTERIOS_CONFIG } from '../context/BioterioActivoContext'
-import iterateTitleLogo      from '../assets/iterate_title_logo.png'
+import iterateTitleLogo      from '../assets/iterate_logo.png'
 import iterateTitleLogoLight from '../assets/iterate_logo_light.png'
 import { useEffect, useState } from 'react'
 import { useTheme } from '../context/ThemeContext'
