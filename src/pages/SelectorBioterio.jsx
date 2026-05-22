@@ -247,6 +247,31 @@ export default function SelectorBioterio() {
               </div>
               <span className="text-xs" style={{ color: 'rgba(255,61,87,0.5)' }}>›</span>
             </button>
+
+            <button
+              onClick={() => setBioterioActivo('genealogia_global')}
+              className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all duration-150"
+              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(167,139,250,0.25)', color: '#c9d4e0' }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'rgba(167,139,250,0.08)'
+                e.currentTarget.style.border = '1px solid rgba(167,139,250,0.5)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.02)'
+                e.currentTarget.style.border = '1px solid rgba(167,139,250,0.25)'
+              }}
+            >
+              <span className="text-sm">🧬</span>
+              <div className="flex-1">
+                <div className="font-semibold text-sm" style={{ color: '#a78bfa' }}>
+                  Genealogía y consanguinidad
+                </div>
+                <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                  Árbol genealógico · coeficiente F · simulador de apareamiento
+                </div>
+              </div>
+              <span className="text-xs" style={{ color: 'rgba(167,139,250,0.5)' }}>›</span>
+            </button>
           </div>
         </div>
 

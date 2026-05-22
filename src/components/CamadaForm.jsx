@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { calcularRangoParto, calcularDestete, formatFecha, hoy, difDias, parseDate, getAnimalesReservados } from '../utils/calculos'
 import { MAX_APAREAMIENTOS } from '../utils/constants'
+import { buildPedigree, evaluarApareamientoGenetico, fPorcentaje, LABEL_PARENTESCO } from '../utils/genealogia'
 
 const vacioCamada = {
   id_madre: '', id_padre: '', fecha_copula: '', fecha_nacimiento: '',
@@ -147,6 +148,13 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
   })()
   const [confirmarConsanguinidad, setConfirmarConsanguinidad] = useState(false)
 
+  // Análisis genético del apareamiento (coeficiente F de Wright)
+  const pedigree = useMemo(() => buildPedigree(todosAnimales), [todosAnimales])
+  const analisisGenetico = useMemo(() => {
+    if (!madreSelec || !padreSelec) return null
+    return evaluarApareamientoGenetico(madreSelec.id, padreSelec.id, pedigree)
+  }, [madreSelec, padreSelec, pedigree])
+
   function cambiar(campo, valor) {
     setForm((prev) => ({ ...prev, [campo]: valor }))
     setErrores((prev) => ({ ...prev, [campo]: '' }))
@@ -222,6 +230,10 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
     // Consanguinidad directa sin confirmación
     if (consanguinidad && !confirmarConsanguinidad) {
       nuevos._consanguinidad = 'Confirmá el apareamiento consanguíneo antes de guardar'
+    }
+    // Consanguinidad moderada/alta sin confirmación (F ≥ 12.5%)
+    if (!consanguinidad && analisisGenetico && analisisGenetico.f >= 0.125 && !confirmarConsanguinidad) {
+      nuevos._consanguinidad = `Consanguinidad del ${fPorcentaje(analisisGenetico.f)}% — confirmá antes de guardar`
     }
 
     setErrores(nuevos)
@@ -454,6 +466,96 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
             <p className="text-xs px-4 pb-2" style={{ color: '#ff6b80' }}>{errores._consanguinidad}</p>
           )}
         </div>
+      )}
+
+      {/* Panel análisis genético (F de Wright) */}
+      {analisisGenetico && analisisGenetico.f > 0 && (
+        <div
+          className="rounded-xl overflow-hidden"
+          style={{
+            border: `1.5px solid ${analisisGenetico.nivel.color}50`,
+            background: `${analisisGenetico.nivel.color}08`,
+          }}
+        >
+          <div className="px-4 py-3 flex items-start gap-3">
+            <span className="text-xl mt-0.5">🧬</span>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-sm font-bold" style={{ color: analisisGenetico.nivel.color }}>
+                  Riesgo consanguíneo: {fPorcentaje(analisisGenetico.f)}%
+                </p>
+                <span
+                  className="text-xs font-mono px-2 py-0.5 rounded-full"
+                  style={{
+                    background: `${analisisGenetico.nivel.color}18`,
+                    border: `1px solid ${analisisGenetico.nivel.color}40`,
+                    color: analisisGenetico.nivel.color,
+                  }}
+                >
+                  {analisisGenetico.nivel.label}
+                </span>
+              </div>
+              {analisisGenetico.parentesco && LABEL_PARENTESCO[analisisGenetico.parentesco] && (
+                <p className="text-xs mb-1" style={{ color: '#c9d4e0' }}>
+                  {LABEL_PARENTESCO[analisisGenetico.parentesco].emoji}{' '}
+                  {LABEL_PARENTESCO[analisisGenetico.parentesco].texto}
+                </p>
+              )}
+              {/* Barra visual */}
+              <div className="mt-2 h-1.5 rounded-full" style={{ background: 'rgba(30,51,82,0.8)' }}>
+                <div
+                  className="h-1.5 rounded-full transition-all"
+                  style={{
+                    width: `${Math.min(analisisGenetico.f / 0.5 * 100, 100)}%`,
+                    background: analisisGenetico.nivel.color,
+                  }}
+                />
+              </div>
+              <div className="flex justify-between text-xs mt-0.5 font-mono" style={{ color: '#3a5068' }}>
+                <span>0%</span>
+                <span>12.5% (med. hermanos)</span>
+                <span>25% (hermanos)</span>
+              </div>
+            </div>
+          </div>
+          {analisisGenetico.recomendacion && (
+            <div
+              className="px-4 py-2 text-xs font-semibold"
+              style={{
+                borderTop: `1px solid ${analisisGenetico.nivel.color}25`,
+                background: `${analisisGenetico.nivel.color}06`,
+                color: analisisGenetico.nivel.color,
+              }}
+            >
+              {analisisGenetico.recomendacion.tipo === 'bloqueo' ? '⛔' : analisisGenetico.recomendacion.tipo === 'advertencia' ? '⚠️' : '🟡'}{' '}
+              {analisisGenetico.recomendacion.texto}
+            </div>
+          )}
+        </div>
+      )}
+      {/* Confirmación cuando F es alto y no hay consanguinidad directa */}
+      {analisisGenetico && analisisGenetico.f >= 0.125 && !consanguinidad && (
+        <button
+          type="button"
+          onClick={() => setConfirmarConsanguinidad((v) => !v)}
+          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-all"
+          style={{
+            background: confirmarConsanguinidad ? 'rgba(255,145,0,0.12)' : 'rgba(255,145,0,0.05)',
+            border: confirmarConsanguinidad ? '1px solid rgba(255,145,0,0.5)' : '1px solid rgba(255,145,0,0.25)',
+            color: confirmarConsanguinidad ? '#ff9100' : '#7a5a30',
+          }}
+        >
+          <span
+            className="w-4 h-4 rounded flex items-center justify-center shrink-0"
+            style={{
+              border: confirmarConsanguinidad ? '1.5px solid #ff9100' : '1.5px solid rgba(255,145,0,0.4)',
+              background: confirmarConsanguinidad ? 'rgba(255,145,0,0.25)' : 'transparent',
+            }}
+          >
+            {confirmarConsanguinidad && <span style={{ color: '#ff9100', fontSize: '10px', fontWeight: 'bold' }}>✓</span>}
+          </span>
+          <span>Entiendo el riesgo genético ({fPorcentaje(analisisGenetico.f)}% consanguinidad) y quiero continuar</span>
+        </button>
       )}
 
       {/* Fecha cópula */}
