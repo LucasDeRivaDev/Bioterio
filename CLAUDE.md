@@ -234,6 +234,7 @@ extendidos
 - `stockActual = ultimoCenso + sum(ingresos donde fecha >= ultimoCenso.fecha)`
 - LS keys viruta: `appMosca_viruta_censos` + `appMosca_viruta_compras`
 - LS keys alimento: `appMosca_alimento_censos` + `appMosca_alimento_ingresos`
+- **Aprendizaje por categoría (alimento):** cada censo guarda `composicion: { lactantes, repro, crias, jovenes, adultos }` con `{ count, totalGDia }`. El `useMemo calibracion` computa un factor EWMA independiente por categoría. Solo se actualiza cuando la categoría tuvo animal-días > 0 entre los dos censos. Categorías nunca observadas mantienen el valor bibliográfico. `consumoAjustado` suma las contribuciones con sus factores individuales. La UI muestra tabla "Modelo adaptativo por categoría" con Bibliográfico → Adaptado → Confianza → Animal-días.
 
 **Notas del calendario:**
 - LS key: `appMosca_notas_{bioterioActivo}`. Estructura: `{ id, bioterioActivo, fecha, titulo, descripcion, completada, created_at }`
@@ -308,6 +309,16 @@ extendidos
 - **Paleta modo claro biomédica/institucional (14/05/2026):** `TEMA_CLARO` rediseñado en `ThemeContext.jsx`. Fondos: `#F1F5F9` / `#EAF2F7` (gris frío, sin azul cielo). Textos Slate (`#1E293B` / `#64748B` / `#94A3B8`). Verde institucional `#059669` (Emerald 600, legible sobre blanco). Bloque `.modo-claro` en `index.css` cubre scrollbar, selección de texto, `.glow-green` → sombra suave sin neon, `.bg-dots`, `.border-neon` y `color-scheme: light` en inputs nativos.
 
 - **ModalEliminarJaula — confirmación overlay al eliminar jaula individual (14/05/2026):** reemplaza el antiguo "¿Eliminar? ✓ ✕" inline dentro del bloque. El botón ✕ en cada jaula de stock ahora abre `ModalEliminarJaula`: muestra progenitores, categoría, edad y total de animales de la jaula. Advertencia roja "Esta acción no se puede deshacer" con mensaje diferente para jaulas reales vs virtuales. Botones: Cancelar / ✕ Eliminar jaula. Mismo estilo visual que `ModalSacrificio`.
+
+- **Corrección de consumo por relleno de jaulas (22/05/2026):** `probRellenoPorHorario(fecha, hora)` estima prob. de relleno según día+hora (alta en lun/vie tarde 85–90%, media en lun/vie mañana 55–65%). El modal de censo captura hora (auto-completada) y `rellenoKg` con presets y sugerencia del histórico aprendido. Banner reactivo muestra la probabilidad mientras se selecciona la hora. `consumidoG = observado − rellenoKg` en calibración EWMA y helper `consumoPorCenso`. `rellenoAprendido` useMemo aprende el promedio histórico. `avisoRelleno` banner en el panel principal cuando el último censo tiene ≥45% de prob. sin corrección. Timeline muestra desglose Observado / Relleno / Consumo real.
+
+- **Aprendizaje adaptativo por categoría en consumo de alimento (22/05/2026):** cada categoría (lactantes, repro, crías, jóvenes, adultos) construye su propio factor EWMA. Solo se actualiza cuando tuvo animal-días > 0 entre dos censos. Categorías ausentes en todos los períodos mantienen el valor bibliográfico sin modificación. Cada censo ahora guarda campo `composicion: { lactantes, repro, crias, jovenes, adultos }` con `{ count, totalGDia }`. `consumoAjustado` suma contribuciones individuales con sus factores propios. Nueva tabla "Modelo adaptativo por categoría" muestra: Categoría | Bibliográfico | Adaptado | Ajuste% | Confianza (barra) | Animal-días observados. El badge "global" indica que la categoría usa el factor general por falta de observaciones propias.
+
+- **Sistema de genealogía y análisis de consanguinidad (22/05/2026):**
+  - `genealogia.js`: motor con `buildPedigree`, `calcularFCoeficiente` (método de Wright), `detectarParentesco`, `getAncestores`, `estadisticasColonia`, `evaluarApareamientoGenetico`. F = Σ (0.5)^(d_sire + d_dam + 1) sobre ancestros comunes incluyendo al progenitor mismo a profundidad 0 (detecta padre-hija, abuelo-nieta, etc.)
+  - `CamadaForm`: panel F de Wright al seleccionar pareja — color verde (<6.25%), amarillo (6.25–12.5%), naranja (12.5–25%), rojo (≥25%). Requiere confirmación cuando F ≥ 12.5%. Detección y label de tipo de parentesco (hermanos completos, medios hermanos, abuelo/nieto, tío/sobrino, primos).
+  - `Animales` (`PerfilAnimal`): nueva sección "Genealogía" con coeficiente F individual del animal, badges de progenitores con color por sexo (♀ violeta / ♂ celeste), lista de abuelos, barra de nivel de consanguinidad.
+  - `GenealogiaGlobal`: página global accesible desde SelectorBioterio. KPIs (F promedio, animales sin ancestros, animales con F>12.5%), distribución de F por bioterio (barras por nivel), simulador interactivo de apareamiento (selección hembra+macho → F predicho + recomendación), tabla completa de animales activos ordenada por F descendente con badge de bioterio.
 
 ---
 
