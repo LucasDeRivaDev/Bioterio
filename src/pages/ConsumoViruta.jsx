@@ -8,7 +8,7 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
-import { ArrowLeft, RefreshCw, Plus, ClipboardList, TrendingDown, Info, Layers, AlertTriangle, ShoppingCart } from 'lucide-react'
+import { ArrowLeft, RefreshCw, Plus, ClipboardList, TrendingDown, Info, Layers, AlertTriangle, ShoppingCart, Calendar, Clock } from 'lucide-react'
 
 const PESOS = {
   macho_repro:      1.2,
@@ -100,8 +100,83 @@ function calcUnidades(conteos, especie) {
   return conteos.totalJaulas * PESOS.raton_std * CAMBIOS_SEM
 }
 
+// ── Ciclo de cambios de cama ──────────────────────────────────────────────────
+// Cambios ocurren: Lunes y Viernes, a partir de las 08:00
+
+const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+
+function horaActual() {
+  const n = new Date()
+  return `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`
+}
+
+// Convierte 'YYYY-MM-DD' a día de la semana en hora local (evita desfase UTC)
+function diaLocal(fechaStr) {
+  if (!fechaStr) return -1
+  const [y, m, d] = fechaStr.split('-').map(Number)
+  return new Date(y, m - 1, d).getDay()
+}
+
+// Probabilidad de que ya ocurrió un cambio de cama en el momento del censo
+function probCambioReciente(fechaStr, horaStr) {
+  const day = diaLocal(fechaStr)
+  const h   = parseInt((horaStr ?? '12:00').split(':')[0])
+  if (day === 1 || day === 5) { // Lunes o Viernes (días de cambio)
+    if (h < 8)  return 0.10 // antes del horario de cambio
+    if (h < 9)  return 0.25 // inicio del cambio
+    if (h < 12) return 0.60 // mañana: probablemente en proceso
+    if (h < 18) return 0.85 // tarde: muy probable que ya terminó
+    return 0.90             // noche: casi certeza
+  }
+  if (day === 2 || day === 6) return 0.10 // Martes / Sábado: cambio fue ayer
+  if (day === 0)              return 0.08 // Domingo: cambio fue el viernes
+  return 0.05                             // Miércoles / Jueves: mitad del ciclo
+}
+
+// Próximo cambio de cama (Lunes o Viernes a las 08:00) desde la fecha+hora dada
+function proximoCambioDesde(fechaStr, horaStr) {
+  if (!fechaStr) return null
+  const [y, m, d] = fechaStr.split('-').map(Number)
+  const parts     = (horaStr ?? '12:00').split(':').map(Number)
+  const ref       = new Date(y, m - 1, d, parts[0] ?? 12, parts[1] ?? 0, 0)
+  const day       = ref.getDay()
+
+  function nextDay(target) {
+    let ahead = (target - day + 7) % 7
+    if (ahead === 0) {
+      const ref8 = new Date(ref); ref8.setHours(8, 0, 0, 0)
+      ahead = ref >= ref8 ? 7 : 0
+    }
+    const r = new Date(ref)
+    r.setDate(r.getDate() + ahead)
+    r.setHours(8, 0, 0, 0)
+    return r
+  }
+
+  const nextLun = nextDay(1)
+  const nextVie = nextDay(5)
+  const prox    = nextLun <= nextVie ? nextLun : nextVie
+  return {
+    dia:           DIAS_SEMANA[prox.getDay()],
+    fecha:         `${String(prox.getDate()).padStart(2,'0')}/${String(prox.getMonth()+1).padStart(2,'0')}`,
+    diasRestantes: (prox - ref) / (1000 * 60 * 60 * 24),
+  }
+}
+
+// Descripción del momento del censo dentro del ciclo semanal
+function contextoCiclo(fechaStr, horaStr) {
+  const prob = probCambioReciente(fechaStr, horaStr)
+  const day  = diaLocal(fechaStr)
+  const h    = parseInt((horaStr ?? '12:00').split(':')[0])
+  if ((day === 1 || day === 5) && h < 9) return { label: 'Antes del cambio · inminente', color: '#ffb300' }
+  if (prob >= 0.55) return { label: 'Probable cambio de cama realizado', color: '#ffb300' }
+  if (day === 4)    return { label: 'Víspera del cambio (mañana)', color: '#4a5f7a' }
+  if (day === 2 || day === 6 || day === 0) return { label: 'Post-cambio · ciclo activo', color: '#00e676' }
+  return { label: 'Mitad del ciclo · sin cambios recientes', color: '#4a5f7a' }
+}
+
 // ── localStorage ──────────────────────────────────────────────────────────────
-// Censos: snapshot de stock actual  { id, fecha, bolsas, unidades }
+// Censos: snapshot de stock actual  { id, fecha, hora, bolsas, unidades }
 // Compras: ingreso de mercadería    { id, fecha, bolsas }
 
 const LS_CENSOS  = 'appMosca_viruta_censos'
@@ -220,6 +295,18 @@ export default function ConsumoViruta() {
   const duracionSem = (stockActual !== null && bolsasPorSem > 0)
     ? stockActual / bolsasPorSem : null
 
+  // ── Ciclo de cambios de cama ──────────────────────────────────────────────
+  // Se recalcula en cada render (O(1), no necesita useMemo)
+  const proximoCambioHoy = proximoCambioDesde(hoy(), horaActual())
+
+  // Aviso si el último censo fue tomado en un momento de probable cambio
+  const avisoRelleno = useMemo(() => {
+    if (!ultimoCenso) return null
+    const prob = probCambioReciente(ultimoCenso.fecha, ultimoCenso.hora)
+    if (prob < 0.45) return null
+    return { prob, dia: DIAS_SEMANA[diaLocal(ultimoCenso.fecha)] }
+  }, [ultimoCenso])
+
   // ── Alertas ───────────────────────────────────────────────────────────────
   const nivelAlerta = duracionSem === null ? null
     : duracionSem < 2 ? 'critico'
@@ -230,8 +317,8 @@ export default function ConsumoViruta() {
   const colorAlerta = { critico: '#ff6b80', bajo: '#ffb300', ok: '#00e676', bien: '#00e676' }[nivelAlerta] ?? '#c49a6a'
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
-  function registrarCenso(fecha, bolsas) {
-    const nuevo  = { id: generarId(), fecha, bolsas, unidades: totales?.totalUnidades ?? 0 }
+  function registrarCenso(fecha, hora, bolsas) {
+    const nuevo  = { id: generarId(), fecha, hora, bolsas, unidades: totales?.totalUnidades ?? 0 }
     const nuevos = [...censos, nuevo].sort((a, b) => a.fecha.localeCompare(b.fecha))
     setCensos(nuevos); guardarCensos(nuevos); setModal(false)
   }
@@ -465,6 +552,98 @@ export default function ConsumoViruta() {
               </div>
             </div>
 
+            {/* ── Ciclo de cambios de cama ── */}
+            <div className="rounded-2xl overflow-hidden"
+              style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(255,179,0,0.25)' }}>
+              <div className="px-6 py-3 flex items-center gap-2"
+                style={{ borderBottom: '1px solid rgba(255,179,0,0.12)', background: 'rgba(255,179,0,0.04)' }}>
+                <Calendar size={14} style={{ color: '#ffb300' }} />
+                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#ffb300' }}>
+                  Ciclo de cambios de cama
+                </span>
+                <span className="ml-auto text-xs font-mono px-2 py-0.5 rounded-full"
+                  style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.2)', color: '#ffb300' }}>
+                  Lunes · Viernes · 08:00
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 divide-x" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+
+                {/* Próximo cambio desde hoy */}
+                <div className="px-5 py-5 text-center flex flex-col items-center gap-1">
+                  <div className="text-xs font-mono uppercase tracking-wider" style={{ color: '#4a5f7a' }}>Próximo cambio estimado</div>
+                  {proximoCambioHoy ? (
+                    <>
+                      <div className="text-2xl font-bold font-mono text-white leading-none">{proximoCambioHoy.dia}</div>
+                      <div className="text-sm font-mono mt-0.5" style={{ color: '#ffb300' }}>
+                        {proximoCambioHoy.fecha} · 08:00
+                      </div>
+                      <div className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
+                        en {proximoCambioHoy.diasRestantes < 1
+                          ? `${Math.round(proximoCambioHoy.diasRestantes * 24)} hs`
+                          : `${proximoCambioHoy.diasRestantes.toFixed(1)} días`}
+                      </div>
+                    </>
+                  ) : <div className="text-sm font-mono" style={{ color: '#3d5068' }}>—</div>}
+                </div>
+
+                {/* Contexto del último censo */}
+                <div className="px-5 py-5 text-center flex flex-col items-center gap-1">
+                  <div className="text-xs font-mono uppercase tracking-wider" style={{ color: '#4a5f7a' }}>Último censo · posición en ciclo</div>
+                  {ultimoCenso ? (() => {
+                    const ctx  = contextoCiclo(ultimoCenso.fecha, ultimoCenso.hora)
+                    const prob = probCambioReciente(ultimoCenso.fecha, ultimoCenso.hora)
+                    const probPct = Math.round(prob * 100)
+                    return (
+                      <>
+                        <div className="text-lg font-bold font-mono text-white leading-none">
+                          {DIAS_SEMANA[diaLocal(ultimoCenso.fecha)]}
+                        </div>
+                        <div className="text-sm font-mono flex items-center gap-1.5" style={{ color: '#4a5f7a' }}>
+                          <Clock size={11} />
+                          {ultimoCenso.hora ?? '—'}
+                        </div>
+                        <div className="text-xs font-mono mt-1 px-2 py-0.5 rounded-full"
+                          style={{ background: `${ctx.color}15`, color: ctx.color, border: `1px solid ${ctx.color}30` }}>
+                          {ctx.label}
+                        </div>
+                        {/* Barra de probabilidad */}
+                        <div className="w-full mt-2 px-3">
+                          <div className="flex justify-between text-xs font-mono mb-1" style={{ color: '#3d5068' }}>
+                            <span>Prob. cambio reciente</span>
+                            <span style={{ color: probPct >= 55 ? '#ffb300' : '#4a5f7a' }}>{probPct}%</span>
+                          </div>
+                          <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                            <div className="h-full rounded-full transition-all"
+                              style={{
+                                width: `${probPct}%`,
+                                background: probPct >= 70 ? '#ffb300' : probPct >= 45 ? '#ff9800' : '#00e676',
+                              }} />
+                          </div>
+                        </div>
+                      </>
+                    )
+                  })() : (
+                    <div className="text-sm font-mono" style={{ color: '#3d5068' }}>Sin censos registrados</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Banner aviso cambio reciente sin corregir */}
+              {avisoRelleno && (
+                <div className="mx-4 mb-4 px-4 py-3 rounded-xl flex items-start gap-3 text-xs font-mono"
+                  style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.3)', color: '#ffb300' }}>
+                  <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                  <span>
+                    El último censo fue tomado el <strong>{avisoRelleno.dia}</strong> con{' '}
+                    <strong>{Math.round(avisoRelleno.prob * 100)}%</strong> de probabilidad de cambio de cama ese día.
+                    El stock observado puede estar por debajo del nivel promedio semanal.
+                    Para calibrar mejor, tomá un censo un día neutro (Martes o Miércoles).
+                  </span>
+                </div>
+              )}
+            </div>
+
             {/* ── Movimientos de stock ── */}
             <div className="rounded-2xl overflow-hidden"
               style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(167,139,250,0.2)' }}>
@@ -553,6 +732,23 @@ export default function ConsumoViruta() {
                         <span className="text-xs font-mono" style={{ color: '#5a7a9a' }}>
                           {formatFecha(item.fecha)}
                         </span>
+                        {item.hora && (
+                          <span className="text-xs font-mono flex items-center gap-0.5" style={{ color: '#3d5068' }}>
+                            <Clock size={10} /> {item.hora}
+                          </span>
+                        )}
+                        {/* Badge contexto ciclo */}
+                        {(() => {
+                          const prob = probCambioReciente(item.fecha, item.hora)
+                          if (prob < 0.45) return null
+                          const ctx = contextoCiclo(item.fecha, item.hora)
+                          return (
+                            <span className="text-xs font-mono px-1.5 py-0.5 rounded-full"
+                              style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.22)', color: '#ffb300' }}>
+                              🔄 {ctx.label}
+                            </span>
+                          )
+                        })()}
                         <span className="text-sm font-bold font-mono text-white">{item.bolsas} bolsas</span>
                         {consumo && (
                           <span className="text-xs font-mono" style={{ color: '#ffb300' }}>
@@ -758,6 +954,7 @@ function TarjetaJaulas({ label, icon, color, unidades, filas, nota }) {
 
 function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
   const [fecha,  setFecha]  = useState(hoy())
+  const [hora,   setHora]   = useState(horaActual())
   const [bolsas, setBolsas] = useState('')
   const [error,  setError]  = useState('')
 
@@ -774,10 +971,41 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
     const b = parseFloat(bolsas)
     if (isNaN(b) || b < 0) { setError('Ingresá una cantidad válida de bolsas.'); return }
     if (Math.round(b * 4) !== b * 4) { setError('Solo se permiten enteros, medias y cuartos de bolsa (0.25).'); return }
-    onConfirmar(fecha, b)
+    onConfirmar(fecha, hora, b)
   }
 
-  const preview = isNaN(parseFloat(bolsas)) ? null : parseFloat(bolsas)
+  const preview   = isNaN(parseFloat(bolsas)) ? null : parseFloat(bolsas)
+  const prob      = probCambioReciente(fecha, hora)
+  const probPct   = Math.round(prob * 100)
+  const proxCamb  = proximoCambioDesde(fecha, hora)
+
+  // Color y texto del banner de ciclo
+  const bannerCiclo = (() => {
+    if (probPct >= 70) return {
+      color: '#ffb300',
+      bg: 'rgba(255,179,0,0.08)',
+      border: 'rgba(255,179,0,0.3)',
+      texto: `🔄 Probable cambio de cama realizado (${probPct}%) — el stock refleja la situación post-cambio.`,
+    }
+    if (probPct >= 45) return {
+      color: '#ff9800',
+      bg: 'rgba(255,152,0,0.06)',
+      border: 'rgba(255,152,0,0.25)',
+      texto: `⚠ Posible cambio en proceso (${probPct}%) — el stock podría estar variando.`,
+    }
+    if ((diaLocal(fecha) === 1 || diaLocal(fecha) === 5) && parseInt(hora.split(':')[0]) < 9) return {
+      color: '#4a5f7a',
+      bg: 'rgba(255,255,255,0.03)',
+      border: 'rgba(255,255,255,0.08)',
+      texto: `📅 Antes del cambio de cama de hoy — el stock aún no fue afectado.`,
+    }
+    return {
+      color: '#00e676',
+      bg: 'rgba(0,230,118,0.05)',
+      border: 'rgba(0,230,118,0.2)',
+      texto: `✓ Momento neutro del ciclo (${probPct}% prob.) — buen momento para censar.`,
+    }
+  })()
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -793,12 +1021,59 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
           </div>
         </div>
         <form onSubmit={confirmar} className="px-6 py-5 space-y-4">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>Fecha del censo</label>
-            <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} required
-              className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
-              style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }} />
+
+          {/* Fecha y hora en una fila */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>Fecha</label>
+              <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} required
+                className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
+                style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
+                <Clock size={10} style={{ display: 'inline', marginRight: 4 }} />
+                Hora
+              </label>
+              <input type="time" value={hora} onChange={e => setHora(e.target.value)} required
+                className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
+                style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }} />
+            </div>
           </div>
+
+          {/* Banner reactivo de ciclo */}
+          <div className="rounded-xl px-3 py-2.5 text-xs font-mono"
+            style={{ background: bannerCiclo.bg, border: `1px solid ${bannerCiclo.border}`, color: bannerCiclo.color }}>
+            {bannerCiclo.texto}
+            {/* Barra de probabilidad */}
+            <div className="mt-2">
+              <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                <div className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${probPct}%`,
+                    background: probPct >= 70 ? '#ffb300' : probPct >= 45 ? '#ff9800' : '#00e676',
+                  }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Próximo cambio desde este momento */}
+          {proxCamb && (
+            <div className="rounded-xl px-3 py-2.5 flex items-center gap-3 text-xs font-mono"
+              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', color: '#4a5f7a' }}>
+              <Calendar size={12} style={{ color: '#ffb300' }} />
+              <div>
+                <span style={{ color: '#6a8099' }}>Próximo cambio de cama: </span>
+                <span className="font-bold" style={{ color: '#ffb300' }}>{proxCamb.dia} {proxCamb.fecha} · 08:00</span>
+                <span style={{ color: '#3d5068' }}>
+                  {' '}(en {proxCamb.diasRestantes < 1
+                    ? `${Math.round(proxCamb.diasRestantes * 24)} hs`
+                    : `${proxCamb.diasRestantes.toFixed(1)} días`})
+                </span>
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
               Bolsas disponibles ahora
