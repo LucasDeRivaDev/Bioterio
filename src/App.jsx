@@ -11,6 +11,7 @@ import SelectorBioterio from './pages/SelectorBioterio'
 import ResumenRatones from './pages/ResumenRatones'
 import ConsumoAlimento from './pages/ConsumoAlimento'
 import ConsumoViruta from './pages/ConsumoViruta'
+import CapacidadGlobal from './pages/CapacidadGlobal'
 import Dashboard from './pages/Dashboard'
 import Animales from './pages/Animales'
 import Camadas from './pages/Camadas'
@@ -103,6 +104,9 @@ function AppLayout() {
 
   // Consumo de viruta → página especial sin sidebar
   if (bioterioActivo === 'viruta_global') return <ConsumoViruta />
+
+  // Capacidad y predicción → página especial sin sidebar
+  if (bioterioActivo === 'capacidad_global') return <CapacidadGlobal />
 
   function cerrarSidebar() { setSidebarAbierto(false) }
 
