@@ -3,8 +3,21 @@ import iterateTitleLogo      from '../assets/iterate_logo.png'
 import iterateTitleLogoLight from '../assets/iterate_logo_light.png'
 import { useEffect, useState } from 'react'
 import { useTheme } from '../context/ThemeContext'
+import { supabase } from '../lib/supabase'
 
 const GRUPOS_RATONES = ['ratones_balbc', 'ratones_c57', 'ratones_hibridos']
+
+// ── Badge sanitario simplificado (sin camadas, solo incidentes) ───────────────
+function badgeSanitario(incidentes, bioterioId) {
+  const hace90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  const inc = incidentes.filter(i => i.bioterio_id === bioterioId && (i.fecha ?? '') >= hace90 && !i.resuelto)
+  const graves    = inc.filter(i => i.severidad === 'grave').length
+  const moderados = inc.filter(i => i.severidad === 'moderado').length
+  if (graves > 0)    return { emoji: '🔴', label: 'Riesgo',   color: '#ff6b80', count: inc.length }
+  if (moderados > 1) return { emoji: '🟡', label: 'Atención', color: '#ffb300', count: inc.length }
+  if (inc.length > 0) return { emoji: '🟡', label: 'Atención', color: '#ffb300', count: inc.length }
+  return               { emoji: '🟢', label: 'Estable',   color: '#00e676', count: 0 }
+}
 
 const CSS = `
   @keyframes floatSelector { 0%,100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
@@ -14,12 +27,24 @@ export default function SelectorBioterio() {
   const { setBioterioActivo } = useBioterioActivo()
   const { tema, modoBrillo } = useTheme()
   const [logoW, setLogoW] = useState(340)
+  const [incidentesSalud, setIncidentesSalud] = useState([])
 
   useEffect(() => {
     const update = () => setLogoW(window.innerWidth < 480 ? 200 : window.innerWidth < 768 ? 260 : 340)
     update()
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
+  }, [])
+
+  // Carga ligera de incidentes abiertos en los últimos 90 días para badges
+  useEffect(() => {
+    const hace90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    supabase
+      .from('incidentes')
+      .select('bioterio_id, severidad, resuelto, fecha')
+      .gte('fecha', hace90)
+      .eq('resuelto', false)
+      .then(({ data }) => { if (data) setIncidentesSalud(data) })
   }, [])
 
   return (
@@ -89,6 +114,14 @@ export default function SelectorBioterio() {
                 <span className="text-xs font-mono px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,230,118,0.1)', color: '#00e676', border: '1px solid rgba(0,230,118,0.2)' }}>
                   Madurez 12 sem.
                 </span>
+                {(() => {
+                  const b = badgeSanitario(incidentesSalud, 'ratas')
+                  return (
+                    <span className="text-xs font-mono px-2 py-0.5 rounded-full" style={{ background: `${b.color}18`, color: b.color, border: `1px solid ${b.color}40` }}>
+                      {b.emoji} {b.label}{b.count > 0 ? ` · ${b.count}` : ''}
+                    </span>
+                  )
+                })()}
               </div>
             </div>
             <span style={{ color: 'rgba(0,230,118,0.5)', fontSize: '20px' }}>›</span>
@@ -157,6 +190,14 @@ export default function SelectorBioterio() {
                   <span className="text-xs font-mono ml-1 hidden sm:inline" style={{ color: '#4a5f7a' }}>
                     {cfg.nombreCientifico}
                   </span>
+                  {(() => {
+                    const b = badgeSanitario(incidentesSalud, id)
+                    return (
+                      <span className="hidden sm:inline text-xs px-1.5 py-0.5 rounded-full font-mono" style={{ background: `${b.color}15`, color: b.color, border: `1px solid ${b.color}35` }}>
+                        {b.emoji}{b.count > 0 ? ` ${b.count}` : ''}
+                      </span>
+                    )
+                  })()}
                   <span className="ml-auto text-xs" style={{ color: cfg.color }}>›</span>
                 </button>
               )

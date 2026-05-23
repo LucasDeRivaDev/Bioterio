@@ -74,6 +74,7 @@ function reducer(estado, accion) {
       lista.sort((a, b) => b.fecha.localeCompare(a.fecha))
       return { ...estado, incidentes: lista }
     }
+    case 'EDITAR_INCIDENTE':   return { ...estado, incidentes: estado.incidentes.map((i) => i.id === accion.payload.id ? accion.payload : i) }
     case 'ELIMINAR_INCIDENTE': return { ...estado, incidentes: estado.incidentes.filter((i) => i.id !== accion.payload) }
 
     default: return estado
@@ -564,6 +565,12 @@ export function BiotheriumProvider({ children }) {
     }
   }
 
+  async function editarIncidente(datos) {
+    dispatch({ type: 'EDITAR_INCIDENTE', payload: datos })
+    const { error } = await supabase.from('incidentes').update(datos).eq('id', datos.id)
+    if (error) console.error('Error al editar incidente:', error)
+  }
+
   async function eliminarIncidente(id) {
     const respaldo = estado.incidentes.find((i) => i.id === id)
     dispatch({ type: 'ELIMINAR_INCIDENTE', payload: id })
@@ -692,7 +699,7 @@ export function BiotheriumProvider({ children }) {
       registrarEntrega, entregarReproductor, devolverEntrega,
       agregarJaula, editarJaula, eliminarJaula,
       agregarTemperatura, eliminarTemperaturasMes,
-      agregarIncidente, eliminarIncidente,
+      agregarIncidente, editarIncidente, eliminarIncidente,
       agregarExtendido, editarExtendido, eliminarExtendido,
     }}>
       {children}
