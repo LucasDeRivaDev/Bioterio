@@ -233,16 +233,21 @@ async function migrarDesdeLocalStorage() {
       return
     }
 
-    if (censoLS.length > 0)  await supabase.from('viruta_censos').insert(censoLS.map(censoToDB))
-    if (compraLS.length > 0) await supabase.from('viruta_compras').insert(
-      compraLS.map(c => ({ id: c.id, fecha: c.fecha, bolsas: c.bolsas ?? 0 }))
-    )
-    // Limpiar LS solo si la migración fue exitosa
+    if (censoLS.length > 0) {
+      const { error: e1 } = await supabase.from('viruta_censos').insert(censoLS.map(censoToDB))
+      if (e1) throw new Error('viruta_censos: ' + e1.message)
+    }
+    if (compraLS.length > 0) {
+      const { error: e2 } = await supabase.from('viruta_compras').insert(
+        compraLS.map(c => ({ id: c.id, fecha: c.fecha, bolsas: c.bolsas ?? 0 }))
+      )
+      if (e2) throw new Error('viruta_compras: ' + e2.message)
+    }
     localStorage.removeItem(LS_CENSOS)
     localStorage.removeItem(LS_COMPRAS)
-    console.info('[viruta] Migración localStorage → Supabase completada.')
+    return '✅ Migración completada'
   } catch (e) {
-    console.warn('[viruta] Migración fallida, se reintentará en la próxima carga:', e)
+    return '❌ Error: ' + e.message
   }
 }
 
@@ -260,13 +265,15 @@ export default function ConsumoViruta() {
   const [modalCompra,    setModalCompra]    = useState(false)
   const [modalConfirmar, setModalConfirmar] = useState(false)
   const [censoAConfirmar,setCensoAConfirmar]= useState(null)
+  const [msgMigracion,   setMsgMigracion]   = useState(null)  // DEBUG temporal
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
   const cargarDatos = useCallback(async () => {
     setCargando(true); setError(null)
     try {
       // Migrar localStorage → Supabase si es la primera vez
-      await migrarDesdeLocalStorage()
+      const msgMig = await migrarDesdeLocalStorage()
+      if (msgMig) setMsgMigracion(msgMig)
 
       const [
         resAnimales,
@@ -524,6 +531,18 @@ export default function ConsumoViruta() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#050810' }}>
+
+      {/* DEBUG migración — borrar después */}
+      {msgMigracion && (
+        <div className="fixed top-4 right-4 z-50 px-4 py-3 rounded-xl text-sm font-mono"
+          style={{
+            background: msgMigracion.startsWith('✅') ? 'rgba(0,230,118,0.15)' : 'rgba(255,61,87,0.15)',
+            border: `1px solid ${msgMigracion.startsWith('✅') ? 'rgba(0,230,118,0.4)' : 'rgba(255,61,87,0.4)'}`,
+            color: msgMigracion.startsWith('✅') ? '#00e676' : '#ff6b80',
+          }}>
+          {msgMigracion}
+        </div>
+      )}
 
       {/* Header */}
       <div className="flex items-center gap-4 px-6 py-4 shrink-0"
