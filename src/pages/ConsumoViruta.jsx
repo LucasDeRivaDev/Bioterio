@@ -1039,8 +1039,8 @@ export default function ConsumoViruta() {
                     <div className="font-bold text-xs text-white">Evolución del stock (censos)</div>
                     <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>bolsas disponibles por fecha de censo</div>
                   </div>
-                  <div className="px-2 py-3" style={{ height: 190 }}>
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div style={{ height: 190, width: '100%', minWidth: 0 }}>
+                    <ResponsiveContainer width="99%" height={190}>
                       <AreaChart data={datosStock}>
                         <defs>
                           <linearGradient id="virutaGrad" x1="0" y1="0" x2="0" y2="1">
@@ -1050,7 +1050,7 @@ export default function ConsumoViruta() {
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                         <XAxis dataKey="f" tick={{ fill: '#4a5f7a', fontSize: 10, fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fill: '#4a5f7a', fontSize: 10, fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fill: '#4a5f7a', fontSize: 10, fontFamily: 'monospace' }} axisLine={false} tickLine={false} width={30} />
                         <Tooltip contentStyle={{ background: '#0d1528', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px' }}
                           labelStyle={{ color: '#c9d4e0' }} formatter={v => [`${v} bolsas`, 'Censo']} />
                         <Area type="monotone" dataKey="bolsas" stroke="#a78bfa" strokeWidth={2} fill="url(#virutaGrad)" dot={{ fill: '#a78bfa', r: 3 }} />
@@ -1066,12 +1066,12 @@ export default function ConsumoViruta() {
                       <div className="font-bold text-xs text-white">Consumo real vs. estimado</div>
                       <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>bolsas entre censos consecutivos</div>
                     </div>
-                    <div className="px-2 py-3" style={{ height: 190 }}>
-                      <ResponsiveContainer width="100%" height="100%">
+                    <div style={{ height: 190, width: '100%', minWidth: 0 }}>
+                      <ResponsiveContainer width="99%" height={190}>
                         <BarChart data={datosConsumo} barCategoryGap="30%">
                           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                           <XAxis dataKey="f" tick={{ fill: '#4a5f7a', fontSize: 10, fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
-                          <YAxis tick={{ fill: '#4a5f7a', fontSize: 10, fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fill: '#4a5f7a', fontSize: 10, fontFamily: 'monospace' }} axisLine={false} tickLine={false} width={30} />
                           <Tooltip contentStyle={{ background: '#0d1528', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px' }}
                             labelStyle={{ color: '#c9d4e0' }}
                             formatter={(v, n) => [`${v} bolsas`, n === 'real' ? 'Real consumido' : 'Estimado']} />
