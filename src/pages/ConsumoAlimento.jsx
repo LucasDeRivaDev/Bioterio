@@ -39,8 +39,24 @@ const TODOS_BIOTERIOS = [
 const CAT_KEYS = ['lactantes', 'repro', 'crias', 'jovenes', 'adultos']
 
 // ── localStorage ──────────────────────────────────────────────────────────────
-const LS_CENSOS   = 'appMosca_alimento_censos'
-const LS_INGRESOS = 'appMosca_alimento_ingresos'
+const LS_CENSOS       = 'appMosca_alimento_censos'
+const LS_INGRESOS     = 'appMosca_alimento_ingresos'
+const LS_REPOSICIONES = 'appMosca_alimento_reposiciones'
+
+// Bioterios disponibles para selección en reposición parcial
+const OPCIONES_BIOTERIOS = [
+  { id: 'ratas',            label: 'Ratas',   color: '#00e676' },
+  { id: 'ratones_balbc',    label: 'BAL/C',   color: '#40c4ff' },
+  { id: 'ratones_c57',      label: 'C57',     color: '#a78bfa' },
+  { id: 'ratones_hibridos', label: 'Híbridos',color: '#ffb300' },
+]
+const OPCIONES_CATEGORIAS = [
+  { id: 'lactantes', label: 'Hembras lactantes' },
+  { id: 'repro',     label: 'Reproductores' },
+  { id: 'crias',     label: 'Crías' },
+  { id: 'jovenes',   label: 'Jóvenes' },
+  { id: 'adultos',   label: 'Adultos' },
+]
 
 function cargarLS(key) {
   try { return JSON.parse(localStorage.getItem(key) || '[]') }
@@ -217,8 +233,12 @@ export default function ConsumoAlimento() {
   const [censos,   setCensos]   = useState(() => cargarLS(LS_CENSOS))
   const [ingresos, setIngresos] = useState(() => cargarLS(LS_INGRESOS))
 
-  const [modalCenso,   setModalCenso]   = useState(false)
-  const [modalIngreso, setModalIngreso] = useState(false)
+  const [reposiciones, setReposiciones] = useState(() => cargarLS(LS_REPOSICIONES))
+
+  const [modalCenso,       setModalCenso]       = useState(false)
+  const [modalIngreso,     setModalIngreso]     = useState(false)
+  const [modalReposicion,  setModalReposicion]  = useState(false)  // standalone confirm
+  const [reposPreCenso,    setReposPreCenso]    = useState(null)   // reposición desde census modal
 
   // ── Fetch paralelo de los 4 bioterios ──
   const cargarDatos = useCallback(async () => {
@@ -328,22 +348,31 @@ export default function ConsumoAlimento() {
         .filter(c => c.fecha >= prev.fecha && c.fecha < cur.fecha)
         .reduce((s, c) => s + c.kg, 0)
 
+      // Reposiciones confirmadas en el período (mayor prioridad que rellenoKg del censo)
+      const reposicionesEnPeriodo = reposiciones
+        .filter(r => r.fecha > prev.fecha && r.fecha <= cur.fecha)
+        .reduce((s, r) => s + (r.kg ?? 0), 0)
+
       // consumidoObservadoG = total del faltante (consumo + alimento trasladado a jaulas)
-      // rellenoCorreccionG  = alimento repuesto en jaulas en el momento del censo actual
+      // rellenoCorreccionG  = alimento repuesto en jaulas (confirmado > declarado en censo)
       // consumidoG          = consumo real de los animales
       const consumidoObservadoG = (prev.kg + ingresosEnPeriodo - cur.kg) * 1000
-      const rellenoCorreccionG  = (cur.rellenoKg ?? 0) * 1000
+      const rellenoCorreccionG  = reposicionesEnPeriodo > 0
+        ? reposicionesEnPeriodo * 1000
+        : (cur.rellenoKg ?? 0) * 1000
+      const reposicionConfirmada = reposicionesEnPeriodo > 0
       const consumidoG          = consumidoObservadoG - rellenoCorreccionG
       if (consumidoG <= 0) continue
       if (!prev.consumoEstimadoGDia || prev.consumoEstimadoGDia <= 0) continue
 
       const realGDia  = consumidoG / dias
       const factor    = realGDia / prev.consumoEstimadoGDia
-      // Peso EWMA: vida media ~90 días → datos recientes pesan más
+      // Peso EWMA: vida media ~90 días. Bonus ×1.4 si la reposición fue confirmada
       const diasAtras = Math.max(0, difDias(parseDate(cur.fecha), ahoraDate))
-      const peso      = Math.exp(-diasAtras / 90)
+      const pesoBase  = Math.exp(-diasAtras / 90)
+      const peso      = reposicionConfirmada ? pesoBase * 1.4 : pesoBase
 
-      pares.push({ fechaInicio: prev.fecha, fechaFin: cur.fecha, dias, realGDia, estimadoGDia: prev.consumoEstimadoGDia, factor, peso, consumidoObservadoG, rellenoCorreccionG })
+      pares.push({ fechaInicio: prev.fecha, fechaFin: cur.fecha, dias, realGDia, estimadoGDia: prev.consumoEstimadoGDia, factor, peso, consumidoObservadoG, rellenoCorreccionG, reposicionConfirmada })
 
       // Aprendizaje por categoría: solo si el censo anterior tiene snapshot de composición
       if (prev.composicion) {
@@ -384,11 +413,13 @@ export default function ConsumoAlimento() {
     const factorEWMA = pares.reduce((s, p) => s + p.factor * p.peso, 0) / pesoTotal
 
     // Confianza global
-    const diasDesdeUltimo = Math.max(0, difDias(parseDate(censosOrdenados[censosOrdenados.length - 1].fecha), ahoraDate))
-    const confianzaBase   = Math.min(75, pares.length * 20)
-    const bonusCalidad    = pares.length >= 4 ? 10 : 0
-    const penalizacion    = diasDesdeUltimo > 30 ? Math.min(35, (diasDesdeUltimo - 30) * 0.7) : 0
-    const confianza       = Math.round(Math.max(5, confianzaBase + bonusCalidad - penalizacion))
+    const diasDesdeUltimo   = Math.max(0, difDias(parseDate(censosOrdenados[censosOrdenados.length - 1].fecha), ahoraDate))
+    const confianzaBase     = Math.min(75, pares.length * 20)
+    const bonusCalidad      = pares.length >= 4 ? 10 : 0
+    const nConfirmados      = pares.filter(p => p.reposicionConfirmada).length
+    const bonusConfirmados  = Math.min(15, nConfirmados * 5) // hasta +15% por reposiciones confirmadas
+    const penalizacion      = diasDesdeUltimo > 30 ? Math.min(35, (diasDesdeUltimo - 30) * 0.7) : 0
+    const confianza         = Math.round(Math.max(5, confianzaBase + bonusCalidad + bonusConfirmados - penalizacion))
 
     // Construir factores por categoría
     const tieneComposicion = censosOrdenados.some(c => c.composicion)
@@ -413,8 +444,8 @@ export default function ConsumoAlimento() {
       }
     })
 
-    return { factor: factorEWMA, muestras: pares.length, pares, confianza, perCategoria }
-  }, [censosOrdenados, ingresos])
+    return { factor: factorEWMA, muestras: pares.length, pares, confianza, perCategoria, nConfirmados }
+  }, [censosOrdenados, ingresos, reposiciones])
 
   const consumoBase = global?.mid ?? 0
 
@@ -599,9 +630,16 @@ export default function ConsumoAlimento() {
     const items = [
       ...censos.map(c => ({ ...c, tipo: 'censo' })),
       ...ingresos.map(i => ({ ...i, tipo: 'ingreso' })),
+      ...reposiciones.map(r => ({ ...r, tipo: 'reposicion' })),
     ]
-    return items.sort((a, b) => b.fecha.localeCompare(a.fecha))
-  }, [censos, ingresos])
+    return items.sort((a, b) => {
+      const cmp = b.fecha.localeCompare(a.fecha)
+      if (cmp !== 0) return cmp
+      // mismo día: reposición antes que censo para que aparezca correctamente
+      const orden = { reposicion: 0, censo: 1, ingreso: 2 }
+      return (orden[a.tipo] ?? 9) - (orden[b.tipo] ?? 9)
+    })
+  }, [censos, ingresos, reposiciones])
 
   // ── Gráfico: estimado vs real por par de censos ──
   const datosGrafico = useMemo(() => {
@@ -614,6 +652,7 @@ export default function ConsumoAlimento() {
   }, [calibracion])
 
   // ── Consumo para censos helper ──
+  // Prioridad: reposiciones confirmadas (standalone) > rellenoKg declarado en el censo
   function consumoPorCenso(censoActual, idx) {
     const prev = censosOrdenados[idx - 1]
     if (!prev) return null
@@ -624,7 +663,19 @@ export default function ConsumoAlimento() {
       .reduce((s, c) => s + c.kg, 0) * 1000
     const consumidoObservadoG = (prev.kg + ingresosG / 1000 - censoActual.kg) * 1000
     if (consumidoObservadoG <= 0) return null
-    const rellenoG       = (censoActual.rellenoKg ?? 0) * 1000
+
+    // Reposiciones confirmadas en el período (mayor prioridad)
+    const reposicionesEnPeriodo = reposiciones
+      .filter(r => r.fecha > prev.fecha && r.fecha <= censoActual.fecha)
+      .reduce((s, r) => s + (r.kg ?? 0), 0)
+
+    const rellenoG       = reposicionesEnPeriodo > 0
+      ? reposicionesEnPeriodo * 1000
+      : (censoActual.rellenoKg ?? 0) * 1000
+    const fuenteRelleno  = reposicionesEnPeriodo > 0
+      ? 'confirmado'
+      : ((censoActual.rellenoKg ?? 0) > 0 ? 'declarado' : 'ninguno')
+
     const consumidoRealG = Math.max(0, consumidoObservadoG - rellenoG)
     return {
       consumidoObservadoG,
@@ -632,6 +683,7 @@ export default function ConsumoAlimento() {
       consumidoG: consumidoRealG,
       dias,
       realGDia: consumidoRealG / dias,
+      fuenteRelleno,
     }
   }
 
@@ -673,6 +725,27 @@ export default function ConsumoAlimento() {
     const nuevos = ingresos.filter(i => i.id !== id)
     setIngresos(nuevos)
     guardarLS(LS_INGRESOS, nuevos)
+  }
+
+  // ── Reposiciones ──
+  function registrarReposicion(datos) {
+    const nuevo = { id: generarId(), confirmada: true, ...datos }
+    const nuevas = [...reposiciones, nuevo]
+    setReposiciones(nuevas)
+    guardarLS(LS_REPOSICIONES, nuevas)
+    setModalReposicion(false)
+    setReposPreCenso(null)
+  }
+
+  function eliminarReposicionItem(id) {
+    const nuevas = reposiciones.filter(r => r.id !== id)
+    setReposiciones(nuevas)
+    guardarLS(LS_REPOSICIONES, nuevas)
+  }
+
+  // Confirmación rápida desde un censo (crea reposición sin abrir modal completo)
+  function confirmarReposicionRapida(fecha, hora) {
+    setModalReposicion({ fecha, hora })
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -792,6 +865,9 @@ export default function ConsumoAlimento() {
                       </div>
                       <div className="text-xs font-mono mt-1" style={{ color: '#3d5068' }}>
                         {calibracion.muestras} par{calibracion.muestras !== 1 ? 'es' : ''} de censos
+                        {(calibracion.nConfirmados ?? 0) > 0 && (
+                          <span style={{ color: '#00e676' }}> · {calibracion.nConfirmados} confirmado{calibracion.nConfirmados !== 1 ? 's' : ''}</span>
+                        )}
                       </div>
                     </>
                   ) : (
@@ -829,11 +905,22 @@ export default function ConsumoAlimento() {
 
             {/* ── Panel de stock y predicción ── */}
             <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(0,230,118,0.2)' }}>
-              <div className="px-6 py-4" style={{ borderBottom: '1px solid rgba(0,230,118,0.12)', background: 'rgba(0,230,118,0.04)' }}>
-                <div className="font-bold text-sm text-white">Stock y predicción de duración</div>
-                <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
-                  Basado en el último censo más los ingresos registrados
+              <div className="px-6 py-4 flex items-center gap-3 flex-wrap" style={{ borderBottom: '1px solid rgba(0,230,118,0.12)', background: 'rgba(0,230,118,0.04)' }}>
+                <div className="flex-1">
+                  <div className="font-bold text-sm text-white">Stock y predicción de duración</div>
+                  <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
+                    Basado en el último censo más los ingresos registrados
+                  </div>
                 </div>
+                <button
+                  onClick={() => setModalReposicion(true)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all shrink-0"
+                  style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.3)', color: '#00e676' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,230,118,0.16)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,230,118,0.08)' }}
+                >
+                  ✅ Confirmar reposición
+                </button>
               </div>
 
               {stockActualKg === null ? (
@@ -910,6 +997,60 @@ export default function ConsumoAlimento() {
                       {ingresosPostCenso.length} ingreso{ingresosPostCenso.length > 1 ? 's' : ''} post-censo: +{ingresosPostCenso.reduce((s, i) => s + i.kg, 0).toFixed(1)} kg sumados al stock
                     </div>
                   )}
+
+                  {/* Fila consumo real vs corregido (basado en el último par de censos) */}
+                  {(() => {
+                    const idx = censosOrdenados.length - 1
+                    if (idx < 1) return null
+                    const ultimo = censosOrdenados[idx]
+                    const cp = consumoPorCenso(ultimo, idx)
+                    if (!cp) return null
+                    const colorFuente = cp.fuenteRelleno === 'confirmado' ? '#00e676'
+                      : cp.fuenteRelleno === 'declarado' ? '#ffb300' : '#4a5f7a'
+                    const labelFuente = cp.fuenteRelleno === 'confirmado' ? '✅ Reposición confirmada'
+                      : cp.fuenteRelleno === 'declarado' ? '⚠️ Relleno declarado'
+                      : '— Sin corrección'
+                    return (
+                      <div className="mt-4 rounded-xl px-4 py-3"
+                        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                        <div className="flex flex-wrap gap-x-6 gap-y-2 items-center">
+                          <div>
+                            <div className="text-xs font-mono mb-0.5" style={{ color: '#4a5f7a' }}>Observado (última ventana)</div>
+                            <div className="font-bold font-mono text-sm" style={{ color: '#c9d4e0' }}>
+                              {Math.round(cp.consumidoObservadoG / cp.dias)} g/día
+                            </div>
+                          </div>
+                          {cp.rellenoG > 0 && (
+                            <>
+                              <div style={{ color: '#3a5068', fontSize: 18 }}>−</div>
+                              <div>
+                                <div className="text-xs font-mono mb-0.5" style={{ color: '#4a5f7a' }}>Alimento en jaulas</div>
+                                <div className="font-bold font-mono text-sm" style={{ color: '#ffb300' }}>
+                                  {(cp.rellenoG / cp.dias / 1000).toFixed(2)} kg/día
+                                </div>
+                              </div>
+                              <div style={{ color: '#3a5068', fontSize: 18 }}>=</div>
+                            </>
+                          )}
+                          <div>
+                            <div className="text-xs font-mono mb-0.5" style={{ color: '#4a5f7a' }}>Consumo real estimado</div>
+                            <div className="font-bold font-mono text-sm" style={{ color: '#00e676' }}>
+                              {Math.round(cp.consumidoG / cp.dias)} g/día
+                              <span className="font-normal ml-1" style={{ color: '#4a5f7a' }}>
+                                ({(cp.consumidoG / 1000).toFixed(2)} kg en {cp.dias}d)
+                              </span>
+                            </div>
+                          </div>
+                          <div className="ml-auto shrink-0">
+                            <span className="text-xs font-mono px-2 py-1 rounded-lg"
+                              style={{ background: `${colorFuente}12`, border: `1px solid ${colorFuente}35`, color: colorFuente }}>
+                              {labelFuente}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })()}
                 </div>
               )}
             </div>
@@ -1186,7 +1327,7 @@ export default function ConsumoAlimento() {
                     Censos = fuente del cálculo real · Ingresos = compras que suman al stock
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <button
                     onClick={() => setModalCenso(true)}
                     className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono font-semibold"
@@ -1207,6 +1348,15 @@ export default function ConsumoAlimento() {
                     <ShoppingBag size={13} />
                     Registrar ingreso
                   </button>
+                  <button
+                    onClick={() => setModalReposicion(true)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono font-semibold"
+                    style={{ background: 'rgba(64,196,255,0.07)', border: '1px solid rgba(64,196,255,0.25)', color: '#40c4ff' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(64,196,255,0.14)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(64,196,255,0.07)' }}
+                  >
+                    ✅ Confirmar reposición
+                  </button>
                 </div>
               </div>
 
@@ -1214,14 +1364,18 @@ export default function ConsumoAlimento() {
               <div className="px-6 py-3 text-xs font-mono space-y-1" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(255,255,255,0.01)', color: '#4a5f7a' }}>
                 <div>
                   <span style={{ color: '#a78bfa' }}>📊 Censo</span>
-                  {' '}— pesaje real del stock actual. Es la fuente del aprendizaje adaptativo.
+                  {' '}— pesaje real del stock disponible. Es la fuente del aprendizaje adaptativo.
                 </div>
                 <div>
                   <span style={{ color: '#00e676' }}>📦 Ingreso</span>
-                  {' '}— compra o reposición. Suma al stock disponible sin alterar el historial de consumo.
+                  {' '}— compra o reposición de bolsas. Suma al stock sin alterar el historial de consumo.
+                </div>
+                <div>
+                  <span style={{ color: '#40c4ff' }}>✅ Reposición confirmada</span>
+                  {' '}— alimento trasladado a jaulas. Separa "consumido" de "almacenado en jaulas".
                 </div>
                 <div style={{ color: '#3d5068' }}>
-                  Consumo real = censo anterior + ingresos del período − censo actual − relleno de jaulas
+                  Consumo real = censo anterior + ingresos − censo actual − reposición en jaulas
                 </div>
               </div>
 
@@ -1233,11 +1387,44 @@ export default function ConsumoAlimento() {
               ) : (
                 <div className="px-6 py-4 space-y-2 max-h-80 overflow-y-auto">
                   {movimientos.map((mov) => {
+                    if (mov.tipo === 'reposicion') {
+                      const bios = (mov.bioterios ?? []).map(b => OPCIONES_BIOTERIOS.find(o => o.id === b)?.label ?? b).join(' · ')
+                      const cats = (mov.categorias ?? []).map(c => OPCIONES_CATEGORIAS.find(o => o.id === c)?.label ?? c).join(' · ')
+                      return (
+                        <div key={mov.id} className="rounded-xl px-4 py-3 flex items-start gap-3"
+                          style={{ background: 'rgba(64,196,255,0.05)', border: '1px solid rgba(64,196,255,0.2)' }}>
+                          <div className="text-base mt-0.5">✅</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-bold font-mono" style={{ color: '#40c4ff' }}>Reposición confirmada</span>
+                              <span className="text-xs font-mono text-white">{(mov.kg ?? 0).toFixed(1)} kg en jaulas</span>
+                              <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{formatFecha(mov.fecha)}</span>
+                              {mov.hora && <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{mov.hora} hs</span>}
+                              <span className="text-xs font-mono px-1.5 py-0.5 rounded"
+                                style={{ background: 'rgba(64,196,255,0.1)', border: '1px solid rgba(64,196,255,0.25)', color: '#40c4ff' }}>
+                                {mov.tipo_reposicion === 'parcial' ? 'Parcial' : 'Completa'}
+                              </span>
+                            </div>
+                            {bios && <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>Bioterios: {bios}</div>}
+                            {cats && <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Categorías: {cats}</div>}
+                            {mov.notas && <div className="text-xs font-mono mt-0.5" style={{ color: '#3d5068' }}>{mov.notas}</div>}
+                          </div>
+                          <button onClick={() => eliminarReposicionItem(mov.id)} className="text-xs shrink-0 mt-0.5" style={{ color: '#2a3a50' }} title="Eliminar">✕</button>
+                        </div>
+                      )
+                    }
                     if (mov.tipo === 'censo') {
                       const idxEnOrden = censosOrdenados.findIndex(c => c.id === mov.id)
                       const consumo    = consumoPorCenso(mov, idxEnOrden)
                       const probInfo   = mov.hora ? probRellenoPorHorario(mov.fecha, mov.hora) : null
-                      const tieneRelleno = (mov.rellenoKg ?? 0) > 0
+                      const tieneRelleno = consumo && consumo.rellenoG > 0
+                      const tieneConfirmacion = reposiciones.some(r => r.fecha === mov.fecha)
+                      // Mostrar botón "Confirmar reposición" si es lun/vie con alta prob y sin confirmación aún
+                      const mostrarConfirmarBtn = probInfo?.nivel === 'alto' && !tieneConfirmacion
+
+                      const colorFuente = consumo?.fuenteRelleno === 'confirmado' ? '#40c4ff'
+                        : consumo?.fuenteRelleno === 'declarado' ? '#ffb300' : null
+
                       return (
                         <div key={mov.id} className="rounded-xl px-4 py-3 flex items-start gap-3"
                           style={{ background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.18)' }}>
@@ -1250,17 +1437,19 @@ export default function ConsumoAlimento() {
                               {mov.hora && (
                                 <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{mov.hora} hs</span>
                               )}
-                              {/* Badge de probabilidad de relleno */}
-                              {probInfo?.nivel === 'alto' && !tieneRelleno && (
+                              {/* Badge fuente de relleno */}
+                              {tieneRelleno && colorFuente && (
+                                <span className="text-xs font-mono px-1.5 py-0.5 rounded"
+                                  style={{ background: `${colorFuente}12`, border: `1px solid ${colorFuente}35`, color: colorFuente }}>
+                                  {consumo.fuenteRelleno === 'confirmado' ? '✅ reposición confirmada' : '⚠ relleno declarado'}
+                                  {' '}−{(consumo.rellenoG / 1000).toFixed(1)} kg
+                                </span>
+                              )}
+                              {/* Badge posible relleno sin confirmar */}
+                              {probInfo?.nivel === 'alto' && !tieneRelleno && !tieneConfirmacion && (
                                 <span className="text-xs font-mono px-1.5 py-0.5 rounded"
                                   style={{ background: 'rgba(255,179,0,0.12)', border: '1px solid rgba(255,179,0,0.3)', color: '#ffb300' }}>
                                   ⚠ posible relleno
-                                </span>
-                              )}
-                              {tieneRelleno && (
-                                <span className="text-xs font-mono px-1.5 py-0.5 rounded"
-                                  style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676' }}>
-                                  relleno: −{mov.rellenoKg.toFixed(1)} kg
                                 </span>
                               )}
                             </div>
@@ -1273,7 +1462,7 @@ export default function ConsumoAlimento() {
                                       <span style={{ color: '#3d5068' }}> en {consumo.dias} días</span>
                                     </div>
                                     <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
-                                      Relleno de jaulas: <span style={{ color: '#ffb300' }}>−{(consumo.rellenoG / 1000).toFixed(2)} kg</span>
+                                      Reposición en jaulas: <span style={{ color: '#ffb300' }}>−{(consumo.rellenoG / 1000).toFixed(2)} kg</span>
                                     </div>
                                     <div className="text-xs font-mono font-semibold" style={{ color: '#00e676' }}>
                                       Consumo real: {(consumo.consumidoG / 1000).toFixed(2)} kg
@@ -1288,25 +1477,37 @@ export default function ConsumoAlimento() {
                                 )}
                               </div>
                             )}
+                            {/* Botón de confirmación rápida */}
+                            {mostrarConfirmarBtn && (
+                              <button
+                                onClick={() => confirmarReposicionRapida(mov.fecha, mov.hora)}
+                                className="mt-2 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
+                                style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.3)', color: '#40c4ff' }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(64,196,255,0.16)' }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(64,196,255,0.08)' }}
+                              >
+                                ✅ Confirmar reposición de este día
+                              </button>
+                            )}
                           </div>
                           <button onClick={() => eliminarCensoItem(mov.id)} className="text-xs shrink-0 mt-0.5" style={{ color: '#2a3a50' }} title="Eliminar">✕</button>
                         </div>
                       )
-                    } else {
-                      return (
-                        <div key={mov.id} className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: 'rgba(0,230,118,0.04)', border: '1px solid rgba(0,230,118,0.12)' }}>
-                          <div className="text-base">📦</div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-xs font-bold font-mono" style={{ color: '#00e676' }}>Ingreso</span>
-                              <span className="text-xs font-mono text-white">+{mov.kg.toFixed(1)} kg</span>
-                              <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{formatFecha(mov.fecha)}</span>
-                            </div>
-                          </div>
-                          <button onClick={() => eliminarIngresoItem(mov.id)} className="text-xs shrink-0" style={{ color: '#2a3a50' }} title="Eliminar">✕</button>
-                        </div>
-                      )
                     }
+                    // ingreso
+                    return (
+                      <div key={mov.id} className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: 'rgba(0,230,118,0.04)', border: '1px solid rgba(0,230,118,0.12)' }}>
+                        <div className="text-base">📦</div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-bold font-mono" style={{ color: '#00e676' }}>Ingreso</span>
+                            <span className="text-xs font-mono text-white">+{mov.kg.toFixed(1)} kg</span>
+                            <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{formatFecha(mov.fecha)}</span>
+                          </div>
+                        </div>
+                        <button onClick={() => eliminarIngresoItem(mov.id)} className="text-xs shrink-0" style={{ color: '#2a3a50' }} title="Eliminar">✕</button>
+                      </div>
+                    )
                   })}
                 </div>
               )}
@@ -1366,6 +1567,7 @@ export default function ConsumoAlimento() {
           stockActualKg={stockActualKg}
           rellenoAprendido={rellenoAprendido}
           onConfirmar={registrarCenso}
+          onConfirmarReposicion={registrarReposicion}
           onCerrar={() => setModalCenso(false)}
         />
       )}
@@ -1374,6 +1576,14 @@ export default function ConsumoAlimento() {
           stockActualKg={stockActualKg}
           onConfirmar={registrarIngreso}
           onCerrar={() => setModalIngreso(false)}
+        />
+      )}
+      {modalReposicion && (
+        <ModalReposicion
+          fechaInicial={typeof modalReposicion === 'object' ? modalReposicion.fecha : hoy()}
+          horaInicial={typeof modalReposicion === 'object' ? modalReposicion.hora : null}
+          onConfirmar={registrarReposicion}
+          onCerrar={() => setModalReposicion(false)}
         />
       )}
     </div>
@@ -1398,18 +1608,28 @@ function FilaCategoria({ label, dato, tasaMin, tasaMax, color }) {
   )
 }
 
-function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCerrar }) {
-  const [fecha,     setFecha]     = useState(hoy())
-  const [hora,      setHora]      = useState(() => {
+function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onConfirmarReposicion, onCerrar }) {
+  const horaActual = () => {
     const d = new Date()
     return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
-  })
-  const [kg,        setKg]        = useState('')
-  const [rellenoKg, setRellenoKg] = useState('')
+  }
+  const [fecha,           setFecha]           = useState(hoy())
+  const [hora,            setHora]            = useState(horaActual)
+  const [kg,              setKg]              = useState('')
+  const [rellenoKg,       setRellenoKg]       = useState('')
+  // Prompt Mon/Fri: null = sin mostrar, 'si'|'no'|'parcial'
+  const [respReposicion,  setRespReposicion]  = useState(null)
+  const [repBioterios,    setRepBioterios]    = useState(OPCIONES_BIOTERIOS.map(b => b.id))
+  const [repCategorias,   setRepCategorias]   = useState([])
+  const [repKg,           setRepKg]           = useState('')
 
   const kgNum      = parseFloat(kg)      || 0
   const rellenoNum = parseFloat(rellenoKg) || 0
+  const repKgNum   = parseFloat(repKg) || 0
   const probInfo   = probRellenoPorHorario(fecha, hora)
+
+  // Es lunes o viernes con alta prob → mostrar prompt
+  const mostrarPrompt = probInfo.nivel === 'alto'
 
   const probColor  = probInfo.nivel === 'alto'  ? '#ff6b80'
     : probInfo.nivel === 'medio' ? '#ffb300' : '#00e676'
@@ -1420,17 +1640,45 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCe
 
   const PRESETS = [0, 1, 2, 3, 5]
 
+  function toggleBioterio(id) {
+    setRepBioterios(prev => prev.includes(id) ? prev.filter(b => b !== id) : [...prev, id])
+  }
+  function toggleCategoria(id) {
+    setRepCategorias(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id])
+  }
+
   function confirmar(e) {
     e.preventDefault()
     const v = parseFloat(kg)
     if (isNaN(v) || v < 0) return
-    onConfirmar(fecha, v, hora || null, rellenoNum)
+
+    // Si declaró relleno en la sección clásica, usar eso como rellenoKg del censo
+    const finalRellenoKg = rellenoNum > 0 ? rellenoNum
+      : (respReposicion === 'si' || respReposicion === 'parcial') ? repKgNum
+      : 0
+
+    onConfirmar(fecha, v, hora || null, finalRellenoKg)
+
+    // Si confirmó reposición en el prompt, también guardar entrada independiente
+    if ((respReposicion === 'si' || respReposicion === 'parcial') && repKgNum > 0) {
+      onConfirmarReposicion?.({
+        fecha,
+        hora: hora || null,
+        tipo_reposicion: respReposicion === 'si' ? 'completa' : 'parcial',
+        kg: repKgNum,
+        bioterios: repBioterios,
+        categorias: repCategorias,
+        notas: '',
+      })
+    }
   }
+
+  const inputSt = { background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: 'rgba(5,8,16,0.85)', backdropFilter: 'blur(4px)' }}>
-      <div className="w-full max-w-sm rounded-2xl overflow-hidden"
+      <div className="w-full max-w-md rounded-2xl overflow-hidden max-h-[92vh] overflow-y-auto"
         style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(167,139,250,0.3)', boxShadow: '0 0 60px rgba(167,139,250,0.12)' }}>
 
         {/* Header */}
@@ -1449,14 +1697,12 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCe
             <div>
               <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>Fecha</label>
               <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} required
-                className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
-                style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }} />
+                className="w-full px-3 py-2.5 rounded-xl text-sm font-mono" style={inputSt} />
             </div>
             <div>
               <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>Hora</label>
               <input type="time" value={hora} onChange={e => setHora(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
-                style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }} />
+                className="w-full px-3 py-2.5 rounded-xl text-sm font-mono" style={inputSt} />
             </div>
           </div>
 
@@ -1466,7 +1712,7 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCe
               style={{ background: probBg, border: `1px solid ${probBorder}`, color: probColor }}>
               <div className="font-semibold">⚠ {probInfo.label}</div>
               <div className="mt-1" style={{ color: '#6a8099' }}>
-                Prob. de relleno: {Math.round(probInfo.prob * 100)}% — si ya repusiste alimento en las jaulas, indicalo abajo para corregir el consumo.
+                Prob. de reposición: {Math.round(probInfo.prob * 100)}%
               </div>
             </div>
           )}
@@ -1479,72 +1725,195 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCe
             <input type="number" min="0" step="0.5" value={kg}
               onChange={e => setKg(e.target.value)}
               placeholder="Ej: 18.5" required
-              className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
-              style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }} />
+              className="w-full px-3 py-2.5 rounded-xl text-sm font-mono" style={inputSt} />
           </div>
 
-          {/* Relleno de jaulas */}
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#4a5f7a' }}>
-              Alimento repuesto en jaulas — opcional
-            </label>
-            <div className="text-xs font-mono mb-2" style={{ color: '#3d5068' }}>
-              ¿Ya rellenaste las jaulas hoy? Indicá cuántos kg trasladaste desde las bolsas.
-            </div>
-            {/* Presets */}
-            <div className="flex gap-1.5 mb-2 flex-wrap">
-              {PRESETS.map(p => {
-                const isActive = p === 0 ? rellenoKg === '' || rellenoKg === '0'
-                  : rellenoNum === p
-                return (
-                  <button key={p} type="button"
-                    onClick={() => setRellenoKg(p === 0 ? '' : p.toString())}
-                    className="px-2.5 py-1 rounded-lg text-xs font-mono"
-                    style={{
-                      background: isActive ? 'rgba(255,179,0,0.15)' : 'rgba(255,255,255,0.04)',
-                      border:     `1px solid ${isActive ? 'rgba(255,179,0,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                      color:      isActive ? '#ffb300' : '#4a5f7a',
-                    }}>
-                    {p === 0 ? 'Sin relleno' : `${p} kg`}
-                  </button>
-                )
-              })}
-            </div>
-            <input type="number" min="0" step="0.5" value={rellenoKg}
-              onChange={e => setRellenoKg(e.target.value)}
-              placeholder={rellenoAprendido ? `Típico: ${rellenoAprendido.avg.toFixed(1)} kg` : 'Ej: 2.5 kg'}
-              className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
-              style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }} />
-            {rellenoAprendido && (
-              <div className="mt-1.5 text-xs font-mono" style={{ color: '#3d5068' }}>
-                Promedio histórico de relleno: {rellenoAprendido.avg.toFixed(1)} kg
-                <span style={{ color: '#2a3a50' }}> ({rellenoAprendido.n} censos)</span>
+          {/* ── Prompt ¿Se repuso alimento? (solo lun/vie alta prob) ── */}
+          {mostrarPrompt && (
+            <div className="rounded-xl overflow-hidden"
+              style={{ border: '1.5px solid rgba(64,196,255,0.3)', background: 'rgba(64,196,255,0.05)' }}>
+              <div className="px-4 py-3" style={{ borderBottom: '1px solid rgba(64,196,255,0.15)' }}>
+                <div className="text-sm font-bold" style={{ color: '#40c4ff' }}>
+                  ¿Se repuso alimento en las jaulas hoy?
+                </div>
+                <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
+                  Es día de reposición habitual ({probInfo.label})
+                </div>
               </div>
-            )}
-          </div>
+              <div className="px-4 py-3 flex gap-2">
+                {[
+                  { v: 'si',      label: '✅ Sí',      bg: 'rgba(0,230,118,0.12)', border: 'rgba(0,230,118,0.4)', color: '#00e676' },
+                  { v: 'parcial', label: '⚠️ Parcial', bg: 'rgba(255,179,0,0.12)', border: 'rgba(255,179,0,0.4)', color: '#ffb300' },
+                  { v: 'no',      label: '❌ No',      bg: 'rgba(255,61,87,0.08)', border: 'rgba(255,61,87,0.3)', color: '#ff6b80' },
+                ].map(op => (
+                  <button key={op.v} type="button"
+                    onClick={() => setRespReposicion(respReposicion === op.v ? null : op.v)}
+                    className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
+                    style={{
+                      background: respReposicion === op.v ? op.bg : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${respReposicion === op.v ? op.border : 'rgba(30,51,82,0.6)'}`,
+                      color: respReposicion === op.v ? op.color : '#4a5f7a',
+                    }}>
+                    {op.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Detalles si respondió Sí o Parcial */}
+              {(respReposicion === 'si' || respReposicion === 'parcial') && (
+                <div className="px-4 pb-4 space-y-3" style={{ borderTop: '1px solid rgba(64,196,255,0.12)' }}>
+                  <div className="pt-3">
+                    <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
+                      ¿Cuántos kg repusiste en las jaulas?
+                    </label>
+                    <div className="flex gap-1.5 mb-2 flex-wrap">
+                      {[1, 2, 3, 5, 8].map(p => (
+                        <button key={p} type="button"
+                          onClick={() => setRepKg(p.toString())}
+                          className="px-2.5 py-1 rounded-lg text-xs font-mono"
+                          style={{
+                            background: repKgNum === p ? 'rgba(64,196,255,0.15)' : 'rgba(255,255,255,0.04)',
+                            border: `1px solid ${repKgNum === p ? 'rgba(64,196,255,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                            color: repKgNum === p ? '#40c4ff' : '#4a5f7a',
+                          }}>
+                          {p} kg
+                        </button>
+                      ))}
+                    </div>
+                    <input type="number" min="0" step="0.5" value={repKg}
+                      onChange={e => setRepKg(e.target.value)}
+                      placeholder="Ej: 2.5 kg"
+                      className="w-full px-3 py-2.5 rounded-xl text-sm font-mono" style={inputSt} />
+                  </div>
+
+                  {respReposicion === 'parcial' && (
+                    <>
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
+                          ¿Qué bioterios?
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {OPCIONES_BIOTERIOS.map(b => (
+                            <button key={b.id} type="button"
+                              onClick={() => toggleBioterio(b.id)}
+                              className="px-2.5 py-1 rounded-lg text-xs font-semibold"
+                              style={{
+                                background: repBioterios.includes(b.id) ? `${b.color}18` : 'rgba(255,255,255,0.04)',
+                                border: `1px solid ${repBioterios.includes(b.id) ? `${b.color}50` : 'rgba(30,51,82,0.6)'}`,
+                                color: repBioterios.includes(b.id) ? b.color : '#4a5f7a',
+                              }}>
+                              {b.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
+                          ¿Qué categorías? (opcional)
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {OPCIONES_CATEGORIAS.map(c => (
+                            <button key={c.id} type="button"
+                              onClick={() => toggleCategoria(c.id)}
+                              className="px-2.5 py-1 rounded-lg text-xs font-semibold"
+                              style={{
+                                background: repCategorias.includes(c.id) ? 'rgba(167,139,250,0.15)' : 'rgba(255,255,255,0.04)',
+                                border: `1px solid ${repCategorias.includes(c.id) ? 'rgba(167,139,250,0.45)' : 'rgba(30,51,82,0.6)'}`,
+                                color: repCategorias.includes(c.id) ? '#a78bfa' : '#4a5f7a',
+                              }}>
+                              {c.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {repKgNum > 0 && (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-mono"
+                      style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676' }}>
+                      ✅ Reposición confirmada: {repKgNum.toFixed(1)} kg en jaulas (se guardará separado del censo)
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {respReposicion === 'no' && (
+                <div className="px-4 pb-3 text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                  Sin reposición — el consumo calculado incluye todo el alimento faltante.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Relleno manual (si no usó el prompt o quiere ajustar) */}
+          {!mostrarPrompt && (
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#4a5f7a' }}>
+                Alimento repuesto en jaulas — opcional
+              </label>
+              <div className="text-xs font-mono mb-2" style={{ color: '#3d5068' }}>
+                ¿Trasladaste alimento de las bolsas a las jaulas hoy?
+              </div>
+              <div className="flex gap-1.5 mb-2 flex-wrap">
+                {PRESETS.map(p => {
+                  const isActive = p === 0 ? rellenoKg === '' || rellenoKg === '0' : rellenoNum === p
+                  return (
+                    <button key={p} type="button"
+                      onClick={() => setRellenoKg(p === 0 ? '' : p.toString())}
+                      className="px-2.5 py-1 rounded-lg text-xs font-mono"
+                      style={{
+                        background: isActive ? 'rgba(255,179,0,0.15)' : 'rgba(255,255,255,0.04)',
+                        border:     `1px solid ${isActive ? 'rgba(255,179,0,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                        color:      isActive ? '#ffb300' : '#4a5f7a',
+                      }}>
+                      {p === 0 ? 'Sin relleno' : `${p} kg`}
+                    </button>
+                  )
+                })}
+              </div>
+              <input type="number" min="0" step="0.5" value={rellenoKg}
+                onChange={e => setRellenoKg(e.target.value)}
+                placeholder={rellenoAprendido ? `Típico: ${rellenoAprendido.avg.toFixed(1)} kg` : 'Ej: 2.5 kg'}
+                className="w-full px-3 py-2.5 rounded-xl text-sm font-mono" style={inputSt} />
+              {rellenoAprendido && (
+                <div className="mt-1.5 text-xs font-mono" style={{ color: '#3d5068' }}>
+                  Promedio histórico: {rellenoAprendido.avg.toFixed(1)} kg
+                  <span style={{ color: '#2a3a50' }}> ({rellenoAprendido.n} censos)</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Vista previa */}
           {stockActualKg !== null && kg && !isNaN(kgNum) && (
             <div className="rounded-xl px-4 py-3 text-xs font-mono space-y-1"
               style={{ background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.18)' }}>
               <div style={{ color: '#a78bfa' }}>Vista previa del período</div>
-              {stockActualKg - kgNum > 0 ? (
-                <>
-                  <div style={{ color: '#8a9bb0' }}>
-                    Variación observada: <span style={{ color: '#ff6b80' }}>−{(stockActualKg - kgNum).toFixed(1)} kg</span>
-                  </div>
-                  {rellenoNum > 0 && (
+              {(() => {
+                const efectivoRelleno = respReposicion === 'si' || respReposicion === 'parcial'
+                  ? repKgNum : rellenoNum
+                return stockActualKg - kgNum > 0 ? (
+                  <>
                     <div style={{ color: '#8a9bb0' }}>
-                      Relleno de jaulas: <span style={{ color: '#ffb300' }}>−{rellenoNum.toFixed(1)} kg</span>
+                      Variación observada: <span style={{ color: '#ff6b80' }}>−{(stockActualKg - kgNum).toFixed(1)} kg</span>
                     </div>
-                  )}
-                  <div style={{ color: rellenoNum > 0 ? '#00e676' : '#6a8099' }} className="font-semibold">
-                    Consumo real: {Math.max(0, stockActualKg - kgNum - rellenoNum).toFixed(1)} kg
-                  </div>
-                </>
-              ) : (
-                <div style={{ color: '#3d5068' }}>Sin variación de stock</div>
-              )}
+                    {efectivoRelleno > 0 && (
+                      <div style={{ color: '#8a9bb0' }}>
+                        Reposición en jaulas: <span style={{ color: '#ffb300' }}>−{efectivoRelleno.toFixed(1)} kg</span>
+                        {(respReposicion === 'si' || respReposicion === 'parcial') && (
+                          <span style={{ color: '#40c4ff' }}> ✅ confirmada</span>
+                        )}
+                      </div>
+                    )}
+                    <div style={{ color: efectivoRelleno > 0 ? '#00e676' : '#6a8099' }} className="font-semibold">
+                      Consumo real: {Math.max(0, stockActualKg - kgNum - efectivoRelleno).toFixed(1)} kg
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ color: '#3d5068' }}>Sin variación de stock</div>
+                )
+              })()}
             </div>
           )}
 
@@ -1558,6 +1927,231 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCe
               className="flex-1 py-2.5 rounded-xl text-sm font-bold"
               style={{ background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.4)', color: '#a78bfa' }}>
               Guardar censo
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function ModalReposicion({ fechaInicial, horaInicial, onConfirmar, onCerrar }) {
+  const [fecha,      setFecha]      = useState(fechaInicial ?? hoy())
+  const [hora,       setHora]       = useState(() => {
+    if (horaInicial) return horaInicial
+    const now = new Date()
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  })
+  const [tipo,        setTipo]       = useState('completa')
+  const [kg,          setKg]         = useState('')
+  const [bioterios,   setBioterios]  = useState(OPCIONES_BIOTERIOS.map(b => b.id))
+  const [categorias,  setCategorias] = useState([])
+  const [notas,       setNotas]      = useState('')
+
+  const kgNum = parseFloat(kg) || 0
+
+  function toggleBioterio(id) {
+    setBioterios(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
+  }
+  function toggleCategoria(id) {
+    setCategorias(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
+  }
+
+  function confirmar(e) {
+    e.preventDefault()
+    if (!kgNum || kgNum <= 0) return
+    onConfirmar({
+      fecha,
+      hora,
+      tipo_reposicion: tipo,
+      kg: kgNum,
+      bioterios: tipo === 'parcial' ? bioterios : OPCIONES_BIOTERIOS.map(b => b.id),
+      categorias,
+      notas: notas.trim(),
+    })
+  }
+
+  const inputSt = { background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(5,8,16,0.85)', backdropFilter: 'blur(4px)' }}>
+      <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(64,196,255,0.25)', boxShadow: '0 0 60px rgba(64,196,255,0.08)' }}>
+
+        {/* Header */}
+        <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(64,196,255,0.12)', background: 'rgba(64,196,255,0.04)' }}>
+          <div className="font-bold text-white text-sm">✅ Confirmar reposición de alimento</div>
+          <div className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
+            Registra alimento repuesto en jaulas — mejora la calibración del modelo
+          </div>
+        </div>
+
+        <form onSubmit={confirmar} className="px-6 py-5 space-y-4">
+
+          {/* Fecha + Hora */}
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>Fecha</label>
+              <input
+                type="date"
+                value={fecha}
+                onChange={e => setFecha(e.target.value)}
+                required
+                className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
+                style={inputSt}
+              />
+            </div>
+            <div style={{ width: '110px' }}>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>Hora</label>
+              <input
+                type="time"
+                value={hora}
+                onChange={e => setHora(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
+                style={inputSt}
+              />
+            </div>
+          </div>
+
+          {/* Tipo */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>Tipo de reposición</label>
+            <div className="flex gap-2">
+              {[{ v: 'completa', label: 'Completa (todos los bioterios)' }, { v: 'parcial', label: 'Parcial' }].map(op => (
+                <button
+                  key={op.v}
+                  type="button"
+                  onClick={() => setTipo(op.v)}
+                  className="flex-1 py-2 rounded-xl text-xs font-semibold"
+                  style={{
+                    background: tipo === op.v ? 'rgba(64,196,255,0.15)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${tipo === op.v ? 'rgba(64,196,255,0.45)' : 'rgba(30,51,82,0.6)'}`,
+                    color: tipo === op.v ? '#40c4ff' : '#4a5f7a',
+                  }}
+                >
+                  {op.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Kg */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
+              Alimento repuesto en jaulas (kg)
+            </label>
+            <div className="flex gap-1.5 mb-2 flex-wrap">
+              {[1, 2, 3, 5, 8].map(p => (
+                <button key={p} type="button"
+                  onClick={() => setKg(p.toString())}
+                  className="px-2.5 py-1 rounded-lg text-xs font-mono"
+                  style={{
+                    background: kgNum === p ? 'rgba(64,196,255,0.15)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${kgNum === p ? 'rgba(64,196,255,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                    color: kgNum === p ? '#40c4ff' : '#4a5f7a',
+                  }}>
+                  {p} kg
+                </button>
+              ))}
+            </div>
+            <input
+              type="number"
+              min="0.5"
+              step="0.5"
+              value={kg}
+              onChange={e => setKg(e.target.value)}
+              placeholder="Ej: 2.5"
+              required
+              className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
+              style={inputSt}
+            />
+          </div>
+
+          {/* Bioterios (solo si parcial) */}
+          {tipo === 'parcial' && (
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
+                ¿Qué bioterios?
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {OPCIONES_BIOTERIOS.map(b => (
+                  <button key={b.id} type="button"
+                    onClick={() => toggleBioterio(b.id)}
+                    className="px-2.5 py-1 rounded-lg text-xs font-semibold"
+                    style={{
+                      background: bioterios.includes(b.id) ? `${b.color}18` : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${bioterios.includes(b.id) ? `${b.color}50` : 'rgba(30,51,82,0.6)'}`,
+                      color: bioterios.includes(b.id) ? b.color : '#4a5f7a',
+                    }}>
+                    {b.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Categorías (opcional, siempre disponible) */}
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
+              ¿Qué categorías? <span style={{ color: '#2a3a50', fontWeight: 400 }}>(opcional)</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {OPCIONES_CATEGORIAS.map(c => (
+                <button key={c.id} type="button"
+                  onClick={() => toggleCategoria(c.id)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-semibold"
+                  style={{
+                    background: categorias.includes(c.id) ? 'rgba(167,139,250,0.15)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${categorias.includes(c.id) ? 'rgba(167,139,250,0.45)' : 'rgba(30,51,82,0.6)'}`,
+                    color: categorias.includes(c.id) ? '#a78bfa' : '#4a5f7a',
+                  }}>
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Notas */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>Notas (opcional)</label>
+            <input
+              type="text"
+              value={notas}
+              onChange={e => setNotas(e.target.value)}
+              placeholder="Ej: relleno previo al finde"
+              className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
+              style={inputSt}
+            />
+          </div>
+
+          {/* Preview */}
+          {kgNum > 0 && (
+            <div className="rounded-xl px-4 py-3 text-xs font-mono"
+              style={{ background: 'rgba(64,196,255,0.06)', border: '1px solid rgba(64,196,255,0.2)' }}>
+              <span style={{ color: '#4a5f7a' }}>✅ Se registrarán </span>
+              <span style={{ color: '#40c4ff' }} className="font-bold">{kgNum.toFixed(1)} kg</span>
+              <span style={{ color: '#4a5f7a' }}> como reposición confirmada el {fecha}{hora ? ` a las ${hora}` : ''}</span>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onCerrar}
+              className="flex-1 py-2.5 rounded-xl text-sm font-mono"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a' }}>
+              Cancelar
+            </button>
+            <button type="submit" disabled={!kgNum}
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+              style={{
+                background: kgNum ? 'rgba(64,196,255,0.12)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${kgNum ? 'rgba(64,196,255,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                color: kgNum ? '#40c4ff' : '#4a5f7a',
+                cursor: kgNum ? 'pointer' : 'not-allowed',
+              }}>
+              ✅ Confirmar reposición
             </button>
           </div>
         </form>
