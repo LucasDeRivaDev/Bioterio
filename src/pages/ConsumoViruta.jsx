@@ -213,37 +213,36 @@ function compraFromDB(row) {
   }
 }
 
-// ── Migración única desde localStorage ───────────────────────────────────────
+// ── Migración automática desde localStorage ───────────────────────────────────
+// Sin flags: cada carga verifica si Supabase está vacío y hay datos en LS.
+// Cuando migra exitosamente, borra las claves de LS para no repetir.
 const LS_CENSOS  = 'appMosca_viruta_censos'
 const LS_COMPRAS = 'appMosca_viruta_compras'
-const LS_MIGRADO = 'appMosca_viruta_migrado_v1'
 
 async function migrarDesdeLocalStorage() {
-  if (localStorage.getItem(LS_MIGRADO)) return
   try {
     const censoLS  = JSON.parse(localStorage.getItem(LS_CENSOS)  || '[]')
     const compraLS = JSON.parse(localStorage.getItem(LS_COMPRAS) || '[]')
-    if (censoLS.length === 0 && compraLS.length === 0) {
-      localStorage.setItem(LS_MIGRADO, '1')
-      return
-    }
+    if (censoLS.length === 0 && compraLS.length === 0) return  // nada que migrar
+
     const { data: existentes } = await supabase.from('viruta_censos').select('id').limit(1)
     if (existentes && existentes.length > 0) {
-      localStorage.setItem(LS_MIGRADO, '1')
+      // Supabase ya tiene datos → limpiar LS para no reintentar
+      localStorage.removeItem(LS_CENSOS)
+      localStorage.removeItem(LS_COMPRAS)
       return
     }
-    if (censoLS.length > 0) {
-      await supabase.from('viruta_censos').insert(censoLS.map(censoToDB))
-    }
-    if (compraLS.length > 0) {
-      await supabase.from('viruta_compras').insert(
-        compraLS.map(c => ({ id: c.id, fecha: c.fecha, bolsas: c.bolsas ?? 0 }))
-      )
-    }
-    localStorage.setItem(LS_MIGRADO, '1')
+
+    if (censoLS.length > 0)  await supabase.from('viruta_censos').insert(censoLS.map(censoToDB))
+    if (compraLS.length > 0) await supabase.from('viruta_compras').insert(
+      compraLS.map(c => ({ id: c.id, fecha: c.fecha, bolsas: c.bolsas ?? 0 }))
+    )
+    // Limpiar LS solo si la migración fue exitosa
+    localStorage.removeItem(LS_CENSOS)
+    localStorage.removeItem(LS_COMPRAS)
     console.info('[viruta] Migración localStorage → Supabase completada.')
   } catch (e) {
-    console.warn('[viruta] Migración fallida (se reintentará):', e)
+    console.warn('[viruta] Migración fallida, se reintentará en la próxima carga:', e)
   }
 }
 

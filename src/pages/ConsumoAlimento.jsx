@@ -98,27 +98,35 @@ function reposicionFromDB(row) {
   }
 }
 
-// ── Migración única desde localStorage ───────────────────────────────────────
-const LS_MIGRADO_ALIM = 'appMosca_alimento_migrado_v1'
-
+// ── Migración automática desde localStorage ───────────────────────────────────
+// Sin flags: verifica si Supabase está vacío y hay datos en LS.
+// Al migrar exitosamente, limpia las claves de LS.
 async function migrarAlimentoDesdeLS() {
-  if (localStorage.getItem(LS_MIGRADO_ALIM)) return
   try {
-    const censoLS  = JSON.parse(localStorage.getItem(LS_CENSOS)       || '[]')
-    const ingLS    = JSON.parse(localStorage.getItem(LS_INGRESOS)     || '[]')
-    const repLS    = JSON.parse(localStorage.getItem(LS_REPOSICIONES) || '[]')
-    if (!censoLS.length && !ingLS.length && !repLS.length) {
-      localStorage.setItem(LS_MIGRADO_ALIM, '1'); return
-    }
+    const censoLS = JSON.parse(localStorage.getItem(LS_CENSOS)       || '[]')
+    const ingLS   = JSON.parse(localStorage.getItem(LS_INGRESOS)     || '[]')
+    const repLS   = JSON.parse(localStorage.getItem(LS_REPOSICIONES) || '[]')
+    if (!censoLS.length && !ingLS.length && !repLS.length) return  // nada que migrar
+
     const { data: ex } = await supabase.from('alimento_censos').select('id').limit(1)
-    if (ex && ex.length > 0) { localStorage.setItem(LS_MIGRADO_ALIM, '1'); return }
-    if (censoLS.length)  await supabase.from('alimento_censos').insert(censoLS.map(censoAlimToDB))
-    if (ingLS.length)    await supabase.from('alimento_ingresos').insert(ingLS.map(r => ({ id: r.id, fecha: r.fecha, kg: r.kg ?? 0, notas: r.notas ?? null })))
-    if (repLS.length)    await supabase.from('alimento_reposiciones').insert(repLS.map(r => ({ id: r.id, fecha: r.fecha, hora: r.hora ?? null, tipo_reposicion: r.tipo_reposicion ?? 'completa', kg: r.kg ?? 0, bioterios: r.bioterios ?? [], categorias: r.categorias ?? [], notas: r.notas ?? null, confirmada: r.confirmada ?? true })))
-    localStorage.setItem(LS_MIGRADO_ALIM, '1')
+    if (ex && ex.length > 0) {
+      // Supabase ya tiene datos → limpiar LS para no reintentar
+      localStorage.removeItem(LS_CENSOS)
+      localStorage.removeItem(LS_INGRESOS)
+      localStorage.removeItem(LS_REPOSICIONES)
+      return
+    }
+
+    if (censoLS.length) await supabase.from('alimento_censos').insert(censoLS.map(censoAlimToDB))
+    if (ingLS.length)   await supabase.from('alimento_ingresos').insert(ingLS.map(r => ({ id: r.id, fecha: r.fecha, kg: r.kg ?? 0, notas: r.notas ?? null })))
+    if (repLS.length)   await supabase.from('alimento_reposiciones').insert(repLS.map(r => ({ id: r.id, fecha: r.fecha, hora: r.hora ?? null, tipo_reposicion: r.tipo_reposicion ?? 'completa', kg: r.kg ?? 0, bioterios: r.bioterios ?? [], categorias: r.categorias ?? [], notas: r.notas ?? null, confirmada: r.confirmada ?? true })))
+
+    localStorage.removeItem(LS_CENSOS)
+    localStorage.removeItem(LS_INGRESOS)
+    localStorage.removeItem(LS_REPOSICIONES)
     console.info('[alimento] Migración localStorage → Supabase completada.')
   } catch (e) {
-    console.warn('[alimento] Migración fallida (se reintentará):', e)
+    console.warn('[alimento] Migración fallida, se reintentará en la próxima carga:', e)
   }
 }
 
