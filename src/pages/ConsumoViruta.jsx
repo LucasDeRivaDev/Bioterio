@@ -8,7 +8,7 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
-import { ArrowLeft, RefreshCw, Plus, ClipboardList, TrendingDown, Info, Layers, AlertTriangle, ShoppingCart, Calendar, Clock } from 'lucide-react'
+import { ArrowLeft, RefreshCw, Plus, ClipboardList, TrendingDown, Info, Layers, AlertTriangle, ShoppingCart, Calendar, Clock, CheckCircle } from 'lucide-react'
 
 const PESOS = {
   macho_repro:      1.2,
@@ -101,7 +101,6 @@ function calcUnidades(conteos, especie) {
 }
 
 // ── Ciclo de cambios de cama ──────────────────────────────────────────────────
-// Cambios ocurren: Lunes y Viernes, a partir de las 08:00
 
 const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
@@ -110,30 +109,32 @@ function horaActual() {
   return `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`
 }
 
-// Convierte 'YYYY-MM-DD' a día de la semana en hora local (evita desfase UTC)
 function diaLocal(fechaStr) {
   if (!fechaStr) return -1
   const [y, m, d] = fechaStr.split('-').map(Number)
   return new Date(y, m - 1, d).getDay()
 }
 
-// Probabilidad de que ya ocurrió un cambio de cama en el momento del censo
+function esDiaDeCambio(fechaStr) {
+  const d = diaLocal(fechaStr)
+  return d === 1 || d === 5
+}
+
 function probCambioReciente(fechaStr, horaStr) {
   const day = diaLocal(fechaStr)
   const h   = parseInt((horaStr ?? '12:00').split(':')[0])
-  if (day === 1 || day === 5) { // Lunes o Viernes (días de cambio)
-    if (h < 8)  return 0.10 // antes del horario de cambio
-    if (h < 9)  return 0.25 // inicio del cambio
-    if (h < 12) return 0.60 // mañana: probablemente en proceso
-    if (h < 18) return 0.85 // tarde: muy probable que ya terminó
-    return 0.90             // noche: casi certeza
+  if (day === 1 || day === 5) {
+    if (h < 8)  return 0.10
+    if (h < 9)  return 0.25
+    if (h < 12) return 0.60
+    if (h < 18) return 0.85
+    return 0.90
   }
-  if (day === 2 || day === 6) return 0.10 // Martes / Sábado: cambio fue ayer
-  if (day === 0)              return 0.08 // Domingo: cambio fue el viernes
-  return 0.05                             // Miércoles / Jueves: mitad del ciclo
+  if (day === 2 || day === 6) return 0.10
+  if (day === 0)              return 0.08
+  return 0.05
 }
 
-// Próximo cambio de cama (Lunes o Viernes a las 08:00) desde la fecha+hora dada
 function proximoCambioDesde(fechaStr, horaStr) {
   if (!fechaStr) return null
   const [y, m, d] = fechaStr.split('-').map(Number)
@@ -163,7 +164,6 @@ function proximoCambioDesde(fechaStr, horaStr) {
   }
 }
 
-// Descripción del momento del censo dentro del ciclo semanal
 function contextoCiclo(fechaStr, horaStr) {
   const prob = probCambioReciente(fechaStr, horaStr)
   const day  = diaLocal(fechaStr)
@@ -175,9 +175,12 @@ function contextoCiclo(fechaStr, horaStr) {
   return { label: 'Mitad del ciclo · sin cambios recientes', color: '#4a5f7a' }
 }
 
+// Etiqueta corta del bioterio para mostrar en badges
+function labelCorto(id) {
+  return { ratas: 'Ratas', ratones_balbc: 'Balb/C', ratones_c57: 'C57', ratones_hibridos: 'Híbridos' }[id] ?? id
+}
+
 // ── localStorage ──────────────────────────────────────────────────────────────
-// Censos: snapshot de stock actual  { id, fecha, hora, bolsas, unidades }
-// Compras: ingreso de mercadería    { id, fecha, bolsas }
 
 const LS_CENSOS  = 'appMosca_viruta_censos'
 const LS_COMPRAS = 'appMosca_viruta_compras'
@@ -192,13 +195,15 @@ function guardarCompras(l){ localStorage.setItem(LS_COMPRAS, JSON.stringify(l)) 
 export default function ConsumoViruta() {
   const { limpiarBioterio } = useBioterioActivo()
 
-  const [datos,       setDatos]       = useState(null)
-  const [cargando,    setCargando]    = useState(true)
-  const [error,       setError]       = useState(null)
-  const [censos,      setCensos]      = useState(() => cargarCensos())
-  const [compras,     setCompras]     = useState(() => cargarCompras())
-  const [modal,       setModal]       = useState(false)   // modal censo
-  const [modalCompra, setModalCompra] = useState(false)   // modal compra
+  const [datos,          setDatos]          = useState(null)
+  const [cargando,       setCargando]       = useState(true)
+  const [error,          setError]          = useState(null)
+  const [censos,         setCensos]         = useState(() => cargarCensos())
+  const [compras,        setCompras]        = useState(() => cargarCompras())
+  const [modal,          setModal]          = useState(false)
+  const [modalCompra,    setModalCompra]    = useState(false)
+  const [modalConfirmar, setModalConfirmar] = useState(false)
+  const [censoAConfirmar,setCensoAConfirmar]= useState(null)
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
   const cargarDatos = useCallback(async () => {
@@ -252,15 +257,19 @@ export default function ConsumoViruta() {
   }, [datos])
 
   // ── Calibración adaptativa ────────────────────────────────────────────────
-  // Solo usa censos. Las compras entre dos censos se suman al stock inicial
-  // para calcular el consumo real del período.
+  // Periodos confirmados tienen mayor peso en el promedio ponderado.
   const calibracion = useMemo(() => {
     if (censos.length < 2 || !totales) return null
     const tasas = []
+    let pesoTotal = 0
+    let tasaPonderada = 0
     for (let i = 0; i < censos.length - 1; i++) {
       const prev = censos[i]
       const cur  = censos[i + 1]
-      // Compras que ingresaron durante este período (>= prev.fecha y < cur.fecha)
+      // Peso según confirmaciones: ambos confirmados = 1.5, uno = 1.0, ninguno = 0.6
+      const prevConf = prev.cambioCama?.tipo != null
+      const curConf  = cur.cambioCama?.tipo  != null
+      const peso = prevConf && curConf ? 1.5 : prevConf || curConf ? 1.0 : 0.6
       const comprasEnPeriodo = compras
         .filter(c => c.fecha >= prev.fecha && c.fecha < cur.fecha)
         .reduce((s, c) => s + c.bolsas, 0)
@@ -270,10 +279,13 @@ export default function ConsumoViruta() {
       if (sem  <= 0) continue
       const uAvg = ((prev.unidades ?? totales.totalUnidades) + (cur.unidades ?? totales.totalUnidades)) / 2
       if (uAvg <= 0) continue
-      tasas.push(consumido / sem / uAvg)
+      const t = consumido / sem / uAvg
+      tasas.push(t)
+      tasaPonderada += t * peso
+      pesoTotal += peso
     }
     if (tasas.length === 0) return null
-    const tasa = tasas.reduce((s, t) => s + t, 0) / tasas.length
+    const tasa = pesoTotal > 0 ? tasaPonderada / pesoTotal : tasas.reduce((s, t) => s + t, 0) / tasas.length
     return { tasa, periodos: tasas.length, tasas }
   }, [censos, compras, totales])
 
@@ -284,7 +296,6 @@ export default function ConsumoViruta() {
 
   const ultimoCenso = censos.length > 0 ? censos[censos.length - 1] : null
 
-  // Stock actual = último censo + compras ingresadas desde ese censo
   const comprasPostCenso = ultimoCenso
     ? compras.filter(c => c.fecha >= ultimoCenso.fecha)
     : []
@@ -296,15 +307,38 @@ export default function ConsumoViruta() {
     ? stockActual / bolsasPorSem : null
 
   // ── Ciclo de cambios de cama ──────────────────────────────────────────────
-  // Se recalcula en cada render (O(1), no necesita useMemo)
   const proximoCambioHoy = proximoCambioDesde(hoy(), horaActual())
 
-  // Aviso si el último censo fue tomado en un momento de probable cambio
+  // Confianza del modelo: sube a medida que se confirman cambios de cama
+  const confianzaModelo = useMemo(() => {
+    if (censos.length === 0) return { pct: 0, confirmados: 0, total: 0, suficiente: false }
+    const enDiaCambio = censos.filter(c => esDiaDeCambio(c.fecha))
+    if (enDiaCambio.length === 0) return { pct: 75, confirmados: 0, total: 0, suficiente: false }
+    const confirmados = enDiaCambio.filter(c => c.cambioCama?.tipo).length
+    const pct = Math.round(65 + (confirmados / enDiaCambio.length) * 30)
+    return { pct, confirmados, total: enDiaCambio.length, suficiente: confirmados >= 3 }
+  }, [censos])
+
+  // Aviso relleno: suprimido si el último censo tiene confirmación 'no'
   const avisoRelleno = useMemo(() => {
     if (!ultimoCenso) return null
+    const cc = ultimoCenso.cambioCama
+    if (cc?.tipo === 'no') return null  // confirmado sin cambio → no hay aviso
     const prob = probCambioReciente(ultimoCenso.fecha, ultimoCenso.hora)
-    if (prob < 0.45) return null
-    return { prob, dia: DIAS_SEMANA[diaLocal(ultimoCenso.fecha)] }
+    if (prob < 0.45 && !cc) return null
+    return {
+      prob,
+      dia: DIAS_SEMANA[diaLocal(ultimoCenso.fecha)],
+      confirmado: cc?.tipo ?? null,
+    }
+  }, [ultimoCenso])
+
+  // ¿El último censo está en un día de cambio y sin confirmar?
+  const pendienteConfirmacion = useMemo(() => {
+    if (!ultimoCenso) return false
+    if (ultimoCenso.cambioCama?.tipo) return false
+    const prob = probCambioReciente(ultimoCenso.fecha, ultimoCenso.hora)
+    return esDiaDeCambio(ultimoCenso.fecha) || prob >= 0.45
   }, [ultimoCenso])
 
   // ── Alertas ───────────────────────────────────────────────────────────────
@@ -317,8 +351,8 @@ export default function ConsumoViruta() {
   const colorAlerta = { critico: '#ff6b80', bajo: '#ffb300', ok: '#00e676', bien: '#00e676' }[nivelAlerta] ?? '#c49a6a'
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
-  function registrarCenso(fecha, hora, bolsas) {
-    const nuevo  = { id: generarId(), fecha, hora, bolsas, unidades: totales?.totalUnidades ?? 0 }
+  function registrarCenso(fecha, hora, bolsas, cambioCama) {
+    const nuevo  = { id: generarId(), fecha, hora, bolsas, unidades: totales?.totalUnidades ?? 0, cambioCama: cambioCama ?? null }
     const nuevos = [...censos, nuevo].sort((a, b) => a.fecha.localeCompare(b.fecha))
     setCensos(nuevos); guardarCensos(nuevos); setModal(false)
   }
@@ -326,6 +360,12 @@ export default function ConsumoViruta() {
   function eliminarCenso(id) {
     const nuevos = censos.filter(c => c.id !== id)
     setCensos(nuevos); guardarCensos(nuevos)
+  }
+
+  function confirmarCambioCama(censoId, cambioCama) {
+    const nuevos = censos.map(c => c.id === censoId ? { ...c, cambioCama } : c)
+    setCensos(nuevos); guardarCensos(nuevos)
+    setModalConfirmar(false); setCensoAConfirmar(null)
   }
 
   function registrarCompra(fecha, bolsas) {
@@ -337,6 +377,11 @@ export default function ConsumoViruta() {
   function eliminarCompraItem(id) {
     const nuevas = compras.filter(c => c.id !== id)
     setCompras(nuevas); guardarCompras(nuevas)
+  }
+
+  function abrirConfirmar(censo) {
+    setCensoAConfirmar(censo)
+    setModalConfirmar(true)
   }
 
   // ── Datos para gráficos ───────────────────────────────────────────────────
@@ -361,7 +406,7 @@ export default function ConsumoViruta() {
     }).filter(d => d.real > 0 || d.estimado > 0)
   }, [censos, compras, bolsasPorSem])
 
-  // ── Timeline unificada (censos + compras, más reciente primero) ───────────
+  // ── Timeline unificada ────────────────────────────────────────────────────
   const movimientos = useMemo(() => {
     const items = [
       ...censos.map(c => ({ ...c, tipo: 'censo' })),
@@ -370,7 +415,6 @@ export default function ConsumoViruta() {
     return items
   }, [censos, compras])
 
-  // Para cada censo, calcular consumo desde el censo anterior
   function consumoPorCenso(censo) {
     const idx  = censos.findIndex(c => c.id === censo.id)
     if (idx <= 0) return null
@@ -383,6 +427,14 @@ export default function ConsumoViruta() {
     return consumido > 0
       ? { consumido, porSem: sem > 0 ? (consumido / sem).toFixed(2) : null }
       : null
+  }
+
+  // ── Color confianza ───────────────────────────────────────────────────────
+  function colorConfianza(pct) {
+    if (pct >= 90) return '#00e676'
+    if (pct >= 80) return '#40c4ff'
+    if (pct >= 70) return '#ffb300'
+    return '#4a5f7a'
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -550,6 +602,29 @@ export default function ConsumoViruta() {
                   <div className="ml-auto font-bold text-white">{(totales.unidRatones * tasa).toFixed(2)} bol/sem</div>
                 </div>
               </div>
+
+              {/* Confianza del modelo */}
+              {censos.length > 0 && (
+                <div className="px-5 py-3 flex items-center gap-3 text-xs font-mono"
+                  style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                  <CheckCircle size={12} style={{ color: colorConfianza(confianzaModelo.pct), flexShrink: 0 }} />
+                  <span style={{ color: '#4a5f7a' }}>Confianza del modelo:</span>
+                  <span className="font-bold" style={{ color: colorConfianza(confianzaModelo.pct) }}>
+                    {confianzaModelo.pct}%
+                  </span>
+                  <div className="flex-1 h-1 rounded-full overflow-hidden mx-1" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                    <div className="h-full rounded-full transition-all"
+                      style={{ width: `${confianzaModelo.pct}%`, background: colorConfianza(confianzaModelo.pct) }} />
+                  </div>
+                  {confianzaModelo.total > 0 ? (
+                    <span style={{ color: '#3d5068' }}>
+                      {confianzaModelo.confirmados}/{confianzaModelo.total} cambios confirmados
+                    </span>
+                  ) : (
+                    <span style={{ color: '#3d5068' }}>Confirmá cambios de cama para mejorar</span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* ── Ciclo de cambios de cama ── */}
@@ -594,6 +669,7 @@ export default function ConsumoViruta() {
                     const ctx  = contextoCiclo(ultimoCenso.fecha, ultimoCenso.hora)
                     const prob = probCambioReciente(ultimoCenso.fecha, ultimoCenso.hora)
                     const probPct = Math.round(prob * 100)
+                    const cc = ultimoCenso.cambioCama
                     return (
                       <>
                         <div className="text-lg font-bold font-mono text-white leading-none">
@@ -603,24 +679,40 @@ export default function ConsumoViruta() {
                           <Clock size={11} />
                           {ultimoCenso.hora ?? '—'}
                         </div>
-                        <div className="text-xs font-mono mt-1 px-2 py-0.5 rounded-full"
-                          style={{ background: `${ctx.color}15`, color: ctx.color, border: `1px solid ${ctx.color}30` }}>
-                          {ctx.label}
-                        </div>
-                        {/* Barra de probabilidad */}
-                        <div className="w-full mt-2 px-3">
-                          <div className="flex justify-between text-xs font-mono mb-1" style={{ color: '#3d5068' }}>
-                            <span>Prob. cambio reciente</span>
-                            <span style={{ color: probPct >= 55 ? '#ffb300' : '#4a5f7a' }}>{probPct}%</span>
+                        {/* Badge: confirmado o inferido */}
+                        {cc?.tipo ? (
+                          <div className="text-xs font-mono mt-1 px-2 py-0.5 rounded-full"
+                            style={{
+                              background: cc.tipo === 'si' ? 'rgba(0,230,118,0.1)' : cc.tipo === 'no' ? 'rgba(255,255,255,0.06)' : 'rgba(64,196,255,0.1)',
+                              color:      cc.tipo === 'si' ? '#00e676'              : cc.tipo === 'no' ? '#4a5f7a'                : '#40c4ff',
+                              border: `1px solid ${cc.tipo === 'si' ? 'rgba(0,230,118,0.25)' : cc.tipo === 'no' ? 'rgba(255,255,255,0.1)' : 'rgba(64,196,255,0.25)'}`,
+                            }}>
+                            {cc.tipo === 'si' ? '✅ Cambio confirmado'
+                             : cc.tipo === 'no' ? '— Sin cambio (confirmado)'
+                             : `⚡ Parcial${cc.bioteriosAfectados?.length ? `: ${cc.bioteriosAfectados.map(labelCorto).join(', ')}` : ''}`}
                           </div>
-                          <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
-                            <div className="h-full rounded-full transition-all"
-                              style={{
-                                width: `${probPct}%`,
-                                background: probPct >= 70 ? '#ffb300' : probPct >= 45 ? '#ff9800' : '#00e676',
-                              }} />
+                        ) : (
+                          <div className="text-xs font-mono mt-1 px-2 py-0.5 rounded-full"
+                            style={{ background: `${ctx.color}15`, color: ctx.color, border: `1px solid ${ctx.color}30` }}>
+                            {ctx.label}
                           </div>
-                        </div>
+                        )}
+                        {/* Barra de probabilidad (solo si no confirmado) */}
+                        {!cc?.tipo && (
+                          <div className="w-full mt-2 px-3">
+                            <div className="flex justify-between text-xs font-mono mb-1" style={{ color: '#3d5068' }}>
+                              <span>Prob. cambio reciente</span>
+                              <span style={{ color: probPct >= 55 ? '#ffb300' : '#4a5f7a' }}>{probPct}%</span>
+                            </div>
+                            <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                              <div className="h-full rounded-full transition-all"
+                                style={{
+                                  width: `${probPct}%`,
+                                  background: probPct >= 70 ? '#ffb300' : probPct >= 45 ? '#ff9800' : '#00e676',
+                                }} />
+                            </div>
+                          </div>
+                        )}
                       </>
                     )
                   })() : (
@@ -629,8 +721,27 @@ export default function ConsumoViruta() {
                 </div>
               </div>
 
+              {/* Botón de confirmación pendiente */}
+              {pendienteConfirmacion && ultimoCenso && (
+                <div className="mx-4 mb-4 px-4 py-3 rounded-xl flex items-center gap-3"
+                  style={{ background: 'rgba(255,179,0,0.06)', border: '1px solid rgba(255,179,0,0.25)' }}>
+                  <Calendar size={14} style={{ color: '#ffb300', flexShrink: 0 }} />
+                  <div className="flex-1 text-xs font-mono" style={{ color: '#ffb300' }}>
+                    El último censo fue tomado el <strong>{DIAS_SEMANA[diaLocal(ultimoCenso.fecha)]}</strong>.
+                    Confirmá si se realizó el cambio de cama para mejorar la precisión del modelo.
+                  </div>
+                  <button onClick={() => abrirConfirmar(ultimoCenso)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono font-semibold shrink-0"
+                    style={{ background: 'rgba(255,179,0,0.14)', border: '1px solid rgba(255,179,0,0.4)', color: '#ffb300' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,179,0,0.22)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,179,0,0.14)' }}>
+                    <CheckCircle size={12} /> Confirmar cambio de cama
+                  </button>
+                </div>
+              )}
+
               {/* Banner aviso cambio reciente sin corregir */}
-              {avisoRelleno && (
+              {avisoRelleno && !avisoRelleno.confirmado && (
                 <div className="mx-4 mb-4 px-4 py-3 rounded-xl flex items-start gap-3 text-xs font-mono"
                   style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.3)', color: '#ffb300' }}>
                   <AlertTriangle size={14} className="shrink-0 mt-0.5" />
@@ -639,6 +750,25 @@ export default function ConsumoViruta() {
                     <strong>{Math.round(avisoRelleno.prob * 100)}%</strong> de probabilidad de cambio de cama ese día.
                     El stock observado puede estar por debajo del nivel promedio semanal.
                     Para calibrar mejor, tomá un censo un día neutro (Martes o Miércoles).
+                  </span>
+                </div>
+              )}
+              {avisoRelleno?.confirmado === 'si' && (
+                <div className="mx-4 mb-4 px-4 py-3 rounded-xl flex items-center gap-3 text-xs font-mono"
+                  style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.2)', color: '#00e676' }}>
+                  <CheckCircle size={14} className="shrink-0" />
+                  <span>Cambio de cama confirmado en este censo — el modelo usa este dato con mayor peso en la calibración.</span>
+                </div>
+              )}
+              {avisoRelleno?.confirmado === 'parcial' && (
+                <div className="mx-4 mb-4 px-4 py-3 rounded-xl flex items-center gap-3 text-xs font-mono"
+                  style={{ background: 'rgba(64,196,255,0.06)', border: '1px solid rgba(64,196,255,0.2)', color: '#40c4ff' }}>
+                  <CheckCircle size={14} className="shrink-0" />
+                  <span>
+                    Cambio parcial confirmado
+                    {ultimoCenso?.cambioCama?.bioteriosAfectados?.length
+                      ? `: ${ultimoCenso.cambioCama.bioteriosAfectados.map(labelCorto).join(', ')}`
+                      : ''}.
                   </span>
                 </div>
               )}
@@ -715,6 +845,8 @@ export default function ConsumoViruta() {
                     }
                     // tipo === 'censo'
                     const consumo = consumoPorCenso(item)
+                    const cc = item.cambioCama
+                    const necesitaConfirmar = !cc?.tipo && esDiaDeCambio(item.fecha)
                     return (
                       <div key={item.id}
                         className="rounded-xl px-4 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-1"
@@ -737,15 +869,33 @@ export default function ConsumoViruta() {
                             <Clock size={10} /> {item.hora}
                           </span>
                         )}
-                        {/* Badge contexto ciclo */}
-                        {(() => {
+                        {/* Badge cambio de cama: confirmado o inferido */}
+                        {cc?.tipo === 'si' && (
+                          <span className="text-xs font-mono px-1.5 py-0.5 rounded-full"
+                            style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676' }}>
+                            ✅ Cambio confirmado
+                          </span>
+                        )}
+                        {cc?.tipo === 'no' && (
+                          <span className="text-xs font-mono px-1.5 py-0.5 rounded-full"
+                            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a' }}>
+                            — Sin cambio
+                          </span>
+                        )}
+                        {cc?.tipo === 'parcial' && (
+                          <span className="text-xs font-mono px-1.5 py-0.5 rounded-full"
+                            style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.25)', color: '#40c4ff' }}>
+                            ⚡ Parcial{cc.bioteriosAfectados?.length ? `: ${cc.bioteriosAfectados.map(labelCorto).join(', ')}` : ''}
+                          </span>
+                        )}
+                        {!cc?.tipo && (() => {
                           const prob = probCambioReciente(item.fecha, item.hora)
                           if (prob < 0.45) return null
                           const ctx = contextoCiclo(item.fecha, item.hora)
                           return (
                             <span className="text-xs font-mono px-1.5 py-0.5 rounded-full"
                               style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.22)', color: '#ffb300' }}>
-                              🔄 {ctx.label}
+                              🔄 Probable cambio
                             </span>
                           )
                         })()}
@@ -756,11 +906,20 @@ export default function ConsumoViruta() {
                             {consumo.porSem && <span style={{ color: '#4a5f7a' }}> ({consumo.porSem} bol/sem)</span>}
                           </span>
                         )}
-                        <span className="ml-auto text-xs font-mono" style={{ color: '#2a3a50' }}>
+                        <span className="font-mono text-xs" style={{ color: '#2a3a50' }}>
                           {item.unidades?.toFixed(1)} unid.
                         </span>
+                        {/* Botón confirmar cambio (censos en día de cambio sin confirmar) */}
+                        {necesitaConfirmar && (
+                          <button onClick={() => abrirConfirmar(item)}
+                            className="text-xs font-mono px-2 py-0.5 rounded-lg"
+                            style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.25)', color: '#ffb300' }}
+                            title="Confirmar si se realizó el cambio de cama">
+                            Confirmar ✓
+                          </button>
+                        )}
                         <button onClick={() => eliminarCenso(item.id)}
-                          className="text-xs" style={{ color: '#2a3a50' }} title="Eliminar">✕</button>
+                          className="text-xs ml-auto" style={{ color: '#2a3a50' }} title="Eliminar">✕</button>
                       </div>
                     )
                   })}
@@ -873,16 +1032,16 @@ export default function ConsumoViruta() {
                   <div>Cambios de cama por semana    {CAMBIOS_SEM}×</div>
                 </div>
                 <div className="space-y-2" style={{ color: '#3d5068' }}>
-                  <div className="font-semibold" style={{ color: '#5a7a9a' }}>Cálculo de consumo real</div>
+                  <div className="font-semibold" style={{ color: '#5a7a9a' }}>Calibración ponderada</div>
                   <div>consumido = censo_anterior + compras_del_período − censo_actual</div>
                   <div>bolsas/sem = consumido ÷ semanas_entre_censos</div>
                   <div>tasa = bolsas/sem ÷ unidades_ponderadas</div>
                   <div className="pt-1 border-t" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-                    Las compras no alteran el historial de consumo. Solo los censos son la fuente de aprendizaje.
+                    Períodos con cambios confirmados tienen mayor peso (×1.5 ambos / ×1.0 uno / ×0.6 ninguno).
                   </div>
                   {calibrado && (
                     <div style={{ color: '#00e676' }}>
-                      Tasa aprendida: {tasa.toFixed(4)} bol/unid/sem (promedio de {calibracion.periodos} períodos)
+                      Tasa aprendida: {tasa.toFixed(4)} bol/unid/sem (promedio ponderado de {calibracion.periodos} períodos)
                     </div>
                   )}
                 </div>
@@ -908,6 +1067,15 @@ export default function ConsumoViruta() {
           stockActual={stockActual}
           onConfirmar={registrarCompra}
           onCerrar={() => setModalCompra(false)}
+        />
+      )}
+
+      {/* Modal confirmar cambio de cama */}
+      {modalConfirmar && censoAConfirmar && (
+        <ModalConfirmarCambio
+          censo={censoAConfirmar}
+          onConfirmar={confirmarCambioCama}
+          onCerrar={() => { setModalConfirmar(false); setCensoAConfirmar(null) }}
         />
       )}
     </div>
@@ -953,17 +1121,18 @@ function TarjetaJaulas({ label, icon, color, unidades, filas, nota }) {
 // ── Modal: Registrar censo ────────────────────────────────────────────────────
 
 function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
-  const [fecha,  setFecha]  = useState(hoy())
-  const [hora,   setHora]   = useState(horaActual())
-  const [bolsas, setBolsas] = useState('')
-  const [error,  setError]  = useState('')
+  const [fecha,       setFecha]       = useState(hoy())
+  const [hora,        setHora]        = useState(horaActual())
+  const [bolsas,      setBolsas]      = useState('')
+  const [error,       setError]       = useState('')
+  const [cambioCama,  setCambioCama]  = useState(null)   // 'si' | 'no' | 'parcial' | null
+  const [bioAfect,    setBioAfect]    = useState([])     // para 'parcial'
 
   const FRACCIONES = [0, 0.25, 0.5, 0.75]
+  const esLunesOViernes = esDiaDeCambio(fecha)
 
-  function aplicarFraccion(base, fraccion) {
-    const entero = Math.floor(parseFloat(base) || 0)
-    setBolsas((entero + fraccion).toString())
-    setError('')
+  function toggleBio(id) {
+    setBioAfect(prev => prev.includes(id) ? prev.filter(b => b !== id) : [...prev, id])
   }
 
   function confirmar(e) {
@@ -971,7 +1140,14 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
     const b = parseFloat(bolsas)
     if (isNaN(b) || b < 0) { setError('Ingresá una cantidad válida de bolsas.'); return }
     if (Math.round(b * 4) !== b * 4) { setError('Solo se permiten enteros, medias y cuartos de bolsa (0.25).'); return }
-    onConfirmar(fecha, hora, b)
+    const cc = cambioCama ? { tipo: cambioCama, bioteriosAfectados: cambioCama === 'parcial' ? bioAfect : [] } : null
+    onConfirmar(fecha, hora, b, cc)
+  }
+
+  function aplicarFraccion(base, fraccion) {
+    const entero = Math.floor(parseFloat(base) || 0)
+    setBolsas((entero + fraccion).toString())
+    setError('')
   }
 
   const preview   = isNaN(parseFloat(bolsas)) ? null : parseFloat(bolsas)
@@ -979,30 +1155,33 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
   const probPct   = Math.round(prob * 100)
   const proxCamb  = proximoCambioDesde(fecha, hora)
 
-  // Color y texto del banner de ciclo
   const bannerCiclo = (() => {
+    if (cambioCama === 'si') return {
+      color: '#00e676', bg: 'rgba(0,230,118,0.08)', border: 'rgba(0,230,118,0.3)',
+      texto: '✅ Cambio confirmado — el modelo usará este dato con mayor peso en la calibración.',
+    }
+    if (cambioCama === 'no') return {
+      color: '#4a5f7a', bg: 'rgba(255,255,255,0.03)', border: 'rgba(255,255,255,0.08)',
+      texto: '— Sin cambio de cama — el stock refleja solo el consumo diario.',
+    }
+    if (cambioCama === 'parcial') return {
+      color: '#40c4ff', bg: 'rgba(64,196,255,0.06)', border: 'rgba(64,196,255,0.25)',
+      texto: `⚡ Cambio parcial${bioAfect.length ? ` en: ${bioAfect.map(labelCorto).join(', ')}` : ' — seleccioná los bioterios abajo'}.`,
+    }
     if (probPct >= 70) return {
-      color: '#ffb300',
-      bg: 'rgba(255,179,0,0.08)',
-      border: 'rgba(255,179,0,0.3)',
+      color: '#ffb300', bg: 'rgba(255,179,0,0.08)', border: 'rgba(255,179,0,0.3)',
       texto: `🔄 Probable cambio de cama realizado (${probPct}%) — el stock refleja la situación post-cambio.`,
     }
     if (probPct >= 45) return {
-      color: '#ff9800',
-      bg: 'rgba(255,152,0,0.06)',
-      border: 'rgba(255,152,0,0.25)',
+      color: '#ff9800', bg: 'rgba(255,152,0,0.06)', border: 'rgba(255,152,0,0.25)',
       texto: `⚠ Posible cambio en proceso (${probPct}%) — el stock podría estar variando.`,
     }
-    if ((diaLocal(fecha) === 1 || diaLocal(fecha) === 5) && parseInt(hora.split(':')[0]) < 9) return {
-      color: '#4a5f7a',
-      bg: 'rgba(255,255,255,0.03)',
-      border: 'rgba(255,255,255,0.08)',
+    if (esLunesOViernes && parseInt(hora.split(':')[0]) < 9) return {
+      color: '#4a5f7a', bg: 'rgba(255,255,255,0.03)', border: 'rgba(255,255,255,0.08)',
       texto: `📅 Antes del cambio de cama de hoy — el stock aún no fue afectado.`,
     }
     return {
-      color: '#00e676',
-      bg: 'rgba(0,230,118,0.05)',
-      border: 'rgba(0,230,118,0.2)',
+      color: '#00e676', bg: 'rgba(0,230,118,0.05)', border: 'rgba(0,230,118,0.2)',
       texto: `✓ Momento neutro del ciclo (${probPct}% prob.) — buen momento para censar.`,
     }
   })()
@@ -1022,11 +1201,11 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
         </div>
         <form onSubmit={confirmar} className="px-6 py-5 space-y-4">
 
-          {/* Fecha y hora en una fila */}
+          {/* Fecha y hora */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>Fecha</label>
-              <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} required
+              <input type="date" value={fecha} onChange={e => { setFecha(e.target.value); setCambioCama(null); setBioAfect([]) }} required
                 className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
                 style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }} />
             </div>
@@ -1041,23 +1220,74 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
             </div>
           </div>
 
+          {/* Confirmación cambio de cama (solo Lunes y Viernes) */}
+          {esLunesOViernes && (
+            <div className="rounded-xl p-3 space-y-2.5"
+              style={{ background: 'rgba(255,179,0,0.05)', border: '1px solid rgba(255,179,0,0.2)' }}>
+              <div className="text-xs font-semibold" style={{ color: '#ffb300' }}>
+                🔄 Hoy es {DIAS_SEMANA[diaLocal(fecha)]} — día de cambio de cama
+              </div>
+              <div className="text-xs font-mono mb-1" style={{ color: '#6a8099' }}>¿Se realizó el cambio?</div>
+              <div className="flex gap-2">
+                {[
+                  { tipo: 'si',      label: '✅ Sí',      activeColor: '#00e676', activeBg: 'rgba(0,230,118,0.14)' },
+                  { tipo: 'no',      label: '❌ No',      activeColor: '#ff6b80', activeBg: 'rgba(255,107,128,0.1)' },
+                  { tipo: 'parcial', label: '⚡ Parcial', activeColor: '#40c4ff', activeBg: 'rgba(64,196,255,0.12)' },
+                ].map(({ tipo, label, activeColor, activeBg }) => (
+                  <button key={tipo} type="button"
+                    onClick={() => { setCambioCama(prev => prev === tipo ? null : tipo); if (tipo !== 'parcial') setBioAfect([]) }}
+                    className="flex-1 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all"
+                    style={{
+                      background: cambioCama === tipo ? activeBg : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${cambioCama === tipo ? activeColor + '55' : 'rgba(255,255,255,0.1)'}`,
+                      color: cambioCama === tipo ? activeColor : '#4a5f7a',
+                    }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {/* Selector de bioterios para parcial */}
+              {cambioCama === 'parcial' && (
+                <div className="space-y-1 pt-1">
+                  <div className="text-xs font-mono mb-1.5" style={{ color: '#4a5f7a' }}>Bioterios con cambio:</div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {TODOS.map(({ id, label, icon }) => (
+                      <label key={id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer"
+                        style={{
+                          background: bioAfect.includes(id) ? 'rgba(64,196,255,0.1)' : 'rgba(255,255,255,0.03)',
+                          border: `1px solid ${bioAfect.includes(id) ? 'rgba(64,196,255,0.3)' : 'rgba(255,255,255,0.07)'}`,
+                        }}>
+                        <input type="checkbox" checked={bioAfect.includes(id)} onChange={() => toggleBio(id)}
+                          style={{ accentColor: '#40c4ff' }} />
+                        <span className="text-xs font-mono" style={{ color: bioAfect.includes(id) ? '#40c4ff' : '#4a5f7a' }}>
+                          {icon} {labelCorto(id)}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Banner reactivo de ciclo */}
           <div className="rounded-xl px-3 py-2.5 text-xs font-mono"
             style={{ background: bannerCiclo.bg, border: `1px solid ${bannerCiclo.border}`, color: bannerCiclo.color }}>
             {bannerCiclo.texto}
-            {/* Barra de probabilidad */}
-            <div className="mt-2">
-              <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
-                <div className="h-full rounded-full transition-all"
-                  style={{
-                    width: `${probPct}%`,
-                    background: probPct >= 70 ? '#ffb300' : probPct >= 45 ? '#ff9800' : '#00e676',
-                  }} />
+            {!cambioCama && (
+              <div className="mt-2">
+                <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                  <div className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${probPct}%`,
+                      background: probPct >= 70 ? '#ffb300' : probPct >= 45 ? '#ff9800' : '#00e676',
+                    }} />
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
-          {/* Próximo cambio desde este momento */}
+          {/* Próximo cambio */}
           {proxCamb && (
             <div className="rounded-xl px-3 py-2.5 flex items-center gap-3 text-xs font-mono"
               style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', color: '#4a5f7a' }}>
@@ -1074,6 +1304,7 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
             </div>
           )}
 
+          {/* Bolsas */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
               Bolsas disponibles ahora
@@ -1098,6 +1329,7 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
             )}
             {error && <div className="mt-1.5 text-xs font-mono" style={{ color: '#ff6b80' }}>⚠ {error}</div>}
           </div>
+
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onCerrar}
               className="flex-1 py-2.5 rounded-xl text-sm font-mono"
@@ -1111,6 +1343,120 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  )
+}
+
+// ── Modal: Confirmar cambio de cama ───────────────────────────────────────────
+
+function ModalConfirmarCambio({ censo, onConfirmar, onCerrar }) {
+  const [tipo,     setTipo]     = useState(censo.cambioCama?.tipo ?? null)
+  const [bioAfect, setBioAfect] = useState(censo.cambioCama?.bioteriosAfectados ?? [])
+
+  function toggleBio(id) {
+    setBioAfect(prev => prev.includes(id) ? prev.filter(b => b !== id) : [...prev, id])
+  }
+
+  function confirmar() {
+    if (!tipo) return
+    onConfirmar(censo.id, { tipo, bioteriosAfectados: tipo === 'parcial' ? bioAfect : [] })
+  }
+
+  const diaStr = DIAS_SEMANA[diaLocal(censo.fecha)]
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(5,8,16,0.85)', backdropFilter: 'blur(4px)' }}>
+      <div className="w-full max-w-sm rounded-2xl overflow-hidden"
+        style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(255,179,0,0.3)', boxShadow: '0 0 60px rgba(255,179,0,0.08)' }}>
+        <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(255,179,0,0.12)', background: 'rgba(255,179,0,0.04)' }}>
+          <div className="font-bold text-white text-sm">🔄 Confirmar cambio de cama</div>
+          <div className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
+            Censo del {diaStr} {formatFecha(censo.fecha, { day: '2-digit', month: '2-digit' })}
+            {censo.hora ? ` · ${censo.hora}` : ''}
+          </div>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+
+          <div className="text-xs font-mono" style={{ color: '#6a8099' }}>
+            ¿Se realizó el cambio de cama ese día?
+          </div>
+
+          <div className="flex gap-2">
+            {[
+              { t: 'si',      label: '✅ Sí, completo',  activeColor: '#00e676', activeBg: 'rgba(0,230,118,0.14)' },
+              { t: 'no',      label: '❌ No',             activeColor: '#ff6b80', activeBg: 'rgba(255,107,128,0.1)' },
+              { t: 'parcial', label: '⚡ Parcial',        activeColor: '#40c4ff', activeBg: 'rgba(64,196,255,0.12)' },
+            ].map(({ t, label, activeColor, activeBg }) => (
+              <button key={t} type="button"
+                onClick={() => { setTipo(prev => prev === t ? null : t); if (t !== 'parcial') setBioAfect([]) }}
+                className="flex-1 py-2 rounded-xl text-xs font-mono font-semibold transition-all"
+                style={{
+                  background: tipo === t ? activeBg : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${tipo === t ? activeColor + '55' : 'rgba(255,255,255,0.1)'}`,
+                  color: tipo === t ? activeColor : '#4a5f7a',
+                }}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Selector de bioterios para parcial */}
+          {tipo === 'parcial' && (
+            <div className="space-y-1.5">
+              <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Bioterios con cambio:</div>
+              <div className="grid grid-cols-2 gap-1.5">
+                {TODOS.map(({ id, label, icon }) => (
+                  <label key={id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer"
+                    style={{
+                      background: bioAfect.includes(id) ? 'rgba(64,196,255,0.1)' : 'rgba(255,255,255,0.03)',
+                      border: `1px solid ${bioAfect.includes(id) ? 'rgba(64,196,255,0.3)' : 'rgba(255,255,255,0.07)'}`,
+                    }}>
+                    <input type="checkbox" checked={bioAfect.includes(id)} onChange={() => toggleBio(id)}
+                      style={{ accentColor: '#40c4ff' }} />
+                    <span className="text-xs font-mono" style={{ color: bioAfect.includes(id) ? '#40c4ff' : '#4a5f7a' }}>
+                      {icon} {labelCorto(id)}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Descripción del efecto */}
+          {tipo && (
+            <div className="rounded-xl px-3 py-2.5 text-xs font-mono"
+              style={{
+                background: tipo === 'si' ? 'rgba(0,230,118,0.06)' : tipo === 'no' ? 'rgba(255,255,255,0.03)' : 'rgba(64,196,255,0.06)',
+                border: `1px solid ${tipo === 'si' ? 'rgba(0,230,118,0.2)' : tipo === 'no' ? 'rgba(255,255,255,0.08)' : 'rgba(64,196,255,0.2)'}`,
+                color: tipo === 'si' ? '#00e676' : tipo === 'no' ? '#4a5f7a' : '#40c4ff',
+              }}>
+              {tipo === 'si' && 'El período tiene cambio confirmado — mayor peso (×1.5) en la calibración del modelo.'}
+              {tipo === 'no' && 'Sin cambio confirmado — el stock refleja solo consumo diario. Mayor peso en calibración.'}
+              {tipo === 'parcial' && `Cambio parcial${bioAfect.length ? ` en ${bioAfect.map(labelCorto).join(', ')}` : ''}. Peso intermedio en calibración.`}
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onCerrar}
+              className="flex-1 py-2.5 rounded-xl text-sm font-mono"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a' }}>
+              Cancelar
+            </button>
+            <button type="button" onClick={confirmar} disabled={!tipo}
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+              style={{
+                background: tipo ? 'rgba(255,179,0,0.14)' : 'rgba(255,255,255,0.04)',
+                border: `1.5px solid ${tipo ? 'rgba(255,179,0,0.45)' : 'rgba(255,255,255,0.1)'}`,
+                color: tipo ? '#ffb300' : '#3d5068',
+                cursor: tipo ? 'pointer' : 'not-allowed',
+              }}>
+              <CheckCircle size={13} style={{ display: 'inline', marginRight: 6 }} />
+              Guardar confirmación
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -1182,7 +1528,6 @@ function ModalCompra({ stockActual, onConfirmar, onCerrar }) {
             {error && <div className="mt-1.5 text-xs font-mono" style={{ color: '#ff6b80' }}>⚠ {error}</div>}
           </div>
 
-          {/* Preview del nuevo stock */}
           {nuevoStock !== null && (
             <div className="rounded-xl px-4 py-3 text-xs font-mono"
               style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.2)' }}>
