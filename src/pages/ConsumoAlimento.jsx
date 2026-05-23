@@ -58,12 +58,68 @@ const OPCIONES_CATEGORIAS = [
   { id: 'adultos',   label: 'Adultos' },
 ]
 
-function cargarLS(key) {
-  try { return JSON.parse(localStorage.getItem(key) || '[]') }
-  catch { return [] }
+// ── Mapeo DB ↔ app ────────────────────────────────────────────────────────────
+
+function censoAlimFromDB(row) {
+  return {
+    id:                  row.id,
+    fecha:               typeof row.fecha === 'string' ? row.fecha : row.fecha?.slice?.(0, 10) ?? row.fecha,
+    hora:                row.hora               ?? null,
+    kg:                  row.stock_kg           ?? 0,
+    rellenoKg:           row.relleno_kg         ?? 0,
+    consumoEstimadoGDia: row.consumo_estimado_g_dia ?? null,
+    composicion:         row.composicion        ?? null,
+  }
 }
-function guardarLS(key, lista) {
-  localStorage.setItem(key, JSON.stringify(lista))
+
+function censoAlimToDB(censo) {
+  return {
+    id:                      censo.id,
+    fecha:                   censo.fecha,
+    hora:                    censo.hora             ?? null,
+    stock_kg:                censo.kg,
+    relleno_kg:              censo.rellenoKg        ?? 0,
+    consumo_estimado_g_dia:  censo.consumoEstimadoGDia ?? null,
+    composicion:             censo.composicion      ?? null,
+  }
+}
+
+function reposicionFromDB(row) {
+  return {
+    id:              row.id,
+    fecha:           typeof row.fecha === 'string' ? row.fecha : row.fecha?.slice?.(0, 10) ?? row.fecha,
+    hora:            row.hora             ?? null,
+    tipo_reposicion: row.tipo_reposicion  ?? 'completa',
+    kg:              row.kg               ?? 0,
+    bioterios:       row.bioterios        ?? [],
+    categorias:      row.categorias       ?? [],
+    notas:           row.notas            ?? '',
+    confirmada:      row.confirmada       ?? true,
+  }
+}
+
+// ── Migración única desde localStorage ───────────────────────────────────────
+const LS_MIGRADO_ALIM = 'appMosca_alimento_migrado_v1'
+
+async function migrarAlimentoDesdeLS() {
+  if (localStorage.getItem(LS_MIGRADO_ALIM)) return
+  try {
+    const censoLS  = JSON.parse(localStorage.getItem(LS_CENSOS)       || '[]')
+    const ingLS    = JSON.parse(localStorage.getItem(LS_INGRESOS)     || '[]')
+    const repLS    = JSON.parse(localStorage.getItem(LS_REPOSICIONES) || '[]')
+    if (!censoLS.length && !ingLS.length && !repLS.length) {
+      localStorage.setItem(LS_MIGRADO_ALIM, '1'); return
+    }
+    const { data: ex } = await supabase.from('alimento_censos').select('id').limit(1)
+    if (ex && ex.length > 0) { localStorage.setItem(LS_MIGRADO_ALIM, '1'); return }
+    if (censoLS.length)  await supabase.from('alimento_censos').insert(censoLS.map(censoAlimToDB))
+    if (ingLS.length)    await supabase.from('alimento_ingresos').insert(ingLS.map(r => ({ id: r.id, fecha: r.fecha, kg: r.kg ?? 0, notas: r.notas ?? null })))
+    if (repLS.length)    await supabase.from('alimento_reposiciones').insert(repLS.map(r => ({ id: r.id, fecha: r.fecha, hora: r.hora ?? null, tipo_reposicion: r.tipo_reposicion ?? 'completa', kg: r.kg ?? 0, bioterios: r.bioterios ?? [], categorias: r.categorias ?? [], notas: r.notas ?? null, confirmada: r.confirmada ?? true })))
+    localStorage.setItem(LS_MIGRADO_ALIM, '1')
+    console.info('[alimento] Migración localStorage → Supabase completada.')
+  } catch (e) {
+    console.warn('[alimento] Migración fallida (se reintentará):', e)
+  }
 }
 
 // ── Helpers de cálculo ────────────────────────────────────────────────────────
@@ -230,32 +286,39 @@ export default function ConsumoAlimento() {
   const [cargando, setCargando]             = useState(true)
   const [error, setError]                   = useState(null)
 
-  const [censos,   setCensos]   = useState(() => cargarLS(LS_CENSOS))
-  const [ingresos, setIngresos] = useState(() => cargarLS(LS_INGRESOS))
-
-  const [reposiciones, setReposiciones] = useState(() => cargarLS(LS_REPOSICIONES))
+  const [censos,       setCensos]       = useState([])
+  const [ingresos,     setIngresos]     = useState([])
+  const [reposiciones, setReposiciones] = useState([])
 
   const [modalCenso,       setModalCenso]       = useState(false)
   const [modalIngreso,     setModalIngreso]     = useState(false)
   const [modalReposicion,  setModalReposicion]  = useState(false)  // standalone confirm
   const [reposPreCenso,    setReposPreCenso]    = useState(null)   // reposición desde census modal
 
-  // ── Fetch paralelo de los 4 bioterios ──
+  // ── Fetch paralelo de los 4 bioterios + tablas propias ──
   const cargarDatos = useCallback(async () => {
     setCargando(true)
     setError(null)
     try {
-      const resultados = await Promise.all(
-        TODOS_BIOTERIOS.map(({ id }) =>
-          Promise.all([
-            supabase.from('animales').select('*').eq('bioterio_id', id),
-            supabase.from('camadas').select('*').eq('bioterio_id', id),
-            supabase.from('jaulas').select('*').eq('bioterio_id', id),
-            supabase.from('sacrificios').select('*').eq('bioterio_id', id),
-            supabase.from('entregas').select('*').eq('bioterio_id', id),
-          ])
-        )
-      )
+      // Migrar localStorage → Supabase si es primera vez
+      await migrarAlimentoDesdeLS()
+
+      const [resultados, resCensos, resIngresos, resReposiciones] = await Promise.all([
+        Promise.all(
+          TODOS_BIOTERIOS.map(({ id }) =>
+            Promise.all([
+              supabase.from('animales').select('*').eq('bioterio_id', id),
+              supabase.from('camadas').select('*').eq('bioterio_id', id),
+              supabase.from('jaulas').select('*').eq('bioterio_id', id),
+              supabase.from('sacrificios').select('*').eq('bioterio_id', id),
+              supabase.from('entregas').select('*').eq('bioterio_id', id),
+            ])
+          )
+        ),
+        supabase.from('alimento_censos').select('*').order('fecha', { ascending: true }),
+        supabase.from('alimento_ingresos').select('*').order('fecha', { ascending: true }),
+        supabase.from('alimento_reposiciones').select('*').order('fecha', { ascending: true }),
+      ])
 
       const datos = {}
       TODOS_BIOTERIOS.forEach(({ id, especie, bio }, i) => {
@@ -266,6 +329,9 @@ export default function ConsumoAlimento() {
         )
       })
       setDatosBioterios(datos)
+      setCensos((resCensos.data ?? []).map(censoAlimFromDB))
+      setIngresos((resIngresos.data ?? []).map(r => ({ id: r.id, fecha: typeof r.fecha === 'string' ? r.fecha : r.fecha?.slice?.(0,10), kg: r.kg ?? 0, notas: r.notas ?? null })))
+      setReposiciones((resReposiciones.data ?? []).map(reposicionFromDB))
     } catch (e) {
       console.error('Error al cargar consumo:', e)
       setError('No se pudo cargar la información. Verificá la conexión.')
@@ -688,59 +754,56 @@ export default function ConsumoAlimento() {
   }
 
   // ── Registrar censo ──
-  function registrarCenso(fecha, kg, hora, rellenoKg) {
+  async function registrarCenso(fecha, kg, hora, rellenoKg) {
     const consumoEstimadoGDia = Math.round(consumoAjustado)
     const comp = datosBioterios ? composicionActual(datosBioterios) : null
-    const nuevo = {
-      id: generarId(),
-      fecha,
-      hora:      hora      || null,
-      kg,
-      rellenoKg: rellenoKg || 0,
-      consumoEstimadoGDia,
-      composicion: comp,
-    }
-    const nuevos = [...censos, nuevo]
-    setCensos(nuevos)
-    guardarLS(LS_CENSOS, nuevos)
+    const nuevo = { id: generarId(), fecha, hora: hora || null, kg, rellenoKg: rellenoKg || 0, consumoEstimadoGDia, composicion: comp }
+    const { error: e } = await supabase.from('alimento_censos').insert(censoAlimToDB(nuevo))
+    if (e) { console.error('Error al guardar censo alimento:', e); return }
+    setCensos(prev => [...prev, nuevo].sort((a, b) => a.fecha.localeCompare(b.fecha)))
     setModalCenso(false)
   }
 
-  function eliminarCensoItem(id) {
-    const nuevos = censos.filter(c => c.id !== id)
-    setCensos(nuevos)
-    guardarLS(LS_CENSOS, nuevos)
+  async function eliminarCensoItem(id) {
+    const { error: e } = await supabase.from('alimento_censos').delete().eq('id', id)
+    if (e) { console.error('Error al eliminar censo alimento:', e); return }
+    setCensos(prev => prev.filter(c => c.id !== id))
   }
 
   // ── Registrar ingreso ──
-  function registrarIngreso(fecha, kg) {
+  async function registrarIngreso(fecha, kg) {
     const nuevo = { id: generarId(), fecha, kg }
-    const nuevos = [...ingresos, nuevo]
-    setIngresos(nuevos)
-    guardarLS(LS_INGRESOS, nuevos)
+    const { error: e } = await supabase.from('alimento_ingresos').insert(nuevo)
+    if (e) { console.error('Error al guardar ingreso alimento:', e); return }
+    setIngresos(prev => [...prev, nuevo].sort((a, b) => a.fecha.localeCompare(b.fecha)))
     setModalIngreso(false)
   }
 
-  function eliminarIngresoItem(id) {
-    const nuevos = ingresos.filter(i => i.id !== id)
-    setIngresos(nuevos)
-    guardarLS(LS_INGRESOS, nuevos)
+  async function eliminarIngresoItem(id) {
+    const { error: e } = await supabase.from('alimento_ingresos').delete().eq('id', id)
+    if (e) { console.error('Error al eliminar ingreso alimento:', e); return }
+    setIngresos(prev => prev.filter(i => i.id !== id))
   }
 
   // ── Reposiciones ──
-  function registrarReposicion(datos) {
+  async function registrarReposicion(datos) {
     const nuevo = { id: generarId(), confirmada: true, ...datos }
-    const nuevas = [...reposiciones, nuevo]
-    setReposiciones(nuevas)
-    guardarLS(LS_REPOSICIONES, nuevas)
+    const { error: e } = await supabase.from('alimento_reposiciones').insert({
+      id: nuevo.id, fecha: nuevo.fecha, hora: nuevo.hora ?? null,
+      tipo_reposicion: nuevo.tipo_reposicion ?? 'completa',
+      kg: nuevo.kg ?? 0, bioterios: nuevo.bioterios ?? [], categorias: nuevo.categorias ?? [],
+      notas: nuevo.notas ?? null, confirmada: true,
+    })
+    if (e) { console.error('Error al guardar reposición alimento:', e); return }
+    setReposiciones(prev => [...prev, nuevo])
     setModalReposicion(false)
     setReposPreCenso(null)
   }
 
-  function eliminarReposicionItem(id) {
-    const nuevas = reposiciones.filter(r => r.id !== id)
-    setReposiciones(nuevas)
-    guardarLS(LS_REPOSICIONES, nuevas)
+  async function eliminarReposicionItem(id) {
+    const { error: e } = await supabase.from('alimento_reposiciones').delete().eq('id', id)
+    if (e) { console.error('Error al eliminar reposición alimento:', e); return }
+    setReposiciones(prev => prev.filter(r => r.id !== id))
   }
 
   // Confirmación rápida desde un censo (crea reposición sin abrir modal completo)

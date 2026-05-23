@@ -180,15 +180,72 @@ function labelCorto(id) {
   return { ratas: 'Ratas', ratones_balbc: 'Balb/C', ratones_c57: 'C57', ratones_hibridos: 'Híbridos' }[id] ?? id
 }
 
-// ── localStorage ──────────────────────────────────────────────────────────────
+// ── Mapeo DB ↔ app ────────────────────────────────────────────────────────────
+// Supabase usa snake_case; el estado interno usa camelCase (compatibilidad)
 
+function censoFromDB(row) {
+  return {
+    id:          row.id,
+    fecha:       typeof row.fecha === 'string' ? row.fecha : row.fecha?.slice?.(0, 10) ?? row.fecha,
+    hora:        row.hora   ?? null,
+    bolsas:      row.bolsas ?? 0,
+    unidades:    row.unidades ?? 0,
+    cambioCama:  row.cambio_cama ?? null,
+  }
+}
+
+function censoToDB(censo) {
+  return {
+    id:          censo.id,
+    fecha:       censo.fecha,
+    hora:        censo.hora   ?? null,
+    bolsas:      censo.bolsas,
+    unidades:    censo.unidades ?? 0,
+    cambio_cama: censo.cambioCama ?? null,
+  }
+}
+
+function compraFromDB(row) {
+  return {
+    id:    row.id,
+    fecha: typeof row.fecha === 'string' ? row.fecha : row.fecha?.slice?.(0, 10) ?? row.fecha,
+    bolsas: row.bolsas ?? 0,
+  }
+}
+
+// ── Migración única desde localStorage ───────────────────────────────────────
 const LS_CENSOS  = 'appMosca_viruta_censos'
 const LS_COMPRAS = 'appMosca_viruta_compras'
+const LS_MIGRADO = 'appMosca_viruta_migrado_v1'
 
-function cargarCensos()   { try { return JSON.parse(localStorage.getItem(LS_CENSOS)  || '[]') } catch { return [] } }
-function guardarCensos(l) { localStorage.setItem(LS_CENSOS,  JSON.stringify(l)) }
-function cargarCompras()  { try { return JSON.parse(localStorage.getItem(LS_COMPRAS) || '[]') } catch { return [] } }
-function guardarCompras(l){ localStorage.setItem(LS_COMPRAS, JSON.stringify(l)) }
+async function migrarDesdeLocalStorage() {
+  if (localStorage.getItem(LS_MIGRADO)) return
+  try {
+    const censoLS  = JSON.parse(localStorage.getItem(LS_CENSOS)  || '[]')
+    const compraLS = JSON.parse(localStorage.getItem(LS_COMPRAS) || '[]')
+    if (censoLS.length === 0 && compraLS.length === 0) {
+      localStorage.setItem(LS_MIGRADO, '1')
+      return
+    }
+    const { data: existentes } = await supabase.from('viruta_censos').select('id').limit(1)
+    if (existentes && existentes.length > 0) {
+      localStorage.setItem(LS_MIGRADO, '1')
+      return
+    }
+    if (censoLS.length > 0) {
+      await supabase.from('viruta_censos').insert(censoLS.map(censoToDB))
+    }
+    if (compraLS.length > 0) {
+      await supabase.from('viruta_compras').insert(
+        compraLS.map(c => ({ id: c.id, fecha: c.fecha, bolsas: c.bolsas ?? 0 }))
+      )
+    }
+    localStorage.setItem(LS_MIGRADO, '1')
+    console.info('[viruta] Migración localStorage → Supabase completada.')
+  } catch (e) {
+    console.warn('[viruta] Migración fallida (se reintentará):', e)
+  }
+}
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
@@ -198,8 +255,8 @@ export default function ConsumoViruta() {
   const [datos,          setDatos]          = useState(null)
   const [cargando,       setCargando]       = useState(true)
   const [error,          setError]          = useState(null)
-  const [censos,         setCensos]         = useState(() => cargarCensos())
-  const [compras,        setCompras]        = useState(() => cargarCompras())
+  const [censos,         setCensos]         = useState([])
+  const [compras,        setCompras]        = useState([])
   const [modal,          setModal]          = useState(false)
   const [modalCompra,    setModalCompra]    = useState(false)
   const [modalConfirmar, setModalConfirmar] = useState(false)
@@ -209,23 +266,41 @@ export default function ConsumoViruta() {
   const cargarDatos = useCallback(async () => {
     setCargando(true); setError(null)
     try {
-      const res = await Promise.all(
-        TODOS.map(({ id }) => Promise.all([
-          supabase.from('animales').select('*').eq('bioterio_id', id),
-          supabase.from('camadas').select('*').eq('bioterio_id', id),
-          supabase.from('jaulas').select('*').eq('bioterio_id', id),
-          supabase.from('sacrificios').select('*').eq('bioterio_id', id),
-          supabase.from('entregas').select('*').eq('bioterio_id', id),
-        ]))
-      )
+      // Migrar localStorage → Supabase si es la primera vez
+      await migrarDesdeLocalStorage()
+
+      const [
+        resAnimales,
+        resCensos,
+        resCompras,
+      ] = await Promise.all([
+        Promise.all(
+          TODOS.map(({ id }) => Promise.all([
+            supabase.from('animales').select('*').eq('bioterio_id', id),
+            supabase.from('camadas').select('*').eq('bioterio_id', id),
+            supabase.from('jaulas').select('*').eq('bioterio_id', id),
+            supabase.from('sacrificios').select('*').eq('bioterio_id', id),
+            supabase.from('entregas').select('*').eq('bioterio_id', id),
+          ]))
+        ),
+        supabase.from('viruta_censos').select('*').order('fecha', { ascending: true }),
+        supabase.from('viruta_compras').select('*').order('fecha', { ascending: true }),
+      ])
+
+      // Datos de animales por bioterio
       const nd = {}
       TODOS.forEach(({ id, especie, bio }, i) => {
-        const [{ data: an }, { data: ca }, { data: ja }, { data: sa }, { data: en }] = res[i]
+        const [{ data: an }, { data: ca }, { data: ja }, { data: sa }, { data: en }] = resAnimales[i]
         const conteos  = contarJaulas(especie, bio, an ?? [], ca ?? [], ja ?? [], sa ?? [], en ?? [])
         const unidades = calcUnidades(conteos, especie)
         nd[id] = { conteos, unidades }
       })
       setDatos(nd)
+
+      // Censos y compras de Supabase
+      setCensos((resCensos.data ?? []).map(censoFromDB))
+      setCompras((resCompras.data ?? []).map(compraFromDB))
+
     } catch (e) {
       console.error('Error viruta:', e)
       setError('No se pudo cargar la información. Verificá la conexión.')
@@ -350,33 +425,43 @@ export default function ConsumoViruta() {
 
   const colorAlerta = { critico: '#ff6b80', bajo: '#ffb300', ok: '#00e676', bien: '#00e676' }[nivelAlerta] ?? '#c49a6a'
 
-  // ── CRUD ──────────────────────────────────────────────────────────────────
-  function registrarCenso(fecha, hora, bolsas, cambioCama) {
-    const nuevo  = { id: generarId(), fecha, hora, bolsas, unidades: totales?.totalUnidades ?? 0, cambioCama: cambioCama ?? null }
-    const nuevos = [...censos, nuevo].sort((a, b) => a.fecha.localeCompare(b.fecha))
-    setCensos(nuevos); guardarCensos(nuevos); setModal(false)
+  // ── CRUD (Supabase) ───────────────────────────────────────────────────────
+  async function registrarCenso(fecha, hora, bolsas, cambioCama) {
+    const nuevo = { id: generarId(), fecha, hora, bolsas, unidades: totales?.totalUnidades ?? 0, cambioCama: cambioCama ?? null }
+    const { error: e } = await supabase.from('viruta_censos').insert(censoToDB(nuevo))
+    if (e) { console.error('Error al guardar censo viruta:', e); return }
+    setCensos(prev => [...prev, nuevo].sort((a, b) => a.fecha.localeCompare(b.fecha)))
+    setModal(false)
   }
 
-  function eliminarCenso(id) {
-    const nuevos = censos.filter(c => c.id !== id)
-    setCensos(nuevos); guardarCensos(nuevos)
+  async function eliminarCenso(id) {
+    const { error: e } = await supabase.from('viruta_censos').delete().eq('id', id)
+    if (e) { console.error('Error al eliminar censo viruta:', e); return }
+    setCensos(prev => prev.filter(c => c.id !== id))
   }
 
-  function confirmarCambioCama(censoId, cambioCama) {
-    const nuevos = censos.map(c => c.id === censoId ? { ...c, cambioCama } : c)
-    setCensos(nuevos); guardarCensos(nuevos)
+  async function confirmarCambioCama(censoId, cambioCama) {
+    const { error: e } = await supabase
+      .from('viruta_censos')
+      .update({ cambio_cama: cambioCama })
+      .eq('id', censoId)
+    if (e) { console.error('Error al confirmar cambio de cama:', e); return }
+    setCensos(prev => prev.map(c => c.id === censoId ? { ...c, cambioCama } : c))
     setModalConfirmar(false); setCensoAConfirmar(null)
   }
 
-  function registrarCompra(fecha, bolsas) {
-    const nueva  = { id: generarId(), fecha, bolsas }
-    const nuevas = [...compras, nueva].sort((a, b) => a.fecha.localeCompare(b.fecha))
-    setCompras(nuevas); guardarCompras(nuevas); setModalCompra(false)
+  async function registrarCompra(fecha, bolsas) {
+    const nueva = { id: generarId(), fecha, bolsas }
+    const { error: e } = await supabase.from('viruta_compras').insert(nueva)
+    if (e) { console.error('Error al guardar compra viruta:', e); return }
+    setCompras(prev => [...prev, nueva].sort((a, b) => a.fecha.localeCompare(b.fecha)))
+    setModalCompra(false)
   }
 
-  function eliminarCompraItem(id) {
-    const nuevas = compras.filter(c => c.id !== id)
-    setCompras(nuevas); guardarCompras(nuevas)
+  async function eliminarCompraItem(id) {
+    const { error: e } = await supabase.from('viruta_compras').delete().eq('id', id)
+    if (e) { console.error('Error al eliminar compra viruta:', e); return }
+    setCompras(prev => prev.filter(c => c.id !== id))
   }
 
   function abrirConfirmar(censo) {
