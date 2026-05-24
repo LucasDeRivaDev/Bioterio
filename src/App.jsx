@@ -25,6 +25,7 @@ import Entregas from './pages/Entregas'
 import Temperatura from './pages/Temperatura'
 import Estadisticas from './pages/Estadisticas'
 import Incidentes from './pages/Incidentes'
+import PlanificacionColonia from './pages/PlanificacionColonia'
 import Login from './pages/Login'
 import Landing from './pages/Landing'
 
@@ -194,8 +195,9 @@ function AppLayout() {
               <Route path="/entregas"     element={<Entregas />} />
               <Route path="/temperatura"   element={<Temperatura />} />
               <Route path="/estadisticas" element={<Estadisticas />} />
-              <Route path="/incidentes"   element={<Incidentes />} />
-              <Route path="/reportes"     element={<Reportes />} />
+              <Route path="/incidentes"     element={<Incidentes />} />
+              <Route path="/planificacion" element={<PlanificacionColonia />} />
+              <Route path="/reportes"      element={<Reportes />} />
               <Route path="*"            element={<Navigate to="/" replace />} />
             </Routes>
           </div>
