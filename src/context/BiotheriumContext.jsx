@@ -77,6 +77,14 @@ function reducer(estado, accion) {
     case 'EDITAR_INCIDENTE':   return { ...estado, incidentes: estado.incidentes.map((i) => i.id === accion.payload.id ? accion.payload : i) }
     case 'ELIMINAR_INCIDENTE': return { ...estado, incidentes: estado.incidentes.filter((i) => i.id !== accion.payload) }
 
+    case 'SET_PEDIDOS':      return { ...estado, pedidos: accion.payload }
+    case 'AGREGAR_PEDIDO': {
+      const lista = [accion.payload, ...estado.pedidos]
+      return { ...estado, pedidos: lista }
+    }
+    case 'EDITAR_PEDIDO':   return { ...estado, pedidos: estado.pedidos.map((p) => p.id === accion.payload.id ? accion.payload : p) }
+    case 'ELIMINAR_PEDIDO': return { ...estado, pedidos: estado.pedidos.filter((p) => p.id !== accion.payload) }
+
     default: return estado
   }
 }
@@ -85,7 +93,7 @@ const BiotheriumCtx = createContext(null)
 
 export function BiotheriumProvider({ children }) {
   const { bioterioActivo, bio } = useBioterioActivo()
-  const [estado, dispatch] = useReducer(reducer, { animales: [], animalesExportados: [], camadas: [], camadasF1: [], sacrificios: [], entregas: [], jaulas: [], temperaturas: [], incidentes: [], extendidos: [] })
+  const [estado, dispatch] = useReducer(reducer, { animales: [], animalesExportados: [], camadas: [], camadasF1: [], sacrificios: [], entregas: [], jaulas: [], temperaturas: [], incidentes: [], extendidos: [], pedidos: [] })
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
 
@@ -107,7 +115,7 @@ export function BiotheriumProvider({ children }) {
       dispatch({ type: 'SET_INCIDENTES',           payload: [] })
       dispatch({ type: 'SET_EXTENDIDOS',           payload: [] })
       try {
-        const [{ data: animales, error: errA }, { data: camadas, error: errC }, { data: sacrificios }, { data: entregas }, { data: jaulas }, { data: temperaturas }, { data: incidentes }, { data: extendidos }] = await Promise.all([
+        const [{ data: animales, error: errA }, { data: camadas, error: errC }, { data: sacrificios }, { data: entregas }, { data: jaulas }, { data: temperaturas }, { data: incidentes }, { data: extendidos }, { data: pedidos }] = await Promise.all([
           supabase.from('animales').select('*').eq('bioterio_id', bioterioActivo).order('fecha_nacimiento', { ascending: true }),
           supabase.from('camadas').select('*').eq('bioterio_id', bioterioActivo).order('fecha_copula', { ascending: true }),
           supabase.from('sacrificios').select('*').eq('bioterio_id', bioterioActivo).order('fecha', { ascending: true }),
@@ -116,6 +124,7 @@ export function BiotheriumProvider({ children }) {
           supabase.from('temperature_logs').select('*').eq('bioterio_id', bioterioActivo).order('date', { ascending: false }).order('time', { ascending: false }),
           supabase.from('incidentes').select('*').order('fecha', { ascending: false }).order('created_at', { ascending: false }),
           supabase.from('extendidos').select('*').eq('bioterio_id', bioterioActivo).order('fecha', { ascending: true }),
+          supabase.from('pedidos').select('*').order('created_at', { ascending: false }),
         ])
         if (errA) throw errA
         if (errC) throw errC
@@ -127,6 +136,7 @@ export function BiotheriumProvider({ children }) {
         dispatch({ type: 'SET_TEMPERATURAS', payload: temperaturas ?? [] })
         dispatch({ type: 'SET_INCIDENTES', payload: incidentes ?? [] })
         dispatch({ type: 'SET_EXTENDIDOS', payload: extendidos ?? [] })
+        dispatch({ type: 'SET_PEDIDOS', payload: pedidos ?? [] })
 
         // Cuando el bioterio activo es Híbridos, cargar también los animales
         // de BAL/C y C57 que fueron marcados como exportados
@@ -646,6 +656,44 @@ export function BiotheriumProvider({ children }) {
     if (error) console.error('Error al eliminar temperaturas del mes:', error)
   }
 
+  // ── PEDIDOS ────────────────────────────────────────────────────────────────
+
+  async function agregarPedido(datos) {
+    const nuevo = {
+      ...datos,
+      id: generarId(),
+      estado: 'pendiente',
+      created_at: new Date().toISOString().split('T')[0],
+    }
+    dispatch({ type: 'AGREGAR_PEDIDO', payload: nuevo })
+    const { error } = await supabase.from('pedidos').insert(nuevo)
+    if (error) {
+      console.error('Error al guardar pedido:', error)
+      dispatch({ type: 'ELIMINAR_PEDIDO', payload: nuevo.id })
+      throw error
+    }
+  }
+
+  async function editarPedido(datos) {
+    const antigua = estado.pedidos.find((p) => p.id === datos.id)
+    dispatch({ type: 'EDITAR_PEDIDO', payload: datos })
+    const { error } = await supabase.from('pedidos').update(datos).eq('id', datos.id)
+    if (error) {
+      console.error('Error al editar pedido:', error)
+      if (antigua) dispatch({ type: 'EDITAR_PEDIDO', payload: antigua })
+    }
+  }
+
+  async function eliminarPedido(id) {
+    const respaldo = estado.pedidos.find((p) => p.id === id)
+    dispatch({ type: 'ELIMINAR_PEDIDO', payload: id })
+    const { error } = await supabase.from('pedidos').delete().eq('id', id)
+    if (error) {
+      console.error('Error al eliminar pedido:', error)
+      if (respaldo) dispatch({ type: 'AGREGAR_PEDIDO', payload: respaldo })
+    }
+  }
+
   // ── EXPORTACIÓN DE REPRODUCTORES A HÍBRIDOS ──────────────────────────────
   // Marca un animal de BAL/C o C57 como disponible en Híbridos.
   // El animal NO se mueve de su bioterio — solo se agrega a animalesExportados.
@@ -688,6 +736,7 @@ export function BiotheriumProvider({ children }) {
       temperaturas: estado.temperaturas,
       incidentes: estado.incidentes,
       extendidos: estado.extendidos,
+      pedidos: estado.pedidos,
       cargando,
       error,
       bio,
@@ -701,6 +750,7 @@ export function BiotheriumProvider({ children }) {
       agregarTemperatura, eliminarTemperaturasMes,
       agregarIncidente, editarIncidente, eliminarIncidente,
       agregarExtendido, editarExtendido, eliminarExtendido,
+      agregarPedido, editarPedido, eliminarPedido,
     }}>
       {children}
     </BiotheriumCtx.Provider>

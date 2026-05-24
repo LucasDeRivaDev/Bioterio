@@ -9,72 +9,7 @@ import { buildPedigree, calcularFCoeficiente } from './genealogia'
 import { getMinimosCriticos, getReservas, reservarAnimal, liberarReserva } from './motorDecisiones'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SECCIÓN 1 — STORAGE (localStorage)
-// ─────────────────────────────────────────────────────────────────────────────
-
-const LS_KEY_PEDIDOS = 'appMosca_pedidos'
-
-function generarId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
-}
-
-/**
- * Retorna todos los pedidos almacenados.
- */
-export function getPedidos() {
-  try {
-    const raw = localStorage.getItem(LS_KEY_PEDIDOS)
-    return raw ? JSON.parse(raw) : []
-  } catch { return [] }
-}
-
-/**
- * Crea o actualiza un pedido. Si tiene `id`, actualiza. Si no, crea nuevo.
- * @returns array actualizado de pedidos
- */
-export function guardarPedido(pedido) {
-  const pedidos = getPedidos()
-  const hoy = new Date().toISOString().split('T')[0]
-
-  if (pedido.id) {
-    const idx = pedidos.findIndex(p => p.id === pedido.id)
-    if (idx >= 0) {
-      pedidos[idx] = { ...pedido, updatedAt: hoy }
-    } else {
-      pedidos.unshift({ ...pedido, updatedAt: hoy })
-    }
-  } else {
-    pedidos.unshift({ ...pedido, id: generarId(), estado: 'pendiente', createdAt: hoy })
-  }
-
-  try { localStorage.setItem(LS_KEY_PEDIDOS, JSON.stringify(pedidos)) } catch {}
-  return getPedidos()
-}
-
-/**
- * Elimina un pedido por id.
- */
-export function eliminarPedido(id) {
-  const pedidos = getPedidos().filter(p => p.id !== id)
-  try { localStorage.setItem(LS_KEY_PEDIDOS, JSON.stringify(pedidos)) } catch {}
-  return pedidos
-}
-
-/**
- * Cambia el estado de un pedido (pendiente → en_proceso → completado / cancelado).
- */
-export function actualizarEstadoPedido(id, estado) {
-  const pedidos = getPedidos().map(p =>
-    p.id === id
-      ? { ...p, estado, updatedAt: new Date().toISOString().split('T')[0] }
-      : p
-  )
-  try { localStorage.setItem(LS_KEY_PEDIDOS, JSON.stringify(pedidos)) } catch {}
-  return pedidos
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SECCIÓN 2 — PRODUCCIÓN HISTÓRICA
+// SECCIÓN 1 — PRODUCCIÓN HISTÓRICA
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**

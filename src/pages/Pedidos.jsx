@@ -10,7 +10,6 @@ import { useTheme }           from '../context/ThemeContext'
 import { getBio }             from '../utils/constants'
 import { formatFecha }        from '../utils/calculos'
 import {
-  getPedidos, guardarPedido, eliminarPedido, actualizarEstadoPedido,
   calcularParejasNecesarias, calcularFechasOptimas,
   seleccionarReproductoresOptimos, detectarAnimalesListos,
   evaluarCapacidadFutura, evaluarImpactoColonia, calcularIndiceViabilidad,
@@ -778,11 +777,12 @@ function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproduct
 
 // ─── Componente principal: Pedidos ────────────────────────────────────────
 export default function Pedidos() {
-  const { animales, camadas, jaulas, sacrificios, entregas, bio } = useBioterio()
+  const { animales, camadas, jaulas, sacrificios, entregas, bio,
+          pedidos, agregarPedido, editarPedido, eliminarPedido: eliminarPedidoCtx,
+        } = useBioterio()
   const { bioterioActivo } = useBioterioActivo()
   const { tema } = useTheme()
 
-  const [pedidos,           setPedidos]           = useState(() => getPedidos())
   const [pedidoSelId,       setPedidoSelId]        = useState(null)
   const [modalFormAbierto,  setModalFormAbierto]   = useState(false)
   const [pedidoEditando,    setPedidoEditando]     = useState(null)
@@ -842,22 +842,30 @@ export default function Pedidos() {
   }, [pedidos, animales, camadas, jaulas, sacrificios, entregas])
 
   // ── Handlers ──────────────────────────────────────────────────────────
-  function handleGuardar(form) {
-    const nuevos = guardarPedido(form)
-    setPedidos(nuevos)
+  async function handleGuardar(form) {
+    try {
+      if (form.id) {
+        await editarPedido({ ...form, updated_at: new Date().toISOString().split('T')[0] })
+      } else {
+        await agregarPedido(form)
+      }
+    } catch (e) {
+      console.error('Error al guardar pedido:', e)
+    }
     setModalFormAbierto(false)
     setPedidoEditando(null)
-    if (!form.id) setPedidoSelId(nuevos[0]?.id ?? null)
   }
 
-  function handleEliminar(id) {
-    setPedidos(eliminarPedido(id))
+  async function handleEliminar(id) {
+    await eliminarPedidoCtx(id)
     if (pedidoSelId === id) setPedidoSelId(null)
     setConfirmEliminarId(null)
   }
 
-  function handleCambiarEstado(id, estado) {
-    setPedidos(actualizarEstadoPedido(id, estado))
+  async function handleCambiarEstado(id, nuevoEstado) {
+    const pedido = pedidos.find(p => p.id === id)
+    if (!pedido) return
+    await editarPedido({ ...pedido, estado: nuevoEstado, updated_at: new Date().toISOString().split('T')[0] })
   }
 
   function handleReservarReproductores(pedido) {
