@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { supabase } from '../lib/supabase'
 import { formatFecha, difDias, parseDate, hoy, calcularPerfilHembra, calcularConfiabilidadHembra, calcularRendimientoMacho, detectarBajaPerformanceMacho, getAnimalesReservados, getEstadoCicloHembra } from '../utils/calculos'
-import { buildPedigree, calcularFIndividual, fPorcentaje, nivelConsanguinidad, getAncestores } from '../utils/genealogia'
+import { buildPedigree, calcularFIndividual, fPorcentaje, nivelConsanguinidad, getAncestores, estadoGenealogiaAnimal } from '../utils/genealogia'
 import { MAX_APAREAMIENTOS, MACHO_EDAD_LIMITE_DIAS, MACHO_EDAD_ALERTA_DIAS } from '../utils/constants'
 import Modal from '../components/Modal'
 import AnimalForm from '../components/AnimalForm'
@@ -52,7 +52,7 @@ export default function Animales() {
 
   // Pedigree para análisis genealógico
   const todosParaPedigree = useMemo(() => [...animales, ...animalesExportados], [animales, animalesExportados])
-  const pedigree = useMemo(() => buildPedigree(todosParaPedigree), [todosParaPedigree])
+  const pedigree = useMemo(() => buildPedigree(todosParaPedigree, camadas), [todosParaPedigree, camadas])
 
   const filtrados = useMemo(() => {
     return animales.filter((a) => {
@@ -144,27 +144,39 @@ export default function Animales() {
   }
 
   function SeccionGenealogica({ animal }) {
-    const fInd = calcularFIndividual(animal, pedigree)
-    const nivel = nivelConsanguinidad(fInd)
-    const arbol = getAncestores(animal.id, pedigree, 2)
+    const fInd    = calcularFIndividual(animal, pedigree)
+    const nivel   = nivelConsanguinidad(fInd)
+    const arbol   = getAncestores(animal.id, pedigree, 3)
+    const estadoGen = estadoGenealogiaAnimal(animal, pedigree)
+
     const madre = arbol?.madre
     const padre = arbol?.padre
+    const abuelos = [madre?.madre, madre?.padre, padre?.madre, padre?.padre].filter(Boolean)
+    const bisabuelos = [
+      madre?.madre?.madre, madre?.madre?.padre,
+      madre?.padre?.madre, madre?.padre?.padre,
+      padre?.madre?.madre, padre?.madre?.padre,
+      padre?.padre?.madre, padre?.padre?.padre,
+    ].filter(Boolean)
 
-    const tieneAncestros = !!(animal.id_madre || animal.id_padre)
-    if (!tieneAncestros && fInd === 0) return (
-      <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(30,51,82,0.6)' }}>
-        <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#3a5068' }}>
-          Genealogía
-        </div>
-        <div className="text-xs font-mono" style={{ color: '#3a5068' }}>Sin ancestros registrados</div>
-      </div>
-    )
+    // Colores por estado genealógico
+    const estadoColor = { completo: '#00e676', parcial: '#ffd740', insuficiente: '#4a5f7a' }
+    const estadoC = estadoColor[estadoGen.estado] ?? '#4a5f7a'
 
     return (
       <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(30,51,82,0.6)' }}>
-        <div className="flex items-center gap-2 mb-2">
+        {/* Header genealogía */}
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
           <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#3a5068' }}>Genealogía</span>
-          {tieneAncestros && (
+          {/* Estado del árbol */}
+          <span
+            className="text-xs font-mono px-2 py-0.5 rounded-full"
+            style={{ background: `${estadoC}12`, border: `1px solid ${estadoC}35`, color: estadoC }}
+          >
+            {estadoGen.emoji} {estadoGen.label}
+          </span>
+          {/* F si tiene ancestros */}
+          {estadoGen.tienePadres && (
             <span
               className="text-xs font-mono px-2 py-0.5 rounded-full"
               style={{
@@ -176,59 +188,73 @@ export default function Animales() {
               F = {fPorcentaje(fInd)}%{fInd === 0 ? ' — Sin consanguinidad' : ''}
             </span>
           )}
+          {estadoGen.generaciones > 0 && (
+            <span className="text-xs font-mono ml-auto" style={{ color: '#3a5068' }}>
+              {estadoGen.generaciones} gen. conocidas
+            </span>
+          )}
         </div>
 
+        {/* Sin datos (fundador) */}
+        {estadoGen.estado === 'insuficiente' && (
+          <div className="text-xs font-mono" style={{ color: '#3a5068' }}>
+            🔴 Información insuficiente — sin padres registrados (animal fundador o dato no cargado)
+          </div>
+        )}
+
         {/* Progenitores */}
-        {(madre || padre) && (
-          <div className="flex gap-3 mb-2">
-            {madre && (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style={{ background: 'rgba(206,147,216,0.08)', border: '1px solid rgba(206,147,216,0.2)' }}>
-                <span className="text-xs" style={{ color: '#ce93d8' }}>♀</span>
-                <span className="text-xs font-mono font-semibold" style={{ color: '#ce93d8' }}>{madre.codigo}</span>
+        {estadoGen.tienePadres && (
+          <div className="space-y-1.5">
+            <div className="flex gap-2 flex-wrap">
+              {madre ? (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style={{ background: 'rgba(206,147,216,0.08)', border: '1px solid rgba(206,147,216,0.2)' }}>
+                  <span className="text-xs" style={{ color: '#ce93d8' }}>♀</span>
+                  <span className="text-xs font-mono font-semibold" style={{ color: '#ce93d8' }}>{madre.codigo}</span>
+                </div>
+              ) : animal.id_madre ? (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style={{ background: 'rgba(206,147,216,0.04)', border: '1px solid rgba(206,147,216,0.1)' }}>
+                  <span className="text-xs" style={{ color: '#4a5f7a' }}>♀</span>
+                  <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Madre dada de baja</span>
+                </div>
+              ) : null}
+              {padre ? (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.2)' }}>
+                  <span className="text-xs" style={{ color: '#40c4ff' }}>♂</span>
+                  <span className="text-xs font-mono font-semibold" style={{ color: '#40c4ff' }}>{padre.codigo}</span>
+                </div>
+              ) : animal.id_padre ? (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style={{ background: 'rgba(64,196,255,0.04)', border: '1px solid rgba(64,196,255,0.1)' }}>
+                  <span className="text-xs" style={{ color: '#4a5f7a' }}>♂</span>
+                  <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Padre dado de baja</span>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Abuelos */}
+            {abuelos.length > 0 && (
+              <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                <span style={{ color: '#3a5068' }}>Abuelos: </span>
+                {abuelos.map((a) => a.codigo).join(' · ')}
               </div>
             )}
-            {!madre && animal.id_madre && (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style={{ background: 'rgba(206,147,216,0.04)', border: '1px solid rgba(206,147,216,0.1)' }}>
-                <span className="text-xs" style={{ color: '#4a5f7a' }}>♀</span>
-                <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Dada de baja</span>
-              </div>
-            )}
-            {padre && (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.2)' }}>
-                <span className="text-xs" style={{ color: '#40c4ff' }}>♂</span>
-                <span className="text-xs font-mono font-semibold" style={{ color: '#40c4ff' }}>{padre.codigo}</span>
-              </div>
-            )}
-            {!padre && animal.id_padre && (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style={{ background: 'rgba(64,196,255,0.04)', border: '1px solid rgba(64,196,255,0.1)' }}>
-                <span className="text-xs" style={{ color: '#4a5f7a' }}>♂</span>
-                <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Dado de baja</span>
+
+            {/* Bisabuelos */}
+            {bisabuelos.length > 0 && (
+              <div className="text-xs font-mono" style={{ color: '#3a5068' }}>
+                <span>Bisabuelos: </span>
+                {bisabuelos.map((a) => a.codigo).join(' · ')}
               </div>
             )}
           </div>
         )}
 
-        {/* Abuelos */}
-        {(madre?.madre || madre?.padre || padre?.madre || padre?.padre) && (
-          <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
-            <span style={{ color: '#3a5068' }}>Abuelos: </span>
-            {[madre?.madre, madre?.padre, padre?.madre, padre?.padre]
-              .filter(Boolean)
-              .map((a) => a.codigo)
-              .join(' · ')
-            }
-          </div>
-        )}
-
+        {/* Barra de consanguinidad */}
         {fInd > 0 && (
           <div className="mt-2">
             <div className="h-1.5 rounded-full" style={{ background: 'rgba(30,51,82,0.8)' }}>
               <div
                 className="h-1.5 rounded-full"
-                style={{
-                  width: `${Math.min(fInd / 0.5 * 100, 100)}%`,
-                  background: nivel.color,
-                }}
+                style={{ width: `${Math.min(fInd / 0.5 * 100, 100)}%`, background: nivel.color }}
               />
             </div>
             <div className="text-xs mt-0.5 font-mono" style={{ color: nivel.color }}>

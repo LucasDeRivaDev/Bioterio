@@ -3,20 +3,80 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Construye un mapa id → nodo a partir del array de animales.
- * Cada nodo guarda solo los campos que necesita el motor genealógico.
+ * Consanguinidad histórica de línea por bioterio.
+ * Las cepas consanguíneas establecidas (BALB/c, C57BL/6) tienen F ≈ 99.9%
+ * por décadas de hermano-hermana. Los F1 son heterocigotos totales (F ≈ 0).
  */
-export function buildPedigree(animales) {
+export const CONSANGUINIDAD_LINEA = {
+  ratones_balbc: {
+    label: 'BALB/c',
+    fLinea: 0.999,
+    descripcion: 'Cepa consanguínea establecida — F histórica ≈ 99.9%',
+    nota: 'Más de 200 generaciones de apareamiento entre hermanos',
+    color: '#a78bfa',
+  },
+  ratones_c57: {
+    label: 'C57BL/6',
+    fLinea: 0.999,
+    descripcion: 'Cepa consanguínea establecida — F histórica ≈ 99.9%',
+    nota: 'Alta homocigosidad en todos los loci; fenotipo muy estable',
+    color: '#40c4ff',
+  },
+  ratones_hibridos: {
+    label: 'F1 (BALB/c × C57BL/6)',
+    fLinea: 0,
+    descripcion: 'Cruce entre cepas puras — heterocigosis total (F ≈ 0)',
+    nota: 'Los híbridos F1 son uniformes y más vigorosos (heterosis)',
+    color: '#00e676',
+  },
+  ratas: {
+    label: 'Ratas (colonia cerrada)',
+    fLinea: null,
+    descripcion: 'Colonia cerrada — consanguinidad calculada desde registros',
+    nota: 'El F real depende del historial reproductivo registrado',
+    color: '#ffd740',
+  },
+}
+
+/**
+ * Construye un mapa id → nodo a partir del array de animales.
+ * Acepta opcionalmente un array de camadas para recuperar parentesco
+ * de animales cuya nota contiene el sufijo de camada origen.
+ */
+export function buildPedigree(animales, camadas = []) {
+  // Índice rápido de camadas por los últimos 6 chars del ID
+  const camadaPorSufijo = {}
+  for (const c of camadas) {
+    if (c.id) camadaPorSufijo[c.id.slice(-6)] = c
+  }
+
   const pedigree = {}
   for (const a of animales) {
+    let madreId = a.id_madre ?? null
+    let padreId = a.id_padre ?? null
+
+    // Intento de recuperación desde notas si faltan padres
+    // Formato: "Stock → reproductor · camada ...XXXXXX"
+    if ((!madreId || !padreId) && a.notas) {
+      const match = a.notas.match(/camada \.\.\.([a-z0-9]{6})/i)
+      if (match) {
+        const camada = camadaPorSufijo[match[1]]
+        if (camada) {
+          madreId = madreId ?? (camada.id_madre || null)
+          padreId = padreId ?? (camada.id_padre || null)
+        }
+      }
+    }
+
     pedigree[a.id] = {
-      id:       a.id,
-      codigo:   a.codigo,
-      sexo:     a.sexo,
-      estado:   a.estado,
+      id:               a.id,
+      codigo:           a.codigo,
+      sexo:             a.sexo,
+      estado:           a.estado,
+      bioterio_id:      a.bioterio_id ?? null,
       fecha_nacimiento: a.fecha_nacimiento ?? null,
-      madre_id: a.id_madre ?? null,
-      padre_id: a.id_padre ?? null,
+      madre_id:         madreId,
+      padre_id:         padreId,
     }
   }
   return pedigree
@@ -25,9 +85,9 @@ export function buildPedigree(animales) {
 // ── Mapa de ancestros con profundidades ──────────────────────────────────────
 // Devuelve Map<id, Set<depth>> — el mismo ancestro puede aparecer a distintas
 // profundidades si el pedigree está cruzado.
-function buildAncestorMap(id, pedigree, maxDepth = 8) {
+export function buildAncestorMap(id, pedigree, maxDepth = 8) {
   const result  = new Map()
-  const visited = new Set() // evita ciclos en pedigrees inbredeados
+  const visited = new Set()
 
   function traverse(currentId, depth) {
     if (!currentId || depth > maxDepth) return
@@ -54,13 +114,10 @@ function buildAncestorMap(id, pedigree, maxDepth = 8) {
  * Retorna un valor entre 0 y 1 (0 = sin consanguinidad, 0.25 = hermanos completos, etc.)
  *
  * Fórmula: F = Σ_A Σ_{d1∈sire,d2∈dam} (1/2)^(d1+d2+1)
- * donde A recorre los ancestros comunes de ambos progenitores (incluyendo a
- * cada progenitor mismo, a profundidad 0, para detectar apareamientos
- * padre-hija / madre-hijo / abuelo-nieta, etc.)
  */
 export function calcularFCoeficiente(madreId, padreId, pedigree, maxDepth = 8) {
   if (!madreId || !padreId) return 0
-  if (madreId === padreId) return 1.0 // idénticos
+  if (madreId === padreId) return 1.0
 
   const mapSire = buildAncestorMap(padreId, pedigree, maxDepth)
   const mapDam  = buildAncestorMap(madreId, pedigree, maxDepth)
@@ -72,9 +129,6 @@ export function calcularFCoeficiente(madreId, padreId, pedigree, maxDepth = 8) {
     const depthsDam = mapDam.get(ancestorId)
     for (const d1 of depthsSire) {
       for (const d2 of depthsDam) {
-        // Si el ancestro ES uno de los progenitores (depth 0), solo cuenta si
-        // aparece con depth > 0 en el otro progenitor (ej: padre-hija).
-        // Si ambos tienen depth 0, sería el mismo animal × sí mismo → excluir.
         if (d1 === 0 && d2 === 0) continue
         F += Math.pow(0.5, d1 + d2 + 1)
       }
@@ -89,8 +143,10 @@ export function calcularFCoeficiente(madreId, padreId, pedigree, maxDepth = 8) {
  * Retorna 0 si no tiene padres conocidos.
  */
 export function calcularFIndividual(animal, pedigree) {
-  if (!animal?.id_madre || !animal?.id_padre) return 0
-  return calcularFCoeficiente(animal.id_madre, animal.id_padre, pedigree)
+  const madreId = animal?.id_madre ?? pedigree[animal?.id]?.madre_id
+  const padreId = animal?.id_padre ?? pedigree[animal?.id]?.padre_id
+  if (!madreId || !padreId) return 0
+  return calcularFCoeficiente(madreId, padreId, pedigree)
 }
 
 // ── Descripción en porcentaje ────────────────────────────────────────────────
@@ -99,11 +155,103 @@ export function fPorcentaje(f) {
 }
 
 export function nivelConsanguinidad(f) {
-  if (f === 0)    return { nivel: 'nulo',   color: '#4a5f7a', label: 'Sin consanguinidad' }
-  if (f < 0.0625) return { nivel: 'bajo',   color: '#00e676', label: 'Bajo (<6.25%)' }
-  if (f < 0.125)  return { nivel: 'leve',   color: '#ffd740', label: 'Leve (6.25–12.5%)' }
-  if (f < 0.25)   return { nivel: 'moderado', color: '#ff9100', label: 'Moderado (12.5–25%)' }
-  return             { nivel: 'alto',    color: '#ff1744', label: 'Alto (≥25%)' }
+  if (f === 0)     return { nivel: 'nulo',     color: '#4a5f7a', label: 'Sin consanguinidad' }
+  if (f < 0.0625)  return { nivel: 'bajo',     color: '#00e676', label: 'Bajo (<6.25%)' }
+  if (f < 0.125)   return { nivel: 'leve',     color: '#ffd740', label: 'Leve (6.25–12.5%)' }
+  if (f < 0.25)    return { nivel: 'moderado', color: '#ff9100', label: 'Moderado (12.5–25%)' }
+  return              { nivel: 'alto',     color: '#ff1744', label: 'Alto (≥25%)' }
+}
+
+// ── Estado genealógico del animal ────────────────────────────────────────────
+/**
+ * Devuelve el estado del árbol genealógico de un animal:
+ * - 'completo'      🟢 Tiene padres Y abuelos registrados
+ * - 'parcial'       🟡 Tiene padres pero sin abuelos (o solo uno de cada lado)
+ * - 'insuficiente'  🔴 Sin padres registrados (fundador o dato faltante)
+ */
+export function estadoGenealogiaAnimal(animal, pedigree) {
+  const nodo = pedigree[animal?.id]
+  const madreId = animal?.id_madre ?? nodo?.madre_id ?? null
+  const padreId = animal?.id_padre ?? nodo?.padre_id ?? null
+
+  if (!madreId && !padreId) {
+    return { estado: 'insuficiente', generaciones: 0, label: 'Información insuficiente', emoji: '🔴', tienePadres: false }
+  }
+
+  // Verificar abuelos
+  const nodMadre = madreId ? pedigree[madreId] : null
+  const nodPadre = padreId ? pedigree[padreId] : null
+
+  const tieneAbuelos = !!(
+    nodMadre?.madre_id || nodMadre?.padre_id ||
+    nodPadre?.madre_id || nodPadre?.padre_id
+  )
+
+  // Verificar bisabuelos
+  let tieneBisabuelos = false
+  if (tieneAbuelos) {
+    const abuelos = [
+      nodMadre?.madre_id ? pedigree[nodMadre.madre_id] : null,
+      nodMadre?.padre_id ? pedigree[nodMadre.padre_id] : null,
+      nodPadre?.madre_id ? pedigree[nodPadre.madre_id] : null,
+      nodPadre?.padre_id ? pedigree[nodPadre.padre_id] : null,
+    ].filter(Boolean)
+    tieneBisabuelos = abuelos.some((a) => a.madre_id || a.padre_id)
+  }
+
+  if (tieneAbuelos) {
+    return {
+      estado: 'completo',
+      generaciones: tieneBisabuelos ? 4 : 3,
+      label: 'Árbol completo',
+      emoji: '🟢',
+      tienePadres: true,
+    }
+  }
+
+  return {
+    estado: 'parcial',
+    generaciones: 2,
+    label: 'Árbol parcial',
+    emoji: '🟡',
+    tienePadres: true,
+  }
+}
+
+// ── Ancestros comunes entre dos animales ─────────────────────────────────────
+/**
+ * Retorna la lista de ancestros comunes entre dos progenitores,
+ * con su profundidad en cada árbol. Usado para el simulador de apareamiento.
+ */
+export function ancestrosComunes(madreId, padreId, pedigree) {
+  if (!madreId || !padreId) return []
+
+  const mapMadre = buildAncestorMap(madreId, pedigree, 8)
+  const mapPadre = buildAncestorMap(padreId, pedigree, 8)
+
+  const comunes = []
+  for (const [ancestorId, depthsMadre] of mapMadre) {
+    if (!mapPadre.has(ancestorId)) continue
+    const depthsPadre = mapPadre.get(ancestorId)
+
+    // Descartamos el caso donde ambos progenitores son el mismo animal
+    const tieneParValido = [...depthsMadre].some((d1) =>
+      [...depthsPadre].some((d2) => !(d1 === 0 && d2 === 0))
+    )
+    if (!tieneParValido) continue
+
+    const nodo = pedigree[ancestorId]
+    comunes.push({
+      id: ancestorId,
+      codigo: nodo?.codigo ?? '?',
+      sexo: nodo?.sexo ?? null,
+      profMadre: Math.min(...depthsMadre),
+      profPadre: Math.min(...depthsPadre),
+    })
+  }
+
+  // Ordenar por cercanía (menor suma de profundidades primero)
+  return comunes.sort((a, b) => (a.profMadre + a.profPadre) - (b.profMadre + b.profPadre))
 }
 
 // ── Detección de parentesco ──────────────────────────────────────────────────
@@ -117,35 +265,24 @@ export function detectarParentesco(id1, id2, pedigree) {
   const n2 = pedigree[id2]
   if (!n1 || !n2) return null
 
-  // Padre/madre — hijo
   if (n1.madre_id === id2 || n1.padre_id === id2) return 'padre_hijo'
   if (n2.madre_id === id1 || n2.padre_id === id1) return 'padre_hijo'
 
-  // Hermanos completos
   if (n1.madre_id && n1.padre_id &&
       n1.madre_id === n2.madre_id && n1.padre_id === n2.padre_id) return 'hermanos_completos'
 
-  // Medios hermanos (un progenitor en común)
   if (n1.madre_id && n1.madre_id === n2.madre_id) return 'medio_hermanos'
   if (n1.padre_id && n1.padre_id === n2.padre_id) return 'medio_hermanos'
 
-  // Abuelo/abuela — nieto
-  const abuelos1 = [
-    pedigree[n1.madre_id],
-    pedigree[n1.padre_id],
-  ].filter(Boolean)
+  const abuelos1 = [pedigree[n1.madre_id], pedigree[n1.padre_id]].filter(Boolean)
   for (const a of abuelos1) {
     if (a.madre_id === id2 || a.padre_id === id2) return 'abuelo_nieto'
   }
-  const abuelos2 = [
-    pedigree[n2.madre_id],
-    pedigree[n2.padre_id],
-  ].filter(Boolean)
+  const abuelos2 = [pedigree[n2.madre_id], pedigree[n2.padre_id]].filter(Boolean)
   for (const a of abuelos2) {
     if (a.madre_id === id1 || a.padre_id === id1) return 'abuelo_nieto'
   }
 
-  // Tío/tía — sobrino (comparten uno de los padres con un progenitor del otro)
   const padres1 = [n1.madre_id, n1.padre_id].filter(Boolean)
   const padres2 = [n2.madre_id, n2.padre_id].filter(Boolean)
   for (const p of padres1) {
@@ -159,7 +296,6 @@ export function detectarParentesco(id1, id2, pedigree) {
     }
   }
 
-  // Primos (abuelos comunes)
   const abuelos1ids = abuelos1.flatMap((a) => [a.madre_id, a.padre_id]).filter(Boolean)
   const abuelos2ids = abuelos2.flatMap((a) => [a.madre_id, a.padre_id]).filter(Boolean)
   if (abuelos1ids.some((id) => abuelos2ids.includes(id))) return 'primos'
@@ -168,12 +304,12 @@ export function detectarParentesco(id1, id2, pedigree) {
 }
 
 export const LABEL_PARENTESCO = {
-  padre_hijo:        { texto: 'Padre/Madre — Hijo/a', emoji: '⛔' },
-  hermanos_completos: { texto: 'Hermanos completos',   emoji: '⛔' },
-  medio_hermanos:    { texto: 'Medio hermanos',         emoji: '⚠️' },
-  abuelo_nieto:      { texto: 'Abuelo/a — Nieto/a',   emoji: '⚠️' },
-  tio_sobrino:       { texto: 'Tío/a — Sobrino/a',    emoji: '⚠️' },
-  primos:            { texto: 'Primos',                emoji: '🟡' },
+  padre_hijo:         { texto: 'Padre/Madre — Hijo/a', emoji: '⛔' },
+  hermanos_completos: { texto: 'Hermanos completos',    emoji: '⛔' },
+  medio_hermanos:     { texto: 'Medio hermanos',        emoji: '⚠️' },
+  abuelo_nieto:       { texto: 'Abuelo/a — Nieto/a',   emoji: '⚠️' },
+  tio_sobrino:        { texto: 'Tío/a — Sobrino/a',    emoji: '⚠️' },
+  primos:             { texto: 'Primos',                emoji: '🟡' },
 }
 
 // ── Árbol genealógico ─────────────────────────────────────────────────────────
@@ -203,18 +339,25 @@ export function getDescendientes(id, camadas) {
 // ── Estadísticas de la colonia ────────────────────────────────────────────────
 /**
  * Calcula estadísticas globales de consanguinidad para todos los animales activos.
- * Requiere el array de animales ya cargado + el pedigree construido.
+ * Acepta un pedigree opcional separado para usar el global en lugar del local.
  */
-export function estadisticasColonia(animales, pedigree) {
+export function estadisticasColonia(animales, pedigree, pedigreeExtendido = null) {
+  const ped = pedigreeExtendido ?? pedigree
+
   const activos = animales.filter((a) =>
     ['activo', 'en_apareamiento', 'en_cria'].includes(a.estado)
   )
 
-  const fValues = activos.map((a) => ({
-    animal: a,
-    f:      calcularFIndividual(a, pedigree),
-    tieneAncestros: !!(a.id_madre || a.id_padre),
-  }))
+  const fValues = activos.map((a) => {
+    const nodo = ped[a.id]
+    const madreId = a.id_madre ?? nodo?.madre_id ?? null
+    const padreId = a.id_padre ?? nodo?.padre_id ?? null
+    return {
+      animal: a,
+      f: (madreId && padreId) ? calcularFCoeficiente(madreId, padreId, ped) : 0,
+      tieneAncestros: !!(madreId || padreId),
+    }
+  })
 
   const conAncestros = fValues.filter((v) => v.tieneAncestros)
   const sinAncestros = fValues.length - conAncestros.length
@@ -237,7 +380,7 @@ export function estadisticasColonia(animales, pedigree) {
     .slice(0, 10)
 
   return {
-    total:          activos.length,
+    total: activos.length,
     sinAncestros,
     fPromedio,
     distribucion,
@@ -249,7 +392,7 @@ export function estadisticasColonia(animales, pedigree) {
 // ── Evaluación de un apareamiento ────────────────────────────────────────────
 /**
  * Evaluación completa de un apareamiento propuesto (madreId × padreId).
- * Retorna { f, nivel, parentesco, recomendacion }.
+ * Retorna { f, nivel, parentesco, recomendacion, comunes }.
  */
 export function evaluarApareamientoGenetico(madreId, padreId, pedigree) {
   if (!madreId || !padreId) return null
@@ -257,6 +400,7 @@ export function evaluarApareamientoGenetico(madreId, padreId, pedigree) {
   const f          = calcularFCoeficiente(madreId, padreId, pedigree)
   const nivel      = nivelConsanguinidad(f)
   const parentesco = detectarParentesco(madreId, padreId, pedigree)
+  const comunes    = ancestrosComunes(madreId, padreId, pedigree)
 
   let recomendacion = null
   if (parentesco === 'padre_hijo' || parentesco === 'hermanos_completos') {
@@ -269,5 +413,5 @@ export function evaluarApareamientoGenetico(madreId, padreId, pedigree) {
     recomendacion = { tipo: 'aviso', texto: 'Consanguinidad leve — documentar' }
   }
 
-  return { f, nivel, parentesco, recomendacion }
+  return { f, nivel, parentesco, recomendacion, comunes }
 }

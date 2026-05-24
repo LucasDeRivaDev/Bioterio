@@ -149,7 +149,7 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
   const [confirmarConsanguinidad, setConfirmarConsanguinidad] = useState(false)
 
   // Análisis genético del apareamiento (coeficiente F de Wright)
-  const pedigree = useMemo(() => buildPedigree(todosAnimales), [todosAnimales])
+  const pedigree = useMemo(() => buildPedigree(todosAnimales, camadas), [todosAnimales, camadas])
   const analisisGenetico = useMemo(() => {
     if (!madreSelec || !padreSelec) return null
     return evaluarApareamientoGenetico(madreSelec.id, padreSelec.id, pedigree)
@@ -499,6 +499,13 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
                 <p className="text-xs mb-1" style={{ color: '#c9d4e0' }}>
                   {LABEL_PARENTESCO[analisisGenetico.parentesco].emoji}{' '}
                   {LABEL_PARENTESCO[analisisGenetico.parentesco].texto}
+                </p>
+              )}
+              {/* Ancestros comunes */}
+              {analisisGenetico.comunes && analisisGenetico.comunes.length > 0 && (
+                <p className="text-xs mb-1 font-mono" style={{ color: '#8a9bb0' }}>
+                  Ancestros comunes: {analisisGenetico.comunes.slice(0, 4).map((c) => c.codigo).join(', ')}
+                  {analisisGenetico.comunes.length > 4 ? ` +${analisisGenetico.comunes.length - 4}` : ''}
                 </p>
               )}
               {/* Barra visual */}
