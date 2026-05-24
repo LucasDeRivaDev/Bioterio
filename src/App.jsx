@@ -26,6 +26,7 @@ import Temperatura from './pages/Temperatura'
 import Estadisticas from './pages/Estadisticas'
 import Incidentes from './pages/Incidentes'
 import PlanificacionColonia from './pages/PlanificacionColonia'
+import Pedidos from './pages/Pedidos'
 import Login from './pages/Login'
 import Landing from './pages/Landing'
 
@@ -197,6 +198,7 @@ function AppLayout() {
               <Route path="/estadisticas" element={<Estadisticas />} />
               <Route path="/incidentes"     element={<Incidentes />} />
               <Route path="/planificacion" element={<PlanificacionColonia />} />
+              <Route path="/pedidos"       element={<Pedidos />} />
               <Route path="/reportes"      element={<Reportes />} />
               <Route path="*"            element={<Navigate to="/" replace />} />
             </Routes>
