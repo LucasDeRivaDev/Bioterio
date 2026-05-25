@@ -2,15 +2,21 @@ import { useState, useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { useBioterioActivo } from '../context/BioterioActivoContext'
 import { hoy, formatFecha } from '../utils/calculos'
+import { buildPedigree, calcularFCoeficiente } from '../utils/genealogia'
 import {
-  CATEGORIAS, SEVERIDADES, LISTA_BIOTERIOS,
+  CATEGORIAS, SEVERIDADES, LISTA_BIOTERIOS, NIVEL_ALERTA,
   getCategoriaInfo, getTipoLabel, getSeveridadInfo,
   labelBioterio, colorBioterio,
   calcularIndiceSanitario, nivelIndice,
-  detectarPatrones, generarTendencias,
+  calcularIndiceAmbiental, nivelAmbiental, statsTemperatura, clasificarTemperatura,
+  calcularIndiceRiesgoGenetico, nivelRiesgoGenetico,
+  calcularIndiceEstabilidadGlobal,
+  detectarPatrones, detectarCorrelaciones,
+  generarMotorCausal, generarAlertasSanitarias, generarRecomendacionesHoy,
+  generarTendencias,
 } from '../utils/sanitario'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { AlertTriangle, CheckCircle, Plus, Activity, TrendingUp, TrendingDown } from 'lucide-react'
+import { AlertTriangle, CheckCircle, Plus, Activity, TrendingUp, TrendingDown, Thermometer, Dna, Zap, Eye, EyeOff } from 'lucide-react'
 
 // ── Constantes UI ─────────────────────────────────────────────────────────────
 
@@ -19,19 +25,32 @@ const BIOTERIOS_SIN_TODOS = LISTA_BIOTERIOS.slice(1)
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function Incidentes() {
-  const { incidentes, animales, camadas, agregarIncidente, editarIncidente, eliminarIncidente } = useBioterio()
+  const { incidentes, animales, camadas, temperaturas, agregarIncidente, editarIncidente, eliminarIncidente } = useBioterio()
   const { bioterioActivo } = useBioterioActivo()
 
   const [filtroColonia,   setFiltroColonia]   = useState('todos')
   const [filtroCategoria, setFiltroCategoria] = useState('todos')
   const [filtroSeveridad, setFiltroSeveridad] = useState('todos')
-  const [filtroEstado,    setFiltroEstado]    = useState('abiertos') // 'todos' | 'abiertos' | 'resueltos'
+  const [filtroEstado,    setFiltroEstado]    = useState('abiertos')
   const [modal,           setModal]           = useState(false)
   const [incAEditar,      setIncAEditar]      = useState(null)
   const [confirmarElim,   setConfirmarElim]   = useState(null)
-  const [tabActivo,       setTabActivo]       = useState('lista') // 'lista' | 'estadisticas'
+  const [tabActivo,       setTabActivo]       = useState('lista') // 'lista' | 'estadisticas' | 'ambiental' | 'causal'
+  const [mostrarCorrel,   setMostrarCorrel]   = useState(false)
 
-  // ── Índice sanitario global y por colonia ──────────────────────────────────
+  // ── Pedigree para cálculo de consanguinidad ────────────────────────────────
+  const pedigree = useMemo(() => buildPedigree(animales, camadas), [animales, camadas])
+
+  // ── F coeficientes por animal ──────────────────────────────────────────────
+  const fCoefMapa = useMemo(() => {
+    const mapa = new Map()
+    animales.filter(a => ['activo', 'en_apareamiento', 'en_cria'].includes(a.estado)).forEach(a => {
+      try { mapa.set(a.id, calcularFCoeficiente(a.id, pedigree) ?? 0) } catch { mapa.set(a.id, 0) }
+    })
+    return mapa
+  }, [animales, pedigree])
+
+  // ── Índices ────────────────────────────────────────────────────────────────
   const indices = useMemo(() => {
     const global = calcularIndiceSanitario(camadas, incidentes, null)
     const porColonia = {}
@@ -41,10 +60,73 @@ export default function Incidentes() {
     return { global, porColonia }
   }, [camadas, incidentes])
 
-  // ── Patrones detectados ────────────────────────────────────────────────────
+  const indiceAmbiental = useMemo(() =>
+    calcularIndiceAmbiental(temperaturas, bioterioActivo),
+    [temperaturas, bioterioActivo]
+  )
+
+  const statsTempActivo = useMemo(() =>
+    statsTemperatura(temperaturas, bioterioActivo),
+    [temperaturas, bioterioActivo]
+  )
+
+  const indiceGenetico = useMemo(() =>
+    calcularIndiceRiesgoGenetico(
+      animales.filter(a => a.bioterio_id === bioterioActivo || !bioterioActivo),
+      camadas.filter(c => c.bioterio_id === bioterioActivo || !bioterioActivo),
+      incidentes,
+      fCoefMapa
+    ),
+    [animales, camadas, incidentes, fCoefMapa, bioterioActivo]
+  )
+
+  // Tasa de fallos y supervivencia para índice global
+  const tasas = useMemo(() => {
+    const cam = camadas.filter(c => !bioterioActivo || c.bioterio_id === bioterioActivo)
+    const total = cam.filter(c => c.fecha_copula).length
+    const fallos = cam.filter(c => c.failure_flag).length
+    const conDestete = cam.filter(c => c.total_crias > 0 && c.total_destetados != null)
+    const sr = conDestete.length > 0
+      ? conDestete.reduce((s, c) => s + c.total_destetados / c.total_crias, 0) / conDestete.length
+      : 0.85
+    return { tasaFallos: total > 0 ? fallos / total : 0, tasaSupervivencia: sr }
+  }, [camadas, bioterioActivo])
+
+  const indiceGlobal = useMemo(() =>
+    calcularIndiceEstabilidadGlobal({
+      indiceSanitario: indices.global,
+      indiceAmbiental,
+      indiceRiesgoGenetico: indiceGenetico,
+      tasaFallos: tasas.tasaFallos,
+      tasaSupervivencia: tasas.tasaSupervivencia,
+    }),
+    [indices.global, indiceAmbiental, indiceGenetico, tasas]
+  )
+
+  // ── Patrones, correlaciones, motor causal, alertas, recomendaciones ────────
   const patrones = useMemo(() => detectarPatrones(incidentes), [incidentes])
 
-  // ── Tendencias 6 meses ─────────────────────────────────────────────────────
+  const correlaciones = useMemo(() =>
+    detectarCorrelaciones(temperaturas, incidentes, camadas, 7),
+    [temperaturas, incidentes, camadas]
+  )
+
+  const causas = useMemo(() =>
+    generarMotorCausal(incidentes, temperaturas, camadas, animales, bioterioActivo),
+    [incidentes, temperaturas, camadas, animales, bioterioActivo]
+  )
+
+  const alertas = useMemo(() =>
+    generarAlertasSanitarias(incidentes, temperaturas, camadas, animales, bioterioActivo),
+    [incidentes, temperaturas, camadas, animales, bioterioActivo]
+  )
+
+  const recomendaciones = useMemo(() =>
+    generarRecomendacionesHoy(incidentes, temperaturas, camadas, animales, bioterioActivo),
+    [incidentes, temperaturas, camadas, animales, bioterioActivo]
+  )
+
+  // ── Tendencias ─────────────────────────────────────────────────────────────
   const { meses: mesesTend, tendencia } = useMemo(
     () => generarTendencias(incidentes, 6),
     [incidentes]
@@ -53,9 +135,9 @@ export default function Incidentes() {
   // ── Filtros ────────────────────────────────────────────────────────────────
   const incidentesFiltrados = useMemo(() => {
     return incidentes.filter(i => {
-      if (filtroColonia !== 'todos'   && i.bioterio_id      !== filtroColonia)   return false
-      if (filtroCategoria !== 'todos' && i.tipo_categoria   !== filtroCategoria) return false
-      if (filtroSeveridad !== 'todos' && i.severidad        !== filtroSeveridad) return false
+      if (filtroColonia !== 'todos'   && i.bioterio_id    !== filtroColonia)   return false
+      if (filtroCategoria !== 'todos' && i.tipo_categoria !== filtroCategoria) return false
+      if (filtroSeveridad !== 'todos' && i.severidad      !== filtroSeveridad) return false
       if (filtroEstado === 'abiertos'  && i.resuelto)  return false
       if (filtroEstado === 'resueltos' && !i.resuelto) return false
       return true
@@ -66,20 +148,20 @@ export default function Incidentes() {
   const stats = useMemo(() => {
     const abiertos  = incidentes.filter(i => !i.resuelto)
     const graves    = abiertos.filter(i => i.severidad === 'grave')
-    const hace30    = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    const hace30    = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
     const recientes = incidentes.filter(i => i.fecha >= hace30)
     return { total: incidentes.length, abiertos: abiertos.length, graves: graves.length, recientes: recientes.length }
   }, [incidentes])
 
   // ── Handlers ──────────────────────────────────────────────────────────────
-  function abrirNuevo() {
-    setIncAEditar(null)
-    setModal(true)
-  }
-
   async function toggleResuelto(inc) {
     await editarIncidente({ ...inc, resuelto: !inc.resuelto })
   }
+
+  const nvGlobal    = nivelIndice(indiceGlobal)
+  const nvAmbiental = nivelAmbiental(indiceAmbiental)
+  const nvGenetico  = nivelRiesgoGenetico(indiceGenetico)
+  const alertasUrgentes = alertas.filter(a => ['urgente', 'critico'].includes(a.nivel))
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -88,25 +170,28 @@ export default function Incidentes() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="w-1.5 h-7 rounded-full"
-            style={{ background: '#ff6b80', boxShadow: '0 0 8px rgba(255,107,128,0.5)' }} />
+          <div className="w-1.5 h-7 rounded-full" style={{ background: '#ff6b80', boxShadow: '0 0 8px rgba(255,107,128,0.5)' }} />
           <div>
             <h1 className="text-xl font-bold text-white">Vigilancia sanitaria</h1>
             <p className="text-xs mt-0.5 font-mono" style={{ color: '#4a5f7a' }}>
-              {stats.abiertos} incidentes abiertos · {stats.graves} graves · registrando desde{' '}
+              {stats.abiertos} abiertos · {stats.graves} graves · {alertas.length} alertas activas ·{' '}
               <span style={{ color: colorBioterio(bioterioActivo) }}>{labelBioterio(bioterioActivo)}</span>
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setTabActivo(t => t === 'lista' ? 'estadisticas' : 'lista')}
-            className="px-3 py-2 rounded-xl text-xs font-semibold"
-            style={{ background: tabActivo === 'estadisticas' ? 'rgba(64,196,255,0.15)' : 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.3)', color: '#40c4ff' }}>
-            <Activity size={12} style={{ display: 'inline', marginRight: 5 }} />
-            {tabActivo === 'estadisticas' ? 'Ver lista' : 'Estadísticas'}
-          </button>
-          <button onClick={abrirNuevo}
+        <div className="flex items-center gap-2 flex-wrap">
+          {(['lista', 'ambiental', 'causal', 'estadisticas']).map(t => (
+            <button key={t} onClick={() => setTabActivo(t)}
+              className="px-3 py-2 rounded-xl text-xs font-semibold"
+              style={{
+                background: tabActivo === t ? 'rgba(64,196,255,0.15)' : 'rgba(64,196,255,0.06)',
+                border: `1px solid ${tabActivo === t ? 'rgba(64,196,255,0.4)' : 'rgba(64,196,255,0.15)'}`,
+                color: tabActivo === t ? '#40c4ff' : '#4a5f7a',
+              }}>
+              {t === 'lista' ? '📋 Lista' : t === 'ambiental' ? '🌡️ Ambiente' : t === 'causal' ? '🔬 Motor causal' : '📊 Estadísticas'}
+            </button>
+          ))}
+          <button onClick={() => { setIncAEditar(null); setModal(true) }}
             className="px-4 py-2.5 rounded-xl text-sm font-bold"
             style={{ background: 'rgba(255,107,128,0.12)', border: '1.5px solid rgba(255,107,128,0.35)', color: '#ff6b80' }}>
             <Plus size={13} style={{ display: 'inline', marginRight: 5 }} />
@@ -115,55 +200,127 @@ export default function Incidentes() {
         </div>
       </div>
 
-      {/* ── Panel de índice sanitario ── */}
+      {/* ── ALERTAS MULTI-NIVEL ── */}
+      {alertas.length > 0 && (
+        <div className="space-y-2">
+          <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
+            Alertas activas ({alertas.length})
+          </div>
+          {alertas.map((a, i) => {
+            const nv = NIVEL_ALERTA[a.nivel] ?? NIVEL_ALERTA.atencion
+            const bg = a.nivel === 'urgente'
+              ? 'rgba(40,0,0,0.9)'
+              : a.nivel === 'critico' ? 'rgba(255,107,128,0.08)'
+              : a.nivel === 'importante' ? 'rgba(255,152,0,0.07)' : 'rgba(255,179,0,0.07)'
+            const border = a.nivel === 'urgente'
+              ? 'rgba(255,107,128,0.5)'
+              : a.nivel === 'critico' ? 'rgba(255,107,128,0.3)'
+              : a.nivel === 'importante' ? 'rgba(255,152,0,0.3)' : 'rgba(255,179,0,0.25)'
+            return (
+              <div key={i} className="rounded-xl px-4 py-3 flex items-start gap-3"
+                style={{ background: bg, border: `1px solid ${border}` }}>
+                <span className="text-base shrink-0 mt-0.5">{a.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold flex items-center gap-2" style={{ color: nv.color }}>
+                    {nv.emoji} {a.titulo}
+                    <span className="text-xs font-mono px-1.5 py-0.5 rounded-full"
+                      style={{ background: `${nv.color}15`, border: `1px solid ${nv.color}35`, color: nv.color }}>
+                      {nv.label}
+                    </span>
+                  </div>
+                  <div className="text-xs font-mono mt-0.5" style={{ color: '#6a8099' }}>{a.descripcion}</div>
+                  {a.accion && (
+                    <div className="text-xs mt-1 font-semibold" style={{ color: nv.color }}>→ {a.accion}</div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── DASHBOARD DE ÍNDICES ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {/* Índice global de estabilidad */}
+        <div className="rounded-2xl p-4 flex flex-col items-center gap-1 col-span-2 md:col-span-1"
+          style={{ background: `${nvGlobal.bg}`, border: `1px solid ${nvGlobal.border}` }}>
+          <div className="text-xs font-mono uppercase tracking-wider" style={{ color: '#4a5f7a' }}>Estabilidad global</div>
+          <div className="text-5xl font-bold font-mono" style={{ color: nvGlobal.color, lineHeight: 1.05 }}>{indiceGlobal}</div>
+          <div className="text-xs font-mono px-2 py-0.5 rounded-full"
+            style={{ background: nvGlobal.bg, color: nvGlobal.color, border: `1px solid ${nvGlobal.border}` }}>
+            {nvGlobal.emoji} {nvGlobal.label}
+          </div>
+          <div className="text-xs font-mono mt-1" style={{ color: '#3d5068' }}>Sanitario + Ambiental + Genético</div>
+        </div>
+
+        {/* Índice sanitario */}
+        {(() => {
+          const nv = nivelIndice(indices.global)
+          return (
+            <div className="rounded-2xl p-4 flex flex-col items-center gap-1"
+              style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(255,107,128,0.2)' }}>
+              <div className="text-xs font-mono flex items-center gap-1" style={{ color: '#ff6b80' }}>
+                <Activity size={10} /> Sanitario
+              </div>
+              <div className="text-3xl font-bold font-mono" style={{ color: nv.color }}>{indices.global}</div>
+              <div className="text-xs font-mono" style={{ color: nv.color }}>{nv.emoji} {nv.label}</div>
+            </div>
+          )
+        })()}
+
+        {/* Índice ambiental */}
+        <div className="rounded-2xl p-4 flex flex-col items-center gap-1"
+          style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(255,179,0,0.2)' }}>
+          <div className="text-xs font-mono flex items-center gap-1" style={{ color: '#ffb300' }}>
+            <Thermometer size={10} /> Ambiental
+          </div>
+          <div className="text-3xl font-bold font-mono" style={{ color: nvAmbiental.color }}>{indiceAmbiental}</div>
+          <div className="text-xs font-mono" style={{ color: nvAmbiental.color }}>{nvAmbiental.emoji} {nvAmbiental.label}</div>
+          {statsTempActivo.promedio && (
+            <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Promedio: {statsTempActivo.promedio}°C</div>
+          )}
+        </div>
+
+        {/* Índice de riesgo genético */}
+        <div className="rounded-2xl p-4 flex flex-col items-center gap-1"
+          style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(167,139,250,0.2)' }}>
+          <div className="text-xs font-mono flex items-center gap-1" style={{ color: '#a78bfa' }}>
+            <Dna size={10} /> Riesgo genético
+          </div>
+          <div className="text-3xl font-bold font-mono" style={{ color: nvGenetico.color }}>{indiceGenetico}</div>
+          <div className="text-xs font-mono" style={{ color: nvGenetico.color }}>{nvGenetico.emoji} {nvGenetico.label}</div>
+          <div className="text-xs font-mono" style={{ color: '#3d5068' }}>0=bajo · 100=alto</div>
+        </div>
+      </div>
+
+      {/* ── ÏNDICE SANITARIO POR COLONIA ── */}
       <div className="rounded-2xl overflow-hidden"
         style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(255,107,128,0.2)' }}>
         <div className="px-5 py-3 flex items-center gap-2"
           style={{ borderBottom: '1px solid rgba(255,107,128,0.1)', background: 'rgba(255,107,128,0.04)' }}>
           <Activity size={13} style={{ color: '#ff6b80' }} />
-          <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#ff6b80' }}>
-            Índice sanitario global
-          </span>
-          <span className="ml-auto text-xs font-mono" style={{ color: '#4a5f7a' }}>
-            Basado en incidentes activos + historial reproductivo
-          </span>
+          <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#ff6b80' }}>Índice sanitario por colonia</span>
+          <span className="ml-auto text-xs font-mono" style={{ color: '#4a5f7a' }}>Incidentes activos + historial reproductivo</span>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-5 divide-x divide-y md:divide-y-0"
+        <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0"
           style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-          {/* Global */}
-          {(() => {
-            const nv = nivelIndice(indices.global)
-            return (
-              <div className="px-4 py-4 text-center col-span-2 md:col-span-1 flex flex-col items-center gap-1">
-                <div className="text-xs font-mono uppercase tracking-wider" style={{ color: '#4a5f7a' }}>Global</div>
-                <div className="text-4xl font-bold font-mono" style={{ color: nv.color, lineHeight: 1.1 }}>{indices.global}</div>
-                <div className="text-xs font-mono px-2 py-0.5 rounded-full"
-                  style={{ background: nv.bg, color: nv.color, border: `1px solid ${nv.border}` }}>
-                  {nv.emoji} {nv.label}
-                </div>
-              </div>
-            )
-          })()}
-          {/* Por colonia */}
           {BIOTERIOS_SIN_TODOS.map(b => {
             const sc = indices.porColonia[b.id] ?? 100
             const nv = nivelIndice(sc)
+            const abiertos = incidentes.filter(i => i.bioterio_id === b.id && !i.resuelto).length
             return (
               <div key={b.id} className="px-4 py-4 text-center flex flex-col items-center gap-1">
                 <div className="text-xs font-mono" style={{ color: b.color }}>{b.label}</div>
                 <div className="text-2xl font-bold font-mono" style={{ color: nv.color, lineHeight: 1.1 }}>{sc}</div>
-                <div className="text-xs font-mono"
-                  style={{ color: nv.color }}>{nv.emoji} {nv.label}</div>
-                {incidentes.filter(i => i.bioterio_id === b.id && !i.resuelto).length > 0 && (
-                  <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
-                    {incidentes.filter(i => i.bioterio_id === b.id && !i.resuelto).length} abiertos
-                  </div>
+                <div className="text-xs font-mono" style={{ color: nv.color }}>{nv.emoji} {nv.label}</div>
+                {abiertos > 0 && (
+                  <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{abiertos} abiertos</div>
                 )}
               </div>
             )
           })}
         </div>
-        <div className="px-5 py-2 text-xs font-mono grid grid-cols-3 gap-x-6 gap-y-0.5"
+        <div className="px-5 py-2 text-xs font-mono grid grid-cols-3 gap-x-6"
           style={{ borderTop: '1px solid rgba(255,255,255,0.05)', color: '#3d5068' }}>
           <span>🟢 80–100: Estable</span>
           <span>🟡 50–79: Atención</span>
@@ -171,7 +328,38 @@ export default function Incidentes() {
         </div>
       </div>
 
-      {/* ── Alertas de patrones ── */}
+      {/* ── ¿QUÉ HACER HOY? ── */}
+      {recomendaciones.length > 0 && (
+        <div className="rounded-2xl overflow-hidden"
+          style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(0,230,118,0.2)' }}>
+          <div className="px-5 py-3 flex items-center gap-2"
+            style={{ borderBottom: '1px solid rgba(0,230,118,0.1)', background: 'rgba(0,230,118,0.04)' }}>
+            <Zap size={13} style={{ color: '#00e676' }} />
+            <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#00e676' }}>¿Qué hacer hoy?</span>
+          </div>
+          <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+            {recomendaciones.map((r, i) => {
+              const colores = { urgente: '#ff6b80', alta: '#ffb300', media: '#40c4ff', info: '#00e676' }
+              const col = colores[r.prioridad] ?? '#8a9bb0'
+              return (
+                <div key={i} className="px-5 py-3 flex items-start gap-3">
+                  <span className="text-base shrink-0">{r.icono}</span>
+                  <div className="flex-1">
+                    <div className="text-sm font-semibold" style={{ color: col }}>{r.accion}</div>
+                    <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>{r.motivo}</div>
+                  </div>
+                  <span className="text-xs font-mono px-2 py-0.5 rounded-full shrink-0 self-center"
+                    style={{ background: `${col}12`, border: `1px solid ${col}35`, color: col }}>
+                    {r.prioridad}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── ALERTAS DE PATRONES ── */}
       {patrones.length > 0 && (
         <div className="space-y-2">
           {patrones.map((p, i) => (
@@ -183,12 +371,12 @@ export default function Incidentes() {
               <AlertTriangle size={14} style={{ color: p.nivel === 'critico' ? '#ff6b80' : '#ffb300', flexShrink: 0, marginTop: 1 }} />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold" style={{ color: p.nivel === 'critico' ? '#ff6b80' : '#ffb300' }}>
-                  ⚠ Patrón repetitivo detectado: {p.tipoLabel}
+                  ⚠ Patrón repetitivo: {p.tipoLabel}
                 </div>
                 <div className="text-xs font-mono mt-0.5" style={{ color: '#6a8099' }}>
-                  {p.count} incidentes en los últimos 90 días
-                  {p.animalesU >= 2 ? ` · ${p.animalesU} animales distintos` : ''}
-                  {p.camadasU >= 2 ? ` · ${p.camadasU} camadas distintas` : ''}
+                  {p.count} incidentes en 90 días
+                  {p.animalesU >= 2 ? ` · ${p.animalesU} animales` : ''}
+                  {p.camadasU >= 2 ? ` · ${p.camadasU} camadas` : ''}
                   {p.bioteriosU.length > 1 ? ` · en ${p.bioteriosU.map(labelBioterio).join(', ')}` : ''}
                 </div>
               </div>
@@ -205,7 +393,253 @@ export default function Incidentes() {
         </div>
       )}
 
-      {/* ── Estadísticas ── */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* TAB: AMBIENTAL */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {tabActivo === 'ambiental' && (
+        <div className="space-y-4">
+          {/* Panel temperatura resumido */}
+          <div className="rounded-2xl overflow-hidden"
+            style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(255,179,0,0.25)' }}>
+            <div className="px-5 py-3 flex items-center gap-2"
+              style={{ borderBottom: '1px solid rgba(255,179,0,0.12)', background: 'rgba(255,179,0,0.05)' }}>
+              <Thermometer size={13} style={{ color: '#ffb300' }} />
+              <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#ffb300' }}>Estabilidad ambiental — {labelBioterio(bioterioActivo)}</span>
+              <span className="ml-auto text-xs font-mono" style={{ color: '#4a5f7a' }}>Últimos 30 días · Rango ideal 20–24°C</span>
+            </div>
+
+            {/* Índice ambiental por bioterio */}
+            <div className="grid grid-cols-2 md:grid-cols-4 divide-x" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+              {BIOTERIOS_SIN_TODOS.map(b => {
+                const idx = calcularIndiceAmbiental(temperaturas, b.id)
+                const nv  = nivelAmbiental(idx)
+                const st  = statsTemperatura(temperaturas, b.id)
+                return (
+                  <div key={b.id} className="px-4 py-4 text-center flex flex-col items-center gap-1">
+                    <div className="text-xs font-mono" style={{ color: b.color }}>{b.label}</div>
+                    <div className="text-2xl font-bold font-mono" style={{ color: nv.color }}>{idx}</div>
+                    <div className="text-xs font-mono" style={{ color: nv.color }}>{nv.emoji} {nv.label}</div>
+                    {st.promedio != null && (
+                      <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                        {st.promedio}°C prom · {st.diasRiesgo}d riesgo
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Stats del bioterio activo */}
+            {statsTempActivo.total > 0 && (
+              <div className="grid grid-cols-3 md:grid-cols-5 gap-0 divide-x divide-y md:divide-y-0"
+                style={{ borderTop: '1px solid rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.06)' }}>
+                {[
+                  { label: 'Promedio', val: statsTempActivo.promedio ? `${statsTempActivo.promedio}°C` : '—', color: '#40c4ff' },
+                  { label: 'Mínima',  val: statsTempActivo.min != null ? `${statsTempActivo.min}°C` : '—',  color: '#40c4ff' },
+                  { label: 'Máxima',  val: statsTempActivo.max != null ? `${statsTempActivo.max}°C` : '—',  color: statsTempActivo.max > 25 ? '#ff6b80' : '#40c4ff' },
+                  { label: 'Días riesgo',   val: statsTempActivo.diasRiesgo,   color: statsTempActivo.diasRiesgo > 0 ? '#ff6b80' : '#00e676' },
+                  { label: 'Días atención', val: statsTempActivo.diasAtencion, color: statsTempActivo.diasAtencion > 0 ? '#ffb300' : '#00e676' },
+                ].map(k => (
+                  <div key={k.label} className="px-4 py-3 text-center">
+                    <div className="text-lg font-bold font-mono" style={{ color: k.color }}>{k.val}</div>
+                    <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>{k.label}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {statsTempActivo.total === 0 && (
+              <div className="px-5 py-6 text-center text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                Sin datos de temperatura registrados para {labelBioterio(bioterioActivo)}.<br />
+                Registrá temperatura en la sección Temperatura.
+              </div>
+            )}
+          </div>
+
+          {/* Clasificación de rangos */}
+          <div className="rounded-2xl overflow-hidden"
+            style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="font-bold text-xs text-white">Clasificación de rangos de temperatura</div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-0 divide-x"
+              style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+              {[
+                { label: '20–24°C', desc: 'Rango ideal — sin estrés fisiológico', color: '#00e676', emoji: '🟢 Normal' },
+                { label: '18–20°C / 24–26°C', desc: 'Rango de atención — monitorear de cerca', color: '#ffb300', emoji: '🟡 Atención' },
+                { label: '<18°C / >26°C', desc: 'Riesgo — impacto reproductivo y bienestar animal', color: '#ff6b80', emoji: '🔴 Riesgo' },
+              ].map(r => (
+                <div key={r.label} className="px-5 py-4">
+                  <div className="text-sm font-bold font-mono" style={{ color: r.color }}>{r.emoji}</div>
+                  <div className="text-xs font-semibold mt-1" style={{ color: r.color }}>{r.label}</div>
+                  <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>{r.desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Correlaciones ambiente → incidentes */}
+          <div className="rounded-2xl overflow-hidden"
+            style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="px-5 py-4 flex items-center gap-2"
+              style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="font-bold text-xs text-white flex-1">
+                Correlaciones detectadas — temperatura vs reproducción/mortalidad
+              </div>
+              <button onClick={() => setMostrarCorrel(v => !v)}
+                className="text-xs font-mono px-2 py-1 rounded-lg flex items-center gap-1"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a' }}>
+                {mostrarCorrel ? <EyeOff size={10} /> : <Eye size={10} />}
+                {mostrarCorrel ? 'Ocultar' : 'Ver todas'}
+              </button>
+            </div>
+            {correlaciones.length === 0 ? (
+              <div className="px-5 py-6 text-center text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                No se detectaron correlaciones significativas con los datos actuales.
+              </div>
+            ) : (
+              <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+                {(mostrarCorrel ? correlaciones : correlaciones.slice(0, 3)).map((c, i) => (
+                  <div key={i} className="px-5 py-3 flex items-start gap-3">
+                    <span className="text-base shrink-0">{c.icono}</span>
+                    <div className="flex-1">
+                      <div className="text-sm font-semibold" style={{ color: c.nivel === 'critico' ? '#ff6b80' : '#ffb300' }}>
+                        {c.label}
+                      </div>
+                      <div className="text-xs font-mono mt-0.5" style={{ color: '#6a8099' }}>{c.descripcion}</div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-xs font-mono px-2 py-0.5 rounded-full"
+                        style={{ background: c.nivel === 'critico' ? 'rgba(255,107,128,0.1)' : 'rgba(255,179,0,0.1)', color: c.nivel === 'critico' ? '#ff6b80' : '#ffb300', border: `1px solid ${c.nivel === 'critico' ? 'rgba(255,107,128,0.3)' : 'rgba(255,179,0,0.25)'}` }}>
+                        {c.fuerza}
+                      </div>
+                      <div className="text-xs font-mono mt-1" style={{ color: '#3d5068' }}>{c.evidencia}</div>
+                    </div>
+                  </div>
+                ))}
+                {!mostrarCorrel && correlaciones.length > 3 && (
+                  <div className="px-5 py-2 text-center">
+                    <button onClick={() => setMostrarCorrel(true)}
+                      className="text-xs font-mono" style={{ color: '#40c4ff' }}>
+                      Ver {correlaciones.length - 3} más...
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* TAB: MOTOR CAUSAL */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {tabActivo === 'causal' && (
+        <div className="space-y-4">
+          {/* Header explicativo */}
+          <div className="rounded-xl px-5 py-3 text-xs font-mono"
+            style={{ background: 'rgba(64,196,255,0.06)', border: '1px solid rgba(64,196,255,0.2)', color: '#6a8099' }}>
+            🔬 El motor causal cruza incidentes, temperatura, reproducción y genética para detectar patrones y proponer hipótesis sobre por qué están ocurriendo los problemas. No reemplaza el criterio del veterinario — es una guía de diagnóstico.
+          </div>
+
+          {/* Causas detectadas */}
+          {causas.length === 0 ? (
+            <div className="rounded-2xl p-12 text-center"
+              style={{ background: 'rgba(0,230,118,0.03)', border: '1px dashed rgba(0,230,118,0.2)' }}>
+              <div className="text-4xl mb-3">🟢</div>
+              <div className="font-semibold text-sm text-white mb-1">Sin problemas detectados</div>
+              <div className="text-xs" style={{ color: '#4a5f7a' }}>No se encontraron patrones problemáticos con los datos actuales.</div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {causas.map((c, i) => (
+                <div key={i} className="rounded-2xl overflow-hidden"
+                  style={{
+                    background: c.nivel === 'critico' ? 'rgba(255,107,128,0.06)' : 'rgba(255,179,0,0.05)',
+                    border: `1px solid ${c.nivel === 'critico' ? 'rgba(255,107,128,0.25)' : 'rgba(255,179,0,0.2)'}`,
+                  }}>
+                  {/* Header causa */}
+                  <div className="px-5 py-3 flex items-center gap-3"
+                    style={{ borderBottom: `1px solid ${c.nivel === 'critico' ? 'rgba(255,107,128,0.12)' : 'rgba(255,179,0,0.1)'}` }}>
+                    <span className="text-xl">{c.icon}</span>
+                    <div className="flex-1">
+                      <div className="font-bold text-sm" style={{ color: c.nivel === 'critico' ? '#ff6b80' : '#ffb300' }}>
+                        {c.problema}
+                      </div>
+                      <div className="text-xs font-mono mt-0.5" style={{ color: '#6a8099' }}>{c.descripcion}</div>
+                    </div>
+                    <span className="text-xs font-mono px-2 py-0.5 rounded-full shrink-0"
+                      style={{
+                        background: c.nivel === 'critico' ? 'rgba(255,107,128,0.12)' : 'rgba(255,179,0,0.1)',
+                        color: c.nivel === 'critico' ? '#ff6b80' : '#ffb300',
+                        border: `1px solid ${c.nivel === 'critico' ? 'rgba(255,107,128,0.3)' : 'rgba(255,179,0,0.25)'}`,
+                      }}>
+                      {c.nivel === 'critico' ? '🔴 Crítico' : '🟡 Alerta'}
+                    </span>
+                  </div>
+
+                  <div className="px-5 py-4 grid md:grid-cols-2 gap-4">
+                    {/* Factores */}
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
+                        Factores probables
+                      </div>
+                      <div className="space-y-1">
+                        {c.factores.map((f, j) => (
+                          <div key={j} className="flex items-center gap-2 text-xs font-mono"
+                            style={{ color: '#c9d4e0' }}>
+                            <span style={{ color: c.nivel === 'critico' ? '#ff6b80' : '#ffb300' }}>●</span>
+                            {f}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Recomendación */}
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
+                        Acción recomendada
+                      </div>
+                      <div className="text-xs font-mono leading-relaxed" style={{ color: '#8a9bb0' }}>
+                        {c.recomendacion}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Índice de riesgo genético */}
+          <div className="rounded-2xl overflow-hidden"
+            style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(167,139,250,0.25)' }}>
+            <div className="px-5 py-3 flex items-center gap-2"
+              style={{ borderBottom: '1px solid rgba(167,139,250,0.12)', background: 'rgba(167,139,250,0.04)' }}>
+              <Dna size={13} style={{ color: '#a78bfa' }} />
+              <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#a78bfa' }}>Índice de riesgo genético</span>
+            </div>
+            <div className="px-5 py-5 flex items-center gap-6">
+              <div className="text-center">
+                <div className="text-5xl font-bold font-mono" style={{ color: nvGenetico.color }}>{indiceGenetico}</div>
+                <div className="text-xs font-mono mt-1 px-2 py-0.5 rounded-full inline-block"
+                  style={{ background: nvGenetico.bg, color: nvGenetico.color, border: `1px solid ${nvGenetico.border}` }}>
+                  {nvGenetico.emoji} {nvGenetico.label}
+                </div>
+              </div>
+              <div className="flex-1 space-y-2 text-xs font-mono" style={{ color: '#6a8099' }}>
+                <div>• <span style={{ color: '#c9d4e0' }}>0–20:</span> Riesgo bajo — genética saludable</div>
+                <div>• <span style={{ color: '#c9d4e0' }}>21–50:</span> Riesgo moderado — vigilar malformaciones</div>
+                <div>• <span style={{ color: '#c9d4e0' }}>51–100:</span> Riesgo alto — revisar consanguinidad y renovar reproductores</div>
+                <div className="mt-2" style={{ color: '#4a5f7a' }}>Factores: F promedio · malformaciones (180d) · fallos reproductivos (90d) · supervivencia al destete</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* TAB: ESTADÍSTICAS */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
       {tabActivo === 'estadisticas' && (
         <div className="space-y-4">
           {/* KPIs */}
@@ -224,15 +658,13 @@ export default function Incidentes() {
             ))}
           </div>
 
-          {/* Gráfico tendencias 6 meses */}
+          {/* Gráfico tendencias */}
           <div className="rounded-2xl overflow-hidden"
             style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(255,255,255,0.07)' }}>
             <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
               <div className="flex-1">
                 <div className="font-bold text-xs text-white">Incidentes por mes — últimos 6 meses</div>
-                <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
-                  Graves · Moderados · Leves
-                </div>
+                <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>Graves · Moderados · Leves</div>
               </div>
               <div className="text-xs font-mono flex items-center gap-1"
                 style={{ color: tendencia > 0 ? '#ff6b80' : tendencia < 0 ? '#00e676' : '#4a5f7a' }}>
@@ -285,33 +717,33 @@ export default function Incidentes() {
         </div>
       )}
 
-      {/* ── Lista de incidentes ── */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* TAB: LISTA */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
       {tabActivo === 'lista' && (
         <>
           {/* Filtros */}
           <div className="space-y-2">
-            {/* Fila 1: colonias */}
             <div className="flex flex-wrap gap-1.5">
               {LISTA_BIOTERIOS.map(b => {
                 const activo = filtroColonia === b.id
-                const count = b.id === 'todos'
+                const count  = b.id === 'todos'
                   ? incidentes.filter(i => filtroEstado === 'abiertos' ? !i.resuelto : filtroEstado === 'resueltos' ? i.resuelto : true).length
                   : incidentes.filter(i => i.bioterio_id === b.id && (filtroEstado === 'abiertos' ? !i.resuelto : filtroEstado === 'resueltos' ? i.resuelto : true)).length
                 return (
                   <button key={b.id} onClick={() => setFiltroColonia(b.id)}
-                    className="px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all"
+                    className="px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5"
                     style={{
                       background: activo ? `${b.color}22` : 'rgba(13,21,40,0.6)',
                       border: activo ? `1px solid ${b.color}55` : '1px solid rgba(30,51,82,0.6)',
                       color: activo ? b.color : '#4a5f7a',
                     }}>
                     {b.label}
-                    {count > 0 && <span className="font-mono text-xs" style={{ color: activo ? b.color : '#3d5068' }}>{count}</span>}
+                    {count > 0 && <span className="font-mono">{count}</span>}
                   </button>
                 )
               })}
             </div>
-            {/* Fila 2: categoría + severidad + estado */}
             <div className="flex flex-wrap gap-1.5">
               <button onClick={() => setFiltroCategoria('todos')}
                 className="px-2.5 py-1 rounded-lg text-xs font-semibold"
@@ -329,11 +761,7 @@ export default function Incidentes() {
               {['todos', 'abiertos', 'resueltos'].map(e => (
                 <button key={e} onClick={() => setFiltroEstado(e)}
                   className="px-2.5 py-1 rounded-lg text-xs font-semibold"
-                  style={{
-                    background: filtroEstado === e ? 'rgba(255,255,255,0.1)' : 'rgba(13,21,40,0.6)',
-                    border: filtroEstado === e ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(30,51,82,0.6)',
-                    color: filtroEstado === e ? '#c9d4e0' : '#4a5f7a',
-                  }}>
+                  style={{ background: filtroEstado === e ? 'rgba(255,255,255,0.1)' : 'rgba(13,21,40,0.6)', border: filtroEstado === e ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(30,51,82,0.6)', color: filtroEstado === e ? '#c9d4e0' : '#4a5f7a' }}>
                   {e === 'todos' ? 'Todos' : e === 'abiertos' ? '🔴 Abiertos' : '✅ Resueltos'}
                 </button>
               ))}
@@ -348,7 +776,7 @@ export default function Incidentes() {
             </div>
           </div>
 
-          {/* Tabla */}
+          {/* Tabla de incidentes */}
           {incidentesFiltrados.length === 0 ? (
             <div className="rounded-2xl p-12 text-center"
               style={{ background: 'rgba(255,107,128,0.03)', border: '1px dashed rgba(255,107,128,0.2)' }}>
@@ -359,36 +787,28 @@ export default function Incidentes() {
           ) : (
             <div className="rounded-2xl overflow-hidden"
               style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }}>
-              {/* Encabezado */}
               <div className="hidden md:grid px-5 py-2 text-xs font-semibold uppercase tracking-widest"
                 style={{ gridTemplateColumns: '90px 60px 90px 110px 1fr 80px', gap: '8px', borderBottom: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a', background: 'rgba(0,0,0,0.15)' }}>
-                <span>Fecha</span>
-                <span>Colonia</span>
-                <span>Categoría</span>
-                <span>Tipo</span>
-                <span>Descripción</span>
-                <span>Estado</span>
+                <span>Fecha</span><span>Colonia</span><span>Categoría</span><span>Tipo</span><span>Descripción</span><span>Estado</span>
               </div>
 
               <div className="divide-y" style={{ borderColor: 'rgba(30,51,82,0.4)' }}>
                 {incidentesFiltrados.map((inc) => {
-                  const catInfo  = getCategoriaInfo(inc.tipo_categoria)
-                  const sevInfo  = getSeveridadInfo(inc.severidad)
-                  const tipoLbl  = getTipoLabel(inc.tipo_categoria, inc.tipo_incidente)
-                  const animal   = animales.find(a => a.id === inc.animal_id)
-                  const camada   = camadas.find(c => c.id === inc.camada_id)
+                  const catInfo = getCategoriaInfo(inc.tipo_categoria)
+                  const sevInfo = getSeveridadInfo(inc.severidad)
+                  const tipoLbl = getTipoLabel(inc.tipo_categoria, inc.tipo_incidente)
+                  const animal  = animales.find(a => a.id === inc.animal_id)
+                  const camada  = camadas.find(c => c.id === inc.camada_id)
 
                   return (
                     <div key={inc.id}
                       className="px-5 py-3.5 flex flex-col md:grid md:items-start gap-2 group hover:bg-white/[0.01]"
                       style={{ gridTemplateColumns: '90px 60px 90px 110px 1fr 80px', opacity: inc.resuelto ? 0.6 : 1 }}>
 
-                      {/* Fecha */}
                       <div className="font-mono text-xs font-semibold" style={{ color: '#ffb300' }}>
                         {formatFecha(inc.fecha)}
                       </div>
 
-                      {/* Colonia */}
                       <div>
                         <span className="text-xs font-semibold px-1.5 py-0.5 rounded"
                           style={{ background: `${colorBioterio(inc.bioterio_id)}18`, color: colorBioterio(inc.bioterio_id), border: `1px solid ${colorBioterio(inc.bioterio_id)}35` }}>
@@ -396,13 +816,10 @@ export default function Incidentes() {
                         </span>
                       </div>
 
-                      {/* Categoría */}
                       <div className="flex items-center gap-1 text-xs font-mono" style={{ color: catInfo.color }}>
-                        <span>{catInfo.icon}</span>
-                        <span>{catInfo.label}</span>
+                        <span>{catInfo.icon}</span><span>{catInfo.label}</span>
                       </div>
 
-                      {/* Tipo + severidad */}
                       <div className="flex flex-col gap-1">
                         <span className="text-xs font-semibold" style={{ color: '#c9d4e0' }}>{tipoLbl}</span>
                         <span className="text-xs font-mono px-1.5 py-0.5 rounded-full self-start"
@@ -411,7 +828,6 @@ export default function Incidentes() {
                         </span>
                       </div>
 
-                      {/* Descripción + asociaciones */}
                       <div className="space-y-1">
                         <div className="text-sm leading-relaxed" style={{ color: inc.resuelto ? '#4a5f7a' : '#c9d4e0' }}>
                           {inc.descripcion || <span style={{ color: '#3d5068' }}>Sin descripción</span>}
@@ -434,29 +850,21 @@ export default function Incidentes() {
                         )}
                       </div>
 
-                      {/* Acciones */}
                       <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => toggleResuelto(inc)}
+                        <button onClick={() => toggleResuelto(inc)}
                           title={inc.resuelto ? 'Marcar como abierto' : 'Marcar como resuelto'}
-                          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono transition-all"
-                          style={{
-                            background: inc.resuelto ? 'rgba(0,230,118,0.08)' : 'rgba(255,255,255,0.04)',
-                            border: `1px solid ${inc.resuelto ? 'rgba(0,230,118,0.3)' : 'rgba(255,255,255,0.1)'}`,
-                            color: inc.resuelto ? '#00e676' : '#4a5f7a',
-                          }}>
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono"
+                          style={{ background: inc.resuelto ? 'rgba(0,230,118,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${inc.resuelto ? 'rgba(0,230,118,0.3)' : 'rgba(255,255,255,0.1)'}`, color: inc.resuelto ? '#00e676' : '#4a5f7a' }}>
                           <CheckCircle size={10} />
                           {inc.resuelto ? 'Resuelto' : 'Resolver'}
                         </button>
-                        <button
-                          onClick={() => { setIncAEditar(inc); setModal(true) }}
-                          className="px-2 py-1 rounded-lg text-xs opacity-0 group-hover:opacity-100 transition-all"
+                        <button onClick={() => { setIncAEditar(inc); setModal(true) }}
+                          className="px-2 py-1 rounded-lg text-xs opacity-0 group-hover:opacity-100"
                           style={{ background: 'rgba(64,196,255,0.06)', border: '1px solid rgba(64,196,255,0.2)', color: '#40c4ff' }}>
                           ✎
                         </button>
-                        <button
-                          onClick={() => setConfirmarElim(inc)}
-                          className="px-2 py-1 rounded-lg text-xs opacity-0 group-hover:opacity-100 transition-all"
+                        <button onClick={() => setConfirmarElim(inc)}
+                          className="px-2 py-1 rounded-lg text-xs opacity-0 group-hover:opacity-100"
                           style={{ background: 'rgba(255,61,87,0.06)', border: '1px solid rgba(255,61,87,0.2)', color: '#ff6b80' }}>
                           ✕
                         </button>
@@ -528,27 +936,26 @@ export default function Incidentes() {
 // ── Modal: Registrar / editar incidente ───────────────────────────────────────
 
 function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar, onCerrar }) {
-  const [fecha,         setFecha]         = useState(inicial?.fecha ?? hoy())
-  const [categoria,     setCategoria]     = useState(inicial?.tipo_categoria ?? '')
-  const [tipoInc,       setTipoInc]       = useState(inicial?.tipo_incidente ?? '')
-  const [severidad,     setSeveridad]     = useState(inicial?.severidad ?? 'leve')
-  const [descripcion,   setDescripcion]   = useState(inicial?.descripcion ?? '')
-  const [animalId,      setAnimalId]      = useState(inicial?.animal_id ?? '')
-  const [camadaId,      setCamadaId]      = useState(inicial?.camada_id ?? '')
-  const [guardando,     setGuardando]     = useState(false)
-  const [error,         setError]         = useState('')
+  const [fecha,       setFecha]       = useState(inicial?.fecha ?? hoy())
+  const [categoria,   setCategoria]   = useState(inicial?.tipo_categoria ?? '')
+  const [tipoInc,     setTipoInc]     = useState(inicial?.tipo_incidente ?? '')
+  const [severidad,   setSeveridad]   = useState(inicial?.severidad ?? 'leve')
+  const [descripcion, setDescripcion] = useState(inicial?.descripcion ?? '')
+  const [animalId,    setAnimalId]    = useState(inicial?.animal_id ?? '')
+  const [camadaId,    setCamadaId]    = useState(inicial?.camada_id ?? '')
+  const [guardando,   setGuardando]   = useState(false)
+  const [error,       setError]       = useState('')
 
-  const tipos = categoria ? CATEGORIAS[categoria]?.tipos ?? [] : []
+  const tipos    = categoria ? CATEGORIAS[categoria]?.tipos ?? [] : []
   const esEdicion = !!inicial
 
-  // Animales y camadas activos del bioterio actual para asociar
   const animalesDisp = animales.filter(a => ['activo','en_apareamiento','en_cria'].includes(a.estado))
   const camadasDisp  = camadas.filter(c => !c.failure_flag && c.fecha_nacimiento && !c.fecha_destete)
 
   async function guardar(e) {
     e.preventDefault()
-    if (!categoria)      { setError('Seleccioná una categoría.'); return }
-    if (!tipoInc)        { setError('Seleccioná el tipo de incidente.'); return }
+    if (!categoria) { setError('Seleccioná una categoría.'); return }
+    if (!tipoInc)   { setError('Seleccioná el tipo de incidente.'); return }
     setGuardando(true); setError('')
     try {
       await onGuardar({
@@ -584,12 +991,11 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
             {esEdicion ? '✎ Editar incidente' : '🩺 Registrar incidente'}
           </div>
           <div className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
-            {esEdicion ? 'Modificá los datos del incidente seleccionado' : `Registrando en: ${labelBioterio(bioterioActivo)}`}
+            {esEdicion ? 'Modificá los datos del incidente' : `Registrando en: ${labelBioterio(bioterioActivo)}`}
           </div>
         </div>
 
         <form onSubmit={guardar} className="px-6 py-5 space-y-4">
-
           {/* Fecha + Severidad */}
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -601,12 +1007,8 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
               <div className="flex gap-1.5">
                 {SEVERIDADES.map(s => (
                   <button key={s.id} type="button" onClick={() => setSeveridad(s.id)}
-                    className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all"
-                    style={{
-                      background: severidad === s.id ? s.bg : 'rgba(255,255,255,0.04)',
-                      border: `1px solid ${severidad === s.id ? s.color + '55' : 'rgba(255,255,255,0.1)'}`,
-                      color: severidad === s.id ? s.color : '#4a5f7a',
-                    }}>
+                    className="flex-1 py-2 rounded-lg text-xs font-semibold"
+                    style={{ background: severidad === s.id ? s.bg : 'rgba(255,255,255,0.04)', border: `1px solid ${severidad === s.id ? s.color + '55' : 'rgba(255,255,255,0.1)'}`, color: severidad === s.id ? s.color : '#4a5f7a' }}>
                     {s.label}
                   </button>
                 ))}
@@ -621,12 +1023,8 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
               {Object.entries(CATEGORIAS).map(([catId, cat]) => (
                 <button key={catId} type="button"
                   onClick={() => { setCategoria(prev => prev === catId ? '' : catId); setTipoInc('') }}
-                  className="py-2 px-1.5 rounded-xl text-xs font-semibold text-center transition-all"
-                  style={{
-                    background: categoria === catId ? `${cat.color}22` : 'rgba(255,255,255,0.04)',
-                    border: `1px solid ${categoria === catId ? cat.color + '55' : 'rgba(255,255,255,0.1)'}`,
-                    color: categoria === catId ? cat.color : '#4a5f7a',
-                  }}>
+                  className="py-2 px-1.5 rounded-xl text-xs font-semibold text-center"
+                  style={{ background: categoria === catId ? `${cat.color}22` : 'rgba(255,255,255,0.04)', border: `1px solid ${categoria === catId ? cat.color + '55' : 'rgba(255,255,255,0.1)'}`, color: categoria === catId ? cat.color : '#4a5f7a' }}>
                   <div className="text-base">{cat.icon}</div>
                   <div className="leading-tight mt-0.5">{cat.label}</div>
                 </button>
@@ -641,12 +1039,8 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
               <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
                 {tipos.map(t => (
                   <button key={t.id} type="button" onClick={() => setTipoInc(t.id)}
-                    className="text-left py-1.5 px-3 rounded-lg text-xs font-mono transition-all"
-                    style={{
-                      background: tipoInc === t.id ? `${getCategoriaInfo(categoria).color}18` : 'rgba(255,255,255,0.03)',
-                      border: `1px solid ${tipoInc === t.id ? getCategoriaInfo(categoria).color + '40' : 'rgba(255,255,255,0.07)'}`,
-                      color: tipoInc === t.id ? getCategoriaInfo(categoria).color : '#8a9bb0',
-                    }}>
+                    className="text-left py-1.5 px-3 rounded-lg text-xs font-mono"
+                    style={{ background: tipoInc === t.id ? `${getCategoriaInfo(categoria).color}18` : 'rgba(255,255,255,0.03)', border: `1px solid ${tipoInc === t.id ? getCategoriaInfo(categoria).color + '40' : 'rgba(255,255,255,0.07)'}`, color: tipoInc === t.id ? getCategoriaInfo(categoria).color : '#8a9bb0' }}>
                     {t.label}
                   </button>
                 ))}
@@ -657,7 +1051,7 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
           {/* Descripción */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
-              Descripción / Observaciones <span style={{ color: '#3d5068' }}>(opcional)</span>
+              Descripción <span style={{ color: '#3d5068' }}>(opcional)</span>
             </label>
             <textarea value={descripcion} onChange={e => setDescripcion(e.target.value)}
               placeholder="Describí el evento, qué se observó, qué medidas se tomaron..."

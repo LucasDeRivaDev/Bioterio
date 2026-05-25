@@ -11,6 +11,8 @@ export const CATEGORIAS = {
       { id: 'perdida_peso',      label: 'Pérdida de peso' },
       { id: 'heridas',           label: 'Heridas / peleas' },
       { id: 'muerte_inesperada', label: 'Muerte inesperada' },
+      { id: 'canibalismo',       label: 'Canibalismo' },
+      { id: 'bajo_peso',         label: 'Bajo peso corporal' },
     ],
   },
   reproductivo: {
@@ -18,11 +20,11 @@ export const CATEGORIAS = {
     icon: '🧬',
     color: '#a78bfa',
     tipos: [
-      { id: 'aborto',          label: 'Aborto' },
-      { id: 'reabsorcion',     label: 'Reabsorción' },
-      { id: 'infertilidad',    label: 'Infertilidad' },
-      { id: 'parto_fallido',   label: 'Parto fallido' },
-      { id: 'camada_pequeña',  label: 'Camada pequeña' },
+      { id: 'aborto',            label: 'Aborto' },
+      { id: 'reabsorcion',       label: 'Reabsorción' },
+      { id: 'infertilidad',      label: 'Infertilidad' },
+      { id: 'parto_fallido',     label: 'Parto fallido' },
+      { id: 'camada_pequeña',    label: 'Camada pequeña' },
     ],
   },
   crias: {
@@ -37,7 +39,7 @@ export const CATEGORIAS = {
       { id: 'muerte_neonatal',      label: 'Muerte neonatal' },
       { id: 'malformacion',         label: 'Malformación' },
       { id: 'retraso_crecimiento',  label: 'Retraso de crecimiento' },
-      { id: 'tamaño_asimetrico',    label: 'Crías mucho más pequeñas que hermanas' },
+      { id: 'tamaño_asimetrico',    label: 'Crías muy pequeñas vs hermanas' },
     ],
   },
   ambiental: {
@@ -100,7 +102,9 @@ export function colorBioterio(id) {
   return LISTA_BIOTERIOS.find(b => b.id === id)?.color ?? '#8a9bb0'
 }
 
-// ── Calcular índice sanitario por colonia (0–100) ─────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// ÍNDICE SANITARIO (0–100)
+// ─────────────────────────────────────────────────────────────────────────────
 // Penalizaciones:
 //   Incidentes graves recientes (90d): −8 c/u (máx −24)
 //   Incidentes moderados:              −4 c/u (máx −16)
@@ -109,6 +113,8 @@ export function colorBioterio(id) {
 //   Supervivencia < 70%:               −15
 //   Supervivencia 70–85%:              −7
 //   Patrones críticos detectados:      −10 por patrón
+//   Mortalidad neonatal reciente:      −5 c/u (máx −15)
+//   Canibalismo registrado (90d):      −7 c/u (máx −14)
 
 export function calcularIndiceSanitario(camadas, incidentes, bioterioId) {
   let score = 100
@@ -121,17 +127,24 @@ export function calcularIndiceSanitario(camadas, incidentes, bioterioId) {
     ? camadas.filter(c => c.bioterio_id === bioterioId)
     : camadas
 
-  // Penalizar incidentes recientes sin resolver
   const recientes = inc.filter(i => i.fecha >= hace90 && !i.resuelto)
   score -= Math.min(24, recientes.filter(i => i.severidad === 'grave').length * 8)
   score -= Math.min(16, recientes.filter(i => i.severidad === 'moderado').length * 4)
   score -= Math.min(5,  recientes.filter(i => i.severidad === 'leve').length * 1)
 
-  // Penalizar fallos reproductivos recientes
+  // Mortalidad neonatal
+  const muertesNeo = recientes.filter(i => i.tipo_incidente === 'muerte_neonatal')
+  score -= Math.min(15, muertesNeo.length * 5)
+
+  // Canibalismo
+  const canibalismo = recientes.filter(i => i.tipo_incidente === 'canibalismo')
+  score -= Math.min(14, canibalismo.length * 7)
+
+  // Fallos reproductivos
   const fallos = cam.filter(c => c.failure_flag && (c.fecha_copula ?? '') >= hace90)
   score -= Math.min(20, fallos.length * 5)
 
-  // Penalizar supervivencia baja
+  // Supervivencia al destete
   const conDestete = cam.filter(c => c.total_crias > 0 && c.total_destetados != null)
   if (conDestete.length > 0) {
     const sr = conDestete.reduce((s, c) => s + c.total_destetados / c.total_crias, 0) / conDestete.length
@@ -139,7 +152,7 @@ export function calcularIndiceSanitario(camadas, incidentes, bioterioId) {
     else if (sr < 0.85) score -= 7
   }
 
-  // Penalizar patrones críticos
+  // Patrones críticos
   const patrones = detectarPatrones(inc)
   score -= patrones.filter(p => p.nivel === 'critico').length * 10
 
@@ -153,8 +166,6 @@ export function nivelIndice(score) {
 }
 
 // ── Detectar patrones repetitivos ─────────────────────────────────────────────
-// Patrón: mismo tipo_incidente, ≥3 ocurrencias en 90 días,
-// afectando ≥2 animales/camadas distintos O con ≥4 registros totales.
 
 export function detectarPatrones(incidentes) {
   const hace90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
@@ -174,7 +185,6 @@ export function detectarPatrones(incidentes) {
     const camadasU  = new Set(items.filter(i => i.camada_id).map(i => i.camada_id)).size
     const bioU      = [...new Set(items.map(i => i.bioterio_id))]
     if (animalesU >= 2 || camadasU >= 2 || items.length >= 4) {
-      // Inferir categoría desde el primer ítem
       const catId = items[0]?.tipo_categoria ?? 'otro'
       patrones.push({
         tipo,
@@ -194,7 +204,7 @@ export function detectarPatrones(incidentes) {
   return patrones.sort((a, b) => b.count - a.count)
 }
 
-// ── Tendencias mensuales (últimos N meses) ────────────────────────────────────
+// ── Tendencias mensuales ─────────────────────────────────────────────────────
 export function generarTendencias(incidentes, meses = 6) {
   const ahora = new Date()
   const data = []
@@ -220,9 +230,679 @@ export function generarTendencias(incidentes, meses = 6) {
   return { meses: data, tendencia }
 }
 
-// ── SQL para ejecutar en Supabase ─────────────────────────────────────────────
-// (Solo referencia — no se ejecuta desde el cliente)
+// ─────────────────────────────────────────────────────────────────────────────
+// ÍNDICE DE ESTABILIDAD AMBIENTAL (0–100)
+// ─────────────────────────────────────────────────────────────────────────────
+// Temperatura ideal: 20–24°C | Óptimo: 22 ±2°C
+// Penalizaciones:
+//   Días en riesgo (<18°C o >26°C) últimos 30d: −8/día (máx −40)
+//   Días en atención (18-20°C o 24-26°C):        −3/día (máx −15)
+//   Oscilaciones bruscas (>4°C entre días):      −5/evento (máx −20)
+//   Sin datos en últimos 7 días:                 −25
+
+export const TEMP_RANGO = { idealMin: 20, idealMax: 24, optimo: 22 }
+
+export function clasificarTemperatura(temp) {
+  if (temp === null || temp === undefined) return { nivel: 'sin_dato', color: '#4a5f7a', label: 'Sin dato' }
+  const n = Number(temp)
+  if (n >= 20 && n <= 24) return { nivel: 'normal',   color: '#00e676', label: `${n}°C — Normal`   }
+  if ((n >= 18 && n < 20) || (n > 24 && n <= 26)) return { nivel: 'atencion', color: '#ffb300', label: `${n}°C — Atención` }
+  return                                                  { nivel: 'riesgo',   color: '#ff6b80', label: `${n}°C — Riesgo`   }
+}
+
+export function calcularIndiceAmbiental(temperaturas, bioterioId) {
+  let score = 100
+
+  const temps = bioterioId && bioterioId !== 'todos'
+    ? temperaturas.filter(t => t.bioterio_id === bioterioId)
+    : temperaturas
+
+  if (temps.length === 0) return 60 // Sin datos: índice moderado por default
+
+  const hace30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
+  const hace7  = new Date(Date.now() - 7  * 86400000).toISOString().slice(0, 10)
+  const recientes = temps.filter(t => t.date >= hace30)
+
+  // Sin datos recientes
+  const tempsSemana = temps.filter(t => t.date >= hace7)
+  if (tempsSemana.length === 0) score -= 25
+
+  // Días fuera de rango
+  let diasRiesgo = 0, diasAtencion = 0
+  recientes.forEach(t => {
+    const cl = clasificarTemperatura(t.current_temp)
+    if (cl.nivel === 'riesgo')   diasRiesgo++
+    else if (cl.nivel === 'atencion') diasAtencion++
+  })
+  score -= Math.min(40, diasRiesgo   * 8)
+  score -= Math.min(15, diasAtencion * 3)
+
+  // Oscilaciones bruscas entre días consecutivos
+  const ordenadas = [...recientes].sort((a, b) => a.date.localeCompare(b.date))
+  let oscilaciones = 0
+  for (let i = 1; i < ordenadas.length; i++) {
+    const t1 = ordenadas[i - 1].current_temp ?? 0
+    const t2 = ordenadas[i].current_temp ?? 0
+    if (Math.abs(t2 - t1) > 4) oscilaciones++
+  }
+  score -= Math.min(20, oscilaciones * 5)
+
+  return Math.max(0, Math.min(100, Math.round(score)))
+}
+
+export function nivelAmbiental(score) {
+  if (score >= 80) return { label: 'Estable',  emoji: '🟢', color: '#00e676', bg: 'rgba(0,230,118,0.08)',   border: 'rgba(0,230,118,0.25)' }
+  if (score >= 50) return { label: 'Variable', emoji: '🟡', color: '#ffb300', bg: 'rgba(255,179,0,0.08)',   border: 'rgba(255,179,0,0.25)' }
+  return                  { label: 'Riesgo',   emoji: '🔴', color: '#ff6b80', bg: 'rgba(255,107,128,0.08)', border: 'rgba(255,107,128,0.25)' }
+}
+
+// Stats rápidos de temperatura para un bioterio
+export function statsTemperatura(temperaturas, bioterioId) {
+  const temps = bioterioId && bioterioId !== 'todos'
+    ? temperaturas.filter(t => t.bioterio_id === bioterioId)
+    : temperaturas
+
+  if (temps.length === 0) return { promedio: null, min: null, max: null, diasRiesgo: 0, diasAtencion: 0, total: 0 }
+
+  const hace30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
+  const recientes = temps.filter(t => t.date >= hace30 && t.current_temp != null)
+  if (recientes.length === 0) return { promedio: null, min: null, max: null, diasRiesgo: 0, diasAtencion: 0, total: 0 }
+
+  const vals = recientes.map(t => Number(t.current_temp))
+  const promedio = vals.reduce((s, v) => s + v, 0) / vals.length
+  const min = Math.min(...vals)
+  const max = Math.max(...vals)
+  let diasRiesgo = 0, diasAtencion = 0
+  recientes.forEach(t => {
+    const cl = clasificarTemperatura(t.current_temp)
+    if (cl.nivel === 'riesgo')   diasRiesgo++
+    else if (cl.nivel === 'atencion') diasAtencion++
+  })
+  return { promedio: +promedio.toFixed(1), min, max, diasRiesgo, diasAtencion, total: recientes.length }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CORRELACIONES TEMPERATURA → INCIDENTES / REPRODUCCIÓN
+// ─────────────────────────────────────────────────────────────────────────────
+// Ventanas: 1, 3, 7, 14, 30, 90 días
+
+export function detectarCorrelaciones(temperaturas, incidentes, camadas, ventanaDias = 7) {
+  const correlaciones = []
+
+  const tempsOrdenadas = [...temperaturas]
+    .filter(t => t.current_temp != null)
+    .sort((a, b) => a.date.localeCompare(b.date))
+
+  if (tempsOrdenadas.length < 3) return correlaciones
+
+  // ── Detectar períodos de temperatura alta (>25°C por ≥2 días) ────────────
+  const periodosCalor = []
+  let inicioCalor = null
+  tempsOrdenadas.forEach((t, i) => {
+    if (Number(t.current_temp) > 25) {
+      if (!inicioCalor) inicioCalor = t.date
+    } else {
+      if (inicioCalor) {
+        const fin = tempsOrdenadas[i - 1].date
+        const dias = Math.ceil((new Date(fin) - new Date(inicioCalor)) / 86400000) + 1
+        if (dias >= 2) periodosCalor.push({ inicio: inicioCalor, fin, dias, tipo: 'calor', maxTemp: Math.max(...tempsOrdenadas.filter(x => x.date >= inicioCalor && x.date <= fin).map(x => Number(x.current_temp))) })
+        inicioCalor = null
+      }
+    }
+  })
+  if (inicioCalor) {
+    const fin = tempsOrdenadas[tempsOrdenadas.length - 1].date
+    const dias = Math.ceil((new Date(fin) - new Date(inicioCalor)) / 86400000) + 1
+    if (dias >= 2) periodosCalor.push({ inicio: inicioCalor, fin, dias, tipo: 'calor', maxTemp: Math.max(...tempsOrdenadas.filter(x => x.date >= inicioCalor && x.date <= fin).map(x => Number(x.current_temp))) })
+  }
+
+  // ── Detectar períodos de frío (<18°C) ────────────────────────────────────
+  const periodosFrio = []
+  let inicioFrio = null
+  tempsOrdenadas.forEach((t, i) => {
+    if (Number(t.current_temp) < 18) {
+      if (!inicioFrio) inicioFrio = t.date
+    } else {
+      if (inicioFrio) {
+        const fin = tempsOrdenadas[i - 1].date
+        const dias = Math.ceil((new Date(fin) - new Date(inicioFrio)) / 86400000) + 1
+        if (dias >= 2) periodosFrio.push({ inicio: inicioFrio, fin, dias, tipo: 'frio' })
+        inicioFrio = null
+      }
+    }
+  })
+
+  // ── Evaluar cada período de calor ────────────────────────────────────────
+  periodosCalor.forEach(periodo => {
+    const ventanaFin = new Date(new Date(periodo.fin).getTime() + ventanaDias * 86400000).toISOString().slice(0, 10)
+
+    const incPost = incidentes.filter(i => i.fecha > periodo.fin && i.fecha <= ventanaFin)
+
+    // Mortalidad
+    const muertes = incPost.filter(i => ['muerte_inesperada', 'muerte_neonatal'].includes(i.tipo_incidente))
+    if (muertes.length > 0) {
+      correlaciones.push({
+        tipo: 'calor_mortalidad',
+        icono: '🌡️→💀',
+        label: `Temperatura >25°C (${periodo.dias}d) → ↑ mortalidad`,
+        descripcion: `${muertes.length} muerte(s) registrada(s) en los ${ventanaDias} días siguientes al período de calor (${periodo.inicio} – ${periodo.fin}, máx ${periodo.maxTemp}°C)`,
+        nivel: muertes.length >= 3 ? 'critico' : 'alerta',
+        fuerza: muertes.length >= 3 ? 'fuerte' : 'probable',
+        evidencia: `${muertes.length} inc · ${periodo.dias}d calor`,
+        fecha: periodo.inicio,
+      })
+    }
+
+    // Fallos reproductivos
+    const fallos = camadas.filter(c => c.failure_flag && (c.fecha_copula ?? '') > periodo.fin && (c.fecha_copula ?? '') <= ventanaFin)
+    if (fallos.length > 0) {
+      correlaciones.push({
+        tipo: 'calor_infertilidad',
+        icono: '🌡️→🧬',
+        label: `Temperatura alta → ↑ fallos reproductivos`,
+        descripcion: `${fallos.length} fallo(s) reproductivo(s) en los ${ventanaDias} días siguientes al período de calor`,
+        nivel: fallos.length >= 2 ? 'critico' : 'alerta',
+        fuerza: fallos.length >= 2 ? 'fuerte' : 'posible',
+        evidencia: `${fallos.length} fallos · max ${periodo.maxTemp}°C`,
+        fecha: periodo.inicio,
+      })
+    }
+
+    // Baja supervivencia de camadas nacidas en ese período
+    const camadasCalor = camadas.filter(c =>
+      c.fecha_nacimiento > periodo.inicio &&
+      c.fecha_nacimiento <= ventanaFin &&
+      c.total_crias > 0 && c.total_destetados != null
+    )
+    const bajaSuperv = camadasCalor.filter(c => c.total_destetados / c.total_crias < 0.7)
+    if (bajaSuperv.length > 0) {
+      correlaciones.push({
+        tipo: 'calor_supervivencia',
+        icono: '🌡️→🐣',
+        label: `Calor → ↓ supervivencia de crías`,
+        descripcion: `${bajaSuperv.length} camada(s) con supervivencia <70% nacidas durante o post período de calor`,
+        nivel: 'alerta',
+        fuerza: 'posible',
+        evidencia: `${bajaSuperv.length} camadas afectadas`,
+        fecha: periodo.inicio,
+      })
+    }
+  })
+
+  // ── Evaluar períodos de frío ─────────────────────────────────────────────
+  periodosFrio.forEach(periodo => {
+    const ventanaFin = new Date(new Date(periodo.fin).getTime() + ventanaDias * 86400000).toISOString().slice(0, 10)
+    const fallos = camadas.filter(c => c.failure_flag && (c.fecha_copula ?? '') > periodo.fin && (c.fecha_copula ?? '') <= ventanaFin)
+    if (fallos.length > 0) {
+      correlaciones.push({
+        tipo: 'frio_infertilidad',
+        icono: '❄️→🧬',
+        label: `Temperatura baja → ↑ fallos reproductivos`,
+        descripcion: `${fallos.length} fallo(s) en los ${ventanaDias} días siguientes a temperatura <18°C (${periodo.inicio} – ${periodo.fin})`,
+        nivel: 'alerta',
+        fuerza: 'posible',
+        evidencia: `${fallos.length} fallos`,
+        fecha: periodo.inicio,
+      })
+    }
+  })
+
+  // ── Correlación saturación → mortalidad ──────────────────────────────────
+  // Si hay > 10 camadas activas simultáneas y hay mortalidad neonatal → posible relación
+  const camadasActivas = camadas.filter(c => c.fecha_nacimiento && !c.fecha_destete && !c.failure_flag)
+  if (camadasActivas.length > 10) {
+    const hace30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
+    const muertes30 = incidentes.filter(i => ['muerte_neonatal', 'canibalismo'].includes(i.tipo_incidente) && i.fecha >= hace30)
+    if (muertes30.length >= 2) {
+      correlaciones.push({
+        tipo: 'saturacion_mortalidad',
+        icono: '🏠→💀',
+        label: `Alta densidad (${camadasActivas.length} camadas activas) → ↑ mortalidad/canibalismo`,
+        descripcion: `Con ${camadasActivas.length} camadas activas simultáneas, el hacinamiento puede explicar ${muertes30.length} incidente(s) reciente(s).`,
+        nivel: 'alerta',
+        fuerza: 'posible',
+        evidencia: `${camadasActivas.length} camadas · ${muertes30.length} inc`,
+        fecha: new Date().toISOString().slice(0, 10),
+      })
+    }
+  }
+
+  return correlaciones.sort((a, b) => {
+    const orden = { critico: 0, alerta: 1 }
+    return (orden[a.nivel] ?? 2) - (orden[b.nivel] ?? 2)
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MOTOR CAUSAL — ¿Por qué está pasando esto?
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function generarMotorCausal(incidentes, temperaturas, camadas, animales, bioterioId) {
+  const causas = []
+  const hace30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
+  const hace90 = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)
+  const hace180 = new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10)
+
+  const incBio = bioterioId && bioterioId !== 'todos'
+    ? incidentes.filter(i => i.bioterio_id === bioterioId) : incidentes
+  const camBio = bioterioId && bioterioId !== 'todos'
+    ? camadas.filter(c => c.bioterio_id === bioterioId) : camadas
+  const tempsBio = bioterioId && bioterioId !== 'todos'
+    ? temperaturas.filter(t => t.bioterio_id === bioterioId) : temperaturas
+
+  // ── Camadas con baja supervivencia ───────────────────────────────────────
+  const conDestete = camBio.filter(c => c.total_crias > 0 && c.total_destetados != null && (c.fecha_nacimiento ?? '') >= hace90)
+  const supervBaja = conDestete.filter(c => (c.total_destetados / c.total_crias) < 0.7)
+  if (supervBaja.length >= 2) {
+    const factores = []
+    const tempsAltas90 = tempsBio.filter(t => t.date >= hace90 && (Number(t.current_temp) > 25))
+    if (tempsAltas90.length >= 3) factores.push(`temperatura >25°C (${tempsAltas90.length}d)`)
+    const cani = incBio.filter(i => i.tipo_incidente === 'canibalismo' && i.fecha >= hace90)
+    if (cani.length > 0) factores.push(`canibalismo (${cani.length} registros)`)
+    const camadasAct = camBio.filter(c => c.fecha_nacimiento && !c.fecha_destete && !c.failure_flag)
+    if (camadasAct.length > 8) factores.push(`alta densidad (${camadasAct.length} camadas activas)`)
+
+    causas.push({
+      problema: '↓ Supervivencia de crías al destete',
+      icon: '🐣',
+      descripcion: `${supervBaja.length} camadas con menos del 70% de supervivencia en 90 días`,
+      factores: factores.length > 0 ? factores : ['causa no determinada — revisar nidales y manejo'],
+      recomendacion: 'Revisar temperatura, reducir densidad, evaluar estrés materno y calidad de nidales',
+      nivel: supervBaja.length >= 4 ? 'critico' : 'alerta',
+    })
+  }
+
+  // ── Infertilidad / fallos reproductivos ──────────────────────────────────
+  const fallosRecientes = camBio.filter(c => c.failure_flag && (c.fecha_copula ?? '') >= hace30)
+  if (fallosRecientes.length >= 2) {
+    const factores = []
+    const tempsAltas30 = tempsBio.filter(t => t.date >= hace30 && Number(t.current_temp) > 24)
+    if (tempsAltas30.length >= 3) factores.push(`temperatura ≥24°C (${tempsAltas30.length}d en 30d)`)
+    const infertInc = incBio.filter(i => i.tipo_incidente === 'infertilidad' && i.fecha >= hace90)
+    if (infertInc.length > 0) factores.push(`incidentes de infertilidad registrados`)
+    const reproduce = animales.filter(a => a.bioterio_id === bioterioId && a.sexo === 'macho' && a.estado === 'activo')
+    if (reproduce.length === 0) factores.push('posible ausencia de machos activos')
+
+    causas.push({
+      problema: '↑ Fallos reproductivos',
+      icon: '🧬',
+      descripcion: `${fallosRecientes.length} fallos en los últimos 30 días`,
+      factores: factores.length > 0 ? factores : ['posible estrés, consanguinidad o edad avanzada de reproductores'],
+      recomendacion: 'Verificar temperatura, revisar edad y genética de reproductores. Evaluar rotación de machos.',
+      nivel: fallosRecientes.length >= 3 ? 'critico' : 'alerta',
+    })
+  }
+
+  // ── Incidentes graves sin resolver ───────────────────────────────────────
+  const gravesAbiertos = incBio.filter(i => i.severidad === 'grave' && !i.resuelto)
+  if (gravesAbiertos.length >= 2) {
+    const categorias = [...new Set(gravesAbiertos.map(i => CATEGORIAS[i.tipo_categoria]?.label ?? 'Otro'))]
+    causas.push({
+      problema: 'Incidentes graves activos sin resolver',
+      icon: '🚨',
+      descripcion: `${gravesAbiertos.length} incidentes graves sin atender — riesgo de escalada`,
+      factores: categorias,
+      recomendacion: 'Atender inmediatamente. Considerar cuarentena si hay sospecha sanitaria.',
+      nivel: 'critico',
+    })
+  }
+
+  // ── Patrón repetitivo (posible causa sistémica) ───────────────────────────
+  const patrones = detectarPatrones(incBio)
+  const patronesCriticos = patrones.filter(p => p.nivel === 'critico')
+  if (patronesCriticos.length > 0) {
+    const p = patronesCriticos[0]
+    causas.push({
+      problema: `Patrón repetitivo: ${p.tipoLabel}`,
+      icon: '📈',
+      descripcion: `${p.count} incidentes del mismo tipo en 90 días afectando ${p.animalesU + p.camadasU} individuos/camadas distintos`,
+      factores: ['posible causa sistémica — ambiental, genética o de manejo'],
+      recomendacion: 'Investigar causa raíz. Revisar procedimientos, genética de la línea y condiciones ambientales.',
+      nivel: 'critico',
+    })
+  }
+
+  // ── Malformaciones repetitivas ────────────────────────────────────────────
+  const malformaciones = incBio.filter(i =>
+    ['malformacion', 'ausencia_cola', 'ausencia_extremidad'].includes(i.tipo_incidente) &&
+    i.fecha >= hace180
+  )
+  if (malformaciones.length >= 3) {
+    causas.push({
+      problema: '↑ Malformaciones congénitas',
+      icon: '⚠️',
+      descripcion: `${malformaciones.length} registros de malformaciones en 180 días`,
+      factores: ['posible deterioro genético por consanguinidad elevada', 'evaluar línea reproductiva'],
+      recomendacion: 'Analizar genealogía y coeficiente F. Incorporar nuevos reproductores con baja consanguinidad.',
+      nivel: malformaciones.length >= 5 ? 'critico' : 'alerta',
+    })
+  }
+
+  return causas.sort((a, b) => {
+    const ord = { critico: 0, alerta: 1 }
+    return (ord[a.nivel] ?? 2) - (ord[b.nivel] ?? 2)
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ÍNDICE DE RIESGO GENÉTICO (0–100)
+// ─────────────────────────────────────────────────────────────────────────────
+// Factores: consanguinidad + malformaciones + infertilidad + supervivencia
+// fCoefMapa = Map<animalId, F> precalculado (para no importar genealogy aquí)
+
+export function calcularIndiceRiesgoGenetico(animales, camadas, incidentes, fCoefMapa = new Map()) {
+  let score = 0
+
+  // ── Consanguinidad promedio ───────────────────────────────────────────────
+  const activos = animales.filter(a => ['activo', 'en_apareamiento', 'en_cria'].includes(a.estado))
+  if (activos.length > 0 && fCoefMapa.size > 0) {
+    const fValues = activos.map(a => fCoefMapa.get(a.id) ?? 0)
+    const fProm = fValues.reduce((s, f) => s + f, 0) / fValues.length
+    if (fProm > 0.25) score += 35
+    else if (fProm > 0.125) score += 20
+    else if (fProm > 0.0625) score += 10
+    else if (fProm > 0) score += 3
+  }
+
+  // ── Malformaciones (últimos 180d) ─────────────────────────────────────────
+  const hace180 = new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10)
+  const malformaciones = incidentes.filter(i =>
+    ['malformacion', 'ausencia_cola', 'ausencia_extremidad', 'alopecia_neonatal'].includes(i.tipo_incidente) &&
+    i.fecha >= hace180
+  )
+  score += Math.min(25, malformaciones.length * 8)
+
+  // ── Fallos reproductivos (últimos 90d) ────────────────────────────────────
+  const hace90 = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)
+  const fallos = camadas.filter(c => c.failure_flag && (c.fecha_copula ?? '') >= hace90)
+  score += Math.min(20, fallos.length * 5)
+
+  // ── Baja supervivencia al destete ─────────────────────────────────────────
+  const conDestete = camadas.filter(c => c.total_crias > 0 && c.total_destetados != null)
+  if (conDestete.length > 0) {
+    const sr = conDestete.reduce((s, c) => s + c.total_destetados / c.total_crias, 0) / conDestete.length
+    if (sr < 0.70) score += 20
+    else if (sr < 0.85) score += 10
+  }
+
+  return Math.max(0, Math.min(100, Math.round(score)))
+}
+
+export function nivelRiesgoGenetico(score) {
+  if (score <= 20) return { label: 'Bajo',     emoji: '🟢', color: '#00e676', bg: 'rgba(0,230,118,0.08)',   border: 'rgba(0,230,118,0.25)' }
+  if (score <= 50) return { label: 'Moderado', emoji: '🟡', color: '#ffb300', bg: 'rgba(255,179,0,0.08)',   border: 'rgba(255,179,0,0.25)' }
+  return                  { label: 'Alto',     emoji: '🔴', color: '#ff6b80', bg: 'rgba(255,107,128,0.08)', border: 'rgba(255,107,128,0.25)' }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ALERTAS MULTI-NIVEL  🟡 Atención / 🟠 Importante / 🔴 Crítico / ⚫ Urgente
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const NIVEL_ALERTA = {
+  atencion:   { emoji: '🟡', label: 'Atención',   color: '#ffb300', urgencia: 1 },
+  importante: { emoji: '🟠', label: 'Importante', color: '#ff9800', urgencia: 2 },
+  critico:    { emoji: '🔴', label: 'Crítico',    color: '#ff6b80', urgencia: 3 },
+  urgente:    { emoji: '⚫', label: 'Urgente',    color: '#e0e0e0', urgencia: 4, bgOverride: '#1a0a0a' },
+}
+
+export function generarAlertasSanitarias(incidentes, temperaturas, camadas, animales, bioterioId) {
+  const alertas = []
+  const hace7  = new Date(Date.now() - 7  * 86400000).toISOString().slice(0, 10)
+  const hace30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
+  const hace90 = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)
+
+  const incBio   = bioterioId && bioterioId !== 'todos' ? incidentes.filter(i => i.bioterio_id === bioterioId) : incidentes
+  const tempsBio = bioterioId && bioterioId !== 'todos' ? temperaturas.filter(t => t.bioterio_id === bioterioId) : temperaturas
+  const camBio   = bioterioId && bioterioId !== 'todos' ? camadas.filter(c => c.bioterio_id === bioterioId) : camadas
+
+  // ── Temperatura alta prolongada ───────────────────────────────────────────
+  const tempsAltas7 = tempsBio.filter(t => t.date >= hace7 && Number(t.current_temp) > 25)
+  if (tempsAltas7.length >= 5) {
+    alertas.push({ nivel: 'urgente',   icon: '🌡️', titulo: 'Temperatura crítica prolongada', descripcion: `${tempsAltas7.length} días con >25°C esta semana. Riesgo alto de mortalidad neonatal e infertilidad.`, accion: 'Intervención inmediata en sistema de climatización' })
+  } else if (tempsAltas7.length >= 3) {
+    alertas.push({ nivel: 'critico',   icon: '🌡️', titulo: 'Temperatura elevada esta semana',  descripcion: `${tempsAltas7.length} días con temperatura >25°C. Monitorear reproducción y supervivencia.`, accion: 'Revisar ventilación y control térmico' })
+  } else if (tempsAltas7.length >= 1) {
+    alertas.push({ nivel: 'importante', icon: '🌡️', titulo: 'Temperatura fuera de rango',        descripcion: `${tempsAltas7.length} día(s) con temperatura >25°C en los últimos 7 días.`, accion: 'Monitorear temperatura de cerca' })
+  }
+
+  // ── Frío extremo ──────────────────────────────────────────────────────────
+  const tempsFrias7 = tempsBio.filter(t => t.date >= hace7 && Number(t.current_temp) < 18)
+  if (tempsFrias7.length >= 2) {
+    alertas.push({ nivel: 'critico', icon: '❄️', titulo: 'Temperatura baja', descripcion: `${tempsFrias7.length} días con <18°C. Puede afectar reproducción y bienestar.`, accion: 'Revisar calefacción' })
+  }
+
+  // ── Incidentes graves sin resolver ────────────────────────────────────────
+  const gravesAbiertos = incBio.filter(i => i.severidad === 'grave' && !i.resuelto && i.fecha >= hace30)
+  if (gravesAbiertos.length >= 3) {
+    alertas.push({ nivel: 'urgente',    icon: '🚨', titulo: 'Múltiples incidentes graves activos', descripcion: `${gravesAbiertos.length} incidentes graves sin resolver en 30 días.`, accion: 'Intervención inmediata — evaluar cuarentena' })
+  } else if (gravesAbiertos.length >= 1) {
+    alertas.push({ nivel: 'critico',    icon: '⚠️', titulo: 'Incidente grave sin resolver', descripcion: `${gravesAbiertos.length} incidente(s) grave(s) activo(s).`, accion: 'Atender urgentemente' })
+  }
+
+  // ── Fallos reproductivos frecuentes ──────────────────────────────────────
+  const fallos30 = camBio.filter(c => c.failure_flag && (c.fecha_copula ?? '') >= hace30)
+  if (fallos30.length >= 4) {
+    alertas.push({ nivel: 'urgente',    icon: '🧬', titulo: 'Alta tasa de fallos reproductivos', descripcion: `${fallos30.length} fallos en 30 días. Revisar temperatura, consanguinidad y estrés.`, accion: 'Suspender apareamientos temporalmente' })
+  } else if (fallos30.length >= 2) {
+    alertas.push({ nivel: 'importante', icon: '🧬', titulo: 'Fallos reproductivos frecuentes',   descripcion: `${fallos30.length} fallos en 30 días.`, accion: 'Evaluar reproductores y condiciones ambientales' })
+  }
+
+  // ── Mortalidad neonatal ────────────────────────────────────────────────────
+  const muertesNeo30 = incBio.filter(i => i.tipo_incidente === 'muerte_neonatal' && i.fecha >= hace30 && !i.resuelto)
+  if (muertesNeo30.length >= 3) {
+    alertas.push({ nivel: 'critico', icon: '🐣', titulo: '↑ Mortalidad neonatal', descripcion: `${muertesNeo30.length} muertes neonatales en 30 días.`, accion: 'Revisar temperatura, densidad y calidad de madres' })
+  }
+
+  // ── Canibalismo ────────────────────────────────────────────────────────────
+  const canibal30 = incBio.filter(i => i.tipo_incidente === 'canibalismo' && i.fecha >= hace30)
+  if (canibal30.length >= 2) {
+    alertas.push({ nivel: 'critico', icon: '⚠️', titulo: 'Canibalismo recurrente', descripcion: `${canibal30.length} episodios de canibalismo en 30 días. Indicador de estrés severo.`, accion: 'Reducir densidad, revisar temperatura y manejo' })
+  }
+
+  // ── Patrón crítico ─────────────────────────────────────────────────────────
+  const patrones = detectarPatrones(incBio)
+  const patronesCriticos = patrones.filter(p => p.nivel === 'critico')
+  patronesCriticos.forEach(p => {
+    alertas.push({ nivel: 'importante', icon: '📈', titulo: `Patrón repetitivo: ${p.tipoLabel}`, descripcion: `${p.count} registros en 90 días — posible causa sistémica.`, accion: 'Investigar causa subyacente' })
+  })
+
+  // ── Malformaciones ─────────────────────────────────────────────────────────
+  const malform90 = incBio.filter(i => ['malformacion', 'ausencia_cola', 'ausencia_extremidad'].includes(i.tipo_incidente) && i.fecha >= hace90)
+  if (malform90.length >= 3) {
+    alertas.push({ nivel: 'importante', icon: '🔬', titulo: '↑ Malformaciones congénitas', descripcion: `${malform90.length} en 90 días — posible deterioro genético.`, accion: 'Evaluar consanguinidad. Incorporar reproductores nuevos.' })
+  }
+
+  return alertas.sort((a, b) =>
+    (NIVEL_ALERTA[b.nivel]?.urgencia ?? 0) - (NIVEL_ALERTA[a.nivel]?.urgencia ?? 0)
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ¿QUÉ HACER HOY?  — Motor de recomendaciones diarias
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function generarRecomendacionesHoy(incidentes, temperaturas, camadas, animales, bioterioId) {
+  const recomendaciones = []
+  const hoy  = new Date().toISOString().slice(0, 10)
+  const hace7 = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)
+
+  const incBio   = bioterioId && bioterioId !== 'todos' ? incidentes.filter(i => i.bioterio_id === bioterioId) : incidentes
+  const tempsBio = bioterioId && bioterioId !== 'todos' ? temperaturas.filter(t => t.bioterio_id === bioterioId) : temperaturas
+  const camBio   = bioterioId && bioterioId !== 'todos' ? camadas.filter(c => c.bioterio_id === bioterioId) : camadas
+
+  // 1. Incidentes graves sin resolver
+  const gravesAbiertos = incBio.filter(i => i.severidad === 'grave' && !i.resuelto)
+  if (gravesAbiertos.length > 0) {
+    recomendaciones.push({ prioridad: 'urgente', icono: '🚨', accion: `Atender ${gravesAbiertos.length} incidente(s) grave(s) sin resolver`, motivo: 'Riesgo activo sin resolución' })
+  }
+
+  // 2. Sin registro de temperatura hoy
+  const tempHoy = tempsBio.find(t => t.date === hoy)
+  if (!tempHoy) {
+    recomendaciones.push({ prioridad: 'alta', icono: '🌡️', accion: 'Registrar temperatura del bioterio hoy', motivo: 'Sin registro de temperatura en el día actual' })
+  }
+
+  // 3. Temperatura alta esta semana
+  const tempsAltas = tempsBio.filter(t => t.date >= hace7 && Number(t.current_temp) > 25)
+  if (tempsAltas.length >= 2) {
+    recomendaciones.push({ prioridad: 'alta', icono: '❄️', accion: 'Verificar y ajustar sistema de ventilación/refrigeración', motivo: `${tempsAltas.length} días con temperatura >25°C esta semana` })
+  }
+
+  // 4. Camadas vencidas (>28d sin destetar)
+  const camadasVencidas = camBio.filter(c => {
+    if (!c.fecha_nacimiento || c.fecha_destete || c.failure_flag) return false
+    const dias = Math.floor((Date.now() - new Date(c.fecha_nacimiento).getTime()) / 86400000)
+    return dias > 28
+  })
+  if (camadasVencidas.length > 0) {
+    recomendaciones.push({ prioridad: 'alta', icono: '🐣', accion: `Destetar ${camadasVencidas.length} camada(s) — pasaron la edad de destete`, motivo: 'Crías con más de 28 días sin destetar' })
+  }
+
+  // 5. Fallos reproductivos recientes
+  const hace30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
+  const fallos30 = camBio.filter(c => c.failure_flag && (c.fecha_copula ?? '') >= hace30)
+  if (fallos30.length >= 2) {
+    recomendaciones.push({ prioridad: 'media', icono: '🧬', accion: 'Revisar estado sanitario de reproductores activos', motivo: `${fallos30.length} fallos reproductivos en los últimos 30 días` })
+  }
+
+  // 6. Incidentes moderados sin resolver (>3)
+  const modSinResolver = incBio.filter(i => i.severidad === 'moderado' && !i.resuelto)
+  if (modSinResolver.length >= 3) {
+    recomendaciones.push({ prioridad: 'media', icono: '⚠️', accion: `Revisar ${modSinResolver.length} incidentes moderados pendientes`, motivo: 'Acumulación de incidentes sin resolver' })
+  }
+
+  // 7. Todo estable
+  if (gravesAbiertos.length === 0 && camadasVencidas.length === 0 && tempsAltas.length === 0) {
+    recomendaciones.push({ prioridad: 'info', icono: '✅', accion: 'Monitoreo rutinario — colonia estable', motivo: 'Sin alertas activas' })
+  }
+
+  const orden = { urgente: 0, alta: 1, media: 2, info: 3 }
+  return recomendaciones.sort((a, b) => (orden[a.prioridad] ?? 99) - (orden[b.prioridad] ?? 99))
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ÍNDICE DE ESTABILIDAD GLOBAL DE COLONIA (0–100)
+// Compuesto de: sanitario + ambiental + genético + reproductivo
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function calcularIndiceEstabilidadGlobal({
+  indiceSanitario,
+  indiceAmbiental,
+  indiceRiesgoGenetico,   // 0=bajo riesgo → bueno, 100=alto riesgo → malo
+  tasaFallos,             // 0.0–1.0
+  tasaSupervivencia,      // 0.0–1.0
+}) {
+  // Sanitario: 35% del score
+  const compSanitario = indiceSanitario * 0.35
+
+  // Ambiental: 25%
+  const compAmbiental = indiceAmbiental * 0.25
+
+  // Genético: invertido (bajo riesgo = buen score): 20%
+  const compGenetico = (100 - indiceRiesgoGenetico) * 0.20
+
+  // Reproductivo (supervivencia + tasa de éxito): 20%
+  const exitoRep = 1 - (tasaFallos ?? 0)
+  const compRepro = ((tasaSupervivencia ?? 0.85) * 0.5 + exitoRep * 0.5) * 100 * 0.20
+
+  return Math.max(0, Math.min(100, Math.round(compSanitario + compAmbiental + compGenetico + compRepro)))
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SQL — Referencia para Supabase
+// ─────────────────────────────────────────────────────────────────────────────
 //
+// ⚠️ NOTA IMPORTANTE: Las siguientes tablas aún usan localStorage y DEBEN
+//    migrarse a Supabase. Crear estas tablas antes de la migración:
+//
+// -- Notas / recordatorios del dashboard
+// CREATE TABLE IF NOT EXISTS notas (
+//   id text PRIMARY KEY,
+//   bioterio_id text NOT NULL,
+//   fecha date NOT NULL,
+//   titulo text NOT NULL,
+//   descripcion text,
+//   completada boolean DEFAULT false,
+//   created_at timestamptz DEFAULT now()
+// );
+// ALTER TABLE notas ENABLE ROW LEVEL SECURITY;
+//
+// -- Planes de apareamiento
+// CREATE TABLE IF NOT EXISTS planes_apareamiento (
+//   id text PRIMARY KEY,
+//   bioterio_id text NOT NULL,
+//   fecha_planeada date NOT NULL,
+//   fuente_a jsonb,   -- { tipo: 'reproductor'|'jaula', id, sexo, codigo }
+//   fuente_b jsonb,
+//   notas text,
+//   completado boolean DEFAULT false,
+//   created_at timestamptz DEFAULT now()
+// );
+// ALTER TABLE planes_apareamiento ENABLE ROW LEVEL SECURITY;
+//
+// -- Reservas de animales/jaulas
+// CREATE TABLE IF NOT EXISTS reservas (
+//   id text PRIMARY KEY,
+//   tipo text NOT NULL,   -- 'renovacion'|'hibridos'|'pedido'|'produccion'
+//   animal_id uuid REFERENCES animales(id) ON DELETE CASCADE,
+//   jaula_id text,
+//   bioterio_id text NOT NULL,
+//   motivo text,
+//   fecha date,
+//   created_at timestamptz DEFAULT now()
+// );
+// ALTER TABLE reservas ENABLE ROW LEVEL SECURITY;
+//
+// -- Censos y compras de viruta
+// CREATE TABLE IF NOT EXISTS censos_viruta (
+//   id text PRIMARY KEY,
+//   fecha date NOT NULL,
+//   hora time,
+//   stock_kg numeric,
+//   relleno_kg numeric DEFAULT 0,
+//   cambio_cama jsonb,   -- { tipo: 'si'|'no'|'parcial', bioteriosAfectados: [] }
+//   notas text,
+//   created_at timestamptz DEFAULT now()
+// );
+// CREATE TABLE IF NOT EXISTS ingresos_viruta (
+//   id text PRIMARY KEY,
+//   fecha date NOT NULL,
+//   cantidad_kg numeric NOT NULL,
+//   notas text,
+//   created_at timestamptz DEFAULT now()
+// );
+//
+// -- Censos y reposiciones de alimento
+// CREATE TABLE IF NOT EXISTS censos_alimento (
+//   id text PRIMARY KEY,
+//   fecha date NOT NULL,
+//   hora time,
+//   stock_kg numeric,
+//   relleno_kg numeric DEFAULT 0,
+//   composicion jsonb,   -- { lactantes, repro, crias, jovenes, adultos }
+//   notas text,
+//   created_at timestamptz DEFAULT now()
+// );
+// CREATE TABLE IF NOT EXISTS ingresos_alimento (
+//   id text PRIMARY KEY,
+//   fecha date NOT NULL,
+//   cantidad_kg numeric NOT NULL,
+//   notas text,
+//   created_at timestamptz DEFAULT now()
+// );
+// CREATE TABLE IF NOT EXISTS reposiciones_alimento (
+//   id text PRIMARY KEY,
+//   fecha date NOT NULL,
+//   hora time,
+//   tipo text,   -- 'completa'|'parcial'
+//   cantidad_kg numeric,
+//   bioterios jsonb,
+//   categorias jsonb,
+//   notas text,
+//   created_at timestamptz DEFAULT now()
+// );
+//
+// -- SQL ejecutada en Supabase para incidentes (referencia histórica):
 // ALTER TABLE incidentes
 //   ADD COLUMN IF NOT EXISTS tipo_categoria text DEFAULT 'otro',
 //   ADD COLUMN IF NOT EXISTS tipo_incidente  text DEFAULT 'otro',

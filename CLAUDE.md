@@ -28,6 +28,8 @@ Sistema web de gestión de una colonia de ratones de laboratorio (*Mus musculus*
 | **Rendimiento** | Ranking de machos por latencia de fertilización (menor = mejor) con scores y alertas de edad |
 | **Estadísticas** | Dashboard visual con 4 gráficos: partos vs fallas, calidad de madres, supervivencia de camadas, eficiencia de apareamiento. KPIs resumen + filtros por fecha y reproductor |
 | **Temperatura** | 2 tabs fijos (Ratas / Ratones), registro diario (actual/mín/máx), vista mensual, exportación imprimible |
+| **Planificación** | Índice de estabilidad 0-100, mínimos por bioterio, proyección 30/60/90/180d, candidatos a renovación, simulador de impacto |
+| **Pedidos** | Gestión de pedidos de producción con estrategia automática: parejas necesarias, fechas óptimas, reproductores sugeridos, índice de viabilidad 0-100, escenarios A/B, calendario del pedido |
 | **Reportes** | Impresión de datos de la colonia |
 
 **Motor predictivo:** calcula automáticamente fechas de parto (gestación 23d ratas / 21d ratones), destete (21d), madurez sexual y genera tareas con prioridad.
@@ -336,6 +338,19 @@ extendidos
   - `Animales` (`PerfilAnimal`): nueva sección "Genealogía" con coeficiente F individual del animal, badges de progenitores con color por sexo (♀ violeta / ♂ celeste), lista de abuelos, barra de nivel de consanguinidad.
   - `GenealogiaGlobal`: página global accesible desde SelectorBioterio. KPIs (F promedio, animales sin ancestros, animales con F>12.5%), distribución de F por bioterio (barras por nivel), simulador interactivo de apareamiento (selección hembra+macho → F predicho + recomendación), tabla completa de animales activos ordenada por F descendente con badge de bioterio.
 
+- **Corrección sistema genealogía — pedigree global y estado árbol (24/05/2026):**
+  - **Bug principal corregido:** `statsPorBio` usaba un pedigree por bioterio → padres cross-bioterio (ej: madre BAL/C en animal Híbridos) no se encontraban → F=0 falso. Ahora todos los cálculos usan `pedigreeGlobal`.
+  - `buildPedigree(animales, camadas)`: acepta camadas opcionales. Recupera `id_madre`/`id_padre` desde el campo `notas` de animales promovidos desde stock (formato "camada ...XXXXXX"). Backward compatible (camadas default `[]`).
+  - Nuevo `estadoGenealogiaAnimal(animal, pedigree)` → `{ estado, emoji, label, generaciones, tienePadres }`. Valores: `completo` 🟢 (tiene padres + abuelos) / `parcial` 🟡 (solo padres) / `insuficiente` 🔴 (sin padres). Detecta hasta bisabuelos para clasificar "completo".
+  - Nuevo `ancestrosComunes(madreId, padreId, pedigree)` → lista de ancestros comunes con `profMadre`, `profPadre` y `codigo`, ordenados por cercanía.
+  - `evaluarApareamientoGenetico()` ahora incluye campo `comunes` en el resultado.
+  - `estadisticasColonia()` acepta `pedigreeExtendido` opcional para separar el pedigree de cálculo del de filtrado.
+  - `CONSANGUINIDAD_LINEA`: mapa con F histórica por bioterio (BALB/c ≈ 99.9%, C57 ≈ 99.9%, F1 = 0%, Ratas = calculada).
+  - `calcularFIndividual()` ahora lee `madre_id`/`padre_id` del nodo en el pedigree como fallback si el animal no tiene los campos directamente.
+  - `GenealogiaGlobal.jsx`: panel de consanguinidad histórica por línea, simulador muestra ancestros comunes + árbol de progenitores expandible, tabla con badge de estado por animal (🟢/🟡/🔴), filas expandibles con padres/abuelos/bisabuelos. "Sin ancestros" → "Información insuficiente".
+  - `Animales.jsx` (`SeccionGenealogica`): badge de estado genealógico, muestra bisabuelos cuando disponibles, distingue "fundador" de "F=0 sin consanguinidad".
+  - `CamadaForm.jsx`: `buildPedigree` recibe las camadas del contexto; panel F muestra ancestros comunes.
+
 - **Sistema unificado de planificación de colonia (24/05/2026):**
   - `src/utils/motorDecisiones.js`: motor central con 12 funciones/secciones. `MINIMOS_CRITICOS` por bioterio (ratas: 3♂+2♀ / C57: 2♂+2♀+2♀F1 / BALB: 2♂+2♀+2♂F1). `calcularStockReal` → stock por categoría excluyendo sacrificios/entregas. `verificarMinimosCriticos` → alertas con jerarquía 1-8. `calcularProyeccion` → partos y destetes esperados por horizonte. `calcularCandidatosRenovacion` → candidatos ordenados por score (40% genética + 30% familiar + 20% edad óptima + 10% disponibilidad). `verificarJerarquiaAntesSacrificio` → bloquea acciones que rompen prioridades. `calcularIndiceEstabilidad` → score 0-100 compuesto (renovación 25 + genética 20 + producción 20 + híbridos 15 + sanitario 10 + saturación 10). `calcularIndiceGeneticoRenovacion` → F promedio, tendencia, advertencias. `calcularDeficitFuturo` → proyección en 30/60/90/180 días de reproductores disponibles vs mínimos. `simularImpactoSacrificio` → ANTES/DESPUÉS al retirar un reproductor. Sistema de reservas extendido en localStorage (`appMosca_reservas`): tipos `renovacion / hibridos / pedido / produccion`.
   - `src/pages/PlanificacionColonia.jsx` — ruta `/planificacion`, link en sidebar "Planificación": Gauge de estabilidad 0-100 con desglose por componente. Panel de mínimos con badges OK/Déficit por sexo y tipo. 4 tarjetas de horizonte (30/60/90/180d) con machos/hembras proyectados y alertas de vencimiento. Vista detallada de partos y destetes pendientes con días restantes y KPIs de producción estimada. Índice genético con F promedio y tendencia. Candidatos a renovación con score, F de padres, score familiar y botón "Reservar para renovación". Alertas de reproductores próximos al límite de 270 días. Simulador de impacto interactivo (seleccioná un reproductor → ANTES/DESPUÉS con bloqueos si rompe jerarquía).
@@ -344,8 +359,59 @@ extendidos
 
 ---
 
+- **Sistema de pedidos de producción con estrategia automática (24/05/2026):**
+  - `src/utils/motorPedidos.js`: motor central con 13 secciones. `calcularProduccionHistorica` extrae stats de camadas históricas por bioterio. `calcularParejasNecesarias` calcula hembras/machos necesarios con buffer según tasa de fallos y supervivencia histórica. `calcularFechasOptimas` trabaja en reversa desde fecha de entrega (Entrega ← edad ← Destete ← Parto ← Gestación+Ventana ← Cópula). `seleccionarReproductoresOptimos` rankea reproductores disponibles: 40% score reproductivo + 30% genética (F) + 20% edad + 10% disponibilidad; excluye reservados y animales en apareamiento. `detectarAnimalesListos` detecta stock existente dentro del rango de edad requerido (±4 semanas). `evaluarCapacidadFutura` estima uso de jaulas vs umbral. `evaluarImpactoColonia` verifica si cumplir el pedido rompe mínimos. `calcularIndiceViabilidad` score 0-100: tiempo (25) + reproductores (20) + mínimos (20) + stock actual (15) + capacidad (10) + sanitario (10). `simularEscenarios` genera opciones A (buffer completo, alta prob.) y B (mínimo, menor impacto). `generarCalendarioPedido` genera timeline de 5 eventos con días restantes. `proyeccionHorizontes` indica estado del pedido en 30/60/90/180d. Almacenamiento en `localStorage` key `appMosca_pedidos` — sin SQL nueva.
+  - `src/pages/Pedidos.jsx` — ruta `/pedidos`, link en sidebar "Pedidos" (ClipboardList icon): Formulario con especie/línea, cantidad, sexo (♂/♀/ambos), edad en semanas, fecha entrega, uso (investigación/producción/stock), solicitante y notas. Lista de pedidos con filtros por estado y badge de índice de viabilidad en cada tarjeta. Panel de análisis a la derecha con 9 secciones colapsables: Parejas necesarias, Fechas óptimas, Reproductores sugeridos, Stock disponible, Impacto colonia, Escenarios A/B, Capacidad, Proyección 30/60/90/180d, Calendario, Desglose viabilidad. Acciones: iniciar pedido, reservar reproductores sugeridos (llama `reservarAnimal` de motorDecisiones), marcar completado, cancelar.
+
+- **Sistema causal predictivo sanitario + ambiental (25/05/2026):**
+  - `src/utils/sanitario.js` expandido con 10+ funciones nuevas:
+    - `clasificarTemperatura(temp)` → nivel normal/atención/riesgo con rangos 20-24°C ideal
+    - `calcularIndiceAmbiental(temperaturas, bioterioId)` → score 0-100. Penaliza días en riesgo (-8/d máx -40), atención (-3/d máx -15), oscilaciones bruscas >4°C (-5/evento), sin datos 7d (-25)
+    - `nivelAmbiental(score)` → 🟢 Estable / 🟡 Variable / 🔴 Riesgo
+    - `statsTemperatura(temperaturas, bioterioId)` → promedio, min, max, diasRiesgo, diasAtencion del último mes
+    - `detectarCorrelaciones(temperaturas, incidentes, camadas, ventanaDias)` → cruza períodos de calor/frío con mortalidad, fallos reproductivos, baja supervivencia y saturación. Tipos: `calor_mortalidad`, `calor_infertilidad`, `calor_supervivencia`, `frio_infertilidad`, `saturacion_mortalidad`. Campo `fuerza`: fuerte/probable/posible
+    - `generarMotorCausal(incidentes, temperaturas, camadas, animales, bioterioId)` → hipótesis causales con problema, factores, recomendación y nivel. Detecta: baja supervivencia, infertilidad, incidentes graves acumulados, patrón repetitivo, malformaciones. Cruza temperatura + densidad + registros
+    - `calcularIndiceRiesgoGenetico(animales, camadas, incidentes, fCoefMapa)` → score 0-100 (0=bajo riesgo). Factores: F promedio (máx 35pts), malformaciones 180d (máx 25pts), fallos 90d (máx 20pts), supervivencia (máx 20pts)
+    - `nivelRiesgoGenetico(score)` → 🟢 Bajo / 🟡 Moderado / 🔴 Alto
+    - `calcularIndiceEstabilidadGlobal({indiceSanitario, indiceAmbiental, indiceRiesgoGenetico, tasaFallos, tasaSupervivencia})` → score compuesto 0-100. Pesos: sanitario 35% + ambiental 25% + genético 20% + reproductivo 20%
+    - `NIVEL_ALERTA` → mapa con 4 niveles: atencion 🟡 / importante 🟠 / critico 🔴 / urgente ⚫. Campo `urgencia` para ordenar
+    - `generarAlertasSanitarias(...)` → alertas multi-nivel ordenadas por urgencia. Detecta: temperatura alta prolongada, frío, graves sin resolver, fallos frecuentes, mortalidad neonatal, canibalismo, patrones críticos, malformaciones
+    - `generarRecomendacionesHoy(...)` → lista ordenada de acciones del día: urgente (graves abiertos) / alta (sin temp hoy, calor reciente, camadas vencidas) / media (fallos, incidentes acumulados) / info (colonia estable)
+  - `src/pages/Incidentes.jsx` completamente rediseñado con 4 tabs:
+    - **Lista** (default): filtros + tabla de incidentes (sin cambios funcionales)
+    - **🌡️ Ambiente**: índice ambiental por colonia (4 columnas), stats del bioterio activo (promedio/min/max/diasRiesgo/diasAtencion), clasificación de rangos visualizada, correlaciones detectadas (collapsable)
+    - **🔬 Motor causal**: causas detectadas con factores y recomendaciones, índice de riesgo genético con escala
+    - **📊 Estadísticas**: KPIs, gráfico tendencias 6m, distribución por categoría
+    - Dashboard superior: 4 índices (Estabilidad global, Sanitario, Ambiental, Riesgo genético) + alertas multi-nivel + panel "¿Qué hacer hoy?" + patrones repetitivos
+  - **Sin SQL nueva** — todos los cálculos usan datos ya existentes en Supabase (incidentes, temperature_logs, camadas, animales)
+
+---
+
+## ⚠️ PENDIENTE CRÍTICO: Migración localStorage → Supabase
+
+> **NUNCA olvidar:** Todo dato de negocio DEBE ir a Supabase, no a localStorage.
+> localStorage se pierde al limpiar caché del navegador y no se sincroniza entre dispositivos.
+
+Las siguientes features aún guardan en localStorage y requieren tablas en Supabase:
+
+| Feature | LS Key | Tabla Supabase necesaria |
+|---|---|---|
+| Notas/recordatorios dashboard | `appMosca_notas_{bioId}` | `notas` |
+| Planes de apareamiento | `appMosca_apareamientos_{bioId}` | `planes_apareamiento` |
+| Reservas de animales/jaulas | `appMosca_reservas` | `reservas` |
+| Censos de viruta | `appMosca_viruta_censos` | `censos_viruta` |
+| Compras de viruta | `appMosca_viruta_compras` | `ingresos_viruta` |
+| Censos de alimento | `appMosca_alimento_censos` | `censos_alimento` |
+| Ingresos de alimento | `appMosca_alimento_ingresos` | `ingresos_alimento` |
+| Reposiciones de alimento | `appMosca_alimento_reposiciones` | `reposiciones_alimento` |
+
+SQL completo para crear estas tablas está en `src/utils/sanitario.js` al final del archivo (sección SQL — Referencia para Supabase).
+
+---
+
 ## Qué falta / pendiente
 
+- [ ] **Migrar localStorage → Supabase** (ver tabla arriba — PRIORITARIO)
 - [ ] Notificaciones push o por email cuando hay tareas vencidas
 - [ ] Módulo de reportes con exportación real (PDF/Excel)
 - [ ] Historial de cambios por animal/camada (auditoría)
