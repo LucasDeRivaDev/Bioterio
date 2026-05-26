@@ -5,7 +5,7 @@ import { useBioterioActivo } from '../context/BioterioActivoContext'
 import { useAuth } from '../context/AuthContext'
 import {
   Home, LayoutDashboard, Printer, Bug, Send, LogOut, ChevronUp, ChevronDown,
-  Dna, Microscope, Archive, BarChart2, PackageCheck, Skull, TrendingUp, Target, ClipboardList,
+  Dna, Microscope, Archive, BarChart2, PackageCheck, Skull, TrendingUp, Target, ClipboardList, ScanSearch,
 } from 'lucide-react'
 import iterateNavLogo      from '../assets/iterate_nav_logo.png'
 import iterateNavLogoLight from '../assets/iterate_logo_light.png'
@@ -17,6 +17,7 @@ const LINK_DASHBOARD = { to: '/',      label: 'Panel de hoy', icon: <LayoutDashb
 const LINK_REPORTES       = { to: '/reportes',     label: 'Reportes e impresión', icon: <Printer size={15} /> }
 const LINK_PLANIFICACION  = { to: '/planificacion', label: 'Planificación',    icon: <Target size={15} /> }
 const LINK_PEDIDOS        = { to: '/pedidos',       label: 'Pedidos',           icon: <ClipboardList size={15} /> }
+const LINK_AUDITORIA      = { to: '/auditoria',     label: 'Auditoría',         icon: <ScanSearch size={15} /> }
 
 const GRUPOS = [
   {
@@ -145,7 +146,7 @@ function NavGrupo({ grupo, onCerrarMenu }) {
 const SECCIONES = [
   'Panel de hoy', 'Reproductores', 'Emparejamientos', 'Stock',
   'Entregas', 'Sacrificios', 'Rendimiento', 'Estadísticas',
-  'Temperatura', 'Reportes', 'Otra sección',
+  'Temperatura', 'Planificación', 'Pedidos', 'Auditoría', 'Reportes', 'Otra sección',
 ]
 
 function ReportarError() {
@@ -457,6 +458,36 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
             {LINK_PEDIDOS.icon}
           </span>
           {LINK_PEDIDOS.label}
+        </NavLink>
+
+        {/* Auditoría histórica */}
+        <NavLink
+          to={LINK_AUDITORIA.to}
+          onClick={onCerrarMenu}
+          style={({ isActive }) =>
+            isActive
+              ? {
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  padding: '8px 12px', borderRadius: '10px',
+                  background: tema.greenDim,
+                  color: '#00e676',
+                  border: '1px solid rgba(0,230,118,0.25)',
+                  boxShadow: '0 0 12px rgba(0,230,118,0.1)',
+                  fontSize: '13px', fontWeight: 600, textDecoration: 'none',
+                }
+              : {
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  padding: '8px 12px', borderRadius: '10px',
+                  color: tema.textSecondary,
+                  border: '1px solid transparent',
+                  fontSize: '13px', fontWeight: 500, textDecoration: 'none',
+                }
+          }
+        >
+          <span style={{ width: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {LINK_AUDITORIA.icon}
+          </span>
+          {LINK_AUDITORIA.label}
         </NavLink>
 
         {/* Reportes al final */}
