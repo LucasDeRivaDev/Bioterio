@@ -11,9 +11,9 @@ import {
   calcularIndiceAmbiental, nivelAmbiental, statsTemperatura, clasificarTemperatura,
   calcularIndiceRiesgoGenetico, nivelRiesgoGenetico,
   calcularIndiceEstabilidadGlobal,
-  detectarPatrones, detectarCorrelaciones,
+  detectarPatrones, detectarCorrelaciones, detectarCorrelacionesMultiventana,
   generarMotorCausal, generarAlertasSanitarias, generarRecomendacionesHoy,
-  generarTendencias,
+  generarTendencias, generarBloqueosSanitarios,
 } from '../utils/sanitario'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { AlertTriangle, CheckCircle, Plus, Activity, TrendingUp, TrendingDown, Thermometer, Dna, Zap, Eye, EyeOff } from 'lucide-react'
@@ -37,6 +37,7 @@ export default function Incidentes() {
   const [confirmarElim,   setConfirmarElim]   = useState(null)
   const [tabActivo,       setTabActivo]       = useState('lista') // 'lista' | 'estadisticas' | 'ambiental' | 'causal'
   const [mostrarCorrel,   setMostrarCorrel]   = useState(false)
+  const [periodoTendencia, setPeriodoTendencia] = useState(6) // 6 | 12
 
   // ── Pedigree para cálculo de consanguinidad ────────────────────────────────
   const pedigree = useMemo(() => buildPedigree(animales, camadas), [animales, camadas])
@@ -111,6 +112,16 @@ export default function Incidentes() {
     [temperaturas, incidentes, camadas]
   )
 
+  const correlacionesMultiventana = useMemo(() =>
+    detectarCorrelacionesMultiventana(temperaturas, incidentes, camadas),
+    [temperaturas, incidentes, camadas]
+  )
+
+  const bloqueos = useMemo(() =>
+    generarBloqueosSanitarios(animales, camadas, incidentes, fCoefMapa, bioterioActivo),
+    [animales, camadas, incidentes, fCoefMapa, bioterioActivo]
+  )
+
   const causas = useMemo(() =>
     generarMotorCausal(incidentes, temperaturas, camadas, animales, bioterioActivo),
     [incidentes, temperaturas, camadas, animales, bioterioActivo]
@@ -128,8 +139,8 @@ export default function Incidentes() {
 
   // ── Tendencias ─────────────────────────────────────────────────────────────
   const { meses: mesesTend, tendencia } = useMemo(
-    () => generarTendencias(incidentes, 6),
-    [incidentes]
+    () => generarTendencias(incidentes, periodoTendencia),
+    [incidentes, periodoTendencia]
   )
 
   // ── Filtros ────────────────────────────────────────────────────────────────
@@ -634,6 +645,138 @@ export default function Incidentes() {
               </div>
             </div>
           </div>
+
+          {/* Bloqueos sanitarios — reproductores en riesgo */}
+          <div className="rounded-2xl overflow-hidden"
+            style={{ background: 'rgba(13,21,40,0.9)', border: `1px solid ${bloqueos.totalBloqueados > 0 ? 'rgba(255,107,128,0.3)' : 'rgba(255,179,0,0.2)'}` }}>
+            <div className="px-5 py-3 flex items-center gap-2 justify-between"
+              style={{ borderBottom: `1px solid ${bloqueos.totalBloqueados > 0 ? 'rgba(255,107,128,0.12)' : 'rgba(255,179,0,0.1)'}`, background: `${bloqueos.totalBloqueados > 0 ? 'rgba(255,107,128,0.04)' : 'rgba(255,179,0,0.03)'}` }}>
+              <div className="flex items-center gap-2">
+                <Zap size={13} style={{ color: bloqueos.totalBloqueados > 0 ? '#ff6b80' : '#ffb300' }} />
+                <span className="text-xs font-semibold uppercase tracking-widest"
+                  style={{ color: bloqueos.totalBloqueados > 0 ? '#ff6b80' : '#ffb300' }}>
+                  Reproductores en riesgo
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-mono">
+                {bloqueos.totalBloqueados > 0 && (
+                  <span className="px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,107,128,0.12)', color: '#ff6b80', border: '1px solid rgba(255,107,128,0.3)' }}>
+                    🔴 {bloqueos.totalBloqueados} bloqueado{bloqueos.totalBloqueados !== 1 ? 's' : ''}
+                  </span>
+                )}
+                {bloqueos.totalAdvertencias > 0 && (
+                  <span className="px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,179,0,0.1)', color: '#ffb300', border: '1px solid rgba(255,179,0,0.25)' }}>
+                    🟡 {bloqueos.totalAdvertencias} advertencia{bloqueos.totalAdvertencias !== 1 ? 's' : ''}
+                  </span>
+                )}
+                {bloqueos.totalBloqueados === 0 && bloqueos.totalAdvertencias === 0 && (
+                  <span className="px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,230,118,0.08)', color: '#00e676', border: '1px solid rgba(0,230,118,0.2)' }}>
+                    🟢 Sin bloqueos
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {bloqueos.animalesBloqueados.size === 0 ? (
+              <div className="px-5 py-4 text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                Todos los reproductores activos pasan los criterios de elegibilidad reproductiva.
+              </div>
+            ) : (
+              <div className="px-5 py-4 space-y-3">
+                {/* Lista de animales bloqueados/advertidos */}
+                {[...bloqueos.animalesBloqueados.values()].sort((a, b) => {
+                  const ord = { critico: 0, alerta: 1 }
+                  return (ord[a.nivel] ?? 2) - (ord[b.nivel] ?? 2)
+                }).map((b, i) => (
+                  <div key={i} className="flex items-start gap-3 p-3 rounded-xl"
+                    style={{
+                      background: b.esBloqueo ? 'rgba(255,107,128,0.06)' : 'rgba(255,179,0,0.04)',
+                      border: `1px solid ${b.esBloqueo ? 'rgba(255,107,128,0.2)' : 'rgba(255,179,0,0.15)'}`,
+                    }}>
+                    <div className="shrink-0 text-base">{b.esBloqueo ? '🚫' : '⚠️'}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-sm" style={{ color: b.esBloqueo ? '#ff6b80' : '#ffb300' }}>
+                          {b.animal.codigo}
+                        </span>
+                        <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                          {b.animal.sexo === 'macho' ? '♂ Macho' : '♀ Hembra'}
+                        </span>
+                        <span className="text-xs font-mono px-1.5 py-0.5 rounded"
+                          style={{ background: b.esBloqueo ? 'rgba(255,107,128,0.12)' : 'rgba(255,179,0,0.1)', color: b.esBloqueo ? '#ff6b80' : '#ffb300' }}>
+                          {b.accion}
+                        </span>
+                      </div>
+                      <div className="mt-1.5 space-y-0.5">
+                        {b.motivos.map((m, j) => (
+                          <div key={j} className="text-xs font-mono" style={{ color: '#6a8099' }}>
+                            · {m}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Acciones sugeridas */}
+                {bloqueos.accionesSugeridas.length > 0 && (
+                  <div className="mt-2 space-y-2">
+                    <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>
+                      Acciones automáticas sugeridas
+                    </div>
+                    {bloqueos.accionesSugeridas.map((a, i) => (
+                      <div key={i} className="flex items-center gap-2 p-2.5 rounded-xl text-xs font-mono"
+                        style={{
+                          background: a.nivel === 'urgente' ? 'rgba(255,107,128,0.08)' : a.nivel === 'critico' ? 'rgba(255,107,128,0.05)' : 'rgba(255,179,0,0.04)',
+                          border: `1px solid ${a.nivel === 'urgente' ? 'rgba(255,107,128,0.25)' : 'rgba(255,107,128,0.15)'}`,
+                          color: '#c9d4e0',
+                        }}>
+                        <span>{a.nivel === 'urgente' ? '⚫' : a.nivel === 'critico' ? '🔴' : '🟡'}</span>
+                        <span className="flex-1">{a.accion}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Correlaciones multi-ventana */}
+          {correlacionesMultiventana.length > 0 && (
+            <div className="rounded-2xl overflow-hidden"
+              style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(255,179,0,0.2)' }}>
+              <div className="px-5 py-3 flex items-center gap-2"
+                style={{ borderBottom: '1px solid rgba(255,179,0,0.1)', background: 'rgba(255,179,0,0.03)' }}>
+                <Activity size={13} style={{ color: '#ffb300' }} />
+                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#ffb300' }}>
+                  Correlaciones detectadas (1–90 días)
+                </span>
+                <span className="ml-auto text-xs font-mono px-2 py-0.5 rounded-full"
+                  style={{ background: 'rgba(255,179,0,0.1)', color: '#ffb300' }}>
+                  {correlacionesMultiventana.length} señal{correlacionesMultiventana.length !== 1 ? 'es' : ''}
+                </span>
+              </div>
+              <div className="px-5 py-4 space-y-2">
+                {correlacionesMultiventana.map((c, i) => (
+                  <div key={i} className="flex items-start gap-3 text-xs font-mono py-2"
+                    style={{ borderBottom: i < correlacionesMultiventana.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                    <span className="text-base shrink-0">{c.icono}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold" style={{ color: c.nivel === 'critico' ? '#ff6b80' : '#ffb300' }}>{c.label}</div>
+                      <div className="mt-0.5" style={{ color: '#6a8099' }}>{c.descripcion}</div>
+                    </div>
+                    <div className="shrink-0 flex flex-col items-end gap-1">
+                      <span className="px-1.5 py-0.5 rounded text-xs"
+                        style={{ background: c.nivel === 'critico' ? 'rgba(255,107,128,0.12)' : 'rgba(255,179,0,0.1)', color: c.nivel === 'critico' ? '#ff6b80' : '#ffb300' }}>
+                        {c.fuerza}
+                      </span>
+                      <span style={{ color: '#3d5068' }}>ventana {c.ventana}d</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -663,8 +806,21 @@ export default function Incidentes() {
             style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(255,255,255,0.07)' }}>
             <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
               <div className="flex-1">
-                <div className="font-bold text-xs text-white">Incidentes por mes — últimos 6 meses</div>
+                <div className="font-bold text-xs text-white">Incidentes por mes — últimos {periodoTendencia} meses</div>
                 <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>Graves · Moderados · Leves</div>
+              </div>
+              <div className="flex items-center gap-1 mr-2">
+                {[6, 12].map(p => (
+                  <button key={p} onClick={() => setPeriodoTendencia(p)}
+                    className="px-2 py-0.5 rounded text-xs font-mono"
+                    style={{
+                      background: periodoTendencia === p ? 'rgba(64,196,255,0.15)' : 'rgba(64,196,255,0.04)',
+                      border: `1px solid ${periodoTendencia === p ? 'rgba(64,196,255,0.35)' : 'rgba(64,196,255,0.1)'}`,
+                      color: periodoTendencia === p ? '#40c4ff' : '#4a5f7a',
+                    }}>
+                    {p}m
+                  </button>
+                ))}
               </div>
               <div className="text-xs font-mono flex items-center gap-1"
                 style={{ color: tendencia > 0 ? '#ff6b80' : tendencia < 0 ? '#00e676' : '#4a5f7a' }}>

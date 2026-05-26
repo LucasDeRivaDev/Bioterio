@@ -809,6 +809,172 @@ export function calcularIndiceEstabilidadGlobal({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// CORRELACIONES MULTI-VENTANA  (1, 3, 7, 14, 30, 90 días)
+// Corre detectarCorrelaciones con cada ventana y desduplicar por tipo+fecha
+// quedándose con la detección más precisa (ventana más corta).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function detectarCorrelacionesMultiventana(temperaturas, incidentes, camadas) {
+  const ventanas = [1, 3, 7, 14, 30, 90]
+  const todas = []
+  ventanas.forEach(v => {
+    detectarCorrelaciones(temperaturas, incidentes, camadas, v)
+      .forEach(c => todas.push({ ...c, ventana: v }))
+  })
+  // Si el mismo tipo+fecha aparece en múltiples ventanas → quedarse con la más corta
+  const dedup = new Map()
+  todas.forEach(c => {
+    const key = `${c.tipo}_${c.fecha}`
+    if (!dedup.has(key) || c.ventana < dedup.get(key).ventana) dedup.set(key, c)
+  })
+  return [...dedup.values()].sort((a, b) => {
+    const orden = { critico: 0, alerta: 1 }
+    return (orden[a.nivel] ?? 2) - (orden[b.nivel] ?? 2)
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BLOQUEOS SANITARIOS — ¿Qué animales/líneas no deberían reproducirse?
+// ─────────────────────────────────────────────────────────────────────────────
+// Evalúa reproductores activos y detecta cuáles presentan riesgo crítico
+// (consanguinidad alta, fallos repetidos, malformaciones, edad límite).
+// Retorna un Map para consulta rápida desde CamadaForm + lista de acciones
+// automáticas a aplicar sobre renovación/apareamientos/pedidos.
+
+export function generarBloqueosSanitarios(animales, camadas, incidentes, fCoefMapa = new Map(), bioterioId) {
+  const animalesBloqueados = new Map() // Map<animalId, {animal,motivos,nivel,esBloqueo,accion}>
+  const lineaEnRiesgo      = []
+  const accionesSugeridas  = []
+
+  const hace90  = new Date(Date.now() -  90 * 86400000).toISOString().slice(0, 10)
+  const hace180 = new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10)
+
+  const activos = animales.filter(a =>
+    ['activo', 'en_apareamiento', 'en_cria'].includes(a.estado) &&
+    (!bioterioId || bioterioId === 'todos' || a.bioterio_id === bioterioId)
+  )
+
+  activos.forEach(animal => {
+    const motivos = []
+    let nivelMax = null
+    const subirNivel = (n) => { if (!nivelMax || n === 'critico') nivelMax = n }
+
+    // ── Consanguinidad (F de Wright) ─────────────────────────────────────────
+    const f = fCoefMapa.get(animal.id) ?? 0
+    if (f > 0.25) {
+      motivos.push(`consanguinidad muy alta (F=${(f * 100).toFixed(1)}%)`)
+      subirNivel('critico')
+    } else if (f > 0.125) {
+      motivos.push(`consanguinidad moderada (F=${(f * 100).toFixed(1)}%)`)
+      subirNivel('alerta')
+    }
+
+    // ── Fallos reproductivos repetidos (hembras) ──────────────────────────────
+    if (animal.sexo === 'hembra') {
+      const fallos = camadas.filter(c =>
+        c.id_madre === animal.id && c.failure_flag && (c.fecha_copula ?? '') >= hace90
+      )
+      if (fallos.length >= 3) {
+        motivos.push(`${fallos.length} fallos reproductivos en 90 días`)
+        subirNivel('critico')
+      } else if (fallos.length >= 2) {
+        motivos.push(`${fallos.length} fallos reproductivos recientes`)
+        subirNivel('alerta')
+      }
+    }
+
+    // ── Malformaciones en camadas del animal ──────────────────────────────────
+    const camadasAnimal = animal.sexo === 'hembra'
+      ? camadas.filter(c => c.id_madre === animal.id && (c.fecha_nacimiento ?? '') >= hace180)
+      : camadas.filter(c => c.id_padre === animal.id && (c.fecha_nacimiento ?? '') >= hace180)
+
+    const conMalf = camadasAnimal.filter(c =>
+      incidentes.some(i =>
+        i.camada_id === c.id &&
+        ['malformacion', 'ausencia_cola', 'ausencia_extremidad'].includes(i.tipo_incidente)
+      )
+    )
+    if (conMalf.length >= 2) {
+      motivos.push(`${conMalf.length} camadas con malformaciones registradas`)
+      subirNivel('critico')
+    } else if (conMalf.length === 1) {
+      motivos.push('camada con malformaciones detectadas')
+      subirNivel('alerta')
+    }
+
+    // ── Edad límite reproductiva ──────────────────────────────────────────────
+    if (animal.fecha_nacimiento) {
+      const edadDias = Math.floor((Date.now() - new Date(animal.fecha_nacimiento).getTime()) / 86400000)
+      if (animal.sexo === 'macho' && edadDias > 270) {
+        motivos.push(`edad reproductiva superada (${edadDias}d, límite 270d)`)
+        subirNivel('critico')
+      } else if (animal.sexo === 'hembra' && edadDias > 365) {
+        motivos.push(`edad avanzada para reproducción (${edadDias}d)`)
+        subirNivel('alerta')
+      }
+    }
+
+    if (motivos.length > 0 && nivelMax) {
+      const esBloqueo = nivelMax === 'critico'
+      animalesBloqueados.set(animal.id, {
+        animal,
+        motivos,
+        nivel: nivelMax,
+        esBloqueo,
+        accion: esBloqueo
+          ? 'Excluir de nuevos apareamientos'
+          : 'Usar con precaución — monitorear resultado',
+      })
+    }
+  })
+
+  // ── Construir lineaEnRiesgo + accionesSugeridas ───────────────────────────
+  animalesBloqueados.forEach(b => {
+    if (b.esBloqueo) {
+      lineaEnRiesgo.push({ codigo: b.animal.codigo, animal: b.animal, nivel: b.nivel, motivos: b.motivos })
+      accionesSugeridas.push({
+        tipo: 'bloqueo_animal',
+        target: b.animal.codigo,
+        accion: `Excluir ${b.animal.codigo} — ${b.motivos[0]}`,
+        nivel: 'critico',
+        prioridad: 0,
+      })
+    }
+  })
+
+  const criticos = [...animalesBloqueados.values()].filter(b => b.esBloqueo)
+
+  if (criticos.length > 0) {
+    accionesSugeridas.push({
+      tipo: 'renovacion',
+      target: 'colonia',
+      accion: `Incorporar ${criticos.length} reemplazos — ${criticos.length} reproductor(es) en riesgo crítico`,
+      nivel: 'critico',
+      prioridad: 1,
+    })
+  }
+
+  // Si >30% de los reproductores están bloqueados → suspender nuevos apareamientos
+  if (activos.length > 0 && criticos.length / activos.length > 0.3) {
+    accionesSugeridas.push({
+      tipo: 'suspender_apareamientos',
+      target: 'colonia',
+      accion: `Suspender nuevos apareamientos — ${Math.round(criticos.length / activos.length * 100)}% de reproductores en riesgo`,
+      nivel: 'urgente',
+      prioridad: 0,
+    })
+  }
+
+  return {
+    animalesBloqueados,
+    lineaEnRiesgo: lineaEnRiesgo.sort((a, b) => a.codigo.localeCompare(b.codigo)),
+    accionesSugeridas: accionesSugeridas.sort((a, b) => a.prioridad - b.prioridad),
+    totalBloqueados:    criticos.length,
+    totalAdvertencias:  [...animalesBloqueados.values()].filter(b => !b.esBloqueo).length,
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SQL — Referencia para Supabase
 // ─────────────────────────────────────────────────────────────────────────────
 //

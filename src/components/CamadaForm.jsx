@@ -2,7 +2,8 @@ import { useState, useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { calcularRangoParto, calcularDestete, formatFecha, hoy, difDias, parseDate, getAnimalesReservados } from '../utils/calculos'
 import { MAX_APAREAMIENTOS } from '../utils/constants'
-import { buildPedigree, evaluarApareamientoGenetico, fPorcentaje, LABEL_PARENTESCO } from '../utils/genealogia'
+import { buildPedigree, evaluarApareamientoGenetico, fPorcentaje, LABEL_PARENTESCO, calcularFCoeficiente } from '../utils/genealogia'
+import { generarBloqueosSanitarios } from '../utils/sanitario'
 
 const vacioCamada = {
   id_madre: '', id_padre: '', fecha_copula: '', fecha_nacimiento: '',
@@ -74,7 +75,7 @@ function labelColonia(bioId) {
 }
 
 export default function CamadaForm({ camada, onGuardar, onCancelar }) {
-  const { animales, animalesExportados, camadas, bio, bioterioActivo } = useBioterio()
+  const { animales, animalesExportados, camadas, incidentes, bio, bioterioActivo } = useBioterio()
   const [form, setForm] = useState(camada ? normalizarCamada(camada) : vacioCamada)
   const [errores, setErrores] = useState({})
   const [modoHistorico, setModoHistorico] = useState(false)
@@ -154,6 +155,20 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
     if (!madreSelec || !padreSelec) return null
     return evaluarApareamientoGenetico(madreSelec.id, padreSelec.id, pedigree)
   }, [madreSelec, padreSelec, pedigree])
+
+  // Bloqueo sanitario de los animales seleccionados (consulta rápida al map)
+  const bloqueosSanitarios = useMemo(() => {
+    const candidatos = [madreSelec, padreSelec].filter(Boolean)
+    if (candidatos.length === 0) return new Map()
+    const fMap = new Map()
+    candidatos.forEach(a => {
+      try { fMap.set(a.id, calcularFCoeficiente(a.id, pedigree) ?? 0) } catch { fMap.set(a.id, 0) }
+    })
+    return generarBloqueosSanitarios(candidatos, camadas, incidentes, fMap, bioterioActivo).animalesBloqueados
+  }, [madreSelec, padreSelec, camadas, incidentes, pedigree, bioterioActivo])
+
+  const bloqueoMadre = madreSelec ? bloqueosSanitarios.get(madreSelec.id) ?? null : null
+  const bloqueoMacho = padreSelec ? bloqueosSanitarios.get(padreSelec.id) ?? null : null
 
   function cambiar(campo, valor) {
     setForm((prev) => ({ ...prev, [campo]: valor }))
@@ -465,6 +480,40 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
           {errores._consanguinidad && (
             <p className="text-xs px-4 pb-2" style={{ color: '#ff6b80' }}>{errores._consanguinidad}</p>
           )}
+        </div>
+      )}
+
+      {/* ── Advertencia sanitaria ───────────────────────────────────────────── */}
+      {(bloqueoMadre || bloqueoMacho) && (
+        <div className="rounded-xl overflow-hidden"
+          style={{
+            border: `1.5px solid ${(bloqueoMadre?.esBloqueo || bloqueoMacho?.esBloqueo) ? 'rgba(255,107,128,0.4)' : 'rgba(255,179,0,0.4)'}`,
+            background: `${(bloqueoMadre?.esBloqueo || bloqueoMacho?.esBloqueo) ? 'rgba(255,107,128,0.05)' : 'rgba(255,179,0,0.04)'}`,
+          }}>
+          <div className="px-4 py-2.5 flex items-center gap-2"
+            style={{ borderBottom: `1px solid ${(bloqueoMadre?.esBloqueo || bloqueoMacho?.esBloqueo) ? 'rgba(255,107,128,0.15)' : 'rgba(255,179,0,0.15)'}` }}>
+            <span>{(bloqueoMadre?.esBloqueo || bloqueoMacho?.esBloqueo) ? '🚫' : '⚠️'}</span>
+            <span className="text-xs font-bold uppercase tracking-wider"
+              style={{ color: (bloqueoMadre?.esBloqueo || bloqueoMacho?.esBloqueo) ? '#ff6b80' : '#ffb300' }}>
+              {(bloqueoMadre?.esBloqueo || bloqueoMacho?.esBloqueo)
+                ? 'Reproductor(es) en riesgo crítico'
+                : 'Advertencia sanitaria'}
+            </span>
+          </div>
+          <div className="px-4 py-3 space-y-2">
+            {[{ b: bloqueoMadre, animal: madreSelec }, { b: bloqueoMacho, animal: padreSelec }]
+              .filter(({ b }) => b)
+              .map(({ b, animal }, i) => (
+                <div key={i} className="text-xs font-mono space-y-0.5">
+                  <div className="font-semibold" style={{ color: b.esBloqueo ? '#ff6b80' : '#ffb300' }}>
+                    {animal?.codigo} — {b.accion}
+                  </div>
+                  {b.motivos.map((m, j) => (
+                    <div key={j} style={{ color: '#8a9bb0' }}>· {m}</div>
+                  ))}
+                </div>
+              ))}
+          </div>
         </div>
       )}
 
