@@ -20,6 +20,11 @@ import {
   getReservas,
   esReservado,
   calcularMotorRenovacionUnificado,
+  calcularProyeccionAvanzada,
+  sugerirPromocionesAutomaticas,
+  evaluarSostenibilidadColonia,
+  generarAccionesHoyPlanificacion,
+  PATRON_APAREAMIENTO_DEFAULT,
 } from '../utils/motorDecisiones'
 import { formatFecha, difDias } from '../utils/calculos'
 import {
@@ -650,10 +655,48 @@ export default function PlanificacionColonia() {
     [todosAnimales, todasCamadas, jaulas, sacrificios, entregas, bio, bioterioActivo]
   )
 
-  // Proyección seleccionada
+  // Proyección seleccionada (detalle de partos/destetes en el horizonte elegido)
   const proyeccion = useMemo(
     () => calcularProyeccion(todasCamadas, todosAnimales, bio, bioterioActivo, tabHorizonte),
     [todasCamadas, todosAnimales, bio, bioterioActivo, tabHorizonte]
+  )
+
+  // Patrón de apareamiento configurable (estado local)
+  const [parejasCadaDias, setParejasCadaDias] = useState(PATRON_APAREAMIENTO_DEFAULT.parejasCada)
+
+  // Proyección avanzada — simulación completa con patrón + partos + crías + saturación + déficit
+  const proyeccionAvanzada = useMemo(
+    () => calcularProyeccionAvanzada(
+      todosAnimales, todasCamadas, jaulas, sacrificios, entregas, bio, bioterioActivo,
+      { parejasCada: parejasCadaDias }
+    ),
+    [todosAnimales, todasCamadas, jaulas, sacrificios, entregas, bio, bioterioActivo, parejasCadaDias]
+  )
+
+  // Sugerencias automáticas de promoción
+  const sugerenciasPromocion = useMemo(
+    () => sugerirPromocionesAutomaticas(proyeccionAvanzada, candidatos, todosAnimales, todasCamadas, bio, bioterioActivo),
+    [proyeccionAvanzada, candidatos, todosAnimales, todasCamadas, bio, bioterioActivo]
+  )
+
+  // ¿Puede la colonia sostener producción?
+  const sostenibilidad = useMemo(
+    () => evaluarSostenibilidadColonia(proyeccionAvanzada, stockReal, bioterioActivo),
+    [proyeccionAvanzada, stockReal, bioterioActivo]
+  )
+
+  // Índice genético enriquecido (incluye déficit, candidatos y proyección)
+  const indiceGeneticoEnriquecido = useMemo(
+    () => calcularIndiceGeneticoRenovacion(todosAnimales, todasCamadas, bioterioActivo, {
+      stockReal, candidatos, proyeccionAvanzada,
+    }),
+    [todosAnimales, todasCamadas, bioterioActivo, stockReal, candidatos, proyeccionAvanzada]
+  )
+
+  // Motor "¿qué hacer hoy?"
+  const accionesHoy = useMemo(
+    () => generarAccionesHoyPlanificacion(proyeccionAvanzada, sugerenciasPromocion, getMinimosCriticos(bioterioActivo), stockReal, bioterioActivo),
+    [proyeccionAvanzada, sugerenciasPromocion, stockReal, bioterioActivo]
   )
 
   const minimosCfg = getMinimosCriticos(bioterioActivo)
@@ -790,26 +833,135 @@ export default function PlanificacionColonia() {
         )}
       </div>
 
-      {/* ── HORIZONTES TEMPORALES ────────────────────────────────────────────── */}
+      {/* ── PROYECCIÓN AVANZADA ──────────────────────────────────────────────── */}
       <div style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}`, borderRadius: 16, padding: '18px 20px' }}>
-        <SeccionTitulo
-          icono={<Clock size={16} color="#40c4ff" />}
-          titulo="Proyección temporal"
-          subtitulo="Estado proyectado de la colonia en distintos horizontes"
-        />
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
-          {[30, 60, 90, 180].map(d => (
-            <TarjetaHorizonte
-              key={d}
-              dias={d}
-              data={deficitFuturo[d]}
-              config={minimosCfg}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+          <SeccionTitulo
+            icono={<Clock size={16} color="#40c4ff" />}
+            titulo="Proyección temporal"
+            subtitulo="Partos · Crías · Jaulas · Déficit · Saturación — simulación completa"
+          />
+          {/* Patrón configurable */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <span style={{ fontSize: 11, color: tema.textMuted }}>1 pareja /</span>
+            <input
+              type="number" min={7} max={60} value={parejasCadaDias}
+              onChange={e => setParejasCadaDias(Math.max(7, Math.min(60, Number(e.target.value))))}
+              style={{
+                width: 52, padding: '4px 8px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                background: 'rgba(64,196,255,0.1)', border: '1px solid rgba(64,196,255,0.3)',
+                color: '#40c4ff', textAlign: 'center', outline: 'none',
+              }}
             />
+            <span style={{ fontSize: 11, color: tema.textMuted }}>días</span>
+          </div>
+        </div>
+
+        {/* Patrones históricos usados */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+          {[
+            { label: `~${proyeccionAvanzada.patrones.promCrias} crías/parto`, color: '#00e676' },
+            { label: `${proyeccionAvanzada.patrones.tasaSupervivencia}% superv.`, color: '#40c4ff' },
+            { label: `${proyeccionAvanzada.patrones.tasaFallo}% fallos`, color: proyeccionAvanzada.patrones.tasaFallo > 25 ? '#ff6b80' : '#ffb300' },
+            { label: `${proyeccionAvanzada.patrones.parejasLibres} par${proyeccionAvanzada.patrones.parejasLibres !== 1 ? 'ejas' : 'eja'} libre${proyeccionAvanzada.patrones.parejasLibres !== 1 ? 's' : ''}`, color: '#a78bfa' },
+          ].map(({ label, color }) => (
+            <Chip key={label} color={color}>{label}</Chip>
           ))}
         </div>
 
-        {/* Selector de horizonte + detalle de proyección */}
+        {/* Tarjetas de 4 horizontes */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
+          {[30, 60, 90, 180].map(h => {
+            const d = proyeccionAvanzada.horizontes[h]
+            const colorBorde = d.ok ? 'rgba(0,230,118,0.15)' : 'rgba(255,61,87,0.2)'
+            const colorTit   = d.ok ? '#00e676' : '#ff6b80'
+            return (
+              <div key={h} style={{
+                background: tema.bgCard, border: `1px solid ${colorBorde}`,
+                borderRadius: 14, padding: '12px 14px',
+              }}>
+                {/* Encabezado */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: colorTit, lineHeight: 1 }}>{h}d</div>
+                    <div style={{ fontSize: 9, color: tema.textMuted, fontFamily: 'monospace' }}>horizonte</div>
+                  </div>
+                  <span style={{ fontSize: 16 }}>{d.ok ? '🟢' : d.deficit.puedeCubrirConStock ? '🟡' : '🔴'}</span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {/* Reproductores futuros */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: tema.textMuted }}>
+                    <span>♂ colonia</span>
+                    <span style={{ color: d.deficit.machos > 0 ? '#ff6b80' : '#c9d4e0', fontWeight: 600 }}>
+                      {d.reproductores.machosFuturos}/{minimosCfg.machos_colonia}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: tema.textMuted }}>
+                    <span>♀ colonia</span>
+                    <span style={{ color: d.deficit.hembras > 0 ? '#ff6b80' : '#c9d4e0', fontWeight: 600 }}>
+                      {d.reproductores.hembrasFuturas}/{minimosCfg.hembras_colonia}
+                    </span>
+                  </div>
+                  {/* Partos */}
+                  <div style={{ borderTop: `1px solid rgba(255,255,255,0.05)`, marginTop: 3, paddingTop: 3 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: tema.textMuted }}>
+                      <span>partos</span>
+                      <span style={{ color: '#00e676', fontWeight: 600 }}>
+                        {d.partos.deActivos}✦ +{d.partos.dePatron}⊕
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: tema.textMuted }}>
+                      <span>crías</span>
+                      <span style={{ color: '#40c4ff', fontWeight: 600 }}>~{d.crias.total}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: tema.textMuted }}>
+                      <span>+jaulas</span>
+                      <span style={{ color: d.jaulas.saturacion === 'alta' ? '#ff6b80' : '#c9d4e0', fontWeight: 600 }}>
+                        +{d.jaulas.nuevas} {d.jaulas.saturacion === 'alta' ? '⚠' : ''}
+                      </span>
+                    </div>
+                  </div>
+                  {/* Bajas + candidatos */}
+                  {(d.reproductores.machosBajas > 0 || d.reproductores.hembrasBajas > 0) && (
+                    <div style={{ fontSize: 9, color: '#ffb300', fontFamily: 'monospace' }}>
+                      ⚠ {d.reproductores.machosBajas + d.reproductores.hembrasBajas} reprod. alcanzan límite
+                    </div>
+                  )}
+                  {d.reproductores.candidatosMaduran > 0 && (
+                    <div style={{ fontSize: 9, color: '#a78bfa', fontFamily: 'monospace' }}>
+                      ↑ {d.reproductores.candidatosMaduran} candidato(s) maduran
+                    </div>
+                  )}
+                  {/* Déficit */}
+                  {d.deficit.hayDeficit && (
+                    <div style={{
+                      marginTop: 4, fontSize: 10, fontWeight: 600, textAlign: 'center',
+                      background: d.deficit.puedeCubrirConStock ? 'rgba(255,179,0,0.1)' : 'rgba(255,61,87,0.1)',
+                      border: `1px solid ${d.deficit.puedeCubrirConStock ? 'rgba(255,179,0,0.3)' : 'rgba(255,61,87,0.3)'}`,
+                      borderRadius: 6, padding: '3px 6px',
+                      color: d.deficit.puedeCubrirConStock ? '#ffb300' : '#ff6b80',
+                    }}>
+                      {d.deficit.machos > 0 ? `−${d.deficit.machos}♂` : ''}
+                      {d.deficit.machos > 0 && d.deficit.hembras > 0 ? ' ' : ''}
+                      {d.deficit.hembras > 0 ? `−${d.deficit.hembras}♀` : ''}
+                      {d.deficit.puedeCubrirConStock ? ' (stock ↑)' : ' sin cobertura'}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Leyenda */}
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 10, color: tema.textMuted, marginBottom: 14 }}>
+          <span>✦ partos activos en curso</span>
+          <span>⊕ partos del patrón ({parejasCadaDias}d)</span>
+          <span>↑ candidatos maduran en el horizonte</span>
+        </div>
+
+        {/* Selector de horizonte + detalle de partos/destetes */}
         <div style={{ borderTop: `1px solid ${tema.bgCardBorde}`, paddingTop: 14 }}>
           <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
             {[30, 60, 90, 180].map(d => (
@@ -823,37 +975,36 @@ export default function PlanificacionColonia() {
                   color: tabHorizonte === d ? '#40c4ff' : tema.textMuted,
                 }}
               >
-                {d} días
+                {d}d
               </button>
             ))}
           </div>
 
-          {/* Partos y destetes en el horizonte seleccionado */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            {/* Partos */}
+            {/* Partos confirmados */}
             <div>
               <div style={{ fontSize: 11, color: tema.textMuted, fontWeight: 600, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Partos esperados ({proyeccion.partosPendientes.length})
+                Partos en curso ({proyeccion.partosPendientes.length})
               </div>
-              {proyeccion.partosPendientes.length === 0 && (
-                <div style={{ fontSize: 12, color: tema.textMuted, padding: '8px 0' }}>Sin partos en este horizonte</div>
-              )}
-              {proyeccion.partosPendientes.slice(0, 5).map((p, i) => (
-                <div key={p.camadaId} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '6px 10px', borderRadius: 8, marginBottom: 4,
-                  background: p.vencido ? 'rgba(255,61,87,0.06)' : 'rgba(0,230,118,0.04)',
-                  border: `1px solid ${p.vencido ? 'rgba(255,61,87,0.15)' : 'rgba(0,230,118,0.1)'}`,
-                }}>
-                  <span style={{ fontSize: 11, color: tema.textSecondary }}>Parto #{i + 1}</span>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 11, color: p.vencido ? '#ff6b80' : '#00e676', fontFamily: 'monospace' }}>
-                      {p.vencido ? 'Vencido' : `${p.diasRestantes}d`}
+              {proyeccion.partosPendientes.length === 0
+                ? <div style={{ fontSize: 12, color: tema.textMuted, padding: '8px 0' }}>Sin apareamientos activos</div>
+                : proyeccion.partosPendientes.slice(0, 5).map((p, i) => (
+                  <div key={p.camadaId} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '6px 10px', borderRadius: 8, marginBottom: 4,
+                    background: p.vencido ? 'rgba(255,61,87,0.06)' : 'rgba(0,230,118,0.04)',
+                    border: `1px solid ${p.vencido ? 'rgba(255,61,87,0.15)' : 'rgba(0,230,118,0.1)'}`,
+                  }}>
+                    <span style={{ fontSize: 11, color: tema.textSecondary }}>Parto #{i + 1}</span>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 11, color: p.vencido ? '#ff6b80' : '#00e676', fontFamily: 'monospace' }}>
+                        {p.vencido ? 'Vencido' : `${p.diasRestantes}d`}
+                      </div>
+                      <div style={{ fontSize: 10, color: tema.textMuted }}>{formatFecha(p.partoProbable)}</div>
                     </div>
-                    <div style={{ fontSize: 10, color: tema.textMuted }}>{formatFecha(p.partoProbable)}</div>
                   </div>
-                </div>
-              ))}
+                ))
+              }
             </div>
 
             {/* Destetes */}
@@ -861,39 +1012,91 @@ export default function PlanificacionColonia() {
               <div style={{ fontSize: 11, color: tema.textMuted, fontWeight: 600, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 Destetes pendientes ({proyeccion.destesPendientes.length})
               </div>
-              {proyeccion.destesPendientes.length === 0 && (
-                <div style={{ fontSize: 12, color: tema.textMuted, padding: '8px 0' }}>Sin destetes en este horizonte</div>
-              )}
-              {proyeccion.destesPendientes.slice(0, 5).map((d, i) => (
-                <div key={d.camadaId} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '6px 10px', borderRadius: 8, marginBottom: 4,
-                  background: d.vencido ? 'rgba(255,61,87,0.06)' : 'rgba(64,196,255,0.04)',
-                  border: `1px solid ${d.vencido ? 'rgba(255,61,87,0.15)' : 'rgba(64,196,255,0.1)'}`,
-                }}>
-                  <div>
-                    <span style={{ fontSize: 11, color: tema.textSecondary }}>Destete #{i + 1}</span>
-                    {d.totalCrias > 0 && (
-                      <span style={{ fontSize: 10, color: tema.textMuted, marginLeft: 8 }}>{d.totalCrias} crías</span>
-                    )}
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 11, color: d.vencido ? '#ff6b80' : '#40c4ff', fontFamily: 'monospace' }}>
-                      {d.vencido ? 'Vencido' : `${d.diasRestantes}d`}
+              {proyeccion.destesPendientes.length === 0
+                ? <div style={{ fontSize: 12, color: tema.textMuted, padding: '8px 0' }}>Sin camadas en lactancia</div>
+                : proyeccion.destesPendientes.slice(0, 5).map((d, i) => (
+                  <div key={d.camadaId} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '6px 10px', borderRadius: 8, marginBottom: 4,
+                    background: d.vencido ? 'rgba(255,61,87,0.06)' : 'rgba(64,196,255,0.04)',
+                    border: `1px solid ${d.vencido ? 'rgba(255,61,87,0.15)' : 'rgba(64,196,255,0.1)'}`,
+                  }}>
+                    <div>
+                      <span style={{ fontSize: 11, color: tema.textSecondary }}>Destete #{i + 1}</span>
+                      {d.totalCrias > 0 && <span style={{ fontSize: 10, color: tema.textMuted, marginLeft: 8 }}>{d.totalCrias} crías</span>}
                     </div>
-                    <div style={{ fontSize: 10, color: tema.textMuted }}>{formatFecha(d.fechaDestete)}</div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 11, color: d.vencido ? '#ff6b80' : '#40c4ff', fontFamily: 'monospace' }}>
+                        {d.vencido ? 'Vencido' : `${d.diasRestantes}d`}
+                      </div>
+                      <div style={{ fontSize: 10, color: tema.textMuted }}>{formatFecha(d.fechaDestete)}</div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              }
             </div>
           </div>
 
-          {/* KPI de producción estimada */}
-          <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+          {/* KPIs de producción en horizonte seleccionado */}
+          {(() => {
+            const hData = proyeccionAvanzada.horizontes[tabHorizonte]
+            return (
+              <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+                {[
+                  { label: 'Partos totales', valor: hData.partos.total, color: '#00e676' },
+                  { label: 'Crías estimadas', valor: hData.crias.total, color: '#40c4ff' },
+                  { label: 'Jaulas nuevas', valor: hData.jaulas.nuevas, color: '#a78bfa' },
+                  { label: 'Prom. camada hist.', valor: proyeccionAvanzada.patrones.promCrias, color: '#ffd740' },
+                ].map(({ label, valor, color }) => (
+                  <div key={label} style={{ textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '10px' }}>
+                    <div style={{ fontSize: 20, fontWeight: 800, color, lineHeight: 1 }}>{valor}</div>
+                    <div style={{ fontSize: 10, color: tema.textMuted, marginTop: 3 }}>{label}</div>
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
+        </div>
+      </div>
+
+      {/* ── ¿PUEDE LA COLONIA SOSTENER PRODUCCIÓN? ──────────────────────────── */}
+      <div style={{
+        background: tema.bgCard,
+        border: `1px solid ${sostenibilidad.nivel === 'critico' ? 'rgba(255,61,87,0.25)' : sostenibilidad.nivel === 'vigilar' ? 'rgba(255,179,0,0.2)' : 'rgba(0,230,118,0.15)'}`,
+        borderRadius: 16, padding: '18px 20px',
+      }}>
+        <SeccionTitulo
+          icono={<Target size={16} color={sostenibilidad.nivel === 'critico' ? '#ff6b80' : sostenibilidad.nivel === 'vigilar' ? '#ffb300' : '#00e676'} />}
+          titulo="¿Puede la colonia sostener producción?"
+          subtitulo="Análisis integrado: genética · renovación · saturación · mínimos"
+        />
+
+        {/* Conclusión principal */}
+        <div style={{
+          borderRadius: 12, padding: '14px 16px', marginBottom: 14,
+          background: sostenibilidad.nivel === 'critico' ? 'rgba(255,61,87,0.08)' : sostenibilidad.nivel === 'vigilar' ? 'rgba(255,179,0,0.08)' : 'rgba(0,230,118,0.06)',
+          border: `1px solid ${sostenibilidad.nivel === 'critico' ? 'rgba(255,61,87,0.25)' : sostenibilidad.nivel === 'vigilar' ? 'rgba(255,179,0,0.2)' : 'rgba(0,230,118,0.2)'}`,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 22 }}>
+              {sostenibilidad.nivel === 'critico' ? '🔴' : sostenibilidad.nivel === 'vigilar' ? '🟡' : '🟢'}
+            </span>
+            <span style={{
+              fontSize: 14, fontWeight: 700,
+              color: sostenibilidad.nivel === 'critico' ? '#ff6b80' : sostenibilidad.nivel === 'vigilar' ? '#ffb300' : '#00e676',
+            }}>
+              {sostenibilidad.conclusion}
+            </span>
+          </div>
+        </div>
+
+        {/* KPIs de producción 90d */}
+        {sostenibilidad.produccion90d && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
             {[
-              { label: 'Crías esperadas', valor: proyeccion.estimacion.criasEsperadas, color: '#00e676' },
-              { label: 'De destetes', valor: proyeccion.estimacion.stockDeDestetes, color: '#40c4ff' },
-              { label: 'Prom. camada hist.', valor: proyeccion.estimacion.promedioCamada, color: '#a78bfa' },
+              { label: 'Partos en 90d', valor: sostenibilidad.produccion90d.partos, color: '#00e676' },
+              { label: 'Crías en 90d', valor: sostenibilidad.produccion90d.crias, color: '#40c4ff' },
+              { label: 'Jaulas proy. 90d', valor: sostenibilidad.produccion90d.jaulas, color: '#a78bfa' },
             ].map(({ label, valor, color }) => (
               <div key={label} style={{ textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '10px' }}>
                 <div style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1 }}>{valor}</div>
@@ -901,42 +1104,184 @@ export default function PlanificacionColonia() {
               </div>
             ))}
           </div>
-        </div>
+        )}
+
+        {/* Riesgos detectados */}
+        {sostenibilidad.riesgos.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {sostenibilidad.riesgos.map((r, i) => (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'flex-start', gap: 8,
+                fontSize: 12, color: r.nivel === 'critico' ? '#ff6b80' : r.nivel === 'advertencia' ? '#ffb300' : tema.textMuted,
+                background: r.nivel === 'critico' ? 'rgba(255,61,87,0.06)' : r.nivel === 'advertencia' ? 'rgba(255,179,0,0.06)' : 'rgba(255,255,255,0.02)',
+                borderRadius: 8, padding: '6px 10px',
+              }}>
+                <span>{r.nivel === 'critico' ? '✕' : r.nivel === 'advertencia' ? '⚠' : 'ℹ'}</span>
+                <span>{r.mensaje}</span>
+                <Chip color={r.nivel === 'critico' ? '#ff6b80' : r.nivel === 'advertencia' ? '#ffb300' : '#4a5f7a'}>
+                  {r.horizonte}d
+                </Chip>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {sostenibilidad.riesgos.length === 0 && (
+          <div style={{ fontSize: 12, color: tema.textMuted, textAlign: 'center', padding: '6px 0' }}>
+            Sin riesgos detectados en los próximos 180 días
+          </div>
+        )}
       </div>
 
-      {/* ── ÍNDICE GENÉTICO ──────────────────────────────────────────────────── */}
+      {/* ── MOTOR "¿QUÉ HACER HOY?" ─────────────────────────────────────────── */}
+      {accionesHoy.length > 0 && (
+        <div style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}`, borderRadius: 16, padding: '18px 20px' }}>
+          <SeccionTitulo
+            icono={<Zap size={16} color="#ffd740" />}
+            titulo="¿Qué hacer hoy?"
+            subtitulo="Acciones concretas para evitar déficits futuros — ordenadas por urgencia"
+          />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {accionesHoy.map((accion, i) => {
+              const colorMapa = { 0: '#ff6b80', 1: '#ff9100', 2: '#ffb300', 3: '#ffd740', 4: '#00e676' }
+              const color = colorMapa[accion.prioridad] ?? '#c9d4e0'
+              return (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 12,
+                  background: `${color}08`, border: `1px solid ${color}25`,
+                  borderRadius: 12, padding: '12px 14px',
+                }}>
+                  <div style={{ fontSize: 18, flexShrink: 0 }}>{accion.icono}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color, marginBottom: 3 }}>{accion.titulo}</div>
+                    <div style={{ fontSize: 12, color: tema.textSecondary }}>{accion.descripcion}</div>
+                  </div>
+                  <Chip color={color}>
+                    {accion.prioridad === 0 ? 'Urgente' : accion.prioridad === 1 ? 'Esta semana' : accion.prioridad === 2 ? 'Próximamente' : accion.prioridad === 3 ? 'Preventivo' : 'Info'}
+                  </Chip>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── SUGERENCIAS AUTOMÁTICAS DE PROMOCIÓN ────────────────────────────── */}
+      {sugerenciasPromocion.length > 0 && (
+        <div style={{ background: tema.bgCard, border: '1px solid rgba(167,139,250,0.2)', borderRadius: 16, padding: '18px 20px' }}>
+          <SeccionTitulo
+            icono={<TrendingUp size={16} color="#a78bfa" />}
+            titulo="Sugerencias de promoción automática"
+            subtitulo="Candidatos del stock para cubrir déficits proyectados — ordenados por urgencia"
+          />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {sugerenciasPromocion.map((s, i) => {
+              const urgColor = s.urgencia === 'urgente' ? '#ff6b80' : s.urgencia === 'importante' ? '#ffb300' : '#a78bfa'
+              return (
+                <div key={i} style={{
+                  background: `${urgColor}06`, border: `1px solid ${urgColor}25`,
+                  borderRadius: 12, padding: '14px 16px',
+                }}>
+                  {/* Header */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: urgColor, marginBottom: 2 }}>
+                        {s.problema}
+                      </div>
+                      <div style={{ fontSize: 12, color: tema.textSecondary }}>{s.solucion}</div>
+                    </div>
+                    <Chip color={urgColor}>
+                      {s.urgencia === 'urgente' ? '🔴 Urgente' : s.urgencia === 'importante' ? '🟠 Importante' : '🔵 Preventivo'}
+                    </Chip>
+                  </div>
+
+                  {/* Impacto */}
+                  <div style={{
+                    background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.2)',
+                    borderRadius: 8, padding: '6px 10px', marginBottom: 8,
+                    fontSize: 12, fontWeight: 600, color: '#00e676',
+                  }}>
+                    Impacto: {s.impacto}
+                  </div>
+
+                  {/* Criterios y métricas */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    {/* Métricas del candidato */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {[
+                        { label: 'Score', valor: s.candidato.priorityScore + '/100', color: '#00e676' },
+                        { label: 'F padres', valor: s.candidato.fPorcentaje, color: colorNivelF(s.candidato.nivelF) },
+                        { label: 'Fam. score', valor: s.candidato.scoreFamiliar + '/10', color: '#40c4ff' },
+                        { label: s.listo ? 'Listo ahora' : `Listo en ${s.enDias}d`, valor: '', color: s.listo ? '#00e676' : '#ffb300' },
+                      ].map(({ label, valor, color }) => (
+                        <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+                          <span style={{ color: tema.textMuted }}>{label}</span>
+                          {valor && <span style={{ color, fontWeight: 600 }}>{valor}</span>}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Criterios de selección */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <div style={{ fontSize: 10, color: tema.textMuted, fontWeight: 600, marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        Por qué este candidato
+                      </div>
+                      {s.criterios.map((c, j) => (
+                        <div key={j} style={{ fontSize: 11, color: tema.textSecondary }}>✓ {c}</div>
+                      ))}
+                      <div style={{ fontSize: 11, color: tema.textMuted, marginTop: 4 }}>
+                        Padres: {s.padres.madre} × {s.padres.padre}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── ÍNDICE GENÉTICO (enriquecido con déficit + proyección) ─────────── */}
       <div style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}`, borderRadius: 16, padding: '18px 20px' }}>
         <SeccionTitulo
           icono={<Dna size={16} color="#a78bfa" />}
           titulo="Índice de renovación genética"
-          subtitulo="Diversidad, consanguinidad y tendencia en la colonia activa"
+          subtitulo="Consanguinidad · Tendencia · Déficit reproductivo · Reemplazos disponibles · Riesgo futuro"
         />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-          <GaugeScore score={indiceGenetico.score} size={90} />
+          <GaugeScore score={indiceGeneticoEnriquecido.score} size={90} />
 
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <span style={{ fontSize: 15, fontWeight: 700, color: indiceGenetico.color }}>{indiceGenetico.nivel}</span>
-              {indiceGenetico.tendencia !== 'estable' && (
-                <Chip color={indiceGenetico.tendencia === 'mejorando' ? '#00e676' : '#ff6b80'}>
-                  {indiceGenetico.tendencia === 'mejorando' ? '↑ Mejorando' : '↓ Deteriorando'}
+              <span style={{ fontSize: 15, fontWeight: 700, color: indiceGeneticoEnriquecido.color }}>{indiceGeneticoEnriquecido.nivel}</span>
+              {indiceGeneticoEnriquecido.tendencia !== 'estable' && (
+                <Chip color={indiceGeneticoEnriquecido.tendencia === 'mejorando' ? '#00e676' : '#ff6b80'}>
+                  {indiceGeneticoEnriquecido.tendencia === 'mejorando' ? '↑ Mejorando' : '↓ Deteriorando'}
                 </Chip>
               )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
               <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 8, padding: '8px 10px' }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#a78bfa' }}>{indiceGenetico.fPorcentaje}</div>
-                <div style={{ fontSize: 10, color: tema.textMuted }}>F promedio reproductores</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#a78bfa' }}>{indiceGeneticoEnriquecido.fPorcentaje}</div>
+                <div style={{ fontSize: 9, color: tema.textMuted }}>F promedio</div>
               </div>
               <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 8, padding: '8px 10px' }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#40c4ff' }}>{indiceGenetico.animalesConPadres}/{indiceGenetico.totalReproductores}</div>
-                <div style={{ fontSize: 10, color: tema.textMuted }}>con genealogía completa</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#40c4ff' }}>
+                  {indiceGeneticoEnriquecido.animalesConPadres}/{indiceGeneticoEnriquecido.totalReproductores}
+                </div>
+                <div style={{ fontSize: 9, color: tema.textMuted }}>con genealogía</div>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 8, padding: '8px 10px' }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: candidatos.filter(c => c.recomendado && c.tiempoHastaUtilidad === 0).length > 0 ? '#00e676' : '#ffb300' }}>
+                  {candidatos.filter(c => c.recomendado && c.tiempoHastaUtilidad === 0).length}
+                </div>
+                <div style={{ fontSize: 9, color: tema.textMuted }}>reemplazos listos</div>
               </div>
             </div>
 
-            {indiceGenetico.advertencias.map((adv, i) => (
+            {indiceGeneticoEnriquecido.advertencias.map((adv, i) => (
               <div key={i} style={{ fontSize: 11, color: '#ffb300', marginBottom: 4 }}>⚠ {adv}</div>
             ))}
           </div>

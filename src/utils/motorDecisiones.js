@@ -1444,3 +1444,436 @@ export function calcularMotorRenovacionUnificado(
     todasResolubles: accionesRecomendadas.length > 0 && accionesRecomendadas.every(a => a.resolucionPosible),
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 16 — PROYECCIÓN AVANZADA (patrón reproductivo + simulación completa)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Patrón de apareamiento por defecto: 1 nueva pareja cada 21 días.
+ * Configurable por el usuario desde PlanificacionColonia.
+ */
+export const PATRON_APAREAMIENTO_DEFAULT = { parejasCada: 21 }
+
+/**
+ * Simula la colonia en 4 horizontes (30/60/90/180d) usando:
+ *   - Apareamientos activos (fecha_copula sin fecha_nacimiento)
+ *   - Patrón histórico/configurado (1 pareja libre cada X días)
+ *   - Partos, destetes, supervivencia y mortalidad históricos
+ *   - Reproductores que alcanzan el límite de edad (270d)
+ *   - Candidatos en stock que alcanzan madurez en el horizonte
+ *   - Saturación de jaulas estimada (~10 crías/jaula)
+ *
+ * @param {object} configuracion - { parejasCada: number } (default PATRON_APAREAMIENTO_DEFAULT)
+ * @returns {{ horizontes: object, patrones: object }}
+ */
+export function calcularProyeccionAvanzada(
+  animales, camadas, jaulas, sacrificios, entregas, bio, bioterioId,
+  configuracion = {}
+) {
+  const { parejasCada = 21 } = { ...PATRON_APAREAMIENTO_DEFAULT, ...configuracion }
+  const hoyDate = new Date()
+  hoyDate.setHours(0, 0, 0, 0)
+
+  const GESTACION = bio?.GESTACION_DIAS ?? 21
+  const MADUREZ   = bio?.MADUREZ_DIAS   ?? 56
+  const LIMITE    = 270
+
+  const estadosActivos = ['activo', 'en_apareamiento', 'en_cria']
+  const minimos = getMinimosCriticos(bioterioId)
+
+  // Historial productivo
+  const camadasBio = camadas.filter(c => c.bioterio_id === bioterioId)
+  const exitosas   = camadasBio.filter(c => !c.failure_flag && c.total_crias > 0)
+  const fallidas   = camadasBio.filter(c => c.failure_flag)
+
+  const promCrias = exitosas.length > 0
+    ? exitosas.reduce((a, c) => a + (c.total_crias || 0), 0) / exitosas.length
+    : (bioterioId === 'ratas' ? 10 : 8)
+
+  const conDestete = exitosas.filter(c => c.fecha_destete && (c.total_destetados ?? 0) > 0)
+  const tasaSuperv = conDestete.length > 0
+    ? conDestete.reduce((a, c) => a + c.total_destetados / c.total_crias, 0) / conDestete.length
+    : 0.85
+
+  const tasaFallo = camadasBio.length > 0 ? fallidas.length / camadasBio.length : 0.15
+
+  // Reproductores actuales
+  const repros         = animales.filter(a => a.bioterio_id === bioterioId && estadosActivos.includes(a.estado))
+  const machosActivos  = repros.filter(a => a.sexo === 'macho'  && !a.exportado_hibridos)
+  const hembrasActivas = repros.filter(a => a.sexo === 'hembra' && !a.exportado_hibridos)
+  const hembrasLibres    = hembrasActivas.filter(a => a.estado === 'activo')
+  const hembrasApareadas = hembrasActivas.filter(a => a.estado === 'en_apareamiento')
+  const hembrasEnCria    = hembrasActivas.filter(a => a.estado === 'en_cria')
+  const parejasLibres    = Math.min(machosActivos.length, hembrasLibres.length)
+
+  const apareamientosActivos = camadasBio.filter(c => c.fecha_copula && !c.fecha_nacimiento && !c.failure_flag)
+  const enLactancia          = camadasBio.filter(c => c.fecha_nacimiento && !c.fecha_destete && !c.failure_flag)
+
+  const sacrPorCamada = {}
+  for (const s of sacrificios) {
+    if (s.camada_id) sacrPorCamada[s.camada_id] = (sacrPorCamada[s.camada_id] || 0) + (s.cantidad || 0)
+  }
+  const entrPorCamada = {}
+  for (const e of entregas) {
+    if (e.camada_id) entrPorCamada[e.camada_id] = (entrPorCamada[e.camada_id] || 0) + (e.cantidad || 0)
+  }
+
+  const jaulasBio      = jaulas.filter(j => { const c = camadas.find(cc => cc.id === j.camada_id); return c && c.bioterio_id === bioterioId })
+  const jaulasActuales = jaulasBio.length
+
+  const resultados = {}
+
+  for (const h of [30, 60, 90, 180]) {
+    const fechaFin = new Date(hoyDate)
+    fechaFin.setDate(fechaFin.getDate() + h)
+
+    // Partos de apareamientos activos ya en curso
+    const partosDeActivos = apareamientosActivos.filter(c => {
+      const rango = calcularRangoParto(c.fecha_copula, bio)
+      if (!rango) return false
+      const dias = difDias(hoyDate, rango.partoProbable)
+      return dias >= 0 && dias <= h
+    }).length
+
+    // Partos del patrón: cada par libre puede apuntarse en día 0 → parto en GESTACION,
+    // luego en día parejasCada → parto en parejasCada+GESTACION, etc.
+    let partosPatron = 0
+    if (parejasLibres > 0 && h >= GESTACION) {
+      const ciclosPorPar = Math.floor((h - GESTACION) / parejasCada) + 1
+      partosPatron = Math.round(parejasLibres * ciclosPorPar * (1 - tasaFallo))
+    }
+
+    const totalPartos   = partosDeActivos + partosPatron
+    const criasDePartos = Math.round(totalPartos * promCrias * tasaSuperv)
+
+    // Crías de destetes pendientes en el horizonte
+    const destesPend = enLactancia.filter(c => {
+      const fd = calcularDestete(c.fecha_nacimiento, bio)
+      if (!fd) return false
+      const dias = difDias(hoyDate, fd)
+      return dias >= 0 && dias <= h
+    })
+    const criasDeDestetes = Math.round(
+      destesPend.reduce((acc, c) => acc + ((c.total_crias || promCrias) * tasaSuperv), 0)
+    )
+    const totalCrias = criasDePartos + criasDeDestetes
+
+    // Jaulas nuevas (~10 crías/jaula)
+    const jaulasNuevas  = Math.ceil(totalCrias / 10)
+    const jaulasProyect = jaulasActuales + jaulasNuevas
+    const saturacion    = jaulasProyect > 30 ? 'alta' : jaulasProyect > 20 ? 'media' : 'baja'
+
+    // Bajas por edad límite
+    const machosBajas = machosActivos.filter(m => {
+      if (!m.fecha_nacimiento) return false
+      return difDias(m.fecha_nacimiento, fechaFin) >= LIMITE && difDias(m.fecha_nacimiento, hoyDate) < LIMITE
+    }).length
+    const hembrasBajas = hembrasActivas.filter(hx => {
+      if (!hx.fecha_nacimiento) return false
+      return difDias(hx.fecha_nacimiento, fechaFin) >= LIMITE && difDias(hx.fecha_nacimiento, hoyDate) < LIMITE
+    }).length
+
+    // Candidatos del stock actual que alcanzan madurez dentro del horizonte
+    let candidatosMaduran = 0
+    for (const j of jaulasBio) {
+      const c = camadas.find(cc => cc.id === j.camada_id)
+      if (!c || !c.fecha_nacimiento || c.failure_flag) continue
+      const diasVida = difDias(c.fecha_nacimiento, hoyDate)
+      const faltaParaMadurez = MADUREZ - diasVida
+      if (faltaParaMadurez > 0 && faltaParaMadurez <= h) {
+        const vivos = (j.total || 0) - (sacrPorCamada[j.camada_id] || 0) - (entrPorCamada[j.camada_id] || 0)
+        if (vivos > 0) candidatosMaduran++
+      }
+    }
+
+    const machosFuturos  = Math.max(0, machosActivos.length  - machosBajas)
+    const hembrasFuturas = Math.max(0, hembrasActivas.length - hembrasBajas)
+    const deficitMachos  = Math.max(0, (minimos.machos_colonia  || 0) - machosFuturos)
+    const deficitHembras = Math.max(0, (minimos.hembras_colonia || 0) - hembrasFuturas)
+    const hayDeficit     = deficitMachos > 0 || deficitHembras > 0
+    const puedeCubrir    = hayDeficit && candidatosMaduran >= (deficitMachos + deficitHembras)
+
+    resultados[h] = {
+      diasHorizonte: h,
+      partos:  { total: totalPartos, deActivos: partosDeActivos, dePatron: partosPatron },
+      crias:   { dePartos: criasDePartos, deDestetes: criasDeDestetes, total: totalCrias },
+      jaulas:  { actuales: jaulasActuales, nuevas: jaulasNuevas, proyectadas: jaulasProyect, saturacion },
+      reproductores: { machosFuturos, hembrasFuturas, machosBajas, hembrasBajas, candidatosMaduran },
+      deficit: {
+        machos: deficitMachos, hembras: deficitHembras,
+        total: deficitMachos + deficitHembras,
+        hayDeficit, puedeCubrirConStock: puedeCubrir,
+      },
+      ok: !hayDeficit,
+    }
+  }
+
+  return {
+    horizontes: resultados,
+    patrones: {
+      parejasCada,
+      promCrias:         Math.round(promCrias * 10) / 10,
+      tasaSupervivencia: Math.round(tasaSuperv * 100),
+      tasaFallo:         Math.round(tasaFallo * 100),
+      parejasLibres, hembrasLibres: hembrasLibres.length,
+      hembrasApareadas: hembrasApareadas.length, hembrasEnCria: hembrasEnCria.length,
+      machosActivos: machosActivos.length,
+    },
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 17 — SUGERENCIAS AUTOMÁTICAS DE PROMOCIÓN
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Dado el resultado de calcularProyeccionAvanzada, genera sugerencias concretas
+ * de qué animales promover de stock a reproductores para cubrir déficits proyectados.
+ *
+ * Criterios de selección (peso en priorityScore):
+ *   1. Edad más cercana a madurez reproductiva mínima
+ *   2. Mejor genética (F de padres más bajo)
+ *   3. Mejor score familiar
+ *   4. Sin líneas problemáticas
+ *   5. Mayor disponibilidad de sexo correcto en la jaula
+ *
+ * @returns {Array} Sugerencias ordenadas por urgencia (urgente → importante → preventivo)
+ */
+export function sugerirPromocionesAutomaticas(
+  proyeccionAvanzada, candidatos, animales, camadas, bio, bioterioId
+) {
+  const minimos     = getMinimosCriticos(bioterioId)
+  const sugerencias = []
+  const vistosJaula = new Set()
+
+  for (const h of [30, 60, 90, 180]) {
+    const data = proyeccionAvanzada.horizontes[h]
+    if (!data?.deficit?.hayDeficit) continue
+
+    const urgencia = h <= 30 ? 'urgente' : h <= 60 ? 'importante' : 'preventivo'
+    const defsAResolver = []
+    if (data.deficit.machos  > 0) defsAResolver.push({ sexo: 'macho',  cantidad: data.deficit.machos  })
+    if (data.deficit.hembras > 0) defsAResolver.push({ sexo: 'hembra', cantidad: data.deficit.hembras })
+
+    for (const { sexo, cantidad } of defsAResolver) {
+      const aptos = candidatos
+        .filter(c => {
+          const tieneSexo  = sexo === 'macho' ? (c.machos  || 0) > 0 : (c.hembras || 0) > 0
+          const disponible = c.tiempoHastaUtilidad <= h
+          return tieneSexo && disponible && !vistosJaula.has(c.jaulaId)
+        })
+        .slice(0, cantidad)
+
+      for (const cand of aptos) {
+        vistosJaula.add(cand.jaulaId)
+        const camada     = camadas.find(c => c.id === cand.camadaId)
+        const madre      = animales.find(a => a.id === camada?.id_madre)
+        const padre      = animales.find(a => a.id === camada?.id_padre)
+        const cantSexo   = sexo === 'macho' ? cand.machos : cand.hembras
+        const minimoSexo = sexo === 'macho' ? minimos.machos_colonia : minimos.hembras_colonia
+        const actualFut  = sexo === 'macho' ? data.reproductores.machosFuturos : data.reproductores.hembrasFuturas
+
+        sugerencias.push({
+          horizonte: h, tipo: `promover_${sexo}`, urgencia,
+          problema:  `Déficit de ${cantidad} ${sexo}(s) proyectado en ${h}d`,
+          solucion:  cand.tiempoHastaUtilidad === 0
+            ? `Promover ${cantSexo} ${sexo}(s) · ${cand.diasVida}d de vida — listo ahora`
+            : `Promover ${cantSexo} ${sexo}(s) · ${cand.diasVida}d de vida — listo en ${cand.tiempoHastaUtilidad}d`,
+          impacto:   `${sexo === 'macho' ? '♂' : '♀'} ${actualFut} → ${actualFut + cantSexo} (mínimo: ${minimoSexo})`,
+          candidato: cand, listo: cand.tiempoHastaUtilidad === 0, enDias: cand.tiempoHastaUtilidad,
+          padres:    { madre: madre?.codigo ?? '—', padre: padre?.codigo ?? '—' },
+          criterios: [
+            `${cand.diasVida}d de vida`,
+            cand.nivelF === 'bajo' ? 'Genética saludable (F bajo)' : `F padres: ${cand.fPorcentaje}`,
+            `Score familiar: ${cand.scoreFamiliar}/10`,
+            `Prioridad: ${cand.priorityScore}/100`,
+            !cand.advertencia ? 'Sin líneas problemáticas' : null,
+          ].filter(Boolean),
+        })
+      }
+    }
+  }
+
+  // Dedup: mismo candidato → solo el horizonte más urgente
+  const dedup = new Map()
+  for (const s of sugerencias.sort((a, b) => a.horizonte - b.horizonte)) {
+    const key = `${s.candidato.jaulaId}-${s.tipo}`
+    if (!dedup.has(key)) dedup.set(key, s)
+  }
+
+  const orden = { urgente: 0, importante: 1, preventivo: 2 }
+  return [...dedup.values()].sort((a, b) => orden[a.urgencia] - orden[b.urgencia])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 18 — ¿PUEDE LA COLONIA SOSTENER PRODUCCIÓN?
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Evalúa si la colonia puede sostener producción futura considerando
+ * déficits proyectados, disponibilidad de reemplazos y saturación.
+ *
+ * @returns {{ puede: bool, nivel: string, conclusion: string, riesgos: Array, produccion90d: object }}
+ */
+export function evaluarSostenibilidadColonia(proyeccionAvanzada, stockReal, bioterioId) {
+  const riesgos     = []
+  let puedeProducir = true
+
+  for (const h of [30, 60, 90, 180]) {
+    const data = proyeccionAvanzada.horizontes[h]
+    if (!data) continue
+
+    if (data.deficit.hayDeficit && !data.deficit.puedeCubrirConStock) {
+      puedeProducir = false
+      const detalle = [
+        data.deficit.machos  > 0 ? `${data.deficit.machos} macho(s)`  : null,
+        data.deficit.hembras > 0 ? `${data.deficit.hembras} hembra(s)` : null,
+      ].filter(Boolean).join(' y ')
+      riesgos.push({
+        horizonte: h,
+        nivel:     h <= 60 ? 'critico' : 'advertencia',
+        mensaje:   `Déficit de ${detalle} en ${h}d sin reemplazos disponibles`,
+      })
+    } else if (data.deficit.hayDeficit) {
+      riesgos.push({
+        horizonte: h, nivel: 'advertencia',
+        mensaje:   `Déficit en ${h}d — hay candidatos en stock para promover`,
+      })
+    }
+
+    if (data.jaulas.saturacion === 'alta') {
+      riesgos.push({
+        horizonte: h, nivel: 'info',
+        mensaje:   `Saturación alta proyectada en ${h}d (~${data.jaulas.proyectadas} jaulas estimadas)`,
+      })
+    }
+  }
+
+  const datos90        = proyeccionAvanzada.horizontes[90]
+  const produccionBaja = datos90 && datos90.partos.total < 2
+
+  const conclusion = !puedeProducir
+    ? 'La colonia NO puede sostener producción sin intervención urgente'
+    : riesgos.some(r => r.nivel === 'advertencia')
+    ? 'La colonia puede sostener producción con intervenciones preventivas'
+    : produccionBaja
+    ? 'Producción proyectada baja — revisar apareamientos activos'
+    : 'La colonia puede sostener producción en todos los horizontes analizados'
+
+  const nivel = !puedeProducir ? 'critico'
+    : riesgos.some(r => r.nivel === 'advertencia') ? 'vigilar'
+    : 'ok'
+
+  return {
+    puede: puedeProducir, nivel, conclusion, riesgos,
+    produccion90d: datos90
+      ? { partos: datos90.partos.total, crias: datos90.crias.total, jaulas: datos90.jaulas.proyectadas }
+      : null,
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 19 — MOTOR "¿QUÉ HACER HOY?" (planificación)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Genera acciones concretas priorizadas para evitar déficits futuros.
+ * Prioridad 0 = urgente / 1 = esta semana / 2 = próximas semanas / 3 = preventivo / 4 = info
+ *
+ * @returns {Array<{ prioridad, tipo, icono, titulo, descripcion, accion }>}
+ */
+export function generarAccionesHoyPlanificacion(
+  proyeccionAvanzada, sugerencias, minimosCfg, stockReal, bioterioId
+) {
+  const acciones   = []
+  const { reproductores } = stockReal
+  const hoyDate = new Date()
+  hoyDate.setHours(0, 0, 0, 0)
+
+  const machosActual  = reproductores.machos.filter(m => !m.exportado_hibridos).length
+  const hembrasActual = reproductores.hembras.filter(h => !h.exportado_hibridos).length
+
+  // 0. Déficit ACTUAL → acción inmediata
+  if (machosActual < (minimosCfg.machos_colonia || 0)) {
+    const def      = minimosCfg.machos_colonia - machosActual
+    const hayPromo = sugerencias.some(s => s.tipo === 'promover_macho' && s.listo)
+    acciones.push({
+      prioridad: 0, tipo: 'deficit_actual', icono: '🔴',
+      titulo:    `Promover ${def} macho(s) hoy`,
+      descripcion: hayPromo
+        ? 'Hay candidatos listos en stock — promover inmediatamente para cubrir déficit actual'
+        : 'Sin candidatos listos — iniciar apareamiento de emergencia',
+      accion: hayPromo ? 'promover_stock' : 'iniciar_apareamiento',
+    })
+  }
+
+  if (hembrasActual < (minimosCfg.hembras_colonia || 0)) {
+    const def      = minimosCfg.hembras_colonia - hembrasActual
+    const hayPromo = sugerencias.some(s => s.tipo === 'promover_hembra' && s.listo)
+    acciones.push({
+      prioridad: 0, tipo: 'deficit_actual', icono: '🔴',
+      titulo:    `Promover ${def} hembra(s) hoy`,
+      descripcion: hayPromo
+        ? 'Hay candidatas listas en stock — promover para cubrir déficit actual'
+        : 'Sin candidatas listas — priorizar apareamientos',
+      accion: hayPromo ? 'promover_stock' : 'iniciar_apareamiento',
+    })
+  }
+
+  // 1. Déficit en 30-60d → reservar candidatos esta semana
+  const data30 = proyeccionAvanzada.horizontes[30]
+  const data60 = proyeccionAvanzada.horizontes[60]
+  if (data30?.deficit.hayDeficit || data60?.deficit.hayDeficit) {
+    const sugsPendientes = sugerencias.filter(
+      s => (s.urgencia === 'urgente' || s.urgencia === 'importante') && !s.listo
+    )
+    if (sugsPendientes.length > 0) {
+      acciones.push({
+        prioridad: 1, tipo: 'deficit_proximo', icono: '🟠',
+        titulo:    `Reservar ${sugsPendientes.length} candidato(s) en stock`,
+        descripcion: 'Madurarán pronto — reservarlos antes de que sean entregados o sacrificados (déficit proyectado en 30-60d)',
+        accion: 'reservar_candidatos',
+      })
+    }
+  }
+
+  // 2. Hembras libres sin aparear → oportunidad de apareamiento
+  const libres    = reproductores.activasLibres?.length ?? 0
+  const apareadas = reproductores.apareadas?.length     ?? 0
+  if (libres > 0 && machosActual > 0 && apareadas === 0) {
+    acciones.push({
+      prioridad: 2, tipo: 'apareamiento_posible', icono: '🟡',
+      titulo:    `Iniciar apareamiento (${libres} hembra${libres > 1 ? 's' : ''} libre${libres > 1 ? 's' : ''})`,
+      descripcion: 'Hay hembras activas sin aparear — iniciar para generar nueva camada y mantener producción',
+      accion: 'iniciar_apareamiento',
+    })
+  }
+
+  // 3. Reproductores próximos al límite → planificar reemplazo
+  const enAlerta = [
+    ...reproductores.machos.filter(m => !m.exportado_hibridos),
+    ...reproductores.hembras.filter(h => !h.exportado_hibridos),
+  ].filter(a => a.fecha_nacimiento && difDias(a.fecha_nacimiento, hoyDate) >= 240)
+
+  if (enAlerta.length > 0) {
+    acciones.push({
+      prioridad: 3, tipo: 'reemplazo_reproductores', icono: '🟡',
+      titulo:    `Planificar reemplazo (${enAlerta.length} reproductor${enAlerta.length > 1 ? 'es' : ''} en alerta)`,
+      descripcion: 'Alcanzarán el límite de 270d próximamente — reservar candidatos para renovación antes de perder capacidad reproductiva',
+      accion: 'reservar_renovacion',
+    })
+  }
+
+  // 4. Sin acciones urgentes → colonia estable
+  if (Object.values(proyeccionAvanzada.horizontes).every(d => d.ok) && acciones.length === 0) {
+    acciones.push({
+      prioridad: 4, tipo: 'colonia_estable', icono: '🟢',
+      titulo:    'Colonia estable',
+      descripcion: 'Sin déficits proyectados en ningún horizonte. Continuar monitoreo regular.',
+      accion: null,
+    })
+  }
+
+  return acciones.sort((a, b) => a.prioridad - b.prioridad)
+}
