@@ -19,6 +19,7 @@ import {
   liberarReserva,
   getReservas,
   esReservado,
+  calcularMotorRenovacionUnificado,
 } from '../utils/motorDecisiones'
 import { formatFecha, difDias } from '../utils/calculos'
 import {
@@ -233,13 +234,126 @@ function TarjetaCandidato({ candidato, index, onReservar, onLiberar, reservado, 
   )
 }
 
-// ── Sección simulador de impacto ────────────────────────────────────────────
+// ── Motor de renovación unificado — panel de acciones ───────────────────────
 
-function SimuladorImpacto({ animales, stockReal, bioterioId }) {
+function PanelMotorUnificado({ motorUnificado }) {
+  const { tema } = useTheme()
+
+  if (motorUnificado.accionesRecomendadas.length === 0) {
+    return (
+      <div style={{ background: tema.bgCard, border: '1px solid rgba(0,230,118,0.15)', borderRadius: 16, padding: '18px 20px' }}>
+        <SeccionTitulo icono={<Target size={16} color="#00e676" />} titulo="Motor de renovación" subtitulo="Déficit · Reemplazo · Candidato · Impacto" />
+        <div style={{ textAlign: 'center', padding: '16px 0' }}>
+          <div style={{ fontSize: 28, marginBottom: 8 }}>✅</div>
+          <div style={{ fontSize: 13, color: '#00e676', fontWeight: 600 }}>Sin acciones urgentes</div>
+          <div style={{ fontSize: 12, color: tema.textMuted, marginTop: 4 }}>La colonia no tiene déficit ni reproductores críticos</div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ background: tema.bgCard, border: `1px solid ${motorUnificado.hayDeficit ? 'rgba(255,61,87,0.2)' : tema.bgCardBorde}`, borderRadius: 16, padding: '18px 20px' }}>
+      <SeccionTitulo
+        icono={<Target size={16} color={motorUnificado.hayDeficit ? '#ff6b80' : '#ffb300'} />}
+        titulo="Motor de renovación"
+        subtitulo="Acciones conectadas: Déficit → Reemplazo → Candidato → Impacto en índice"
+      />
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {motorUnificado.accionesRecomendadas.map((accion, i) => {
+          const colorPrio = accion.prioridad === 0 ? '#ff6b80'
+            : accion.prioridad === 1 ? '#ff9100'
+            : accion.prioridad === 2 ? '#ffb300'
+            : '#40c4ff'
+          const labelPrio = accion.prioridad === 0 ? 'URGENTE'
+            : accion.prioridad === 1 ? 'CRÍTICO'
+            : accion.prioridad === 2 ? 'ALERTA'
+            : 'INFO'
+
+          const sexoLabel = accion.sexo === 'macho' ? '♂' : '♀'
+          const tipoLabel = accion.tipo === 'deficit' ? 'Déficit' : 'Reemplazo'
+
+          return (
+            <div key={i} style={{
+              background: `${colorPrio}08`, border: `1px solid ${colorPrio}28`,
+              borderRadius: 12, padding: '12px 14px',
+            }}>
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Chip color={colorPrio}>{labelPrio}</Chip>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: colorPrio }}>
+                    {sexoLabel} {tipoLabel}
+                    {accion.animalSaliente ? ` — ${accion.animalSaliente.codigo}` : ''}
+                  </span>
+                </div>
+                {accion.resolucionPosible
+                  ? <Chip color="#00e676">✓ Candidato listo</Chip>
+                  : <Chip color="#ff6b80">Sin candidato</Chip>}
+              </div>
+
+              {/* Motivos */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 8 }}>
+                {accion.motivosPrincipales.map((m, j) => (
+                  <div key={j} style={{ fontSize: 11, color: tema.textMuted }}>• {m}</div>
+                ))}
+              </div>
+
+              {/* Flecha candidato → impacto */}
+              {accion.candidato ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, background: 'rgba(0,230,118,0.06)', borderRadius: 8, padding: '6px 10px' }}>
+                  <span style={{ color: '#00e676', fontWeight: 600 }}>→ Promover:</span>
+                  <span style={{ color: tema.textSecondary }}>
+                    {accion.candidato.diasVida}d · {accion.candidato.machos || 0}♂ {accion.candidato.hembras || 0}♀
+                  </span>
+                  {accion.impactoEnIndice && <Chip color="#00e676">{accion.impactoEnIndice}</Chip>}
+                </div>
+              ) : (
+                <div style={{ fontSize: 11, color: '#ffb300', background: 'rgba(255,179,0,0.06)', borderRadius: 8, padding: '6px 10px' }}>
+                  ⏳ Esperando nuevas camadas para cubrir esta posición
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Índice de renovación */}
+      <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 14, borderTop: `1px solid ${tema.bgCardBorde}`, paddingTop: 14 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, color: tema.textMuted, marginBottom: 5 }}>
+            Índice de renovación
+            {motorUnificado.hayDeficit && (
+              <span style={{ color: '#ff6b80', marginLeft: 8 }}>(máx. 80 con déficit activo)</span>
+            )}
+          </div>
+          <BarraProgreso
+            valor={motorUnificado.indiceRenovacion}
+            max={100}
+            color={motorUnificado.hayDeficit ? '#ff6b80' : motorUnificado.indiceRenovacion >= 80 ? '#00e676' : '#ffb300'}
+            height={8}
+          />
+        </div>
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: motorUnificado.hayDeficit ? '#ff6b80' : motorUnificado.indiceRenovacion >= 80 ? '#00e676' : '#ffb300', lineHeight: 1 }}>
+            {motorUnificado.indiceRenovacion}
+          </div>
+          <div style={{ fontSize: 9, color: tema.textMuted }}>/ 100</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Simulador de impacto unificado ──────────────────────────────────────────
+// Corregido: H31 (hembra) NO afecta el conteo de machos.
+// Solo se bloquea la acción si ÉSTA provoca el déficit, no si ya existía.
+
+function SimuladorImpacto({ animales, stockReal, bioterioId, motorUnificado }) {
   const { tema } = useTheme()
   const [animalSeleccionado, setAnimalSeleccionado] = useState('')
   const minimos = getMinimosCriticos(bioterioId)
-  const reservas = getReservas()
 
   const estadosActivos = ['activo', 'en_apareamiento', 'en_cria']
   const reproductores = animales.filter(
@@ -248,34 +362,73 @@ function SimuladorImpacto({ animales, stockReal, bioterioId }) {
 
   const animal = reproductores.find(a => a.id === animalSeleccionado)
 
-  // Calcular impacto simulado
+  // Perfil completo del animal seleccionado (viene del motor unificado)
+  const perfil = animal
+    ? motorUnificado.perfiles.find(p => p.animal.id === animal.id) ?? null
+    : null
+
   const resultado = useMemo(() => {
     if (!animal) return null
 
-    const machosColonia = stockReal.reproductores.machos.filter(m => !m.exportado_hibridos)
+    const machosColonia  = stockReal.reproductores.machos.filter(m => !m.exportado_hibridos)
     const hembrasColonia = stockReal.reproductores.hembras.filter(h => !h.exportado_hibridos)
 
-    const despuesMachos  = animal.sexo === 'macho'  && !animal.exportado_hibridos ? machosColonia.length  - 1 : machosColonia.length
-    const despuesHembras = animal.sexo === 'hembra' && !animal.exportado_hibridos ? hembrasColonia.length - 1 : hembrasColonia.length
+    // Solo el sexo del animal seleccionado cambia — el otro queda igual
+    const despuesMachos  = animal.sexo === 'macho'  && !animal.exportado_hibridos
+      ? machosColonia.length  - 1 : machosColonia.length
+    const despuesHembras = animal.sexo === 'hembra' && !animal.exportado_hibridos
+      ? hembrasColonia.length - 1 : hembrasColonia.length
 
-    const bloqueos = []
-    if (despuesMachos  < minimos.machos_colonia)  bloqueos.push({ critico: true,  razon: `Quedarían ${despuesMachos} machos — mínimo: ${minimos.machos_colonia}` })
-    if (despuesHembras < minimos.hembras_colonia) bloqueos.push({ critico: true,  razon: `Quedarían ${despuesHembras} hembras — mínimo: ${minimos.hembras_colonia}` })
-    if (animal.exportado_hibridos) bloqueos.push({ critico: false, razon: 'Animal reservado para híbridos F1' })
-    if (reservas[animal.id]?.tipo === 'renovacion') bloqueos.push({ critico: false, razon: 'Animal reservado para renovación' })
+    const bloqueos    = []
+    const advertencias = []
+
+    // ── Bloqueo solo si ESTA acción provoca el déficit ────────────────────
+    if (animal.sexo === 'macho' && !animal.exportado_hibridos) {
+      if (machosColonia.length >= minimos.machos_colonia && despuesMachos < minimos.machos_colonia) {
+        bloqueos.push({ critico: true, razon: `Quedarían ${despuesMachos} machos — mínimo: ${minimos.machos_colonia}` })
+      } else if (machosColonia.length < minimos.machos_colonia) {
+        advertencias.push({ razon: `Déficit de machos preexistente (${machosColonia.length}/${minimos.machos_colonia}) — no causado por esta acción` })
+      }
+    }
+    if (animal.sexo === 'hembra' && !animal.exportado_hibridos) {
+      if (hembrasColonia.length >= minimos.hembras_colonia && despuesHembras < minimos.hembras_colonia) {
+        bloqueos.push({ critico: true, razon: `Quedarían ${despuesHembras} hembras — mínimo: ${minimos.hembras_colonia}` })
+      } else if (hembrasColonia.length < minimos.hembras_colonia) {
+        advertencias.push({ razon: `Déficit de hembras preexistente (${hembrasColonia.length}/${minimos.hembras_colonia}) — no causado por esta acción` })
+      }
+    }
+
+    if (animal.exportado_hibridos) {
+      bloqueos.push({ critico: false, razon: 'Reservado para híbridos F1' })
+    }
+
+    const reservas = getReservas()
+    if (reservas[animal.id]?.tipo === 'renovacion') {
+      advertencias.push({ razon: 'Reservado para renovación de la colonia' })
+    }
+
+    // Candidato de reemplazo sugerido por el motor
+    const accionMotor = motorUnificado.accionesRecomendadas.find(
+      a => a.animalSaliente?.id === animal.id
+    )
+    const candidatoReemplazo = accionMotor?.candidato ?? null
 
     return {
       permitir: bloqueos.filter(b => b.critico).length === 0,
-      bloqueos,
+      bloqueos, advertencias,
       antes:   { machos: machosColonia.length,  hembras: hembrasColonia.length },
-      despues: { machos: despuesMachos, hembras: despuesHembras },
+      despues: { machos: despuesMachos,          hembras: despuesHembras },
+      candidatoReemplazo,
     }
-  }, [animal, stockReal, minimos, reservas])
+  }, [animal, stockReal, minimos, motorUnificado])
+
+  const ICONO_TIPO = { edad: '⏳', fertilidad: '🔬', consanguinidad: '🧬', familia: '👨‍👩‍👧', sanidad: '🏥' }
 
   return (
     <div style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}`, borderRadius: 14, padding: '18px 20px' }}>
-      <SeccionTitulo icono={<Zap size={16} color="#ffb300" />} titulo="Simulador de impacto" subtitulo="Verificá el impacto antes de sacrificar o retirar un reproductor" />
+      <SeccionTitulo icono={<Zap size={16} color="#ffb300" />} titulo="Simulador de impacto" subtitulo="Perfil del animal + consecuencias de retirarlo" />
 
+      {/* Selector */}
       <div style={{ marginBottom: 12 }}>
         <label style={{ display: 'block', fontSize: 11, color: tema.textMuted, marginBottom: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           Seleccioná un reproductor
@@ -291,45 +444,94 @@ function SimuladorImpacto({ animales, stockReal, bioterioId }) {
         >
           <option value="">— Elegí un animal —</option>
           <optgroup label="Machos">
-            {reproductores.filter(a => a.sexo === 'macho').map(a => (
-              <option key={a.id} value={a.id}>
-                {a.codigo} — {a.estado} {a.exportado_hibridos ? '[Híbridos]' : ''}
-              </option>
-            ))}
+            {reproductores.filter(a => a.sexo === 'macho').map(a => {
+              const p = motorUnificado.perfiles.find(p => p.animal.id === a.id)
+              const ico = p?.nivelAlerta === 'critico' ? '⚫' : p?.nivelAlerta === 'alerta' ? '🔴' : p?.nivelAlerta === 'info' ? '🟡' : '🟢'
+              return <option key={a.id} value={a.id}>{ico} {a.codigo} — {a.estado}{a.exportado_hibridos ? ' [H]' : ''}</option>
+            })}
           </optgroup>
           <optgroup label="Hembras">
-            {reproductores.filter(a => a.sexo === 'hembra').map(a => (
-              <option key={a.id} value={a.id}>
-                {a.codigo} — {a.estado} {a.exportado_hibridos ? '[Híbridos]' : ''}
-              </option>
-            ))}
+            {reproductores.filter(a => a.sexo === 'hembra').map(a => {
+              const p = motorUnificado.perfiles.find(p => p.animal.id === a.id)
+              const ico = p?.nivelAlerta === 'critico' ? '⚫' : p?.nivelAlerta === 'alerta' ? '🔴' : p?.nivelAlerta === 'info' ? '🟡' : '🟢'
+              return <option key={a.id} value={a.id}>{ico} {a.codigo} — {a.estado}{a.exportado_hibridos ? ' [H]' : ''}</option>
+            })}
           </optgroup>
         </select>
       </div>
 
-      {resultado && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {/* Comparativa ANTES / DESPUÉS */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      {/* Perfil del animal seleccionado */}
+      {perfil && (
+        <div style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${tema.bgCardBorde}`, borderRadius: 10, padding: '12px 14px', marginBottom: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: tema.textMuted, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Perfil del animal
+          </div>
+          {/* Datos clave */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 10 }}>
             {[
-              { label: 'ANTES', data: resultado.antes, color: '#40c4ff' },
-              { label: 'DESPUÉS', data: resultado.despues, color: resultado.permitir ? '#00e676' : '#ff6b80' },
-            ].map(({ label, data, color }) => (
-              <div key={label} style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '10px 12px', border: `1px solid ${color}20` }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color, fontFamily: 'monospace', marginBottom: 6 }}>{label}</div>
-                <div style={{ fontSize: 12, color: tema.textSecondary }}>♂ {data.machos} machos</div>
-                <div style={{ fontSize: 12, color: tema.textSecondary }}>♀ {data.hembras} hembras</div>
+              { label: 'Sexo',   valor: perfil.animal.sexo === 'macho' ? '♂ Macho' : '♀ Hembra', color: perfil.animal.sexo === 'macho' ? '#40c4ff' : '#ce93d8' },
+              { label: 'Edad',   valor: perfil.diasVida ? `${perfil.diasVida}d` : '—',             color: perfil.diasHastaLimite !== null && perfil.diasHastaLimite < 30 ? '#ff6b80' : tema.textPrimary },
+              { label: 'Estado', valor: perfil.animal.estado.replace('_', ' '),                    color: perfil.animal.exportado_hibridos ? '#ffd740' : '#00e676' },
+              { label: 'Rol',    valor: perfil.animal.exportado_hibridos ? 'Híbridos F1' : 'Colonia', color: perfil.animal.exportado_hibridos ? '#ffd740' : tema.textSecondary },
+            ].map(({ label, valor, color }) => (
+              <div key={label} style={{ textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: 8, padding: '6px 4px' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color }}>{valor}</div>
+                <div style={{ fontSize: 9, color: tema.textMuted }}>{label}</div>
               </div>
             ))}
           </div>
+          {/* Motivos */}
+          {perfil.motivos.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {perfil.motivos.map((m, i) => {
+                const color = m.nivel === 'critico' ? '#ff6b80' : m.nivel === 'alerta' ? '#ffb300' : '#40c4ff'
+                return (
+                  <div key={i} style={{ fontSize: 11, color, display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                    <span style={{ flexShrink: 0 }}>{ICONO_TIPO[m.tipo] ?? 'ℹ'}</span>
+                    <span><strong style={{ textTransform: 'capitalize' }}>{m.tipo}:</strong> {m.descripcion}</span>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div style={{ fontSize: 11, color: '#00e676' }}>✓ Sin alertas activas — animal en buen estado</div>
+          )}
+        </div>
+      )}
 
-          {/* Resultado */}
+      {/* Resultado del impacto */}
+      {resultado && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* ANTES / DESPUÉS — solo muestra el sexo afectado como destacado */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {[
+              { label: 'ANTES',   data: resultado.antes,   color: '#40c4ff' },
+              { label: 'DESPUÉS', data: resultado.despues, color: resultado.permitir ? '#00e676' : '#ff6b80' },
+            ].map(({ label, data, color }) => {
+              const esDespues = label === 'DESPUÉS'
+              const cambioMachos  = esDespues && data.machos  !== resultado.antes.machos
+              const cambioHembras = esDespues && data.hembras !== resultado.antes.hembras
+              return (
+                <div key={label} style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '10px 12px', border: `1px solid ${color}22` }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color, fontFamily: 'monospace', marginBottom: 6 }}>{label}</div>
+                  <div style={{ fontSize: 12, color: cambioMachos ? '#ff6b80' : tema.textSecondary, fontWeight: cambioMachos ? 700 : 400 }}>
+                    ♂ {data.machos} machos{cambioMachos ? ' ▼' : ''}
+                  </div>
+                  <div style={{ fontSize: 12, color: cambioHembras ? '#ff6b80' : tema.textSecondary, fontWeight: cambioHembras ? 700 : 400 }}>
+                    ♀ {data.hembras} hembras{cambioHembras ? ' ▼' : ''}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Veredicto */}
           <div style={{
             borderRadius: 10, padding: '10px 14px',
             background: resultado.permitir ? 'rgba(0,230,118,0.06)' : 'rgba(255,61,87,0.08)',
             border: `1px solid ${resultado.permitir ? 'rgba(0,230,118,0.2)' : 'rgba(255,61,87,0.3)'}`,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: resultado.bloqueos.length > 0 ? 8 : 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: (resultado.bloqueos.length + resultado.advertencias.length) > 0 ? 8 : 0 }}>
               {resultado.permitir
                 ? <CheckCircle2 size={15} color="#00e676" />
                 : <XCircle size={15} color="#ff6b80" />}
@@ -342,13 +544,32 @@ function SimuladorImpacto({ animales, stockReal, bioterioId }) {
                 {b.critico ? '✕' : '⚠'} {b.razon}
               </div>
             ))}
+            {resultado.advertencias.map((a, i) => (
+              <div key={i} style={{ fontSize: 11, color: '#40c4ff', marginTop: 4, paddingLeft: 22 }}>
+                ℹ {a.razon}
+              </div>
+            ))}
           </div>
+
+          {/* Candidato de reemplazo sugerido */}
+          {resultado.candidatoReemplazo && (
+            <div style={{ background: 'rgba(0,230,118,0.04)', border: '1px solid rgba(0,230,118,0.15)', borderRadius: 10, padding: '10px 14px' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#00e676', marginBottom: 4 }}>
+                🔄 Candidato de reemplazo disponible
+              </div>
+              <div style={{ fontSize: 11, color: tema.textSecondary }}>
+                Jaula · {resultado.candidatoReemplazo.diasVida}d de vida
+                {resultado.candidatoReemplazo.machos  ? ` · ${resultado.candidatoReemplazo.machos}♂` : ''}
+                {resultado.candidatoReemplazo.hembras ? ` · ${resultado.candidatoReemplazo.hembras}♀` : ''}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {!animal && (
         <div style={{ textAlign: 'center', padding: '20px 0', color: tema.textMuted, fontSize: 13 }}>
-          Seleccioná un reproductor para ver el impacto simulado
+          Seleccioná un reproductor para ver su perfil y el impacto de retirarlo
         </div>
       )}
     </div>
@@ -399,7 +620,16 @@ export default function PlanificacionColonia() {
     [stockReal, todosAnimales, todasCamadas, bio, bioterioActivo]
   )
 
-  // Índice de estabilidad
+  // Motor unificado de renovación (conecta: déficit + edad + candidatos + consanguinidad)
+  const motorUnificado = useMemo(
+    () => calcularMotorRenovacionUnificado(
+      stockReal, animales, todasCamadas, bio, bioterioActivo,
+      indiceGenetico, indiceSanitario, incidentes, todosAnimales
+    ),
+    [stockReal, animales, todasCamadas, bio, bioterioActivo, indiceGenetico, indiceSanitario, incidentes, todosAnimales]
+  )
+
+  // Índice de estabilidad — usa el motor unificado para la componente renovación
   const indiceEstabilidad = useMemo(
     () => calcularIndiceEstabilidad({
       stockReal,
@@ -409,8 +639,9 @@ export default function PlanificacionColonia() {
       indiceSanitario,
       camadas: todasCamadas,
       bioterioId: bioterioActivo,
+      motorUnificado,
     }),
-    [stockReal, minimos, candidatos, indiceGenetico, indiceSanitario, todasCamadas, bioterioActivo]
+    [stockReal, minimos, candidatos, indiceGenetico, indiceSanitario, todasCamadas, bioterioActivo, motorUnificado]
   )
 
   // Déficit futuro en 4 horizontes
@@ -790,11 +1021,15 @@ export default function PlanificacionColonia() {
         </div>
       )}
 
+      {/* ── MOTOR DE RENOVACIÓN UNIFICADO ────────────────────────────────────── */}
+      <PanelMotorUnificado motorUnificado={motorUnificado} />
+
       {/* ── SIMULADOR DE IMPACTO ─────────────────────────────────────────────── */}
       <SimuladorImpacto
         animales={animales}
         stockReal={stockReal}
         bioterioId={bioterioActivo}
+        motorUnificado={motorUnificado}
       />
 
     </div>

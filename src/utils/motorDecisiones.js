@@ -488,6 +488,89 @@ export function calcularCandidatosRenovacion(stockReal, animales, camadas, bio, 
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 5b — PERFIL INDIVIDUAL DE REPRODUCTOR
+// Analiza cada animal con todos los factores: edad, fertilidad, consanguinidad,
+// línea familiar, sanidad. Genera motivos tipificados para mostrar en UI.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Perfil completo de un reproductor con motivos clasificados.
+ *
+ * Tipos de motivo: 'edad' | 'fertilidad' | 'consanguinidad' | 'familia' | 'sanidad'
+ * Niveles:         'critico' | 'alerta' | 'info'
+ */
+export function calcularPerfilReproductor(animal, camadas, pedigree, incidentes = [], lineasProblematicas = new Map(), bio = null) {
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  const LIMITE_EDAD = 270
+  const ALERTA_EDAD = 240
+  const motivos = []
+
+  // ── 1. EDAD ──────────────────────────────────────────────────────────────
+  let diasVida = 0
+  let diasHastaLimite = null
+  if (animal.fecha_nacimiento) {
+    diasVida = difDias(animal.fecha_nacimiento, hoy)
+    diasHastaLimite = LIMITE_EDAD - diasVida
+    if (diasVida >= LIMITE_EDAD) {
+      motivos.push({ tipo: 'edad', descripcion: `Límite superado (${diasVida}d)`, nivel: 'critico' })
+    } else if (diasVida >= ALERTA_EDAD) {
+      motivos.push({ tipo: 'edad', descripcion: `${diasHastaLimite}d para el límite (${diasVida}d)`, nivel: 'alerta' })
+    }
+  }
+
+  // ── 2. FERTILIDAD ────────────────────────────────────────────────────────
+  if (animal.sexo === 'hembra') {
+    const camadasAnimal = camadas.filter(c => c.id_madre === animal.id)
+    const fallos  = camadasAnimal.filter(c => c.failure_flag)
+    const exitos  = camadasAnimal.filter(c => !c.failure_flag && c.total_crias > 0 && c.fecha_destete)
+    if      (fallos.length >= 3) motivos.push({ tipo: 'fertilidad', descripcion: `${fallos.length} fallos reproductivos`, nivel: 'critico' })
+    else if (fallos.length >= 2) motivos.push({ tipo: 'fertilidad', descripcion: `${fallos.length} fallos reproductivos`, nivel: 'alerta' })
+    else if (fallos.length === 1) motivos.push({ tipo: 'fertilidad', descripcion: '1 fallo reproductivo', nivel: 'info' })
+    if (exitos.length >= 2) {
+      const tasa = exitos.reduce((acc, c) => acc + (c.total_destetados || 0) / (c.total_crias || 1), 0) / exitos.length
+      if (tasa < 0.6) motivos.push({ tipo: 'fertilidad', descripcion: `Supervivencia baja (${(tasa * 100).toFixed(0)}%)`, nivel: 'alerta' })
+    }
+  } else {
+    const camadasPadre = camadas.filter(c => c.id_padre === animal.id)
+    const fallosMacho  = camadasPadre.filter(c => c.failure_flag)
+    if      (fallosMacho.length >= 3) motivos.push({ tipo: 'fertilidad', descripcion: `${fallosMacho.length} fallos con pareja`, nivel: 'alerta' })
+    else if (fallosMacho.length >= 2) motivos.push({ tipo: 'fertilidad', descripcion: `${fallosMacho.length} fallos con pareja`, nivel: 'info' })
+  }
+
+  // ── 3. CONSANGUINIDAD PROPIA ──────────────────────────────────────────────
+  let fPropio = 0
+  try {
+    if (animal.id_madre && animal.id_padre && pedigree) {
+      fPropio = calcularFCoeficiente(animal.id_madre, animal.id_padre, pedigree) ?? 0
+    }
+  } catch { fPropio = 0 }
+  if      (fPropio >= 0.25)   motivos.push({ tipo: 'consanguinidad', descripcion: `F muy alto: ${(fPropio * 100).toFixed(1)}%`, nivel: 'critico' })
+  else if (fPropio >= 0.125)  motivos.push({ tipo: 'consanguinidad', descripcion: `F moderado: ${(fPropio * 100).toFixed(1)}%`, nivel: 'alerta' })
+  else if (fPropio >= 0.0625) motivos.push({ tipo: 'consanguinidad', descripcion: `F leve: ${(fPropio * 100).toFixed(1)}%`, nivel: 'info' })
+
+  // ── 4. LÍNEA FAMILIAR ─────────────────────────────────────────────────────
+  const problLinea = lineasProblematicas.get(animal.id)
+  if (problLinea) {
+    const nivelLinea = problLinea.nivel === 'critico' ? 'critico' : problLinea.nivel === 'moderado' ? 'alerta' : 'info'
+    motivos.push({ tipo: 'familia', descripcion: `Línea problemática: ${problLinea.razones[0]}`, nivel: nivelLinea })
+  }
+
+  // ── 5. SANIDAD ────────────────────────────────────────────────────────────
+  const incGraves = incidentes.filter(i => i.animal_id === animal.id && i.severidad === 'grave' && !i.resuelto)
+  if (incGraves.length > 0) motivos.push({ tipo: 'sanidad', descripcion: `${incGraves.length} incidente(s) grave(s) activos`, nivel: 'alerta' })
+
+  const nivelAlerta = motivos.some(m => m.nivel === 'critico') ? 'critico'
+    : motivos.some(m => m.nivel === 'alerta') ? 'alerta'
+    : motivos.length > 0 ? 'info' : 'ok'
+
+  const necesitaReemplazo = nivelAlerta === 'critico'
+    || (nivelAlerta === 'alerta' && diasHastaLimite !== null && diasHastaLimite <= 30)
+
+  return { animal, diasVida, diasHastaLimite, fPropio, motivos, nivelAlerta, necesitaReemplazo }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SECCIÓN 6 — VERIFICACIÓN DE JERARQUÍA ANTES DE SACRIFICAR / ENTREGAR
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -592,34 +675,32 @@ export function calcularIndiceEstabilidad({
   indiceSanitario = 100,
   camadas = [],
   bioterioId,
+  motorUnificado = null,   // opcional: si se pasa, usa su indiceRenovacion
 }) {
   let score = 0
   const detalle = {}
 
   // ── 1. RENOVACIÓN (25 pts) ────────────────────────────────────────────────
-  let renovacion = 25
+  // Si el motor unificado está disponible, usa su índice de renovación directamente
   const { reproductores } = stockReal
-  const LIMITE_DIAS = 270, ALERTA_DIAS = 240
-  const hoyDate = new Date()
-  hoyDate.setHours(0, 0, 0, 0)
-
-  // Reproductores próximos al límite de edad
-  const machosConEdad = reproductores.machos.filter(m => {
-    if (!m.fecha_nacimiento) return false
-    const dias = difDias(m.fecha_nacimiento, hoyDate)
-    return dias >= ALERTA_DIAS
-  })
-  renovacion -= Math.min(15, machosConEdad.length * 5)
-
-  // Sin candidatos disponibles para renovación
-  if (candidatosRenovacion.length === 0) renovacion -= 10
-  else if (candidatosRenovacion.filter(c => c.recomendado).length === 0) renovacion -= 5
-
-  // Déficit de reproductores
-  if (!minimos.ok) {
-    renovacion -= minimos.alertas.filter(a => a.critico).length * 8
+  let renovacion
+  if (motorUnificado !== null) {
+    renovacion = Math.round(motorUnificado.indiceRenovacion * 0.25)
+  } else {
+    renovacion = 25
+    const LIMITE_DIAS = 270, ALERTA_DIAS = 240
+    const hoyDate = new Date()
+    hoyDate.setHours(0, 0, 0, 0)
+    const machosConEdad = reproductores.machos.filter(m => {
+      if (!m.fecha_nacimiento) return false
+      return difDias(m.fecha_nacimiento, hoyDate) >= ALERTA_DIAS
+    })
+    renovacion -= Math.min(15, machosConEdad.length * 5)
+    if (candidatosRenovacion.length === 0) renovacion -= 10
+    else if (candidatosRenovacion.filter(c => c.recomendado).length === 0) renovacion -= 5
+    if (!minimos.ok) renovacion -= minimos.alertas.filter(a => a.critico).length * 8
   }
-  detalle.renovacion = Math.max(0, renovacion)
+  detalle.renovacion = Math.max(0, Math.min(25, renovacion))
 
   // ── 2. GENÉTICA (20 pts) ──────────────────────────────────────────────────
   let genetica = 20
@@ -690,13 +771,19 @@ export function calcularIndiceEstabilidad({
   score = detalle.renovacion + detalle.genetica + detalle.produccion +
           detalle.hibridos + detalle.sanitario + detalle.saturacion
 
+  // REGLA DURA: con déficit activo de reproductores → máximo 85
+  const hayDeficitActivo = motorUnificado
+    ? motorUnificado.hayDeficit
+    : !minimos.ok && minimos.alertas.some(a => a.critico)
+  if (hayDeficitActivo) score = Math.min(score, 85)
+
   const scoreClamp = Math.max(0, Math.min(100, score))
 
   let nivel, emoji, color
   if (scoreClamp >= 80) { nivel = 'Estable';   emoji = '🟢'; color = '#00e676' }
   else if (scoreClamp >= 60) { nivel = 'Vigilar';  emoji = '🟡'; color = '#ffb300' }
   else if (scoreClamp >= 35) { nivel = 'Riesgo';   emoji = '🔴'; color = '#ff6b80' }
-  else                     { nivel = 'Crítico';  emoji = '⚫'; color = '#9c27b0' }
+  else                       { nivel = 'Crítico';  emoji = '⚫'; color = '#9c27b0' }
 
   return { score: scoreClamp, nivel, emoji, color, detalle }
 }
@@ -708,8 +795,11 @@ export function calcularIndiceEstabilidad({
 /**
  * Índice de renovación genética de la colonia (0-100).
  * Basado en diversidad, consanguinidad, tendencia y calidad de línea.
+ * Params opcionales: { stockReal, candidatos, proyeccionAvanzada } — enriquecen el índice con
+ * déficit reproductivo, reemplazos disponibles y riesgo futuro.
  */
-export function calcularIndiceGeneticoRenovacion(animales, camadas, bioterioId) {
+export function calcularIndiceGeneticoRenovacion(animales, camadas, bioterioId, extras = {}) {
+  const { stockReal = null, candidatos = [], proyeccionAvanzada = null } = extras
   const todosAnimalesColonia = animales.filter(
     a => a.bioterio_id === bioterioId && ['activo', 'en_apareamiento', 'en_cria'].includes(a.estado)
   )
@@ -767,6 +857,50 @@ export function calcularIndiceGeneticoRenovacion(animales, camadas, bioterioId) 
     const avgAnt = fAnteriores.reduce((a,b)=>a+b,0)/fAnteriores.length
     if (avgRec > avgAnt + 0.05) { tendencia = 'deteriorando'; score -= 15; advertencias.push('Tendencia creciente de consanguinidad') }
     else if (avgRec < avgAnt - 0.02) tendencia = 'mejorando'
+  }
+
+  // ── FACTORES ADICIONALES (enriquecimiento con déficit y proyección) ─────────
+
+  // Déficit actual de reproductores → penaliza renovación aunque la genética sea buena
+  if (stockReal) {
+    const minimosCfg = getMinimosCriticos(bioterioId)
+    const machosActual   = stockReal.reproductores.machos.filter(m => !m.exportado_hibridos).length
+    const hembrasActual  = stockReal.reproductores.hembras.filter(h => !h.exportado_hibridos).length
+
+    if (machosActual < minimosCfg.machos_colonia) {
+      const pct = machosActual / Math.max(1, minimosCfg.machos_colonia)
+      score -= Math.round((1 - pct) * 20)
+      advertencias.push(`Déficit de machos: ${machosActual}/${minimosCfg.machos_colonia}`)
+    }
+    if (hembrasActual < minimosCfg.hembras_colonia) {
+      const pct = hembrasActual / Math.max(1, minimosCfg.hembras_colonia)
+      score -= Math.round((1 - pct) * 20)
+      advertencias.push(`Déficit de hembras: ${hembrasActual}/${minimosCfg.hembras_colonia}`)
+    }
+  }
+
+  // Reemplazos disponibles en stock → bonifica si hay candidatos listos
+  if (candidatos.length > 0) {
+    const listos  = candidatos.filter(c => c.recomendado && c.tiempoHastaUtilidad === 0)
+    const proximos = candidatos.filter(c => c.tiempoHastaUtilidad > 0 && c.tiempoHastaUtilidad <= 60)
+    if      (listos.length > 0)   score += 10
+    else if (proximos.length > 0) score += 5
+    else { score -= 10; advertencias.push('Sin candidatos de renovación disponibles en stock') }
+  } else if (stockReal) {
+    score -= 10
+    advertencias.push('Sin animales en stock para renovación')
+  }
+
+  // Riesgo futuro (proyección 60d)
+  if (proyeccionAvanzada) {
+    const data60 = proyeccionAvanzada.horizontes?.[60]
+    if (data60?.deficit?.hayDeficit && !data60.deficit.puedeCubrirConStock) {
+      score -= 15
+      advertencias.push('Déficit proyectado en 60d sin cobertura de stock')
+    } else if (data60?.deficit?.hayDeficit) {
+      score -= 7
+      advertencias.push('Déficit proyectado en 60d — hay candidatos para promover')
+    }
   }
 
   const scoreClamp = Math.max(0, Math.min(100, score))
@@ -1140,4 +1274,173 @@ export function detectarLineasProblematicas(animales, camadas, incidentes) {
   }
 
   return problemas
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 15 — MOTOR UNIFICADO DE RENOVACIÓN
+// Conecta: déficit + renovación + edad límite + promoción + consanguinidad + sanidad
+// Genera un plan de acciones priorizadas con candidatos concretos del stock.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Motor único que analiza la colonia y genera acciones conectadas:
+ *   Déficit → Reemplazo → Candidato → Impacto en índice
+ *
+ * Prioridades: 0=urgente (déficit) · 1=crítico (límite/infertilidad) · 2=alerta · 3=info
+ *
+ * Ejemplo de flujo: M10 llega al límite de 36d → motor busca M15 en stock →
+ * sugiere promoverlo → indica "+8 pts renovación si se ejecuta"
+ */
+export function calcularMotorRenovacionUnificado(
+  stockReal, animales, camadas, bio, bioterioId,
+  indiceGenetico = null, indiceSanitario = 100, incidentes = [], todosPedigreeAnimales = null
+) {
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+
+  const MADUREZ = bio?.MADUREZ_DIAS ?? 56
+  const minimos = getMinimosCriticos(bioterioId)
+  const todosAnimales = todosPedigreeAnimales ?? animales
+  const pedigree = buildPedigree(todosAnimales, camadas)
+  const lineasProblematicas = detectarLineasProblematicas(animales, camadas, incidentes)
+
+  const estadosActivos = ['activo', 'en_apareamiento', 'en_cria']
+  const reproductores = animales.filter(
+    a => a.bioterio_id === bioterioId && estadosActivos.includes(a.estado)
+  )
+
+  // Perfil completo de cada reproductor
+  const perfiles = reproductores.map(a =>
+    calcularPerfilReproductor(a, camadas, pedigree, incidentes, lineasProblematicas, bio)
+  )
+
+  // Déficit actual (colonia principal, sin híbridos)
+  const machosColonia  = stockReal.reproductores.machos.filter(m => !m.exportado_hibridos)
+  const hembrasColonia = stockReal.reproductores.hembras.filter(h => !h.exportado_hibridos)
+  const deficitMachos  = Math.max(0, minimos.machos_colonia  - machosColonia.length)
+  const deficitHembras = Math.max(0, minimos.hembras_colonia - hembrasColonia.length)
+
+  // Bloques de stock con animales que ya superaron la madurez
+  const bloquesListos = stockReal.stock.bloques.filter(b => {
+    const c = camadas.find(cam => cam.id === b.camadaId)
+    return c && difDias(c.fecha_nacimiento, hoy) >= MADUREZ
+  })
+  const bloquesMachos  = bloquesListos.filter(b => (b.machos  || 0) > 0)
+  const bloquesHembras = bloquesListos.filter(b => (b.hembras || 0) > 0)
+
+  // Candidatos bloques ya usados (para no asignar el mismo a dos acciones)
+  const candidatosUsados = new Set()
+
+  function mejorBloque(sexo) {
+    const lista = sexo === 'macho' ? bloquesMachos : bloquesHembras
+    return lista.find(b => !candidatosUsados.has(b.jaulaId)) ?? null
+  }
+
+  const accionesRecomendadas = []
+
+  // ── PRIORIDAD 0: DÉFICIT ACTIVO ───────────────────────────────────────────
+  for (let i = 0; i < deficitMachos; i++) {
+    const bloque = mejorBloque('macho')
+    if (bloque) candidatosUsados.add(bloque.jaulaId)
+    accionesRecomendadas.push({
+      tipo:               'deficit',
+      prioridad:          0,
+      sexo:               'macho',
+      animalSaliente:     null,
+      candidato:          bloque,
+      motivosPrincipales: ['Déficit activo de machos reproductores'],
+      descripcionCorta:   `Cubrir déficit ♂ — promover ${bloque ? 'candidato listo' : 'próxima camada'}`,
+      resolucionPosible:  !!bloque,
+      impactoEnIndice:    bloque ? '+10 pts renovación' : null,
+    })
+  }
+  for (let i = 0; i < deficitHembras; i++) {
+    const bloque = mejorBloque('hembra')
+    if (bloque) candidatosUsados.add(bloque.jaulaId)
+    accionesRecomendadas.push({
+      tipo:               'deficit',
+      prioridad:          0,
+      sexo:               'hembra',
+      animalSaliente:     null,
+      candidato:          bloque,
+      motivosPrincipales: ['Déficit activo de hembras reproductoras'],
+      descripcionCorta:   `Cubrir déficit ♀ — promover ${bloque ? 'candidata lista' : 'próxima camada'}`,
+      resolucionPosible:  !!bloque,
+      impactoEnIndice:    bloque ? '+10 pts renovación' : null,
+    })
+  }
+
+  // ── PRIORIDADES 1-2: REPRODUCTORES QUE NECESITAN REEMPLAZO ───────────────
+  const necesitanReemplazo = perfiles
+    .filter(p => p.necesitaReemplazo)
+    .sort((a, b) => {
+      const nA = a.nivelAlerta === 'critico' ? 3 : a.nivelAlerta === 'alerta' ? 2 : 1
+      const nB = b.nivelAlerta === 'critico' ? 3 : b.nivelAlerta === 'alerta' ? 2 : 1
+      return nB - nA
+    })
+
+  for (const perfil of necesitanReemplazo) {
+    const bloque = mejorBloque(perfil.animal.sexo)
+    if (bloque) candidatosUsados.add(bloque.jaulaId)
+    const motivosTexto = perfil.motivos
+      .filter(m => m.nivel !== 'info')
+      .map(m => `${m.tipo}: ${m.descripcion}`)
+    accionesRecomendadas.push({
+      tipo:               'reemplazo',
+      prioridad:          perfil.nivelAlerta === 'critico' ? 1 : 2,
+      sexo:               perfil.animal.sexo,
+      animalSaliente:     perfil.animal,
+      candidato:          bloque,
+      motivosPrincipales: motivosTexto,
+      descripcionCorta:   `Reemplazar ${perfil.animal.codigo} → ${bloque ? 'promover candidato listo' : 'sin candidato aún'}`,
+      resolucionPosible:  !!bloque,
+      impactoEnIndice:    bloque ? '+5 pts renovación' : null,
+    })
+  }
+
+  // ── ÍNDICE DE RENOVACIÓN UNIFICADO (0-100) ────────────────────────────────
+  let indiceRenovacion = 100
+
+  // Penalizar déficit activo (mayor penalización porque es la prioridad máxima)
+  indiceRenovacion -= deficitMachos  * 20
+  indiceRenovacion -= deficitHembras * 20
+
+  // Penalizar reproductores con alertas
+  for (const p of perfiles) {
+    if      (p.nivelAlerta === 'critico') indiceRenovacion -= 12
+    else if (p.nivelAlerta === 'alerta')  indiceRenovacion -= 6
+    else if (p.nivelAlerta === 'info')    indiceRenovacion -= 2
+  }
+
+  // Bonus por candidatos listos disponibles
+  const totalCandidatos = bloquesMachos.length + bloquesHembras.length
+  indiceRenovacion += Math.min(12, totalCandidatos * 3)
+
+  // Bonus si todos los problemas tienen solución disponible
+  if (accionesRecomendadas.length > 0 && accionesRecomendadas.every(a => a.resolucionPosible)) {
+    indiceRenovacion += 5
+  }
+
+  // REGLA DURA: déficit activo → máximo 80
+  if (deficitMachos > 0 || deficitHembras > 0) {
+    indiceRenovacion = Math.min(indiceRenovacion, 80)
+  }
+  // Acciones críticas sin candidato → máximo 70
+  if (accionesRecomendadas.some(a => a.prioridad <= 1 && !a.resolucionPosible)) {
+    indiceRenovacion = Math.min(indiceRenovacion, 70)
+  }
+
+  indiceRenovacion = Math.max(0, Math.min(100, Math.round(indiceRenovacion)))
+
+  return {
+    perfiles,
+    deficitActual:        { machos: deficitMachos, hembras: deficitHembras },
+    necesitanReemplazo,
+    accionesRecomendadas: accionesRecomendadas.sort((a, b) => a.prioridad - b.prioridad),
+    indiceRenovacion,
+    lineasProblematicas,
+    pedigree,
+    hayDeficit:      deficitMachos > 0 || deficitHembras > 0,
+    todasResolubles: accionesRecomendadas.length > 0 && accionesRecomendadas.every(a => a.resolucionPosible),
+  }
 }
