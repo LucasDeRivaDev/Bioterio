@@ -490,6 +490,9 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
           {LINK_AUDITORIA.label}
         </NavLink>
 
+        {/* Separador */}
+        <div style={{ height: "1px", background: tema.bgCardBorde, margin: "6px 4px" }} />
+
         {/* Reportes al final */}
         <NavLink
           to={LINK_REPORTES.to}
