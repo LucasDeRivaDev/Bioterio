@@ -14,9 +14,11 @@ import {
   seleccionarReproductoresOptimos, detectarAnimalesListos,
   evaluarCapacidadFutura, evaluarImpactoColonia, calcularIndiceViabilidad,
   simularEscenarios, generarCalendarioPedido, proyeccionHorizontes,
+  detectarSuperavit,
   nivelViabilidad, labelBioterio, labelSexo, labelUso, colorEstadoPedido,
 } from '../utils/motorPedidos'
 import { reservarAnimal } from '../utils/motorDecisiones'
+import { calcularIndiceSanitario } from '../utils/sanitario'
 
 // ─── Constantes ────────────────────────────────────────────────────────────
 const BIOTERIOS_OPCIONES = [
@@ -301,8 +303,8 @@ function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproduct
 
   const {
     bio, parejasNecesarias, fechasOptimas, reproductoresSeleccionados,
-    animalesListos, capacidadFutura, impactoColonia, viabilidad,
-    escenarios, calendario, horizontes,
+    animalesListos, capacidadFutura, impactoColonia, indiceSanitario, viabilidad,
+    escenarios, calendario, horizontes, superavit,
   } = analisis
 
   const nivel = nivelViabilidad(viabilidad.score)
@@ -371,6 +373,19 @@ function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproduct
             </div>
           </div>
         </div>
+
+        {/* Índice sanitario real */}
+        {indiceSanitario < 80 && (
+          <div className="mt-2 rounded-lg px-3 py-1.5 text-xs"
+            style={{
+              background: indiceSanitario < 50 ? 'rgba(255,61,87,0.07)' : 'rgba(255,179,0,0.06)',
+              border: `1px solid ${indiceSanitario < 50 ? 'rgba(255,61,87,0.2)' : 'rgba(255,179,0,0.18)'}`,
+              color: indiceSanitario < 50 ? '#ff6b80' : '#ffb300',
+            }}
+          >
+            {indiceSanitario < 50 ? '🔴' : '🟡'} Índice sanitario de la colonia: <strong>{indiceSanitario}/100</strong> — penaliza la viabilidad del pedido
+          </div>
+        )}
 
         {/* Acciones de estado */}
         <div className="flex gap-2 flex-wrap mt-3 pt-3" style={{ borderTop: `1px solid ${tema.bgCardBorde}` }}>
@@ -625,6 +640,49 @@ function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproduct
         </div>
       </SeccionCard>
 
+      {/* ─── SECCIÓN: Superávit de reproductores ─── */}
+      {superavit.haySuperavit && (
+        <SeccionCard id="superavit" titulo={`📊 Superávit de reproductores${superavit.esSignificativo ? ' ⚠' : ''}`}>
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            {[
+              { label: '♀ Hembras activas', val: superavit.hembras, min: superavit.minimoHembras, nivel: superavit.nivelH, extra: superavit.superavitH, color: '#ce93d8' },
+              { label: '♂ Machos activos',  val: superavit.machos,  min: superavit.minimoMachos,  nivel: superavit.nivelM, extra: superavit.superavitM, color: '#40c4ff' },
+            ].map(({ label, val, min, nivel, extra, color }) => (
+              <div key={label} className="rounded-xl p-3"
+                style={{
+                  background: nivel === 'critico' ? 'rgba(255,179,0,0.05)' : 'rgba(8,13,26,0.35)',
+                  border: `1px solid ${nivel === 'critico' ? 'rgba(255,179,0,0.25)' : nivel === 'moderado' ? 'rgba(255,179,0,0.15)' : tema.bgCardBorde}`,
+                }}
+              >
+                <div className="text-xs font-semibold mb-1" style={{ color }}>{label}</div>
+                <div className="font-mono font-bold text-lg" style={{ color: nivel === 'critico' ? '#ffb300' : nivel === 'moderado' ? '#ffb300' : '#c9d4e0' }}>
+                  {val}
+                </div>
+                <div className="text-xs" style={{ color: '#4a5f7a' }}>
+                  Mínimo: {min} · <span style={{ color: '#ffb300' }}>+{extra} extra</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="rounded-lg px-3 py-2 text-xs mb-2"
+            style={{ background: 'rgba(255,179,0,0.05)', border: '1px solid rgba(255,179,0,0.2)', color: '#ffb300' }}
+          >
+            ℹ Tenés más reproductores de los mínimos necesarios. Podés aprovechar este pedido sin iniciar nuevos reemplazos.
+          </div>
+          {superavit.recomendaciones.length > 0 && (
+            <div className="space-y-1">
+              {superavit.recomendaciones.map((rec, i) => (
+                <div key={i} className="text-xs rounded-lg px-3 py-1.5"
+                  style={{ background: 'rgba(8,13,26,0.4)', border: `1px solid ${tema.bgCardBorde}`, color: '#c9d4e0' }}
+                >
+                  → {rec}
+                </div>
+              ))}
+            </div>
+          )}
+        </SeccionCard>
+      )}
+
       {/* ─── SECCIÓN: Escenarios A/B ──────────────── */}
       <SeccionCard id="escenarios" titulo="🔀 Escenarios de producción">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -777,7 +835,7 @@ function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproduct
 
 // ─── Componente principal: Pedidos ────────────────────────────────────────
 export default function Pedidos() {
-  const { animales, camadas, jaulas, sacrificios, entregas, bio,
+  const { animales, camadas, jaulas, sacrificios, entregas, incidentes,
           pedidos, agregarPedido, editarPedido, eliminarPedido: eliminarPedidoCtx,
         } = useBioterio()
   const { bioterioActivo } = useBioterioActivo()
@@ -801,26 +859,28 @@ export default function Pedidos() {
     if (!pedidoSeleccionado) return null
     const bioPedido = getBio(pedidoSeleccionado.bioterioId)
 
-    const parejasNecesarias       = calcularParejasNecesarias(pedidoSeleccionado, camadas, bioPedido)
-    const fechasOptimas           = calcularFechasOptimas(pedidoSeleccionado, bioPedido)
+    const parejasNecesarias          = calcularParejasNecesarias(pedidoSeleccionado, camadas, bioPedido)
+    const fechasOptimas              = calcularFechasOptimas(pedidoSeleccionado, bioPedido)
     const reproductoresSeleccionados = seleccionarReproductoresOptimos(pedidoSeleccionado, animales, camadas)
-    const animalesListos          = detectarAnimalesListos(pedidoSeleccionado, jaulas, camadas, sacrificios, entregas)
-    const capacidadFutura         = evaluarCapacidadFutura(parejasNecesarias, (jaulas ?? []).length)
-    const impactoColonia          = evaluarImpactoColonia(pedidoSeleccionado, reproductoresSeleccionados, animales)
-    const viabilidad              = calcularIndiceViabilidad({
+    const animalesListos             = detectarAnimalesListos(pedidoSeleccionado, jaulas, camadas, sacrificios, entregas)
+    const capacidadFutura            = evaluarCapacidadFutura(parejasNecesarias, (jaulas ?? []).length)
+    const impactoColonia             = evaluarImpactoColonia(pedidoSeleccionado, reproductoresSeleccionados, animales)
+    const indiceSanitario            = calcularIndiceSanitario(camadas, incidentes, pedidoSeleccionado.bioterioId)
+    const viabilidad                 = calcularIndiceViabilidad({
       fechasOptimas, parejasNecesarias, reproductoresSeleccionados,
-      animalesListos, impactoColonia, capacidadFutura, indiceSanitario: 100,
+      animalesListos, impactoColonia, capacidadFutura, indiceSanitario,
     })
-    const escenarios              = simularEscenarios(pedidoSeleccionado, camadas)
-    const calendario              = generarCalendarioPedido(pedidoSeleccionado, fechasOptimas, parejasNecesarias)
-    const horizontes              = proyeccionHorizontes(fechasOptimas)
+    const escenarios                 = simularEscenarios(pedidoSeleccionado, camadas)
+    const calendario                 = generarCalendarioPedido(pedidoSeleccionado, fechasOptimas, parejasNecesarias)
+    const horizontes                 = proyeccionHorizontes(fechasOptimas)
+    const superavit                  = detectarSuperavit(animales, pedidoSeleccionado.bioterioId)
 
     return {
       bio: bioPedido, parejasNecesarias, fechasOptimas,
       reproductoresSeleccionados, animalesListos, capacidadFutura,
-      impactoColonia, viabilidad, escenarios, calendario, horizontes,
+      impactoColonia, indiceSanitario, viabilidad, escenarios, calendario, horizontes, superavit,
     }
-  }, [pedidoSeleccionado, animales, camadas, jaulas, sacrificios, entregas])
+  }, [pedidoSeleccionado, animales, camadas, jaulas, sacrificios, entregas, incidentes])
 
   // ── Scores de viabilidad para todas las tarjetas ─────────────────────
   const scoresPorId = useMemo(() => {

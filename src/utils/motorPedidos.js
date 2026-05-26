@@ -670,7 +670,79 @@ export function proyeccionHorizontes(fechasOptimas) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SECCIÓN 13 — HELPERS DE NIVEL Y UI
+// SECCIÓN 13 — SUPERÁVIT DE REPRODUCTORES
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Detecta si hay más reproductores de los necesarios en el bioterio y
+ * recomienda reducir renovación para liberar recursos.
+ *
+ * Umbral de superávit: count > mínimo × FACTOR_SUPERAVIT
+ *   - Verde: dentro del rango óptimo
+ *   - Naranja: superávit moderado (> mínimo × 1.5)
+ *   - Rojo: superávit crítico (> mínimo × 2.5) — saturación
+ */
+export function detectarSuperavit(animales, bioterioId) {
+  const minimos = getMinimosCriticos(bioterioId)
+  const FACTOR_MOD  = 1.5
+  const FACTOR_CRIT = 2.5
+  const estadosActivos = ['activo', 'en_apareamiento', 'en_cria']
+
+  const hembras = animales.filter(a =>
+    a.bioterio_id === bioterioId && a.sexo === 'hembra' &&
+    estadosActivos.includes(a.estado) && !a.exportado_hibridos
+  ).length
+
+  const machos = animales.filter(a =>
+    a.bioterio_id === bioterioId && a.sexo === 'macho' &&
+    estadosActivos.includes(a.estado) && !a.exportado_hibridos
+  ).length
+
+  const minH = minimos.hembras_colonia ?? 2
+  const minM = minimos.machos_colonia  ?? 1
+
+  const superavitH = Math.max(0, hembras - minH)
+  const superavitM = Math.max(0, machos  - minM)
+
+  const nivelH =
+    hembras > minH * FACTOR_CRIT ? 'critico'
+    : hembras > minH * FACTOR_MOD ? 'moderado'
+    : hembras > minH ? 'leve'
+    : 'ok'
+
+  const nivelM =
+    machos > minM * FACTOR_CRIT ? 'critico'
+    : machos > minM * FACTOR_MOD ? 'moderado'
+    : machos > minM ? 'leve'
+    : 'ok'
+
+  const haySuperavit = nivelH !== 'ok' || nivelM !== 'ok'
+  const esSignificativo = nivelH === 'moderado' || nivelH === 'critico' ||
+                          nivelM === 'moderado' || nivelM === 'critico'
+
+  const recomendaciones = []
+  if (nivelH === 'critico')
+    recomendaciones.push(`Hay ${superavitH} hembras extra sobre el mínimo — reducir renovación o sacrificar para liberar capacidad`)
+  else if (nivelH === 'moderado')
+    recomendaciones.push(`${superavitH} hembras por encima del mínimo — considerar pausar reemplazos`)
+
+  if (nivelM === 'critico')
+    recomendaciones.push(`Hay ${superavitM} machos extra sobre el mínimo — reducir renovación`)
+  else if (nivelM === 'moderado')
+    recomendaciones.push(`${superavitM} machos por encima del mínimo — considerar pausar reemplazos`)
+
+  return {
+    hembras, machos,
+    minimoHembras: minH, minimoMachos: minM,
+    superavitH, superavitM,
+    nivelH, nivelM,
+    haySuperavit, esSignificativo,
+    recomendaciones,
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 14 — HELPERS DE NIVEL Y UI
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function nivelViabilidad(score) {
