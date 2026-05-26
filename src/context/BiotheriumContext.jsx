@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useReducer, useState } from 'react'
+import { createContext, useContext, useEffect, useReducer, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { generarId } from '../utils/storage'
 import { useBioterioActivo } from './BioterioActivoContext'
@@ -178,6 +178,56 @@ export function BiotheriumProvider({ children }) {
     }
     cargarDatos()
   }, [bioterioActivo])
+
+  // ── Realtime — sincronización en vivo con otros usuarios ──────────────────
+  // Cuando otro usuario hace un cambio, re-carga solo la tabla afectada.
+  // Los cambios propios ya aplican optimísticamente, el re-fetch los confirma.
+
+  const recargarTabla = useCallback(async (tabla) => {
+    const consultas = {
+      animales:         () => supabase.from('animales').select('*').eq('bioterio_id', bioterioActivo).order('fecha_nacimiento', { ascending: true }),
+      camadas:          () => supabase.from('camadas').select('*').eq('bioterio_id', bioterioActivo).order('fecha_copula', { ascending: true }),
+      jaulas:           () => supabase.from('jaulas').select('*').eq('bioterio_id', bioterioActivo).order('created_at', { ascending: true }),
+      sacrificios:      () => supabase.from('sacrificios').select('*').eq('bioterio_id', bioterioActivo).order('fecha', { ascending: true }),
+      entregas:         () => supabase.from('entregas').select('*').eq('bioterio_id', bioterioActivo).order('fecha', { ascending: true }),
+      temperature_logs: () => supabase.from('temperature_logs').select('*').eq('bioterio_id', bioterioActivo).order('date', { ascending: false }).order('time', { ascending: false }),
+      incidentes:       () => supabase.from('incidentes').select('*').order('fecha', { ascending: false }).order('created_at', { ascending: false }),
+      extendidos:       () => supabase.from('extendidos').select('*').eq('bioterio_id', bioterioActivo).order('fecha', { ascending: true }),
+    }
+    const acciones = {
+      animales:         'SET_ANIMALES',
+      camadas:          'SET_CAMADAS',
+      jaulas:           'SET_JAULAS',
+      sacrificios:      'SET_SACRIFICIOS',
+      entregas:         'SET_ENTREGAS',
+      temperature_logs: 'SET_TEMPERATURAS',
+      incidentes:       'SET_INCIDENTES',
+      extendidos:       'SET_EXTENDIDOS',
+    }
+    const query  = consultas[tabla]
+    const accion = acciones[tabla]
+    if (!query || !accion) return
+    const { data } = await query()
+    if (data) dispatch({ type: accion, payload: data })
+  }, [bioterioActivo])
+
+  useEffect(() => {
+    if (!bioterioActivo) return
+
+    const ch = supabase
+      .channel(`rt_${bioterioActivo}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'animales',         filter: `bioterio_id=eq.${bioterioActivo}` }, () => recargarTabla('animales'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'camadas',          filter: `bioterio_id=eq.${bioterioActivo}` }, () => recargarTabla('camadas'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jaulas',           filter: `bioterio_id=eq.${bioterioActivo}` }, () => recargarTabla('jaulas'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sacrificios',      filter: `bioterio_id=eq.${bioterioActivo}` }, () => recargarTabla('sacrificios'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'entregas',         filter: `bioterio_id=eq.${bioterioActivo}` }, () => recargarTabla('entregas'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'temperature_logs', filter: `bioterio_id=eq.${bioterioActivo}` }, () => recargarTabla('temperature_logs'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'incidentes',       filter: `bioterio_id=eq.${bioterioActivo}` }, () => recargarTabla('incidentes'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'extendidos',       filter: `bioterio_id=eq.${bioterioActivo}` }, () => recargarTabla('extendidos'))
+      .subscribe()
+
+    return () => { supabase.removeChannel(ch) }
+  }, [bioterioActivo, recargarTabla])
 
   // ── ANIMALES ───────────────────────────────────────────────────────────────
 
