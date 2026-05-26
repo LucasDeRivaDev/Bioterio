@@ -975,6 +975,313 @@ export function generarBloqueosSanitarios(animales, camadas, incidentes, fCoefMa
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// MOTOR CAUSAL COMPLETO — 6 factores multidimensionales
+// Temperatura · Consanguinidad · Saturación · Genética · Renovación · Incidentes
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Extiende generarMotorCausal con factores genéticos (fCoefMapa),
+ * saturación+mortalidad y renovación con reproductores viejos+fallos.
+ * @param {Map<string,number>} fCoefMapa  Map<animalId, F> precalculado
+ */
+export function generarMotorCausalCompleto(
+  incidentes, temperaturas, camadas, animales, bioterioId,
+  fCoefMapa = new Map()
+) {
+  const causas = generarMotorCausal(incidentes, temperaturas, camadas, animales, bioterioId)
+
+  const hace30  = new Date(Date.now() - 30  * 86400000).toISOString().slice(0, 10)
+  const hace90  = new Date(Date.now() - 90  * 86400000).toISOString().slice(0, 10)
+  const hace180 = new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10)
+
+  const incBio  = bioterioId && bioterioId !== 'todos' ? incidentes.filter(i => i.bioterio_id === bioterioId) : incidentes
+  const camBio  = bioterioId && bioterioId !== 'todos' ? camadas.filter(c => c.bioterio_id === bioterioId) : camadas
+  const animBio = bioterioId && bioterioId !== 'todos' ? animales.filter(a => a.bioterio_id === bioterioId) : animales
+
+  // ── Factor genético: consanguinidad real × malformaciones ─────────────────
+  if (fCoefMapa.size > 0) {
+    const activos = animBio.filter(a => ['activo', 'en_apareamiento', 'en_cria'].includes(a.estado))
+    const fValues = activos.map(a => fCoefMapa.get(a.id) ?? 0)
+    const fProm   = fValues.length > 0 ? fValues.reduce((s, f) => s + f, 0) / fValues.length : 0
+
+    const malform180 = incBio.filter(i =>
+      ['malformacion', 'ausencia_cola', 'ausencia_extremidad', 'alopecia_neonatal'].includes(i.tipo_incidente) &&
+      i.fecha >= hace180
+    )
+
+    if (fProm >= 0.125 && malform180.length >= 2 && !causas.some(c => c.accion === 'bloquear_cruzas')) {
+      causas.push({
+        problema: '↑ Consanguinidad + malformaciones — deterioro genético progresivo',
+        icon: '🧬',
+        descripcion: `F promedio activos: ${(fProm * 100).toFixed(1)}% · ${malform180.length} malformaciones en 180d`,
+        factores: [
+          `Consanguinidad promedio: ${(fProm * 100).toFixed(1)}% (${fProm >= 0.25 ? 'muy alta' : 'moderada'})`,
+          `${malform180.length} malformaciones congénitas en 180 días`,
+          'Combinación indica depresión consanguínea en progreso',
+        ],
+        recomendacion: 'Incorporar animales de baja consanguinidad. Evitar cruzas entre relacionados hasta F < 6.25%. Revisar pedigree de reproductores activos.',
+        accion: 'bloquear_cruzas',
+        nivel: fProm >= 0.25 ? 'critico' : 'alerta',
+      })
+    }
+  }
+
+  // ── Factor saturación + mortalidad → reducir producción ───────────────────
+  const camadasActivas = camBio.filter(c => c.fecha_nacimiento && !c.fecha_destete && !c.failure_flag)
+  const muertes30 = incBio.filter(i =>
+    ['muerte_neonatal', 'canibalismo'].includes(i.tipo_incidente) && i.fecha >= hace30
+  )
+  if (camadasActivas.length > 10 && muertes30.length >= 3 && !causas.some(c => c.accion === 'reducir_produccion')) {
+    causas.push({
+      problema: '↑ Saturación + ↑ mortalidad — reducir producción',
+      icon: '🏠',
+      descripcion: `${camadasActivas.length} camadas activas · ${muertes30.length} muertes/canibalismo en 30d`,
+      factores: [
+        `Alta densidad: ${camadasActivas.length} camadas activas simultáneas`,
+        `${muertes30.length} eventos de mortalidad o canibalismo en 30 días`,
+        'Hacinamiento reduce supervivencia y bienestar animal',
+      ],
+      recomendacion: 'Reducir producción: pausar nuevos apareamientos hasta bajar la densidad. Revisar capacidad máxima de instalaciones.',
+      accion: 'reducir_produccion',
+      nivel: camadasActivas.length > 15 || muertes30.length >= 5 ? 'critico' : 'alerta',
+    })
+  }
+
+  // ── Factor renovación: reproductores viejos + fallos recientes ────────────
+  const ALERTA_EDAD = 240
+  const hoyDt = new Date()
+  hoyDt.setHours(0, 0, 0, 0)
+  const reprosViejos = animBio.filter(a => {
+    if (!['activo', 'en_apareamiento', 'en_cria'].includes(a.estado) || !a.fecha_nacimiento) return false
+    return Math.floor((hoyDt - new Date(a.fecha_nacimiento)) / 86400000) >= ALERTA_EDAD
+  })
+  const fallos90 = camBio.filter(c => c.failure_flag && (c.fecha_copula ?? '') >= hace90)
+  if (reprosViejos.length >= 2 && fallos90.length >= 2) {
+    causas.push({
+      problema: '↑ Reproductores en edad límite + ↑ fallos — renovar línea',
+      icon: '♻️',
+      descripcion: `${reprosViejos.length} reproductores ≥ ${ALERTA_EDAD}d · ${fallos90.length} fallos en 90d`,
+      factores: [
+        `${reprosViejos.length} reproductores con ${ALERTA_EDAD}+ días de vida`,
+        `${fallos90.length} fallos reproductivos en 90 días`,
+        'Declive reproductivo asociado a edad y agotamiento de línea',
+      ],
+      recomendacion: 'Promover candidatos jóvenes de baja consanguinidad desde stock. Retirar reproductores que superen el límite de edad.',
+      accion: 'renovar',
+      nivel: 'alerta',
+    })
+  }
+
+  return causas.sort((a, b) => {
+    const ord = { critico: 0, alerta: 1 }
+    return (ord[a.nivel] ?? 2) - (ord[b.nivel] ?? 2)
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DETERIORO PROGRESIVO — Ventanas 30 / 60 / 90 / 180 / 365 días
+// Detecta si fertilidad↓ mortalidad↑ malformaciones↑ en tendencia reciente
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function detectarDeterioroProgresivo(camadas, incidentes, bioterioId) {
+  const ventanas = [30, 60, 90, 180, 365]
+  const hoy    = new Date()
+  const hoyStr = hoy.toISOString().slice(0, 10)
+  const resultado = {}
+
+  const camBio = bioterioId && bioterioId !== 'todos' ? camadas.filter(c => c.bioterio_id === bioterioId) : camadas
+  const incBio = bioterioId && bioterioId !== 'todos' ? incidentes.filter(i => i.bioterio_id === bioterioId) : incidentes
+
+  for (const dias of ventanas) {
+    const desde = new Date(hoy.getTime() - dias * 86400000).toISOString().slice(0, 10)
+
+    const camPer = camBio.filter(c => (c.fecha_copula ?? '') >= desde && (c.fecha_copula ?? '') <= hoyStr)
+    const incPer = incBio.filter(i => i.fecha >= desde && i.fecha <= hoyStr)
+
+    const conParto  = camPer.filter(c => c.fecha_nacimiento && !c.failure_flag)
+    const totalCam  = camPer.filter(c => c.fecha_copula).length
+    const fertilidad = totalCam > 0 ? conParto.length / totalCam : null
+
+    const conDestete = conParto.filter(c => c.total_crias > 0 && c.total_destetados != null)
+    const supervivencia = conDestete.length > 0
+      ? conDestete.reduce((s, c) => s + c.total_destetados / c.total_crias, 0) / conDestete.length
+      : null
+
+    const mortalidadNeo  = incPer.filter(i => i.tipo_incidente === 'muerte_neonatal').length
+    const malformaciones = incPer.filter(i =>
+      ['malformacion', 'ausencia_cola', 'ausencia_extremidad'].includes(i.tipo_incidente)
+    ).length
+    const fallos = camPer.filter(c => c.failure_flag).length
+
+    resultado[dias] = { dias, desde, fertilidad, supervivencia, mortalidadNeo, malformaciones, fallos, totalCamadas: totalCam }
+  }
+
+  const v30  = resultado[30]
+  const v90  = resultado[90]
+  const v180 = resultado[180]
+
+  // fertilidad más reciente peor que más larga
+  const fertilidadDet = v30.fertilidad !== null && v180.fertilidad !== null && v30.fertilidad < v180.fertilidad - 0.10
+  // mortalidad neonatal se acelera (30d dense > ritmo 90d/3)
+  const mortalidadSube = v90.mortalidadNeo > 0 && v30.mortalidadNeo > v90.mortalidadNeo / 3
+  // malformaciones crecen en ventana corta
+  const malformCrece = v90.malformaciones > 0 && v30.malformaciones > v90.malformaciones / 3
+
+  const señales = [fertilidadDet, mortalidadSube, malformCrece].filter(Boolean).length
+  const tieneDeterioro = señales >= 2 || (señales >= 1 && v30.fallos >= 2)
+
+  const ventanaSignificativa = [30, 60, 90].find(v => {
+    const d = resultado[v]
+    return (d.fertilidad !== null && d.fertilidad < 0.60) || d.mortalidadNeo >= 3 || d.malformaciones >= 3
+  }) ?? null
+
+  return {
+    ventanas: resultado,
+    tieneDeterioro,
+    ventanaSignificativa,
+    señalesActivas: señales,
+    patron: tieneDeterioro ? 'Deterioro progresivo — fertilidad↓ mortalidad↑ malformaciones↑' : null,
+    nivel: tieneDeterioro ? (ventanaSignificativa && ventanaSignificativa <= 60 ? 'critico' : 'alerta') : 'ok',
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DECISIONES CONCRETAS HOY — Motor multifactorial de acciones
+// Cruza los 6 factores y produce acciones priorizadas y específicas
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function generarDecisionesHoy(
+  incidentes, temperaturas, camadas, animales, bioterioId,
+  fCoefMapa = new Map(),
+  candidatosRenovacion = [],
+  saturacion = null
+) {
+  const decisiones = []
+  const hoy    = new Date().toISOString().slice(0, 10)
+  const hace7  = new Date(Date.now() -  7 * 86400000).toISOString().slice(0, 10)
+  const hace30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
+  const hace90 = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)
+
+  const incBio  = bioterioId && bioterioId !== 'todos' ? incidentes.filter(i => i.bioterio_id === bioterioId) : incidentes
+  const camBio  = bioterioId && bioterioId !== 'todos' ? camadas.filter(c => c.bioterio_id === bioterioId) : camadas
+  const animBio = bioterioId && bioterioId !== 'todos' ? animales.filter(a => a.bioterio_id === bioterioId) : animales
+  const tempBio = bioterioId && bioterioId !== 'todos' ? temperaturas.filter(t => t.bioterio_id === bioterioId) : temperaturas
+
+  // 0. URGENTE: incidentes graves sin resolver
+  const gravesAbiertos = incBio.filter(i => i.severidad === 'grave' && !i.resuelto)
+  if (gravesAbiertos.length > 0) {
+    decisiones.push({ prioridad: 0, nivel: 'urgente', icono: '🚨', tipo: 'sanitario',
+      accion: `Atender ${gravesAbiertos.length} incidente(s) grave(s) sin resolver`,
+      motivo: 'Riesgo activo sin resolución — puede escalar',
+    })
+  }
+
+  // 1. CRÍTICO: consanguinidad alta → bloquear cruzas
+  if (fCoefMapa.size > 0) {
+    const activos  = animBio.filter(a => ['activo', 'en_apareamiento', 'en_cria'].includes(a.estado))
+    const fValues  = activos.map(a => fCoefMapa.get(a.id) ?? 0).filter(f => f > 0)
+    const fProm    = fValues.length > 0 ? fValues.reduce((s, f) => s + f, 0) / fValues.length : 0
+    const malform90 = incBio.filter(i =>
+      ['malformacion', 'ausencia_cola', 'ausencia_extremidad'].includes(i.tipo_incidente) && i.fecha >= hace90
+    )
+    if (fProm >= 0.25 || (fProm >= 0.125 && malform90.length >= 2)) {
+      decisiones.push({ prioridad: 1, nivel: 'critico', icono: '🧬', tipo: 'genetico',
+        accion: `Evitar nuevas cruzas entre reproductores relacionados (F=${(fProm * 100).toFixed(1)}%)`,
+        motivo: `Consanguinidad ${fProm >= 0.25 ? 'muy alta' : 'moderada'} + ${malform90.length} malformaciones en 90d`,
+      })
+    }
+  }
+
+  // 2. CRÍTICO: temperatura fuera de rango prolongada
+  const tempsAltas7 = tempBio.filter(t => t.date >= hace7 && Number(t.current_temp) > 25)
+  if (tempsAltas7.length >= 3) {
+    decisiones.push({ prioridad: 1, nivel: 'critico', icono: '🌡️', tipo: 'ambiental',
+      accion: 'Intervenir en climatización — temperatura >25°C varios días',
+      motivo: `${tempsAltas7.length} días con temperatura >25°C esta semana`,
+    })
+  } else if (!tempBio.find(t => t.date === hoy)) {
+    decisiones.push({ prioridad: 3, nivel: 'atencion', icono: '🌡️', tipo: 'ambiental',
+      accion: 'Registrar temperatura del bioterio hoy',
+      motivo: 'Sin dato de temperatura en el día actual',
+    })
+  }
+
+  // 3. CRÍTICO: saturación + mortalidad → reducir producción
+  const camadasActivas = camBio.filter(c => c.fecha_nacimiento && !c.fecha_destete && !c.failure_flag)
+  const muertes30 = incBio.filter(i => ['muerte_neonatal', 'canibalismo'].includes(i.tipo_incidente) && i.fecha >= hace30)
+  if (camadasActivas.length > 10 && muertes30.length >= 3) {
+    decisiones.push({ prioridad: 1, nivel: 'critico', icono: '🏠', tipo: 'saturacion',
+      accion: 'Reducir producción — pausar nuevos apareamientos por alta densidad',
+      motivo: `${camadasActivas.length} camadas activas · ${muertes30.length} muertes/canibalismo en 30d`,
+    })
+  } else if (saturacion?.esSignificativo) {
+    decisiones.push({ prioridad: 2, nivel: 'importante', icono: '📊', tipo: 'saturacion',
+      accion: 'Evaluar reducción del ritmo de producción — superávit detectado',
+      motivo: 'Superávit puede sobrecargar instalaciones en el próximo ciclo',
+    })
+  }
+
+  // 4. IMPORTANTE: reproductores viejos + fallos → renovar
+  const ALERTA_EDAD = 240
+  const hoyDt2 = new Date(); hoyDt2.setHours(0, 0, 0, 0)
+  const reprosViejos = animBio.filter(a => {
+    if (!['activo', 'en_apareamiento', 'en_cria'].includes(a.estado) || !a.fecha_nacimiento) return false
+    return Math.floor((hoyDt2 - new Date(a.fecha_nacimiento)) / 86400000) >= ALERTA_EDAD
+  })
+  const fallos30 = camBio.filter(c => c.failure_flag && (c.fecha_copula ?? '') >= hace30)
+  if (reprosViejos.length >= 2 && fallos30.length >= 2) {
+    const mejor = candidatosRenovacion.find(c => c.recomendado)
+    decisiones.push({ prioridad: 2, nivel: 'importante', icono: '♻️', tipo: 'renovacion',
+      accion: mejor
+        ? `Promover línea estable a reproductor (jaula ${mejor.jaulaId?.slice(0, 8)}…) — F bajo, buen historial`
+        : 'Renovar reproductores — buscar candidatos jóvenes de baja consanguinidad',
+      motivo: `${reprosViejos.length} reproductores en edad límite · ${fallos30.length} fallos en 30d`,
+    })
+  }
+
+  // 5. IMPORTANTE: camadas vencidas
+  const camadasVencidas = camBio.filter(c => {
+    if (!c.fecha_nacimiento || c.fecha_destete || c.failure_flag) return false
+    return Math.floor((Date.now() - new Date(c.fecha_nacimiento).getTime()) / 86400000) > 28
+  })
+  if (camadasVencidas.length > 0) {
+    decisiones.push({ prioridad: 2, nivel: 'importante', icono: '🐣', tipo: 'reproductivo',
+      accion: `Destetar ${camadasVencidas.length} camada(s) — superaron los 28 días`,
+      motivo: 'Crías con más de 28 días pueden estresarse y comprometer la madre',
+    })
+  }
+
+  // 6. ATENCIÓN: fallos frecuentes sin causa anterior
+  if (fallos30.length >= 2 && reprosViejos.length < 2) {
+    decisiones.push({ prioridad: 3, nivel: 'atencion', icono: '🧬', tipo: 'reproductivo',
+      accion: 'Revisar estado sanitario y genético de reproductores activos',
+      motivo: `${fallos30.length} fallos reproductivos en los últimos 30 días`,
+    })
+  }
+
+  // 7. Promover línea estable si todo bien
+  if (!decisiones.some(d => d.prioridad <= 2)) {
+    const mejor = candidatosRenovacion.find(c => c.recomendado && c.nivelF === 'bajo')
+    if (mejor) {
+      decisiones.push({ prioridad: 4, nivel: 'info', icono: '⭐', tipo: 'renovacion',
+        accion: 'Evaluar promoción de línea estable — buen candidato disponible en stock',
+        motivo: 'Jaula con F bajo y buen historial familiar detectada',
+      })
+    }
+  }
+
+  // 8. Todo OK
+  if (decisiones.length === 0) {
+    decisiones.push({ prioridad: 99, nivel: 'info', icono: '✅', tipo: 'info',
+      accion: 'Monitoreo rutinario — colonia estable en todos los factores',
+      motivo: 'Sin alertas multifactoriales activas',
+    })
+  }
+
+  return decisiones.sort((a, b) => a.prioridad - b.prioridad)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SQL — Referencia para Supabase
 // ─────────────────────────────────────────────────────────────────────────────
 //

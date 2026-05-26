@@ -372,7 +372,7 @@ export function calcularProyeccion(camadas, animales, bio, bioterioId, diasHoriz
  * Edad óptima: animales más cercanos a la madurez (no los más viejos).
  * Ej: prefiere 78 días sobre 160 días si ambos superaron la madurez.
  */
-export function calcularCandidatosRenovacion(stockReal, animales, camadas, bio, bioterioId, todosPedigreeAnimales = null) {
+export function calcularCandidatosRenovacion(stockReal, animales, camadas, bio, bioterioId, todosPedigreeAnimales = null, lineasProblematicas = new Map()) {
   const hoyDate = new Date()
   hoyDate.setHours(0, 0, 0, 0)
 
@@ -439,7 +439,7 @@ export function calcularCandidatosRenovacion(stockReal, animales, camadas, bio, 
       : Math.max(0, (1 - tiempoHastaUtilidad / MADUREZ) * 20)
     const scoreDisp     = ((bloque.machos || 0) + (bloque.hembras || 0) > 0) ? 10 : 5
 
-    const priorityScore = scoreGenetica + scoreFamilia + scoreEdad + scoreDisp
+    const priorityScoreBase = scoreGenetica + scoreFamilia + scoreEdad + scoreDisp
 
     // Nivel de consanguinidad para mostrar en UI
     let nivelF = 'bajo'
@@ -447,25 +447,40 @@ export function calcularCandidatosRenovacion(stockReal, animales, camadas, bio, 
     else if (fPadres >= 0.125) nivelF = 'moderado'
     else if (fPadres >= 0.0625) nivelF = 'leve'
 
+    // Penalización si los padres tienen líneas problemáticas (malformaciones/infertilidad)
+    const problMadre = lineasProblematicas.get(bloque.madreId)
+    const problPadre = lineasProblematicas.get(bloque.padreId)
+    const penLinea = (problMadre?.nivel === 'critico' || problPadre?.nivel === 'critico') ? 30
+      : (problMadre?.nivel === 'moderado' || problPadre?.nivel === 'moderado') ? 15
+      : (problMadre || problPadre) ? 7
+      : 0
+    const esLineaProblematica = penLinea > 0
+    const priorityScore = Math.max(0, priorityScoreBase - penLinea)
+
+    const advertenciaLinea = esLineaProblematica
+      ? `Línea con historial problemático: ${[problMadre, problPadre].filter(Boolean).flatMap(p => p.razones).slice(0, 2).join(' · ')}`
+      : null
+
     candidatos.push({
-      jaulaId:           bloque.jaulaId,
-      camadaId:          bloque.camadaId,
-      total:             bloque.total,
-      machos:            bloque.machos,
-      hembras:           bloque.hembras,
+      jaulaId:              bloque.jaulaId,
+      camadaId:             bloque.camadaId,
+      total:                bloque.total,
+      machos:               bloque.machos,
+      hembras:              bloque.hembras,
       diasVida,
       tiempoHastaUtilidad,
-      fPadres:           Math.round(fPadres * 1000) / 1000,
-      fPorcentaje:       (fPadres * 100).toFixed(1) + '%',
+      fPadres:              Math.round(fPadres * 1000) / 1000,
+      fPorcentaje:          (fPadres * 100).toFixed(1) + '%',
       nivelF,
-      scoreFamiliar:     Math.round(scoreFamiliar * 10) / 10,
-      priorityScore:     Math.round(priorityScore * 10) / 10,
-      recomendado:       nivelF !== 'alto' && scoreFamiliar >= 5,
-      advertencia:       nivelF === 'alto'
+      scoreFamiliar:        Math.round(scoreFamiliar * 10) / 10,
+      priorityScore:        Math.round(priorityScore * 10) / 10,
+      esLineaProblematica,
+      recomendado:          nivelF !== 'alto' && scoreFamiliar >= 5 && !esLineaProblematica,
+      advertencia:          advertenciaLinea ?? (nivelF === 'alto'
         ? `Consanguinidad alta (${(fPadres * 100).toFixed(1)}%) — riesgo acumulación genética`
         : nivelF === 'moderado'
         ? `Consanguinidad moderada (${(fPadres * 100).toFixed(1)}%) — vigilar tendencia`
-        : null,
+        : null),
     })
   }
 
@@ -995,4 +1010,134 @@ export function colorNivelF(nivelF) {
   if (nivelF === 'moderado') return '#ffb300'
   if (nivelF === 'leve')     return '#ffd740'
   return '#00e676'
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 13 — BLOQUEO DE APAREAMIENTO POR CONSANGUINIDAD + INCIDENTES
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Evalúa si un apareamiento entre madre y padre debe bloquearse o advertirse.
+ * Cruza: coeficiente F + malformaciones previas de esta pareja + infertilidad materna.
+ *
+ * @param {string}  madreId   - ID de la hembra
+ * @param {string}  padreId   - ID del macho
+ * @param {object}  pedigree  - resultado de buildPedigree(animales, camadas)
+ * @param {array}   camadas   - todas las camadas del bioterio
+ * @param {array}   incidentes - todos los incidentes
+ * @returns {{ bloquear, nivel, fCoeficiente, fPorcentaje, bloqueos[], advertencias[] }}
+ */
+export function evaluarBloqueoApareamiento(madreId, padreId, pedigree, camadas, incidentes) {
+  const bloqueos     = []
+  const advertencias = []
+
+  if (!madreId || !padreId || !pedigree) {
+    return { bloquear: false, nivel: 'ok', fCoeficiente: 0, fPorcentaje: '0.0%', bloqueos, advertencias }
+  }
+
+  // Consanguinidad madre ↔ padre
+  let f = 0
+  try { f = calcularFCoeficiente(madreId, padreId, pedigree) ?? 0 } catch { f = 0 }
+
+  if (f >= 0.25) {
+    bloqueos.push({ tipo: 'consanguinidad_critica', nivel: 'bloquear',
+      razon: `F = ${(f * 100).toFixed(1)}% — consanguinidad muy alta. Cruce bloqueado automáticamente.` })
+  } else if (f >= 0.125) {
+    advertencias.push({ tipo: 'consanguinidad_alta', nivel: 'advertencia',
+      razon: `F = ${(f * 100).toFixed(1)}% — consanguinidad moderada-alta. Considerar otra pareja.` })
+  } else if (f >= 0.0625) {
+    advertencias.push({ tipo: 'consanguinidad_leve', nivel: 'info',
+      razon: `F = ${(f * 100).toFixed(1)}% — consanguinidad leve. Vigilar tendencia.` })
+  }
+
+  // Malformaciones en camadas previas de ESTA MISMA pareja (últimos 180d)
+  const hace180 = new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10)
+  const camadasPareja = camadas.filter(c => c.id_madre === madreId && c.id_padre === padreId)
+  const malformEnPareja = incidentes.filter(i =>
+    ['malformacion', 'ausencia_cola', 'ausencia_extremidad'].includes(i.tipo_incidente) &&
+    i.fecha >= hace180 &&
+    camadasPareja.some(c => c.id === i.camada_id)
+  )
+  if (malformEnPareja.length >= 2) {
+    bloqueos.push({
+      tipo: 'malformaciones_previas',
+      nivel: f >= 0.125 ? 'bloquear' : 'advertencia',
+      razon: `${malformEnPareja.length} malformaciones en camadas previas de esta pareja en 180d.`,
+    })
+  } else if (malformEnPareja.length === 1 && f >= 0.125) {
+    advertencias.push({ tipo: 'malformacion_y_consanguinidad', nivel: 'advertencia',
+      razon: `1 malformación en camada previa de esta pareja + consanguinidad moderada.` })
+  }
+
+  // Infertilidad crónica de la madre
+  const fallosMadre = camadas.filter(c => c.id_madre === madreId && c.failure_flag)
+  if (fallosMadre.length >= 3) {
+    advertencias.push({ tipo: 'infertilidad_materna', nivel: 'advertencia',
+      razon: `La madre tiene ${fallosMadre.length} fallos reproductivos — posible infertilidad crónica.` })
+  }
+
+  const debeBloquear = bloqueos.some(b => b.nivel === 'bloquear')
+  const nivel = debeBloquear ? 'bloquear'
+    : (bloqueos.length > 0 || advertencias.some(a => a.nivel === 'advertencia')) ? 'advertencia'
+    : advertencias.length > 0 ? 'info'
+    : 'ok'
+
+  return { bloquear: debeBloquear, nivel, fCoeficiente: f, fPorcentaje: (f * 100).toFixed(1) + '%', bloqueos, advertencias }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 14 — DETECCIÓN DE LÍNEAS PROBLEMÁTICAS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Identifica animales cuya línea tiene historial problemático:
+ * malformaciones recurrentes, infertilidad crónica o incidentes graves vinculados.
+ *
+ * Resultado: Map<animalId, { nivel: 'leve'|'moderado'|'critico', razones: string[] }>
+ * Usado para penalizar candidatos a renovación y advertir en apareamientos.
+ */
+export function detectarLineasProblematicas(animales, camadas, incidentes) {
+  const problemas = new Map()
+  const hace180 = new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10)
+
+  function agregar(animalId, razon, nivel) {
+    if (!animalId) return
+    const e = problemas.get(animalId) ?? { nivel: 'leve', razones: [] }
+    e.razones.push(razon)
+    if (nivel === 'critico' || (nivel === 'moderado' && e.nivel === 'leve')) e.nivel = nivel
+    problemas.set(animalId, e)
+  }
+
+  // Fallos reproductivos por hembra
+  for (const a of animales) {
+    if (a.sexo !== 'hembra') continue
+    const fallos = camadas.filter(c => c.id_madre === a.id && c.failure_flag)
+    if      (fallos.length >= 5) agregar(a.id, `${fallos.length} fallos reproductivos`, 'critico')
+    else if (fallos.length >= 3) agregar(a.id, `${fallos.length} fallos reproductivos`, 'moderado')
+  }
+
+  // Malformaciones e infertilidad por incidente → vincular a padres de esa camada
+  const malformPorCamada = new Map()
+  for (const inc of incidentes) {
+    if (!inc.camada_id) continue
+    if (
+      ['malformacion', 'ausencia_cola', 'ausencia_extremidad', 'alopecia_neonatal'].includes(inc.tipo_incidente) &&
+      inc.fecha >= hace180
+    ) {
+      malformPorCamada.set(inc.camada_id, (malformPorCamada.get(inc.camada_id) || 0) + 1)
+    }
+    if (inc.tipo_incidente === 'infertilidad' && inc.fecha >= hace180 && inc.animal_id) {
+      agregar(inc.animal_id, 'Infertilidad registrada (180d)', 'moderado')
+    }
+  }
+
+  for (const [camadaId, count] of malformPorCamada.entries()) {
+    const cam = camadas.find(c => c.id === camadaId)
+    if (!cam) continue
+    const nivel = count >= 3 ? 'critico' : count >= 2 ? 'moderado' : 'leve'
+    agregar(cam.id_madre, `${count} malformación(es) en camadas (180d)`, nivel)
+    agregar(cam.id_padre, `${count} malformación(es) en camadas (180d)`, nivel)
+  }
+
+  return problemas
 }
