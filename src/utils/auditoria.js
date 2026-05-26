@@ -373,6 +373,125 @@ export function generarResumenAutomatico(comp, hipotesis) {
   return lineas.length ? lineas.join('\n') : 'Sin cambios significativos detectados entre los períodos seleccionados.'
 }
 
+// ── Métricas de renovación de reproductores ───────────────────────────────────
+export function calcularMetricasRenovacion(todosAnimalesBio, animalesRetiradosPeriodo) {
+  const LIMITE = 270
+  const ALERTA = 240
+  const hoy = new Date()
+
+  const activos = todosAnimalesBio.filter(a =>
+    ['activo', 'en_apareamiento', 'en_cria'].includes(a.estado)
+  )
+  const machos  = activos.filter(a => a.sexo === 'macho')
+  const hembras = activos.filter(a => a.sexo === 'hembra')
+
+  const conFecha = activos.filter(a => a.fecha_nacimiento)
+  const edadMedia = conFecha.length
+    ? conFecha.reduce((s, a) => s + Math.round((hoy - new Date(a.fecha_nacimiento)) / 86400000), 0) / conFecha.length
+    : null
+
+  const proximosLimite = activos.filter(a => {
+    if (!a.fecha_nacimiento) return false
+    const dias = Math.round((hoy - new Date(a.fecha_nacimiento)) / 86400000)
+    return dias >= ALERTA && dias < LIMITE
+  }).length
+
+  const excedidos = activos.filter(a => {
+    if (!a.fecha_nacimiento) return false
+    return Math.round((hoy - new Date(a.fecha_nacimiento)) / 86400000) >= LIMITE
+  }).length
+
+  const retirados = animalesRetiradosPeriodo.length
+  const tasaRenovacion = activos.length > 0 ? (retirados / activos.length) * 100 : 0
+
+  return {
+    totalActivos: activos.length,
+    machos: machos.length,
+    hembras: hembras.length,
+    edadMedia,
+    proximosLimite,
+    excedidos,
+    retirados,
+    tasaRenovacion,
+  }
+}
+
+// ── Métricas de producción de híbridos F1 ─────────────────────────────────────
+export function calcularMetricasHibridos(camadasF1) {
+  if (!camadasF1?.length) return {
+    total: 0, exitosos: 0, fallidos: 0,
+    nacidos: 0, destetados: 0, eficiencia: 0,
+    tiempoMedioDestete: null, tamanoCamadaMedio: 0,
+  }
+
+  const exitosos = camadasF1.filter(c => c.fecha_nacimiento && !c.failure_flag)
+  const fallidos = camadasF1.filter(c => c.failure_flag)
+
+  const nacidos    = exitosos.reduce((s, c) => s + (c.total_crias || 0), 0)
+  const destetados = exitosos.reduce((s, c) => s + (c.total_destetados || 0), 0)
+  const eficiencia = nacidos > 0 ? (destetados / nacidos) * 100 : 0
+  const tamanoCamadaMedio = exitosos.length
+    ? exitosos.reduce((s, c) => s + (c.total_crias || 0), 0) / exitosos.length
+    : 0
+
+  const conDestete = exitosos.filter(c => c.fecha_nacimiento && c.fecha_destete)
+  const tiempoMedioDestete = conDestete.length
+    ? conDestete.reduce((s, c) =>
+        s + Math.round((new Date(c.fecha_destete) - new Date(c.fecha_nacimiento)) / 86400000), 0
+      ) / conDestete.length
+    : null
+
+  return {
+    total: camadasF1.length, exitosos: exitosos.length, fallidos: fallidos.length,
+    nacidos, destetados, eficiencia, tiempoMedioDestete, tamanoCamadaMedio,
+  }
+}
+
+// ── Tendencias históricas mes a mes ───────────────────────────────────────────
+export function calcularTendencias(todasCamadas, todosIncidentes, todasTemperaturas, bioterioId, meses = 12) {
+  const hoy = new Date()
+  const puntos = []
+
+  for (let i = meses - 1; i >= 0; i--) {
+    const inicio   = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1)
+    const fin      = new Date(hoy.getFullYear(), hoy.getMonth() - i + 1, 0)
+    const desdeStr = inicio.toISOString().split('T')[0]
+    const hastaStr = fin.toISOString().split('T')[0]
+
+    const camadas    = filtrarPorPeriodo(todasCamadas, 'fecha_copula', desdeStr, hastaStr)
+    const incidentes = filtrarPorPeriodo(todosIncidentes, 'fecha', desdeStr, hastaStr)
+    const temps      = filtrarPorPeriodo(todasTemperaturas, 'date', desdeStr, hastaStr)
+
+    const repro = calcularMetricasReproduccion(camadas)
+    const prod  = calcularMetricasProduccion(
+      camadas.filter(c => c.fecha_nacimiento && !c.failure_flag), [], []
+    )
+
+    const tempsFiltradas = temps.filter(t =>
+      bioterioId === 'ratas'
+        ? t.bioterio_id === 'ratas'
+        : ['ratones', 'ratones_balbc', 'ratones_c57', 'ratones_hibridos'].includes(t.bioterio_id)
+    )
+    const tempMedia = tempsFiltradas.length
+      ? tempsFiltradas.reduce((s, t) => s + (t.current_temp || 0), 0) / tempsFiltradas.length
+      : null
+
+    puntos.push({
+      mes: inicio.toLocaleDateString('es-AR', { month: 'short', year: '2-digit' }),
+      fertilidad: +(repro.fertilidad * 100).toFixed(1),
+      nacidos: prod.nacidos,
+      destetados: prod.destetados,
+      tamanoCamada: +repro.tamanoCamadaMedio.toFixed(1),
+      supervivencia: +(repro.supervivenciaMedio * 100).toFixed(1),
+      incidentes: incidentes.length,
+      graves: incidentes.filter(i => i.severidad === 'grave').length,
+      tempMedia: tempMedia !== null ? +tempMedia.toFixed(1) : null,
+    })
+  }
+
+  return puntos
+}
+
 // ── Recomendaciones priorizadas ───────────────────────────────────────────────
 export function generarRecomendaciones(comp, hipotesis) {
   const recs = []

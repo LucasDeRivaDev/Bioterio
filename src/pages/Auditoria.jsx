@@ -11,6 +11,7 @@ import {
   getPresetsPeriodo, filtrarPorPeriodo,
   calcularMetricasReproduccion, calcularMetricasProduccion,
   calcularMetricasSanidad, calcularMetricasAmbiente, calcularMetricasGenetica,
+  calcularMetricasRenovacion, calcularMetricasHibridos, calcularTendencias,
   calcularIndiceGlobal, calcularIndiceEstabilidad,
   compararPeriodos, detectarPatronesGlobales,
   motorCausalHistorico, generarResumenAutomatico, generarRecomendaciones,
@@ -116,7 +117,7 @@ function Seccion({ titulo, children }) {
   )
 }
 
-const TABS_LABELS = ['Reproducción', 'Producción', 'Sanidad', 'Ambiente', 'Genética']
+const TABS_LABELS = ['Reproducción', 'Producción', 'Sanidad', 'Ambiente', 'Genética', 'Renovación', 'Híbridos F1']
 const NIVEL_COLORES = { positivo: '#00e676', alerta: '#ffb300', critico: '#ff6b80', riesgo: '#ff6b80', estable: '#8a9bb0' }
 
 // ── Componente principal ──────────────────────────────────────────────────────
@@ -131,9 +132,10 @@ export default function Auditoria() {
   const [customA, setCustomA]     = useState({ desde: '', hasta: '' })
   const [customB, setCustomB]     = useState({ desde: '', hasta: '' })
   const [tab, setTab]             = useState(0)
-  const [analizando, setAnalizando] = useState(false)
-  const [error, setError]         = useState(null)
-  const [resultado, setResultado] = useState(null)
+  const [analizando, setAnalizando]         = useState(false)
+  const [error, setError]                   = useState(null)
+  const [resultado, setResultado]           = useState(null)
+  const [horizonteTendencias, setHorizonte] = useState(12)
 
   // Períodos efectivos
   const preset = presets.find(p => p.id === presetId)
@@ -156,7 +158,12 @@ export default function Auditoria() {
     try {
       const { desdeA, hastaA, desdeB, hastaB } = periodosEfectivos
 
-      // Fetch en paralelo de todas las tablas para ambos períodos
+      // Fecha límite para tendencias (últimos 24 meses)
+      const hace24m = new Date()
+      hace24m.setMonth(hace24m.getMonth() - 24)
+      const hace24mStr = hace24m.toISOString().split('T')[0]
+
+      // Fetch en paralelo de todas las tablas
       const [
         { data: todasCamadas },
         { data: todosAnimales },
@@ -164,6 +171,9 @@ export default function Auditoria() {
         { data: entA },  { data: entB },
         { data: incA },  { data: incB },
         { data: tempA }, { data: tempB },
+        { data: todosIncidentes },
+        { data: todasTemperaturas },
+        { data: camadasF1 },
       ] = await Promise.all([
         supabase.from('camadas').select('*').eq('bioterio_id', bioterio).order('fecha_copula'),
         supabase.from('animales').select('*').eq('bioterio_id', bioterio),
@@ -175,7 +185,17 @@ export default function Auditoria() {
         supabase.from('incidentes').select('*').eq('bioterio_id', bioterio).gte('fecha', desdeB).lte('fecha', hastaB),
         supabase.from('temperature_logs').select('*').gte('date', desdeA).lte('date', hastaA).order('date'),
         supabase.from('temperature_logs').select('*').gte('date', desdeB).lte('date', hastaB).order('date'),
+        // Para tendencias: todos los incidentes y temperaturas (últimos 24 meses)
+        supabase.from('incidentes').select('*').eq('bioterio_id', bioterio).gte('fecha', hace24mStr),
+        supabase.from('temperature_logs').select('*').gte('date', hace24mStr).order('date'),
+        // Para tab Híbridos: camadas F1 si no es el bioterio activo
+        bioterio !== 'ratones_hibridos'
+          ? supabase.from('camadas').select('*').eq('bioterio_id', 'ratones_hibridos').order('fecha_copula')
+          : Promise.resolve({ data: [] }),
       ])
+
+      // Fuente de camadas F1: si ya estamos en híbridos, usar todasCamadas; si no, el fetch separado
+      const camF1todas = bioterio === 'ratones_hibridos' ? (todasCamadas || []) : (camadasF1 || [])
 
       // Filtrar camadas por período usando fecha_copula
       const camA = filtrarPorPeriodo(todasCamadas || [], 'fecha_copula', desdeA, hastaA)
@@ -191,23 +211,40 @@ export default function Auditoria() {
       const ambienteA = calcularMetricasAmbiente(tempA || [], bioterio)
       const ambienteB = calcularMetricasAmbiente(tempB || [], bioterio)
       const geneticaA = calcularMetricasGenetica(todosAnimales || [], todasCamadas || [])
-      const geneticaB = geneticaA // Genética es estado actual — no varía por período
+      const geneticaB = geneticaA // estado actual — no varía por período
+
+      // Renovación: filtrar retirados del período usando fecha_sacrificio
+      const retiradosA = (todosAnimales || []).filter(a =>
+        a.fecha_sacrificio && a.fecha_sacrificio >= desdeA && a.fecha_sacrificio <= hastaA
+      )
+      const retiradosB = (todosAnimales || []).filter(a =>
+        a.fecha_sacrificio && a.fecha_sacrificio >= desdeB && a.fecha_sacrificio <= hastaB
+      )
+      const renovacionA = calcularMetricasRenovacion(todosAnimales || [], retiradosA)
+      const renovacionB = calcularMetricasRenovacion(todosAnimales || [], retiradosB)
+
+      // Híbridos F1 por período
+      const hibridosA = calcularMetricasHibridos(filtrarPorPeriodo(camF1todas, 'fecha_copula', desdeA, hastaA))
+      const hibridosB = calcularMetricasHibridos(filtrarPorPeriodo(camF1todas, 'fecha_copula', desdeB, hastaB))
+
+      // Tendencias históricas (todos los meses disponibles, hasta 24m)
+      const tendencias = calcularTendencias(todasCamadas || [], todosIncidentes || [], todasTemperaturas || [], bioterio, 24)
 
       const igA = calcularIndiceGlobal({ repro: reproA, prod: prodA, sanidad: sanidadA, ambiente: ambienteA })
       const igB = calcularIndiceGlobal({ repro: reproB, prod: prodB, sanidad: sanidadB, ambiente: ambienteB })
       const ieA = calcularIndiceEstabilidad({ repro: reproA, sanidad: sanidadA, ambiente: ambienteA, genetica: geneticaA })
       const ieB = calcularIndiceEstabilidad({ repro: reproB, sanidad: sanidadB, ambiente: ambienteB, genetica: geneticaB })
 
-      const mA = { repro: reproA, prod: prodA, sanidad: sanidadA, ambiente: ambienteA, genetica: geneticaA, indiceGlobal: igA, indiceEstabilidad: ieA }
-      const mB = { repro: reproB, prod: prodB, sanidad: sanidadB, ambiente: ambienteB, genetica: geneticaB, indiceGlobal: igB, indiceEstabilidad: ieB }
+      const mA = { repro: reproA, prod: prodA, sanidad: sanidadA, ambiente: ambienteA, genetica: geneticaA, renovacion: renovacionA, hibridos: hibridosA, indiceGlobal: igA, indiceEstabilidad: ieA }
+      const mB = { repro: reproB, prod: prodB, sanidad: sanidadB, ambiente: ambienteB, genetica: geneticaB, renovacion: renovacionB, hibridos: hibridosB, indiceGlobal: igB, indiceEstabilidad: ieB }
 
-      const comp         = compararPeriodos(mA, mB)
-      const patrones     = detectarPatronesGlobales(comp)
-      const hipotesis    = motorCausalHistorico(comp)
-      const resumen      = generarResumenAutomatico(comp, hipotesis)
+      const comp            = compararPeriodos(mA, mB)
+      const patrones        = detectarPatronesGlobales(comp)
+      const hipotesis       = motorCausalHistorico(comp)
+      const resumen         = generarResumenAutomatico(comp, hipotesis)
       const recomendaciones = generarRecomendaciones(comp, hipotesis)
 
-      setResultado({ mA, mB, comp, patrones, hipotesis, resumen, recomendaciones, periodoA: { desde: desdeA, hasta: hastaA }, periodoB: { desde: desdeB, hasta: hastaB } })
+      setResultado({ mA, mB, comp, patrones, hipotesis, resumen, recomendaciones, tendencias, periodoA: { desde: desdeA, hasta: hastaA }, periodoB: { desde: desdeB, hasta: hastaB } })
     } catch (err) {
       setError('Error al cargar datos: ' + (err.message || 'Error desconocido'))
     } finally {
@@ -518,7 +555,233 @@ export default function Auditoria() {
                   <MetricaRow label="Total animales activos" comp={{ A: mA.genetica.totalAnimales, B: mB.genetica.totalAnimales, delta: 0, senal: 'neutro' }} formato={v => v?.toFixed(0) ?? '—'} />
                 </div>
               )}
+
+              {/* TAB 5: Renovación */}
+              {tab === 5 && (() => {
+                const rnA = mA.renovacion
+                const rnB = mB.renovacion
+                const diffRet = { A: rnA.retirados, B: rnB.retirados, delta: rnB.retirados - rnA.retirados, senal: rnB.retirados > rnA.retirados ? 'mejora' : rnB.retirados < rnA.retirados ? 'deterioro' : 'estable' }
+                const diffTasa = { A: rnA.tasaRenovacion, B: rnB.tasaRenovacion, delta: rnB.tasaRenovacion - rnA.tasaRenovacion, senal: 'neutro' }
+                return (
+                  <div>
+                    {/* Estado actual — mismo para ambos períodos */}
+                    <div className="rounded-xl p-4 mb-4" style={{ background: 'rgba(0,230,118,0.04)', border: '1px solid rgba(0,230,118,0.15)' }}>
+                      <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: '#00e676' }}>Estado actual de reproductores</div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {[
+                          { label: 'Total activos', val: rnA.totalActivos, color: '#c9d4e0' },
+                          { label: '♂ Machos',      val: rnA.machos,       color: '#40c4ff' },
+                          { label: '♀ Hembras',     val: rnA.hembras,      color: '#ce93d8' },
+                          { label: 'Edad media',    val: rnA.edadMedia ? Math.round(rnA.edadMedia) + 'd' : '—', color: '#ffb300' },
+                        ].map(({ label, val, color }) => (
+                          <div key={label} className="rounded-lg p-3 text-center" style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${tema.bgCardBorde}` }}>
+                            <div className="text-lg font-bold font-mono" style={{ color }}>{val}</div>
+                            <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>{label}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Alertas de edad */}
+                      {(rnA.proximosLimite > 0 || rnA.excedidos > 0) && (
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {rnA.proximosLimite > 0 && (
+                            <span className="px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: 'rgba(255,179,0,0.12)', border: '1px solid rgba(255,179,0,0.3)', color: '#ffb300' }}>
+                              ⚠️ {rnA.proximosLimite} próximo{rnA.proximosLimite > 1 ? 's' : ''} al límite de edad (≥240d)
+                            </span>
+                          )}
+                          {rnA.excedidos > 0 && (
+                            <span className="px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: 'rgba(255,61,87,0.12)', border: '1px solid rgba(255,61,87,0.3)', color: '#ff6b80' }}>
+                              🔴 {rnA.excedidos} excedido{rnA.excedidos > 1 ? 's' : ''} el límite (≥270d)
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {/* Comparación por período */}
+                    <MetricaRow label="Reproductores retirados/sacrificados" comp={diffRet} formato={v => v?.toFixed(0) ?? '—'} />
+                    <MetricaRow label="Tasa de renovación (retirados/activos)" comp={diffTasa} formato={v => v?.toFixed(1) + '%'} />
+                    <div className="mt-5">
+                      <div className="text-xs font-semibold mb-3" style={{ color: tema.textMuted }}>Retirados por período</div>
+                      <ResponsiveContainer width="100%" height={180}>
+                        <BarChart data={[{ name: 'Retirados', A: rnA.retirados, B: rnB.retirados }]} barGap={8} barCategoryGap="50%">
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                          <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#4a5f7a' }} />
+                          <YAxis tick={{ fontSize: 10, fill: '#4a5f7a' }} />
+                          <Tooltip contentStyle={{ background: '#0d1528', border: '1px solid rgba(0,230,118,0.2)', borderRadius: 10, fontSize: 12 }} />
+                          <Bar dataKey="A" fill="#4a5f7a" radius={[4, 4, 0, 0]} name="Período A" />
+                          <Bar dataKey="B" fill="#00e676" radius={[4, 4, 0, 0]} name="Período B" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* TAB 6: Híbridos F1 */}
+              {tab === 6 && (() => {
+                const hA = mA.hibridos
+                const hB = mB.hibridos
+                const diffNac  = { A: hA.nacidos,    B: hB.nacidos,    delta: hB.nacidos - hA.nacidos,       senal: hB.nacidos > hA.nacidos ? 'mejora' : hB.nacidos < hA.nacidos ? 'deterioro' : 'estable' }
+                const diffDest = { A: hA.destetados, B: hB.destetados, delta: hB.destetados - hA.destetados, senal: hB.destetados > hA.destetados ? 'mejora' : 'estable' }
+                const diffExit = { A: hA.exitosos,   B: hB.exitosos,   delta: hB.exitosos - hA.exitosos,     senal: hB.exitosos > hA.exitosos ? 'mejora' : 'estable' }
+                const diffEfi  = { A: hA.eficiencia, B: hB.eficiencia, delta: hB.eficiencia - hA.eficiencia, senal: hB.eficiencia > hA.eficiencia ? 'mejora' : hB.eficiencia < hA.eficiencia ? 'deterioro' : 'estable' }
+                const diffTam  = { A: hA.tamanoCamadaMedio, B: hB.tamanoCamadaMedio, delta: hB.tamanoCamadaMedio - hA.tamanoCamadaMedio, senal: hB.tamanoCamadaMedio > hA.tamanoCamadaMedio ? 'mejora' : 'estable' }
+                const sinDatos = hA.total === 0 && hB.total === 0
+                return (
+                  <div>
+                    {bioterio !== 'ratones_hibridos' && (
+                      <div className="rounded-xl px-4 py-3 mb-4 text-xs" style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.18)', color: '#00e676' }}>
+                        🧬 Mostrando producción F1 (Bioterio Híbridos) independientemente del bioterio seleccionado para auditoría.
+                      </div>
+                    )}
+                    {sinDatos ? (
+                      <p className="text-xs text-center py-8" style={{ color: tema.textMuted }}>Sin camadas F1 registradas en los períodos seleccionados.</p>
+                    ) : (
+                      <>
+                        <MetricaRow label="Emparejamientos F1 totales" comp={{ A: hA.total, B: hB.total, delta: hB.total - hA.total, senal: 'neutro' }} formato={v => v?.toFixed(0) ?? '—'} />
+                        <MetricaRow label="Cruces exitosos" comp={diffExit} formato={v => v?.toFixed(0) ?? '—'} />
+                        <MetricaRow label="Cruces fallidos" comp={{ A: hA.fallidos, B: hB.fallidos, delta: hB.fallidos - hA.fallidos, senal: hB.fallidos > hA.fallidos ? 'deterioro' : 'mejora' }} formato={v => v?.toFixed(0) ?? '—'} />
+                        <MetricaRow label="Nacidos F1" comp={diffNac} formato={v => v?.toFixed(0) ?? '—'} />
+                        <MetricaRow label="Destetados F1" comp={diffDest} formato={v => v?.toFixed(0) ?? '—'} />
+                        <MetricaRow label="Tamaño de camada F1 (media)" comp={diffTam} formato={v => v?.toFixed(1) ?? '—'} />
+                        <MetricaRow label="Eficiencia F1 (destetados/nacidos)" comp={diffEfi} formato={v => v?.toFixed(1) + '%'} />
+                        {(hA.tiempoMedioDestete || hB.tiempoMedioDestete) && (
+                          <MetricaRow
+                            label="Tiempo medio al destete (días)"
+                            comp={{ A: hA.tiempoMedioDestete ?? 0, B: hB.tiempoMedioDestete ?? 0, delta: (hB.tiempoMedioDestete ?? 0) - (hA.tiempoMedioDestete ?? 0), senal: 'neutro' }}
+                            formato={v => v?.toFixed(0) + 'd'}
+                          />
+                        )}
+                        <div className="mt-5">
+                          <div className="text-xs font-semibold mb-3" style={{ color: tema.textMuted }}>Producción F1 comparada</div>
+                          <ResponsiveContainer width="100%" height={180}>
+                            <BarChart data={[
+                              { name: 'Nacidos', A: hA.nacidos, B: hB.nacidos },
+                              { name: 'Destetados', A: hA.destetados, B: hB.destetados },
+                              { name: 'Exitosos', A: hA.exitosos, B: hB.exitosos },
+                            ]} barGap={4} barCategoryGap="35%">
+                              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                              <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#4a5f7a' }} />
+                              <YAxis tick={{ fontSize: 10, fill: '#4a5f7a' }} />
+                              <Tooltip contentStyle={{ background: '#0d1528', border: '1px solid rgba(0,230,118,0.2)', borderRadius: 10, fontSize: 12 }} />
+                              <Bar dataKey="A" fill="#4a5f7a" radius={[4, 4, 0, 0]} name="Período A" />
+                              <Bar dataKey="B" fill="#00e676" radius={[4, 4, 0, 0]} name="Período B" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
+
+            {/* ── Tendencias históricas ─────────────────────────────────────── */}
+            {resultado.tendencias?.length > 0 && (() => {
+              const horizontes = [
+                { val: 3,  label: '3 meses' },
+                { val: 6,  label: '6 meses' },
+                { val: 12, label: '12 meses' },
+                { val: 24, label: '24 meses' },
+              ]
+              const datosHorizonte = resultado.tendencias.slice(-horizonteTendencias)
+              const tooltipStyle = { background: '#0d1528', border: '1px solid rgba(0,230,118,0.2)', borderRadius: 10, fontSize: 11 }
+              const xTickStyle   = { fontSize: 9, fill: '#4a5f7a' }
+              const yTickStyle   = { fontSize: 9, fill: '#4a5f7a' }
+              return (
+                <div className="rounded-2xl overflow-hidden" style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}>
+                  <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: `1px solid ${tema.bgCardBorde}`, background: 'rgba(0,230,118,0.03)' }}>
+                    <span className="text-sm font-bold" style={{ color: tema.textPrimary }}>📈 Tendencias históricas</span>
+                    <div className="flex gap-1">
+                      {horizontes.map(h => (
+                        <button key={h.val} onClick={() => setHorizonte(h.val)}
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
+                          style={horizonteTendencias === h.val
+                            ? { background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.35)', color: '#00e676' }
+                            : { background: 'rgba(255,255,255,0.04)', border: `1px solid ${tema.bgCardBorde}`, color: tema.textMuted }
+                          }
+                        >{h.label}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Fertilidad */}
+                    <div>
+                      <div className="text-xs font-semibold mb-2" style={{ color: tema.textMuted }}>Fertilidad (%)</div>
+                      <ResponsiveContainer width="100%" height={140}>
+                        <LineChart data={datosHorizonte}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                          <XAxis dataKey="mes" tick={xTickStyle} />
+                          <YAxis domain={[0, 100]} tick={yTickStyle} />
+                          <Tooltip contentStyle={tooltipStyle} formatter={v => [v + '%', 'Fertilidad']} />
+                          <Line type="monotone" dataKey="fertilidad" stroke="#00e676" strokeWidth={2} dot={{ r: 3, fill: '#00e676' }} connectNulls />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                    {/* Nacidos y destetados */}
+                    <div>
+                      <div className="text-xs font-semibold mb-2" style={{ color: tema.textMuted }}>Producción (nacidos / destetados)</div>
+                      <ResponsiveContainer width="100%" height={140}>
+                        <LineChart data={datosHorizonte}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                          <XAxis dataKey="mes" tick={xTickStyle} />
+                          <YAxis tick={yTickStyle} />
+                          <Tooltip contentStyle={tooltipStyle} />
+                          <Line type="monotone" dataKey="nacidos"    stroke="#40c4ff" strokeWidth={2} dot={{ r: 2 }} name="Nacidos" connectNulls />
+                          <Line type="monotone" dataKey="destetados" stroke="#a78bfa" strokeWidth={2} dot={{ r: 2 }} name="Destetados" connectNulls />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                    {/* Supervivencia */}
+                    <div>
+                      <div className="text-xs font-semibold mb-2" style={{ color: tema.textMuted }}>Supervivencia al destete (%)</div>
+                      <ResponsiveContainer width="100%" height={140}>
+                        <LineChart data={datosHorizonte}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                          <XAxis dataKey="mes" tick={xTickStyle} />
+                          <YAxis domain={[0, 100]} tick={yTickStyle} />
+                          <Tooltip contentStyle={tooltipStyle} formatter={v => [v + '%', 'Supervivencia']} />
+                          <Line type="monotone" dataKey="supervivencia" stroke="#ffb300" strokeWidth={2} dot={{ r: 3, fill: '#ffb300' }} connectNulls />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                    {/* Incidentes */}
+                    <div>
+                      <div className="text-xs font-semibold mb-2" style={{ color: tema.textMuted }}>Incidentes (total / graves)</div>
+                      <ResponsiveContainer width="100%" height={140}>
+                        <LineChart data={datosHorizonte}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                          <XAxis dataKey="mes" tick={xTickStyle} />
+                          <YAxis tick={yTickStyle} />
+                          <Tooltip contentStyle={tooltipStyle} />
+                          <Line type="monotone" dataKey="incidentes" stroke="#ff9800" strokeWidth={2} dot={{ r: 2 }} name="Total" connectNulls />
+                          <Line type="monotone" dataKey="graves"     stroke="#ff6b80" strokeWidth={2} dot={{ r: 2 }} name="Graves" connectNulls />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                    {/* Temperatura — solo si hay datos */}
+                    {datosHorizonte.some(d => d.tempMedia !== null) && (
+                      <div className="md:col-span-2">
+                        <div className="text-xs font-semibold mb-2" style={{ color: tema.textMuted }}>Temperatura media mensual (°C)</div>
+                        <ResponsiveContainer width="100%" height={140}>
+                          <LineChart data={datosHorizonte}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                            <XAxis dataKey="mes" tick={xTickStyle} />
+                            <YAxis domain={[16, 28]} tick={yTickStyle} />
+                            <Tooltip contentStyle={tooltipStyle} formatter={v => [v + ' °C', 'Temperatura']} />
+                            {/* Zona ideal */}
+                            <Line type="monotone" dataKey="tempMedia" stroke="#40c4ff" strokeWidth={2} dot={{ r: 3, fill: '#40c4ff' }} connectNulls name="Temp media" />
+                          </LineChart>
+                        </ResponsiveContainer>
+                        <div className="flex gap-3 mt-1 text-xs" style={{ color: tema.textMuted }}>
+                          <span style={{ color: '#4ade80' }}>✓ Rango ideal: 20–24 °C</span>
+                          <span style={{ color: '#ff6b80' }}>⚠️ Riesgo: &lt;18 °C o &gt;26 °C</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* ── Motor causal ─────────────────────────────────────────────── */}
             {hipotesis.length > 0 && (
