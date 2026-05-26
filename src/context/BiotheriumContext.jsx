@@ -136,7 +136,7 @@ export function BiotheriumProvider({ children }) {
         dispatch({ type: 'SET_TEMPERATURAS', payload: temperaturas ?? [] })
         dispatch({ type: 'SET_INCIDENTES', payload: incidentes ?? [] })
         dispatch({ type: 'SET_EXTENDIDOS', payload: extendidos ?? [] })
-        dispatch({ type: 'SET_PEDIDOS', payload: pedidos ?? [] })
+        dispatch({ type: 'SET_PEDIDOS', payload: (pedidos ?? []).map(_pedidoFromDb) })
 
         // Cuando el bioterio activo es Híbridos, cargar también los animales
         // de BAL/C y C57 que fueron marcados como exportados
@@ -708,6 +708,42 @@ export function BiotheriumProvider({ children }) {
 
   // ── PEDIDOS ────────────────────────────────────────────────────────────────
 
+  // Convierte el objeto camelCase del frontend a snake_case para Supabase
+  function _pedidoToDb(p) {
+    return {
+      id:           p.id,
+      bioterio_id:  p.bioterioId,
+      cantidad:     p.cantidad,
+      sexo:         p.sexo,
+      edad_semanas: p.edadSemanas,
+      fecha_entrega: p.fechaEntrega,
+      uso:          p.uso,
+      solicitante:  p.solicitante ?? '',
+      notas:        p.notas ?? '',
+      estado:       p.estado,
+      created_at:   p.created_at,
+      updated_at:   p.updated_at ?? null,
+    }
+  }
+
+  // Convierte la fila snake_case de Supabase al objeto camelCase que usa la UI
+  function _pedidoFromDb(row) {
+    return {
+      id:           row.id,
+      bioterioId:   row.bioterio_id,
+      cantidad:     row.cantidad,
+      sexo:         row.sexo,
+      edadSemanas:  row.edad_semanas,
+      fechaEntrega: row.fecha_entrega,
+      uso:          row.uso,
+      solicitante:  row.solicitante ?? '',
+      notas:        row.notas ?? '',
+      estado:       row.estado,
+      created_at:   row.created_at,
+      updated_at:   row.updated_at,
+    }
+  }
+
   async function agregarPedido(datos) {
     const nuevo = {
       ...datos,
@@ -716,7 +752,7 @@ export function BiotheriumProvider({ children }) {
       created_at: new Date().toISOString().split('T')[0],
     }
     dispatch({ type: 'AGREGAR_PEDIDO', payload: nuevo })
-    const { error } = await supabase.from('pedidos').insert(nuevo)
+    const { error } = await supabase.from('pedidos').insert(_pedidoToDb(nuevo))
     if (error) {
       console.error('Error al guardar pedido:', error)
       dispatch({ type: 'ELIMINAR_PEDIDO', payload: nuevo.id })
@@ -727,7 +763,7 @@ export function BiotheriumProvider({ children }) {
   async function editarPedido(datos) {
     const antigua = estado.pedidos.find((p) => p.id === datos.id)
     dispatch({ type: 'EDITAR_PEDIDO', payload: datos })
-    const { error } = await supabase.from('pedidos').update(datos).eq('id', datos.id)
+    const { error } = await supabase.from('pedidos').update(_pedidoToDb(datos)).eq('id', datos.id)
     if (error) {
       console.error('Error al editar pedido:', error)
       if (antigua) dispatch({ type: 'EDITAR_PEDIDO', payload: antigua })
