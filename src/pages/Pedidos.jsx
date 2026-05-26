@@ -15,6 +15,7 @@ import {
   evaluarCapacidadFutura, evaluarImpactoColonia, calcularIndiceViabilidad,
   simularEscenarios, generarCalendarioPedido, proyeccionHorizontes,
   detectarSuperavit,
+  evaluarImpactoEstrategico, calcularIndiceImpactoFuturo, simularEscenariosEstrategicos,
   nivelViabilidad, labelBioterio, labelSexo, labelUso, colorEstadoPedido,
 } from '../utils/motorPedidos'
 import { reservarAnimal } from '../utils/motorDecisiones'
@@ -305,6 +306,7 @@ function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproduct
     bio, parejasNecesarias, fechasOptimas, reproductoresSeleccionados,
     animalesListos, capacidadFutura, impactoColonia, indiceSanitario, viabilidad,
     escenarios, calendario, horizontes, superavit,
+    impactoEstrategico, indiceImpactoFuturo, escenariosEstrategicos,
   } = analisis
 
   const nivel = nivelViabilidad(viabilidad.score)
@@ -369,7 +371,13 @@ function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproduct
               style={{ background: nivel.bg, border: `1.5px solid ${nivel.borde}` }}
             >
               <div className="font-mono font-bold text-2xl" style={{ color: nivel.color }}>{viabilidad.score}</div>
-              <div className="text-xs font-semibold" style={{ color: nivel.color }}>{nivel.emoji} {nivel.label}</div>
+              <div className="text-xs font-semibold" style={{ color: nivel.color }}>{nivel.emoji} Viabilidad</div>
+            </div>
+            <div className="text-center px-3 py-2 rounded-xl"
+              style={{ background: indiceImpactoFuturo.bg, border: `1.5px solid ${indiceImpactoFuturo.borde}` }}
+            >
+              <div className="font-mono font-bold text-2xl" style={{ color: indiceImpactoFuturo.color }}>{indiceImpactoFuturo.score}</div>
+              <div className="text-xs font-semibold" style={{ color: indiceImpactoFuturo.color }}>{indiceImpactoFuturo.emoji} Impacto</div>
             </div>
           </div>
         </div>
@@ -683,6 +691,172 @@ function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproduct
         </SeccionCard>
       )}
 
+      {/* ─── SECCIÓN: Motor Estratégico ──────────── */}
+      <SeccionCard id="motor_estrategico" titulo={`🎯 Motor estratégico${impactoEstrategico.empeoraEstado ? ' ⚠' : ' ✓'}`}>
+        {/* Veredicto principal */}
+        <div className="rounded-xl px-4 py-3 mb-4"
+          style={{
+            background: impactoEstrategico.empeoraEstado ? 'rgba(255,61,87,0.07)' : 'rgba(0,230,118,0.06)',
+            border: `1.5px solid ${impactoEstrategico.empeoraEstado ? 'rgba(255,61,87,0.3)' : 'rgba(0,230,118,0.25)'}`,
+          }}
+        >
+          <div className="font-bold text-sm mb-1" style={{ color: impactoEstrategico.empeoraEstado ? '#ff6b80' : '#00e676' }}>
+            {impactoEstrategico.empeoraEstado
+              ? '⚠️ Cumplir este pedido empeora el estado futuro de la colonia'
+              : '✅ Cumplir este pedido no compromete la estabilidad futura'}
+          </div>
+          <div className="text-xs" style={{ color: '#4a5f7a' }}>
+            {impactoEstrategico.nCriticos > 0 && `${impactoEstrategico.nCriticos} riesgo(s) crítico(s) · `}
+            {impactoEstrategico.nAdvertencias > 0 && `${impactoEstrategico.nAdvertencias} advertencia(s) · `}
+            Impacto futuro: <span style={{ color: indiceImpactoFuturo.color }}>{indiceImpactoFuturo.emoji} {indiceImpactoFuturo.label} ({indiceImpactoFuturo.score}/100)</span>
+          </div>
+        </div>
+
+        {/* Grilla de 10 dimensiones */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 mb-4">
+          {[
+            { key: 'renovacion',           label: 'Renovación'   },
+            { key: 'saturacion',           label: 'Saturación'   },
+            { key: 'genetica',             label: 'Genética'     },
+            { key: 'hibridos',             label: 'Híbridos'     },
+            { key: 'sanidad',              label: 'Sanidad'      },
+            { key: 'consanguinidad',       label: 'Consanguín.'  },
+            { key: 'capacidad',            label: 'Capacidad'    },
+            { key: 'pedidos_futuros',      label: 'Ped. futuros' },
+            { key: 'reproductores_minimos',label: 'Mínimos'      },
+            { key: 'estabilidad',          label: 'Estabilidad'  },
+          ].map(({ key, label }) => {
+            const val = impactoEstrategico.dimensiones[key] ?? 'ok'
+            const col = val === 'critico' ? '#ff6b80' : val === 'advertencia' ? '#ffb300' : '#00e676'
+            const bg2 = val === 'critico' ? 'rgba(255,61,87,0.07)' : val === 'advertencia' ? 'rgba(255,179,0,0.06)' : 'rgba(0,230,118,0.05)'
+            const borde2 = val === 'critico' ? 'rgba(255,61,87,0.2)' : val === 'advertencia' ? 'rgba(255,179,0,0.18)' : 'rgba(0,230,118,0.18)'
+            const emoji2 = val === 'critico' ? '🔴' : val === 'advertencia' ? '🟡' : '🟢'
+            return (
+              <div key={key} className="rounded-lg p-2 text-center"
+                style={{ background: bg2, border: `1px solid ${borde2}` }}
+              >
+                <div className="text-xs" style={{ color: col }}>{emoji2}</div>
+                <div className="text-xs mt-0.5" style={{ color: '#4a5f7a', fontSize: '10px' }}>{label}</div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Riesgos detectados */}
+        {impactoEstrategico.riesgos.length > 0 && (
+          <div className="space-y-1.5">
+            {impactoEstrategico.riesgos.map((r, i) => (
+              <div key={i} className="rounded-lg px-3 py-2 text-xs"
+                style={{
+                  background: r.nivel === 'critico' ? 'rgba(255,61,87,0.07)' : 'rgba(255,179,0,0.05)',
+                  border: `1px solid ${r.nivel === 'critico' ? 'rgba(255,61,87,0.22)' : 'rgba(255,179,0,0.18)'}`,
+                  color: r.nivel === 'critico' ? '#ff6b80' : '#ffb300',
+                }}
+              >
+                {r.nivel === 'critico' ? '🔴' : '⚠️'} <strong>{r.dimension.replace('_', ' ')}:</strong> {r.mensaje}
+              </div>
+            ))}
+          </div>
+        )}
+      </SeccionCard>
+
+      {/* ─── SECCIÓN: Simulador Estratégico A/B/C ─ */}
+      <SeccionCard id="simulador_estrategico" titulo="⚡ Simulador estratégico — Comparación de escenarios">
+        {/* Estrategia óptima */}
+        <div className="rounded-xl px-4 py-3 mb-4"
+          style={{ background: 'rgba(64,196,255,0.07)', border: '1.5px solid rgba(64,196,255,0.25)' }}
+        >
+          <div className="text-xs font-bold mb-1" style={{ color: '#40c4ff' }}>
+            🏆 Estrategia óptima recomendada
+          </div>
+          <div className="font-bold text-sm mb-1" style={{ color: '#c9d4e0' }}>
+            {escenariosEstrategicos.optima.emoji} Escenario {escenariosEstrategicos.optima.id.toUpperCase()}: {escenariosEstrategicos.optima.label}
+          </div>
+          <div className="text-xs" style={{ color: '#4a5f7a' }}>
+            {escenariosEstrategicos.optima.razon}
+          </div>
+        </div>
+
+        {/* Tabla comparativa */}
+        <div className="space-y-2">
+          {escenariosEstrategicos.escenarios.map((esc, i) => {
+            const esOptimo = esc.id === escenariosEstrategicos.optima.id
+            return (
+              <div key={esc.id} className="rounded-xl p-3"
+                style={{
+                  background: esOptimo ? 'rgba(64,196,255,0.06)' : 'rgba(8,13,26,0.3)',
+                  border: `1.5px solid ${esOptimo ? 'rgba(64,196,255,0.3)' : tema.bgCardBorde}`,
+                }}
+              >
+                <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">{esc.emoji}</span>
+                    <span className="text-sm font-bold" style={{ color: tema.textPrimary }}>
+                      {esc.label}
+                      {esOptimo && <span className="ml-2 text-xs font-normal" style={{ color: '#40c4ff' }}>✦ óptimo</span>}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {esc.retraso > 0 && (
+                      <span className="text-xs px-2 py-0.5 rounded-lg"
+                        style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.2)', color: '#40c4ff' }}
+                      >+{esc.retraso}d</span>
+                    )}
+                    {esc.rompeMinimo && (
+                      <span className="text-xs px-2 py-0.5 rounded-lg"
+                        style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.22)', color: '#ff6b80' }}
+                      >rompe mínimos</span>
+                    )}
+                    {esc.saturada && (
+                      <span className="text-xs px-2 py-0.5 rounded-lg"
+                        style={{ background: 'rgba(255,179,0,0.07)', border: '1px solid rgba(255,179,0,0.2)', color: '#ffb300' }}
+                      >saturación</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 mb-2">
+                  {[
+                    { label: '♀', val: esc.hembras, col: '#ce93d8' },
+                    { label: '♂', val: esc.machos,  col: '#40c4ff' },
+                    { label: '📦 Jaulas', val: esc.jaulasNuevas, col: '#c9d4e0' },
+                    { label: '🐭 Estimados', val: esc.animalesEstimados, col: '#c9d4e0' },
+                    { label: '♀ restan', val: esc.hembrasRestantes, col: esc.hembrasRestantes < 0 ? '#ff6b80' : '#4a5f7a' },
+                    { label: '♂ restan', val: esc.machosRestantes,  col: esc.machosRestantes  < 0 ? '#ff6b80' : '#4a5f7a' },
+                  ].map(({ label, val, col }) => (
+                    <div key={label} className="rounded-lg p-1.5 text-center"
+                      style={{ background: 'rgba(8,13,26,0.4)', border: `1px solid ${tema.bgCardBorde}` }}
+                    >
+                      <div className="font-mono font-bold text-sm" style={{ color: col }}>{val}</div>
+                      <div style={{ color: '#3a5068', fontSize: '10px' }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Barra de cumplimiento */}
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="h-1.5 rounded-full flex-1 overflow-hidden" style={{ background: 'rgba(30,51,82,0.6)' }}>
+                    <div className="h-full rounded-full"
+                      style={{ width: `${esc.probabilidad}%`, background: i === 0 ? '#00e676' : i === 1 ? '#ffb300' : '#40c4ff' }} />
+                  </div>
+                  <span className="text-xs font-bold shrink-0"
+                    style={{ color: i === 0 ? '#00e676' : i === 1 ? '#ffb300' : '#40c4ff' }}
+                  >{esc.probabilidad}% cumplimiento</span>
+                </div>
+
+                {/* Score estratégico */}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs italic" style={{ color: '#3a5068' }}>{esc.descripcion}</span>
+                  <span className="text-xs font-bold ml-2 shrink-0" style={{ color: '#c9d4e0' }}>
+                    Score: {esc.score}/100
+                  </span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </SeccionCard>
+
       {/* ─── SECCIÓN: Escenarios A/B ──────────────── */}
       <SeccionCard id="escenarios" titulo="🔀 Escenarios de producción">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -796,7 +970,27 @@ function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproduct
       </SeccionCard>
 
       {/* ─── SECCIÓN: Desglose índice viabilidad ── */}
-      <SeccionCard id="viabilidad_detalle" titulo="🎯 Desglose del índice de viabilidad">
+      <SeccionCard id="viabilidad_detalle" titulo="📊 Desglose de índices">
+        {/* Impacto futuro */}
+        <div className="rounded-xl px-4 py-3 mb-4"
+          style={{ background: indiceImpactoFuturo.bg, border: `1.5px solid ${indiceImpactoFuturo.borde}` }}
+        >
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-semibold" style={{ color: '#4a5f7a' }}>Impacto Futuro de la Colonia</span>
+            <span className="text-xs font-bold" style={{ color: indiceImpactoFuturo.color }}>
+              {indiceImpactoFuturo.emoji} {indiceImpactoFuturo.score}/100 — {indiceImpactoFuturo.label}
+            </span>
+          </div>
+          <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(30,51,82,0.6)' }}>
+            <div className="h-full rounded-full"
+              style={{ width: `${indiceImpactoFuturo.score}%`, background: indiceImpactoFuturo.color }} />
+          </div>
+          <div className="text-xs mt-1.5" style={{ color: '#3a5068' }}>
+            🟢 ≥67 mejora · 🟡 34-66 neutro · 🔴 &lt;34 deteriora
+          </div>
+        </div>
+
+        <div className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: '#4a5f7a' }}>Índice de Viabilidad del Pedido</div>
         <div className="space-y-2">
           {[
             { key: 'tiempo',        label: 'Tiempo suficiente',         max: 25 },
@@ -875,12 +1069,24 @@ export default function Pedidos() {
     const horizontes                 = proyeccionHorizontes(fechasOptimas)
     const superavit                  = detectarSuperavit(animales, pedidoSeleccionado.bioterioId)
 
+    // ── Motor estratégico ──────────────────────────────────────────────────
+    const impactoEstrategico         = evaluarImpactoEstrategico({
+      pedido: pedidoSeleccionado, animales, camadas, jaulas,
+      reproductoresSeleccionados, capacidadFutura, impactoColonia,
+      indiceSanitario, pedidosTodos: pedidos,
+    })
+    const indiceImpactoFuturo        = calcularIndiceImpactoFuturo(impactoEstrategico, indiceSanitario, superavit)
+    const escenariosEstrategicos     = simularEscenariosEstrategicos(
+      pedidoSeleccionado, camadas, animales, jaulas, indiceSanitario
+    )
+
     return {
       bio: bioPedido, parejasNecesarias, fechasOptimas,
       reproductoresSeleccionados, animalesListos, capacidadFutura,
       impactoColonia, indiceSanitario, viabilidad, escenarios, calendario, horizontes, superavit,
+      impactoEstrategico, indiceImpactoFuturo, escenariosEstrategicos,
     }
-  }, [pedidoSeleccionado, animales, camadas, jaulas, sacrificios, entregas, incidentes])
+  }, [pedidoSeleccionado, animales, camadas, jaulas, sacrificios, entregas, incidentes, pedidos])
 
   // ── Scores de viabilidad para todas las tarjetas ─────────────────────
   const scoresPorId = useMemo(() => {
