@@ -12,8 +12,9 @@ import {
   calcularIndiceRiesgoGenetico, nivelRiesgoGenetico,
   calcularIndiceEstabilidadGlobal,
   detectarPatrones, detectarCorrelaciones, detectarCorrelacionesMultiventana,
-  generarMotorCausal, generarAlertasSanitarias, generarRecomendacionesHoy,
+  generarMotorCausalCompleto, generarAlertasSanitarias, generarRecomendacionesHoy,
   generarTendencias, generarBloqueosSanitarios,
+  detectarDeterioroProgresivo, generarDecisionesHoy,
 } from '../utils/sanitario'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { AlertTriangle, CheckCircle, Plus, Activity, TrendingUp, TrendingDown, Thermometer, Dna, Zap, Eye, EyeOff } from 'lucide-react'
@@ -123,8 +124,18 @@ export default function Incidentes() {
   )
 
   const causas = useMemo(() =>
-    generarMotorCausal(incidentes, temperaturas, camadas, animales, bioterioActivo),
-    [incidentes, temperaturas, camadas, animales, bioterioActivo]
+    generarMotorCausalCompleto(incidentes, temperaturas, camadas, animales, bioterioActivo, fCoefMapa),
+    [incidentes, temperaturas, camadas, animales, bioterioActivo, fCoefMapa]
+  )
+
+  const deterioro = useMemo(() =>
+    detectarDeterioroProgresivo(camadas, incidentes, bioterioActivo),
+    [camadas, incidentes, bioterioActivo]
+  )
+
+  const decisionesConcretas = useMemo(() =>
+    generarDecisionesHoy(incidentes, temperaturas, camadas, animales, bioterioActivo, fCoefMapa),
+    [incidentes, temperaturas, camadas, animales, bioterioActivo, fCoefMapa]
   )
 
   const alertas = useMemo(() =>
@@ -552,6 +563,142 @@ export default function Incidentes() {
             style={{ background: 'rgba(64,196,255,0.06)', border: '1px solid rgba(64,196,255,0.2)', color: '#6a8099' }}>
             🔬 El motor causal cruza incidentes, temperatura, reproducción y genética para detectar patrones y proponer hipótesis sobre por qué están ocurriendo los problemas. No reemplaza el criterio del veterinario — es una guía de diagnóstico.
           </div>
+
+          {/* ── Decisiones concretas del día ─────────────────────────────────── */}
+          <div className="rounded-2xl overflow-hidden"
+            style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(64,196,255,0.25)' }}>
+            <div className="px-5 py-3 flex items-center gap-2 justify-between"
+              style={{ borderBottom: '1px solid rgba(64,196,255,0.12)', background: 'rgba(64,196,255,0.04)' }}>
+              <div className="flex items-center gap-2">
+                <Zap size={13} style={{ color: '#40c4ff' }} />
+                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#40c4ff' }}>
+                  ¿Qué hacer hoy?
+                </span>
+              </div>
+              {decisionesConcretas.length > 0 && (
+                <span className="text-xs font-mono px-2 py-0.5 rounded-full"
+                  style={{ background: 'rgba(64,196,255,0.1)', color: '#40c4ff' }}>
+                  {decisionesConcretas.filter(d => d.prioridad <= 1).length} urgente{decisionesConcretas.filter(d => d.prioridad <= 1).length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+            <div className="px-5 py-4 space-y-2">
+              {decisionesConcretas.length === 0 || (decisionesConcretas.length === 1 && decisionesConcretas[0].prioridad === 99) ? (
+                <div className="text-xs font-mono py-2" style={{ color: '#00e676' }}>
+                  🟢 Sin acciones urgentes hoy — la colonia está dentro de los parámetros normales.
+                </div>
+              ) : (
+                decisionesConcretas.filter(d => d.prioridad !== 99).map((d, i) => {
+                  const colores = {
+                    urgente:    { c: '#ff6b80', bg: 'rgba(255,107,128,0.08)', b: 'rgba(255,107,128,0.25)' },
+                    critico:    { c: '#ff6b80', bg: 'rgba(255,107,128,0.06)', b: 'rgba(255,107,128,0.2)' },
+                    importante: { c: '#ffb300', bg: 'rgba(255,179,0,0.06)',   b: 'rgba(255,179,0,0.2)' },
+                    atencion:   { c: '#40c4ff', bg: 'rgba(64,196,255,0.05)',  b: 'rgba(64,196,255,0.18)' },
+                    info:       { c: '#8a9bb0', bg: 'rgba(138,155,176,0.04)', b: 'rgba(138,155,176,0.15)' },
+                  }
+                  const cl = colores[d.nivel] ?? colores.info
+                  return (
+                    <div key={i} className="flex items-start gap-3 p-3 rounded-xl text-xs font-mono"
+                      style={{ background: cl.bg, border: `1px solid ${cl.b}` }}>
+                      <span className="text-base shrink-0">{d.icono}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold mb-0.5" style={{ color: cl.c }}>{d.accion}</div>
+                        <div style={{ color: '#6a8099' }}>{d.motivo}</div>
+                      </div>
+                      <span className="shrink-0 px-1.5 py-0.5 rounded text-xs"
+                        style={{ background: cl.bg, color: cl.c, border: `1px solid ${cl.b}` }}>
+                        {d.nivel}
+                      </span>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </div>
+
+          {/* ── Deterioro progresivo (ventanas 30/60/90/180/365d) ────────────── */}
+          {deterioro?.tieneDeterioro && (
+            <div className="rounded-2xl overflow-hidden"
+              style={{
+                background: 'rgba(13,21,40,0.9)',
+                border: `1px solid ${deterioro.nivel === 'critico' ? 'rgba(255,107,128,0.3)' : deterioro.nivel === 'importante' ? 'rgba(255,152,0,0.3)' : 'rgba(255,179,0,0.25)'}`,
+              }}>
+              <div className="px-5 py-3 flex items-center gap-2 justify-between"
+                style={{
+                  borderBottom: `1px solid ${deterioro.nivel === 'critico' ? 'rgba(255,107,128,0.12)' : 'rgba(255,179,0,0.1)'}`,
+                  background: `${deterioro.nivel === 'critico' ? 'rgba(255,107,128,0.04)' : 'rgba(255,179,0,0.03)'}`,
+                }}>
+                <div className="flex items-center gap-2">
+                  <TrendingDown size={13} style={{ color: deterioro.nivel === 'critico' ? '#ff6b80' : '#ffb300' }} />
+                  <span className="text-xs font-semibold uppercase tracking-widest"
+                    style={{ color: deterioro.nivel === 'critico' ? '#ff6b80' : '#ffb300' }}>
+                    Deterioro progresivo detectado
+                  </span>
+                </div>
+                <span className="text-xs font-mono px-2 py-0.5 rounded-full"
+                  style={{
+                    background: deterioro.nivel === 'critico' ? 'rgba(255,107,128,0.12)' : 'rgba(255,179,0,0.1)',
+                    color: deterioro.nivel === 'critico' ? '#ff6b80' : '#ffb300',
+                    border: `1px solid ${deterioro.nivel === 'critico' ? 'rgba(255,107,128,0.3)' : 'rgba(255,179,0,0.25)'}`,
+                  }}>
+                  ventana {deterioro.ventanaSignificativa}d
+                </span>
+              </div>
+              <div className="px-5 py-4">
+                {/* Señales activas */}
+                <div className="space-y-1.5 mb-4">
+                  {(deterioro.señalesActivas ?? []).map((s, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs font-mono" style={{ color: '#c9d4e0' }}>
+                      <span style={{ color: '#ff6b80' }}>↘</span>
+                      {s}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Tabla de ventanas */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs font-mono border-collapse">
+                    <thead>
+                      <tr style={{ color: '#4a5f7a' }}>
+                        <th className="text-left py-1.5 pr-4">Ventana</th>
+                        <th className="text-right py-1.5 px-2">Fertilidad</th>
+                        <th className="text-right py-1.5 px-2">Supervivencia</th>
+                        <th className="text-right py-1.5 px-2">Fallos</th>
+                        <th className="text-right py-1.5 px-2">Malform.</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(deterioro.ventanas ?? []).map((v, i) => (
+                        <tr key={i} className="transition-colors"
+                          style={{ borderTop: '1px solid rgba(255,255,255,0.04)', color: '#8a9bb0' }}>
+                          <td className="py-1.5 pr-4 text-white font-bold">{v.dias}d</td>
+                          <td className="text-right px-2" style={{ color: v.fertilidad < 0.6 ? '#ff6b80' : '#c9d4e0' }}>
+                            {(v.fertilidad * 100).toFixed(0)}%
+                          </td>
+                          <td className="text-right px-2" style={{ color: v.supervivencia < 0.65 ? '#ff6b80' : '#c9d4e0' }}>
+                            {(v.supervivencia * 100).toFixed(0)}%
+                          </td>
+                          <td className="text-right px-2" style={{ color: v.fallos > 3 ? '#ffb300' : '#c9d4e0' }}>
+                            {v.fallos}
+                          </td>
+                          <td className="text-right px-2" style={{ color: v.malformaciones > 2 ? '#ffb300' : '#c9d4e0' }}>
+                            {v.malformaciones}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {deterioro.patron && (
+                  <div className="mt-3 text-xs font-mono px-3 py-2 rounded-xl"
+                    style={{ background: 'rgba(255,107,128,0.06)', border: '1px solid rgba(255,107,128,0.15)', color: '#8a9bb0' }}>
+                    📊 {deterioro.patron}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Causas detectadas */}
           {causas.length === 0 ? (

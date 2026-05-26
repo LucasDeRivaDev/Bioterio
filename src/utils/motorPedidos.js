@@ -470,6 +470,7 @@ export function calcularIndiceViabilidad({
   impactoColonia,
   capacidadFutura,
   indiceSanitario = 100,
+  riesgoMultifactorial = null,  // resultado de evaluarRiesgoMultifactorialPedido
 }) {
   const detalle = {}
 
@@ -507,12 +508,150 @@ export function calcularIndiceViabilidad({
   // 6. Sanitario (10 pts)
   detalle.sanitario = Math.round((indiceSanitario / 100) * 10)
 
-  const score = Math.max(0, Math.min(100,
+  let score = Math.max(0, Math.min(100,
     detalle.tiempo + detalle.reproductores + detalle.minimos +
     detalle.stockActual + detalle.capacidad + detalle.sanitario
   ))
 
-  return { score, detalle }
+  // 7. Penalización multifactorial (genética + temperatura + incidentes + consanguinidad)
+  if (riesgoMultifactorial) {
+    if (riesgoMultifactorial.nivel === 'critico')  score = Math.max(0, score - 15)
+    else if (riesgoMultifactorial.nivel === 'alerta') score = Math.max(0, score - 7)
+    detalle.riesgoMultifactorial = riesgoMultifactorial.penalizacion ?? 0
+  }
+
+  return { score: Math.round(score), detalle }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 9b — RIESGO MULTIFACTORIAL DE PEDIDO
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Evalúa los factores de riesgo que pueden comprometer el éxito del pedido:
+ *   - Genética: F promedio de los reproductores sugeridos
+ *   - Supervivencia: tasa histórica baja en últimos 90 días
+ *   - Temperatura: días fuera de rango en últimos 14 días
+ *   - Incidentes graves activos en el bioterio
+ *   - Malformaciones recientes (90 días)
+ *
+ * Retorna: { nivel: 'ok'|'info'|'alerta'|'critico', bloquear, penalizacion, factores[] }
+ */
+export function evaluarRiesgoMultifactorialPedido({
+  reproductoresSeleccionados,
+  camadas,
+  temperaturas,
+  incidentes,
+  bioterioId,
+}) {
+  const factores = []
+  let penalizacion = 0
+
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  const hace90 = new Date(hoy); hace90.setDate(hace90.getDate() - 90)
+  const hace14 = new Date(hoy); hace14.setDate(hace14.getDate() - 14)
+  const ISO90  = hace90.toISOString().slice(0, 10)
+  const ISO14  = hace14.toISOString().slice(0, 10)
+
+  // 1. F promedio de los reproductores sugeridos
+  const todos = [
+    ...(reproductoresSeleccionados?.hembrasSugeridas ?? []),
+    ...(reproductoresSeleccionados?.machosSugeridos  ?? []),
+  ]
+  if (todos.length > 0) {
+    const fProm = todos.reduce((a, e) => a + (e.fAnimal ?? 0), 0) / todos.length
+    if (fProm >= 0.25) {
+      factores.push({ tipo: 'genetico', nivel: 'critico',
+        desc: `F promedio selección ${(fProm * 100).toFixed(1)}% — depresión consanguínea probable en crías` })
+      penalizacion += 15
+    } else if (fProm >= 0.125) {
+      factores.push({ tipo: 'genetico', nivel: 'alerta',
+        desc: `F promedio selección ${(fProm * 100).toFixed(1)}% — consanguinidad moderada` })
+      penalizacion += 7
+    }
+  }
+
+  // 2. Supervivencia baja en últimos 90 días
+  const cam90 = camadas.filter(c =>
+    c.bioterio_id === bioterioId &&
+    c.fecha_nacimiento >= ISO90 &&
+    c.total_crias > 0 &&
+    c.total_destetados != null
+  )
+  if (cam90.length >= 3) {
+    const srProm = cam90.reduce((a, c) => a + c.total_destetados / c.total_crias, 0) / cam90.length
+    if (srProm < 0.55) {
+      factores.push({ tipo: 'supervivencia', nivel: 'critico',
+        desc: `Supervivencia al destete últimos 90d: ${(srProm * 100).toFixed(0)}% — muy por debajo de la media` })
+      penalizacion += 12
+    } else if (srProm < 0.70) {
+      factores.push({ tipo: 'supervivencia', nivel: 'alerta',
+        desc: `Supervivencia al destete últimos 90d: ${(srProm * 100).toFixed(0)}% — reducida` })
+      penalizacion += 5
+    }
+  }
+
+  // 3. Temperatura fuera de rango últimos 14 días
+  const RANGO_MIN = 18, RANGO_MAX = 26
+  const temps14 = (temperaturas ?? []).filter(t =>
+    t.bioterio_id === bioterioId && t.date >= ISO14 && t.current_temp != null
+  )
+  const diasFueraRango = temps14.filter(t =>
+    t.current_temp < RANGO_MIN || t.current_temp > RANGO_MAX
+  ).length
+  if (diasFueraRango >= 5) {
+    factores.push({ tipo: 'ambiental', nivel: 'critico',
+      desc: `${diasFueraRango} días fuera de rango térmico en últimos 14d — estrés sostenido` })
+    penalizacion += 10
+  } else if (diasFueraRango >= 2) {
+    factores.push({ tipo: 'ambiental', nivel: 'alerta',
+      desc: `${diasFueraRango} días fuera de rango térmico en últimos 14d` })
+    penalizacion += 4
+  }
+
+  // 4. Incidentes graves activos
+  const incGraves = (incidentes ?? []).filter(i =>
+    (i.bioterio_id === bioterioId || !i.bioterio_id) &&
+    i.severidad === 'grave' &&
+    !i.resuelto
+  )
+  if (incGraves.length >= 3) {
+    factores.push({ tipo: 'sanitario', nivel: 'critico',
+      desc: `${incGraves.length} incidentes graves activos sin resolver — no recomendable iniciar nuevas camadas` })
+    penalizacion += 15
+  } else if (incGraves.length >= 1) {
+    factores.push({ tipo: 'sanitario', nivel: 'alerta',
+      desc: `${incGraves.length} incidente(s) grave(s) activo(s) — monitoreo obligatorio` })
+    penalizacion += 6
+  }
+
+  // 5. Malformaciones recientes (90 días) — en incidentes o camadas
+  const malform90 = (incidentes ?? []).filter(i =>
+    (i.bioterio_id === bioterioId || !i.bioterio_id) &&
+    (i.tipo_incidente === 'malformacion' || i.tipo_categoria === 'crias') &&
+    i.fecha >= ISO90
+  ).length
+
+  if (malform90 >= 3) {
+    factores.push({ tipo: 'genetico', nivel: 'critico',
+      desc: `${malform90} malformaciones registradas en 90 días — posible problema genético sistémico` })
+    penalizacion += 12
+  } else if (malform90 >= 1) {
+    factores.push({ tipo: 'genetico', nivel: 'alerta',
+      desc: `${malform90} malformación(es) reciente(s) — vigilar líneas afectadas` })
+    penalizacion += 4
+  }
+
+  // Nivel global
+  const nivelFinal = penalizacion >= 30 ? 'critico'
+    : penalizacion >= 12 ? 'alerta'
+    : penalizacion >= 1  ? 'info'
+    : 'ok'
+
+  const bloquear = nivelFinal === 'critico'
+
+  return { nivel: nivelFinal, bloquear, penalizacion, factores }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
