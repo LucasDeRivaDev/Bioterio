@@ -492,6 +492,76 @@ export function calcularTendencias(todasCamadas, todosIncidentes, todasTemperatu
   return puntos
 }
 
+// ── Regresión lineal simple (helper interno) ──────────────────────────────────
+function computeSlope(values) {
+  const valid = values.map((v, i) => ({ v, i })).filter(({ v }) => v != null && !isNaN(v))
+  if (valid.length < 2) return 0
+  const n    = valid.length
+  const sumX = valid.reduce((s, { i }) => s + i, 0)
+  const sumY = valid.reduce((s, { v }) => s + v, 0)
+  const sumXY = valid.reduce((s, { v, i }) => s + v * i, 0)
+  const sumX2 = valid.reduce((s, { i }) => s + i * i, 0)
+  const denom = n * sumX2 - sumX * sumX
+  return denom !== 0 ? (n * sumXY - sumX * sumY) / denom : 0
+}
+
+// ── Proyección lineal de una métrica ─────────────────────────────────────────
+// tendencias = array mensual de calcularTendencias()
+// metrica = nombre del campo (ej: 'fertilidad')
+// mesesFuturos = cuántos meses proyectar
+// minVal / maxVal = límites del clamp
+export function proyectarTendenciaLineal(tendencias, metrica, mesesFuturos = 6, minVal = 0, maxVal = Infinity) {
+  if (tendencias.length < 3) return []
+  const valores = tendencias.map(d => d[metrica] ?? null)
+  const slope   = computeSlope(valores)
+  const valid   = valores.filter(v => v != null)
+  const last    = valid.length > 0 ? valid[valid.length - 1] : 0
+  const n       = valores.length
+
+  return Array.from({ length: mesesFuturos }, (_, i) => ({
+    mes:   `+${i + 1}m`,
+    valor: Math.round(Math.max(minVal, Math.min(maxVal, last + slope * (i + 1))) * 10) / 10,
+    slope,
+  }))
+}
+
+// ── Índice Evolución Bioterio (0–100) ─────────────────────────────────────────
+// Responde: ¿la gestión histórica mejora o empeora la estabilidad futura?
+// Usa las pendientes de los últimos 6 meses de datos mensuales.
+export function calcularIndiceEvolucion(tendencias) {
+  if (!tendencias || tendencias.length < 3) return { score: 50, nivel: 'sin datos', pendientes: {} }
+
+  const datos = tendencias.slice(-6)
+
+  const normalize = (slope, max = 3) => Math.max(-1, Math.min(1, slope / max))
+
+  const slopeF = computeSlope(datos.map(d => d.fertilidad))      // + es bueno
+  const slopeS = computeSlope(datos.map(d => d.supervivencia))   // + es bueno
+  const slopeI = computeSlope(datos.map(d => d.incidentes))      // - es bueno
+  const slopeG = computeSlope(datos.map(d => d.graves))          // - es bueno
+  const slopeN = computeSlope(datos.map(d => d.nacidos))         // + es bueno
+
+  const score = 50
+    + normalize(slopeF, 5)  * 20
+    + normalize(slopeS, 5)  * 20
+    + normalize(-slopeI, 2) * 15
+    + normalize(-slopeG, 1) * 15
+    + normalize(slopeN, 5)  * 10
+
+  const scoreRound = Math.round(Math.max(0, Math.min(100, score)))
+
+  let nivel, emoji, color
+  if (scoreRound >= 68) { nivel = 'Mejorando'; emoji = '🟢'; color = '#00e676' }
+  else if (scoreRound >= 42) { nivel = 'Estable';    emoji = '🟡'; color = '#ffb300' }
+  else { nivel = 'Deteriorando'; emoji = '🔴'; color = '#ff6b80' }
+
+  return {
+    score: scoreRound,
+    nivel, emoji, color,
+    pendientes: { fertilidad: slopeF, supervivencia: slopeS, incidentes: slopeI, nacidos: slopeN },
+  }
+}
+
 // ── Recomendaciones priorizadas ───────────────────────────────────────────────
 export function generarRecomendaciones(comp, hipotesis) {
   const recs = []

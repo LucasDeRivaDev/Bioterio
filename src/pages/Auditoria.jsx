@@ -13,6 +13,7 @@ import {
   calcularMetricasSanidad, calcularMetricasAmbiente, calcularMetricasGenetica,
   calcularMetricasRenovacion, calcularMetricasHibridos, calcularTendencias,
   calcularIndiceGlobal, calcularIndiceEstabilidad,
+  calcularIndiceEvolucion, proyectarTendenciaLineal,
   compararPeriodos, detectarPatronesGlobales,
   motorCausalHistorico, generarResumenAutomatico, generarRecomendaciones,
 } from '../utils/auditoria'
@@ -55,21 +56,93 @@ function DeltaBadge({ comp, formato = (v) => v?.toFixed != null ? v.toFixed(1) :
   )
 }
 
-function MetricaRow({ label, comp, formato, invertir }) {
+function MetricaRow({ label, comp, formato }) {
   if (!comp) return null
   const color = señalColor(comp.senal)
+  // % de cambio relativo (B - A) / |A| × 100
+  const pct = comp.A != null && comp.A !== 0 && comp.delta != null
+    ? Math.round((comp.delta / Math.abs(comp.A)) * 100)
+    : null
+  const pctStr = pct != null ? (pct > 0 ? '+' : '') + pct + '%' : null
   return (
     <div className="flex items-center gap-2 py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
       <span className="text-xs flex-1 min-w-0 truncate" style={{ color: '#8a9bb0' }}>{label}</span>
-      <span className="text-xs font-mono w-14 text-right" style={{ color: '#c9d4e0' }}>
+      <span className="text-xs font-mono w-14 text-right" style={{ color: '#4a5f7a' }}>
         {formato ? formato(comp.A) : (comp.A?.toFixed?.(1) ?? '—')}
       </span>
       <span className="text-xs w-4 text-center" style={{ color: '#4a5f7a' }}>→</span>
       <span className="text-xs font-mono w-14 text-right" style={{ color: '#c9d4e0' }}>
         {formato ? formato(comp.B) : (comp.B?.toFixed?.(1) ?? '—')}
       </span>
-      <div className="w-16 flex justify-end">
+      {/* Cambio % */}
+      <span className="text-xs font-mono font-bold w-12 text-right" style={{ color: pct != null && pct !== 0 ? color : '#4a5f7a' }}>
+        {pctStr ?? '—'}
+      </span>
+      <div className="w-14 flex justify-end">
         <DeltaBadge comp={comp} formato={formato ? (v) => formato(Math.abs(v)) : undefined} />
+      </div>
+    </div>
+  )
+}
+
+// ── ¿El bioterio mejora o deteriora? — veredicto por dimensión ───────────────
+function VeredictoPanel({ comp, mA, mB }) {
+  const { tema } = useTheme()
+
+  function veredictoDim(señales) {
+    const m = señales.filter(s => s?.includes('mejora')).length
+    const d = señales.filter(s => s?.includes('deterioro')).length
+    if (d > m) return { emoji: '🔴', label: 'Deterioro', color: '#ff6b80', score: -1 }
+    if (m > d) return { emoji: '🟢', label: 'Mejora',    color: '#00e676', score:  1 }
+    return         { emoji: '🟡', label: 'Estable',   color: '#ffb300', score:  0 }
+  }
+
+  const dimensiones = [
+    { label: 'Reproducción', señales: [comp.fertilidad?.senal, comp.supervivencia?.senal, comp.tamanoCamada?.senal, comp.eficienciaRepro?.senal] },
+    { label: 'Producción',   señales: [comp.nacidos?.senal, comp.destetados?.senal, comp.eficienciaProd?.senal] },
+    { label: 'Sanidad',      señales: [comp.indiceSanitario?.senal, comp.graves?.senal, comp.malformaciones?.senal] },
+    { label: 'Genética',     señales: [comp.fMedia?.senal, comp.diversidad?.senal] },
+    { label: 'Ambiente',     señales: [comp.indiceAmbiental?.senal, comp.diasFueraRango?.senal, comp.estabilidadTemp?.senal] },
+    { label: 'Híbridos F1',  señales: [
+        mB.hibridos.nacidos > mA.hibridos.nacidos ? 'mejora' : mB.hibridos.nacidos < mA.hibridos.nacidos ? 'deterioro' : 'estable',
+        mB.hibridos.eficiencia > mA.hibridos.eficiencia ? 'mejora' : 'estable',
+    ]},
+  ]
+
+  const veredictos = dimensiones.map(d => ({ ...d, v: veredictoDim(d.señales) }))
+  const mejoras    = veredictos.filter(d => d.v.score > 0).length
+  const deterioros = veredictos.filter(d => d.v.score < 0).length
+  const global     = mejoras > deterioros
+    ? { emoji: '🟢', texto: 'El bioterio muestra tendencia de MEJORA', color: '#00e676' }
+    : deterioros > mejoras
+      ? { emoji: '🔴', texto: 'El bioterio muestra tendencia de DETERIORO', color: '#ff6b80' }
+      : { emoji: '🟡', texto: 'El bioterio se mantiene ESTABLE', color: '#ffb300' }
+
+  return (
+    <div className="rounded-2xl p-5 space-y-4" style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}>
+      {/* Pregunta + veredicto global */}
+      <div>
+        <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
+          ¿El bioterio mejora o se deteriora?
+        </div>
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
+          style={{ background: `${global.color}10`, border: `1px solid ${global.color}30` }}>
+          <span className="text-2xl">{global.emoji}</span>
+          <span className="text-sm font-bold" style={{ color: global.color }}>{global.texto}</span>
+        </div>
+      </div>
+      {/* Grid por dimensión */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+        {veredictos.map(({ label, v }) => (
+          <div key={label} className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
+            style={{ background: `${v.color}08`, border: `1px solid ${v.color}20` }}>
+            <span className="text-base shrink-0">{v.emoji}</span>
+            <div className="min-w-0">
+              <div className="text-xs font-semibold" style={{ color: v.color }}>{v.label}</div>
+              <div className="text-xs truncate" style={{ color: tema.textMuted }}>{label}</div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -399,7 +472,49 @@ export default function Auditoria() {
                 </div>
               </div>
               {/* Mini KPIs */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
+              {/* Índice Evolución Bioterio */}
+              {resultado.indiceEvolucion && (() => {
+                const ie = resultado.indiceEvolucion
+                return (
+                  <div className="mt-5 rounded-xl p-4 flex items-center gap-4"
+                    style={{ background: `${ie.color}08`, border: `1px solid ${ie.color}25` }}>
+                    <div className="text-center shrink-0">
+                      <div className="text-3xl font-bold font-mono" style={{ color: ie.color }}>{ie.score}</div>
+                      <div className="text-xs" style={{ color: ie.color }}>/100</div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: tema.textMuted }}>
+                        Índice evolución bioterio
+                      </div>
+                      <div className="text-sm font-bold mb-1" style={{ color: ie.color }}>
+                        {ie.emoji} {ie.nivel}
+                      </div>
+                      <div className="text-xs" style={{ color: tema.textMuted }}>
+                        ¿La gestión histórica mejora o empeora la estabilidad futura?
+                      </div>
+                    </div>
+                    {/* Mini pendientes */}
+                    <div className="hidden md:flex flex-col gap-1 shrink-0">
+                      {[
+                        { k: 'fertilidad', label: 'Fertilidad' },
+                        { k: 'supervivencia', label: 'Supervivencia' },
+                        { k: 'nacidos', label: 'Nacidos' },
+                      ].map(({ k, label }) => {
+                        const s = ie.pendientes[k]
+                        const c = s > 0.3 ? '#00e676' : s < -0.3 ? '#ff6b80' : '#8a9bb0'
+                        return (
+                          <div key={k} className="flex items-center gap-2 text-xs">
+                            <span style={{ color: '#4a5f7a' }}>{label}</span>
+                            <span style={{ color: c }}>{s > 0.3 ? '↑' : s < -0.3 ? '↓' : '→'} {s >= 0 ? '+' : ''}{s.toFixed(1)}/mes</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })()}
+              {/* Mini KPIs */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
                 {[
                   { label: 'Fertilidad', vA: (rA.fertilidad * 100).toFixed(0) + '%', vB: (rB.fertilidad * 100).toFixed(0) + '%', comp: comp.fertilidad },
                   { label: 'Nacidos',    vA: pA.nacidos, vB: pB.nacidos, comp: comp.nacidos },
@@ -414,6 +529,9 @@ export default function Auditoria() {
                 ))}
               </div>
             </div>
+
+            {/* ── ¿Mejora o deteriora? ─────────────────────────────────────── */}
+            <VeredictoPanel comp={comp} mA={mA} mB={mB} />
 
             {/* ── Patrones detectados ──────────────────────────────────────── */}
             <div className="rounded-2xl p-5 space-y-2" style={estiloCard}>
@@ -448,7 +566,8 @@ export default function Auditoria() {
                 <span className="text-xs w-14 text-right font-semibold" style={{ color: '#4a5f7a' }}>Per. A</span>
                 <span className="text-xs w-4" />
                 <span className="text-xs w-14 text-right font-semibold" style={{ color: '#00e676' }}>Per. B</span>
-                <span className="text-xs w-16 text-right" style={{ color: tema.textMuted }}>Δ</span>
+                <span className="text-xs w-12 text-right font-semibold" style={{ color: '#8a9bb0' }}>Cambio</span>
+                <span className="text-xs w-14 text-right" style={{ color: tema.textMuted }}>Δ</span>
               </div>
 
               {/* TAB 0: Reproducción */}
@@ -768,7 +887,6 @@ export default function Auditoria() {
                             <XAxis dataKey="mes" tick={xTickStyle} />
                             <YAxis domain={[16, 28]} tick={yTickStyle} />
                             <Tooltip contentStyle={tooltipStyle} formatter={v => [v + ' °C', 'Temperatura']} />
-                            {/* Zona ideal */}
                             <Line type="monotone" dataKey="tempMedia" stroke="#40c4ff" strokeWidth={2} dot={{ r: 3, fill: '#40c4ff' }} connectNulls name="Temp media" />
                           </LineChart>
                         </ResponsiveContainer>
@@ -779,6 +897,71 @@ export default function Auditoria() {
                       </div>
                     )}
                   </div>
+
+                  {/* ── Proyección futura ──────────────────────────────────── */}
+                  {(() => {
+                    const todosLosDatos = resultado.tendencias
+                    const metricas = [
+                      { key: 'fertilidad',   label: 'Fertilidad',    fmt: v => v.toFixed(0) + '%',  min: 0, max: 100 },
+                      { key: 'supervivencia',label: 'Supervivencia',  fmt: v => v.toFixed(0) + '%',  min: 0, max: 100 },
+                      { key: 'nacidos',      label: 'Nacidos/mes',   fmt: v => v.toFixed(0),         min: 0 },
+                      { key: 'incidentes',   label: 'Incidentes',    fmt: v => v.toFixed(0),         min: 0 },
+                    ]
+                    const horizontesProy = [3, 6, 12]
+                    const proyecciones = metricas.map(m => ({
+                      ...m,
+                      puntos: horizontesProy.map(h => {
+                        const ps = proyectarTendenciaLineal(todosLosDatos, m.key, h, m.min ?? 0, m.max ?? Infinity)
+                        return ps.length > 0 ? ps[ps.length - 1].valor : null
+                      }),
+                      slope: proyectarTendenciaLineal(todosLosDatos, m.key, 1, m.min ?? 0, m.max ?? Infinity)[0]?.slope ?? 0,
+                    }))
+                    const thStyle = { color: '#4a5f7a', fontSize: '11px', fontWeight: 600, padding: '6px 10px', textAlign: 'right' }
+                    const tdStyle = { fontSize: '11px', padding: '5px 10px', textAlign: 'right', fontFamily: 'monospace' }
+                    return (
+                      <div className="px-5 pb-5 mt-2">
+                        <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: tema.textMuted }}>
+                          Proyección futura — regresión lineal (últimos {Math.min(6, todosLosDatos.length)} meses)
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full rounded-xl overflow-hidden" style={{ borderCollapse: 'collapse', background: 'rgba(255,255,255,0.02)', border: `1px solid ${tema.bgCardBorde}` }}>
+                            <thead>
+                              <tr style={{ borderBottom: `1px solid ${tema.bgCardBorde}` }}>
+                                <th style={{ ...thStyle, textAlign: 'left', color: tema.textMuted }}>Métrica</th>
+                                <th style={thStyle}>Actual</th>
+                                {horizontesProy.map(h => <th key={h} style={{ ...thStyle, color: '#00e676' }}>+{h}m</th>)}
+                                <th style={thStyle}>Tendencia</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {proyecciones.map(({ key, label, fmt, puntos, slope }) => {
+                                const last = todosLosDatos.length > 0 ? todosLosDatos[todosLosDatos.length - 1][key] : null
+                                const trendColor = slope > 0.3 ? '#00e676' : slope < -0.3 ? '#ff6b80' : '#8a9bb0'
+                                const trendIcon  = slope > 0.3 ? '↑' : slope < -0.3 ? '↓' : '→'
+                                return (
+                                  <tr key={key} style={{ borderBottom: `1px solid ${tema.bgCardBorde}30` }}>
+                                    <td style={{ ...tdStyle, textAlign: 'left', color: '#8a9bb0' }}>{label}</td>
+                                    <td style={{ ...tdStyle, color: '#c9d4e0' }}>{last != null ? fmt(last) : '—'}</td>
+                                    {puntos.map((v, i) => (
+                                      <td key={i} style={{ ...tdStyle, color: v != null ? '#00e676' : '#4a5f7a' }}>
+                                        {v != null ? fmt(v) : '—'}
+                                      </td>
+                                    ))}
+                                    <td style={{ ...tdStyle, color: trendColor, fontWeight: 700 }}>
+                                      {trendIcon} {slope >= 0 ? '+' : ''}{slope.toFixed(1)}/mes
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                        <p className="text-xs mt-2" style={{ color: tema.textMuted }}>
+                          ⚠️ Proyección estimada basada en tendencia reciente. No considera eventos externos ni cambios de manejo.
+                        </p>
+                      </div>
+                    )
+                  })()}
                 </div>
               )
             })()}
