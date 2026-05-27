@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useBioterio } from '../context/BiotheriumContext'
 import { generarTareas, formatFecha, calcularRangoParto, difDias, parseDate, hoy, generarAlertasEstrales, generarAlertasMachos } from '../utils/calculos'
 import { INTERVALO_RENOVACION_DIAS } from '../utils/constants'
+import { getPlanes, completarPlan as completarPlanDB, eliminarPlan, getNotas, actualizarNota, eliminarNota as eliminarNotaDB } from '../utils/db'
 import Badge from '../components/Badge'
 import {
   Scissors, Baby, Package, Activity, FlaskConical, AlertCircle, RefreshCcw,
@@ -215,33 +216,7 @@ function StatCard({ valor, label, icono, color }) {
 
 // ── Dashboard principal ───────────────────────────────────────────────────────
 
-// ── Notas / recordatorios ────────────────────────────────────────────────────
-
-function lsKeyNotasDash(bioId) { return `appMosca_notas_${bioId}` }
-
-function cargarNotasDash(bioId) {
-  try { return JSON.parse(localStorage.getItem(lsKeyNotasDash(bioId)) || '[]') }
-  catch { return [] }
-}
-
-function persistirNotasDash(bioId, lista) {
-  localStorage.setItem(lsKeyNotasDash(bioId), JSON.stringify(lista))
-}
-
-// ── Planes de apareamiento ────────────────────────────────────────────────────
-
-function lsKeyPlanesDash(bioId) {
-  return `appMosca_apareamientos_${bioId}`
-}
-
-function cargarPlanesApareamiento(bioId) {
-  try { return JSON.parse(localStorage.getItem(lsKeyPlanesDash(bioId)) || '[]') }
-  catch { return [] }
-}
-
-function persistirPlanes(bioId, lista) {
-  localStorage.setItem(lsKeyPlanesDash(bioId), JSON.stringify(lista))
-}
+// helpers LS eliminados — ahora usa db.js
 
 // ── Tareas descartadas ────────────────────────────────────────────────────────
 
@@ -292,14 +267,14 @@ export default function Dashboard() {
   const [planesApareamiento, setPlanesApareamiento] = useState([])
 
   useEffect(() => {
-    if (bioterioActivo) setPlanesApareamiento(cargarPlanesApareamiento(bioterioActivo))
+    if (bioterioActivo) setPlanesApareamiento(getPlanes(bioterioActivo))
   }, [bioterioActivo])
 
   // ── Notas / recordatorios ─────────────────────────────────────────────────
   const [notasDash, setNotasDash] = useState([])
 
   useEffect(() => {
-    if (bioterioActivo) setNotasDash(cargarNotasDash(bioterioActivo))
+    if (bioterioActivo) setNotasDash(getNotas(bioterioActivo))
   }, [bioterioActivo])
 
   const alertasApareamiento = useMemo(() => {
@@ -319,19 +294,16 @@ export default function Dashboard() {
       .sort((a, b) => a.fecha_planificada.localeCompare(b.fecha_planificada))
   }, [planesApareamiento])
 
-  function completarPlan(id) {
-    const nueva = planesApareamiento.map((p) => p.id === id ? { ...p, completado: true } : p)
-    persistirPlanes(bioterioActivo, nueva)
-    setPlanesApareamiento(nueva)
+  async function completarPlan(id) {
+    await completarPlanDB(id, bioterioActivo)
+    setPlanesApareamiento((prev) => prev.map((p) => p.id === id ? { ...p, completado: true } : p))
   }
 
-  function descartarPlan(id) {
-    const nueva = planesApareamiento.filter((p) => p.id !== id)
-    persistirPlanes(bioterioActivo, nueva)
-    setPlanesApareamiento(nueva)
+  async function descartarPlan(id) {
+    await eliminarPlan(id, bioterioActivo)
+    setPlanesApareamiento((prev) => prev.filter((p) => p.id !== id))
   }
 
-  // Notas de hoy y vencidas (no completadas)
   const alertasNotas = useMemo(() => {
     const hoyStr = hoy()
     return notasDash
@@ -339,16 +311,14 @@ export default function Dashboard() {
       .sort((a, b) => a.fecha.localeCompare(b.fecha))
   }, [notasDash])
 
-  function completarNotaDash(id) {
-    const nueva = notasDash.map((n) => n.id === id ? { ...n, completada: true } : n)
-    persistirNotasDash(bioterioActivo, nueva)
-    setNotasDash(nueva)
+  async function completarNotaDash(id) {
+    await actualizarNota(id, { completada: true }, bioterioActivo)
+    setNotasDash((prev) => prev.map((n) => n.id === id ? { ...n, completada: true } : n))
   }
 
-  function eliminarNotaDash(id) {
-    const nueva = notasDash.filter((n) => n.id !== id)
-    persistirNotasDash(bioterioActivo, nueva)
-    setNotasDash(nueva)
+  async function eliminarNotaDash(id) {
+    await eliminarNotaDB(id, bioterioActivo)
+    setNotasDash((prev) => prev.filter((n) => n.id !== id))
   }
 
   function descartarRenovacion() {

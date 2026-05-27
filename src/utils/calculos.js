@@ -1,4 +1,5 @@
 import { BIO, MAX_APAREAMIENTOS, MACHO_EDAD_LIMITE_DIAS, MACHO_EDAD_ALERTA_DIAS } from './constants'
+import { getAnimalesReservadosDB, getJaulasReservadasDB, getReservadosParaHibridosDB } from './db'
 
 // Sumar días a una fecha (retorna Date)
 export function sumarDias(fecha, dias) {
@@ -1057,94 +1058,19 @@ export function calcularGestacionEstral(extendidos, bio = BIO) {
  * Genera alertas de ciclo estral y gestación para el Dashboard.
  */
 /**
- * Lee los planes de apareamiento del localStorage y devuelve un Map con los
- * animales reproductores reservados: Map<animalId, { fecha, planId }>
- * Solo incluye planes futuros (hoy en adelante) y no completados.
+ * Devuelve un Map<animalId, { fecha }> de reproductores en planes activos futuros.
+ * Lee desde el cache en memoria (cargado desde Supabase al iniciar).
  */
 export function getAnimalesReservados(bioterioActivo) {
-  try {
-    const planes = JSON.parse(
-      localStorage.getItem(`appMosca_apareamientos_${bioterioActivo}`) || '[]'
-    )
-    const hoyStr = hoy()
-    const mapa = new Map()
-    planes
-      .filter((p) => !p.completado && p.fecha_planificada >= hoyStr)
-      .forEach((p) => {
-        if (p.macho?.tipo === 'reproductor' && p.macho.bloqueId?.startsWith('r-')) {
-          const id = p.macho.bloqueId.slice(2)
-          if (!mapa.has(id)) mapa.set(id, { fecha: p.fecha_planificada, planId: p.id })
-        }
-        if (p.hembra?.tipo === 'reproductor' && p.hembra.bloqueId?.startsWith('r-')) {
-          const id = p.hembra.bloqueId.slice(2)
-          if (!mapa.has(id)) mapa.set(id, { fecha: p.fecha_planificada, planId: p.id })
-        }
-      })
-    return mapa
-  } catch {
-    return new Map()
-  }
+  return getAnimalesReservadosDB(bioterioActivo)
 }
 
-/**
- * Lee los planes de apareamiento del localStorage y devuelve un Map con los
- * bloques de stock (jaulas / bloques virtuales) reservados para apareamiento.
- * Map<bloqueId, { fecha, planId }>
- * Solo incluye planes futuros (hoy en adelante) y no completados.
- */
 export function getJaulasReservadas(bioterioActivo) {
-  try {
-    const planes = JSON.parse(
-      localStorage.getItem(`appMosca_apareamientos_${bioterioActivo}`) || '[]'
-    )
-    const hoyStr = hoy()
-    const mapa = new Map()
-    planes
-      .filter((p) => !p.completado && p.fecha_planificada >= hoyStr)
-      .forEach((p) => {
-        if (p.macho?.tipo === 'stock' && p.macho.bloqueId) {
-          if (!mapa.has(p.macho.bloqueId))
-            mapa.set(p.macho.bloqueId, { fecha: p.fecha_planificada, planId: p.id })
-        }
-        if (p.hembra?.tipo === 'stock' && p.hembra.bloqueId) {
-          if (!mapa.has(p.hembra.bloqueId))
-            mapa.set(p.hembra.bloqueId, { fecha: p.fecha_planificada, planId: p.id })
-        }
-      })
-    return mapa
-  } catch {
-    return new Map()
-  }
+  return getJaulasReservadasDB(bioterioActivo)
 }
 
-/**
- * Lee los planes de apareamiento de la colonia Híbridos y devuelve un Map con
- * los bloques (reproductores o jaulas) que pertenecen a `bioterioId` (BALB/C o C57)
- * y están reservados para cruces F1.
- * Map<bloqueId, { fecha, planId }>
- * Solo planes futuros (hoy en adelante) y no completados.
- */
 export function getReservadosParaHibridos(bioterioId) {
-  try {
-    const planes = JSON.parse(
-      localStorage.getItem('appMosca_apareamientos_ratones_hibridos') || '[]'
-    )
-    const hoyStr = hoy()
-    const mapa = new Map()
-    planes
-      .filter((p) => !p.completado && p.fecha_planificada >= hoyStr)
-      .forEach((p) => {
-        ;[p.macho, p.hembra].filter(Boolean).forEach((item) => {
-          if (item.bioterioOrigen === bioterioId && item.bloqueId) {
-            if (!mapa.has(item.bloqueId))
-              mapa.set(item.bloqueId, { fecha: p.fecha_planificada, planId: p.id })
-          }
-        })
-      })
-    return mapa
-  } catch {
-    return new Map()
-  }
+  return getReservadosParaHibridosDB(bioterioId)
 }
 
 export function generarAlertasEstrales(animales, extendidos, bio = BIO) {

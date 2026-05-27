@@ -727,12 +727,12 @@ export default function PlanificacionColonia() {
   const minimosCfg = getMinimosCriticos(bioterioActivo)
   const reservas   = getReservas() // recalcula al cambiar reservasKey
 
-  function handleReservar(id, tipo, motivo) {
-    reservarAnimal(id, tipo, motivo, bioterioActivo)
+  async function handleReservar(id, tipo, motivo) {
+    await reservarAnimal(id, tipo, motivo, bioterioActivo)
     setReservasKey(k => k + 1)
   }
-  function handleLiberar(id) {
-    liberarReserva(id)
+  async function handleLiberar(id) {
+    await liberarReserva(id)
     setReservasKey(k => k + 1)
   }
 

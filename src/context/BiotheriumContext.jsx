@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useReducer, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { generarId } from '../utils/storage'
+import { inicializarDB } from '../utils/db'
 import { useBioterioActivo } from './BioterioActivoContext'
 
 // ─── Reducer ─────────────────────────────────────────────────────────────────
@@ -96,6 +97,9 @@ export function BiotheriumProvider({ children }) {
   const [estado, dispatch] = useReducer(reducer, { animales: [], animalesExportados: [], camadas: [], camadasF1: [], sacrificios: [], entregas: [], jaulas: [], temperaturas: [], incidentes: [], extendidos: [], pedidos: [] })
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
+
+  // ── Cargar notas / planes / reservas desde Supabase al iniciar ───────────
+  useEffect(() => { inicializarDB() }, [])
 
   // ── Cargar datos al iniciar (o al cambiar de bioterio) ────────────────────
   useEffect(() => {

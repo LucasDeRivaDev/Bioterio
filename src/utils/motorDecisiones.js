@@ -6,6 +6,7 @@
 import { getBio } from './constants'
 import { difDias, parseDate, calcularRangoParto, calcularDestete, calcularMadurez } from './calculos'
 import { calcularFCoeficiente, buildPedigree, estadisticasColonia } from './genealogia'
+import { getReservas as getReservasDB, esReservado as esReservadoDB, reservarAnimal as reservarAnimalDB, liberarReserva as liberarReservaDB, getReservadosPorTipo as getReservadosPorTipoDB } from './db'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SECCIÓN 1 — MÍNIMOS OBLIGATORIOS POR BIOTERIO
@@ -996,44 +997,28 @@ export function simularImpactoSacrificio(animal, stockReal, minimos, bioterioId,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SECCIÓN 10 — SISTEMA DE RESERVAS (localStorage extendido)
+// SECCIÓN 10 — SISTEMA DE RESERVAS (cache en memoria, persistido en Supabase)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const LS_KEY_RESERVAS = 'appMosca_reservas'
+/** Lee el mapa de reservas desde el cache en memoria (síncrono). */
+export function getReservas() { return getReservasDB() }
 
-/**
- * Tipos de reserva:
- *  - renovacion: candidato a promover como reproductor
- *  - hibridos:   reservado exclusivamente para producción F1
- *  - pedido:     apartado para un pedido de investigador
- *  - produccion: reservado para ciclo reproductivo planificado
- */
-export function getReservas() {
-  try {
-    const raw = localStorage.getItem(LS_KEY_RESERVAS)
-    return raw ? JSON.parse(raw) : {}
-  } catch { return {} }
-}
-
+/** Reserva un animal — escribe en Supabase y actualiza cache (async). */
 export function reservarAnimal(animalId, tipo, motivo = '', bioterioId = '') {
-  const reservas = getReservas()
-  reservas[animalId] = { tipo, motivo, bioterioId, fecha: new Date().toISOString().split('T')[0] }
-  try { localStorage.setItem(LS_KEY_RESERVAS, JSON.stringify(reservas)) } catch {}
+  return reservarAnimalDB(animalId, tipo, motivo, bioterioId)
 }
 
+/** Libera la reserva de un animal (async). */
 export function liberarReserva(animalId) {
-  const reservas = getReservas()
-  delete reservas[animalId]
-  try { localStorage.setItem(LS_KEY_RESERVAS, JSON.stringify(reservas)) } catch {}
+  return liberarReservaDB(animalId)
 }
 
-export function esReservado(animalId) {
-  const reservas = getReservas()
-  return !!reservas[animalId]
-}
+/** Retorna true si el animal está reservado (síncrono, desde cache). */
+export function esReservado(animalId) { return esReservadoDB(animalId) }
 
+/** Retorna reservas de un tipo específico (síncrono, desde cache). */
 export function getReservadosPorTipo(tipo) {
-  const reservas = getReservas()
+  const reservas = getReservasDB()
   return Object.entries(reservas)
     .filter(([, r]) => r.tipo === tipo)
     .map(([id, r]) => ({ id, ...r }))

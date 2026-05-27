@@ -2,6 +2,10 @@ import { useState, useMemo, useEffect } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { generarEventosCalendario, parseDate, difDias, hoy } from '../utils/calculos'
 import { supabase } from '../lib/supabase'
+import {
+  getPlanes, guardarPlan, eliminarPlan,
+  getNotas, guardarNota, actualizarNota, eliminarNota as eliminarNotaDB,
+} from '../utils/db'
 
 const TIPOS = {
   nacimiento:       { label: 'Nacimiento',          color: '#00e676', bg: 'rgba(0,230,118,0.12)',   borde: 'rgba(0,230,118,0.3)'   },
@@ -17,29 +21,7 @@ const TIPOS = {
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 const DIAS  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
 
-// ── Helpers localStorage (mismo formato que Stock.jsx) ────────────────────────
-function lsKey(bioId) { return `appMosca_apareamientos_${bioId}` }
-
-function cargarPlanes(bioId) {
-  try { return JSON.parse(localStorage.getItem(lsKey(bioId)) || '[]') }
-  catch { return [] }
-}
-
-function guardarPlanes(bioId, planes) {
-  localStorage.setItem(lsKey(bioId), JSON.stringify(planes))
-}
-
-// ── Helpers localStorage — notas ──────────────────────────────────────────────
-function lsKeyNotas(bioId) { return `appMosca_notas_${bioId}` }
-
-function cargarNotas(bioId) {
-  try { return JSON.parse(localStorage.getItem(lsKeyNotas(bioId)) || '[]') }
-  catch { return [] }
-}
-
-function guardarNotasLS(bioId, notas) {
-  localStorage.setItem(lsKeyNotas(bioId), JSON.stringify(notas))
-}
+// helpers eliminados — ahora se usa db.js (cache en memoria + Supabase)
 
 function edadDias(fechaNac) {
   if (!fechaNac) return null
@@ -73,10 +55,10 @@ export default function Calendario() {
   const fStr   = (d) => `${anio}-${pad(mes + 1)}-${pad(d)}`
   const hoyStr = `${hoyJs.getFullYear()}-${pad(hoyJs.getMonth()+1)}-${pad(hoyJs.getDate())}`
 
-  // Cargar planes y notas del bioterio activo desde localStorage
+  // Cargar planes y notas desde el cache en memoria (ya cargado desde Supabase)
   useEffect(() => {
-    setPlanes(cargarPlanes(bioterioActivo).filter((p) => !p.completado))
-    setNotas(cargarNotas(bioterioActivo))
+    setPlanes(getPlanes(bioterioActivo))
+    setNotas(getNotas(bioterioActivo))
   }, [bioterioActivo])
 
   // Cargar datos de BALB/C y C57 cuando estamos en Híbridos
@@ -167,68 +149,52 @@ export default function Calendario() {
     ? notas.filter((n) => n.fecha === fStr(diaSelec))
     : []
 
-  // Guardar nuevo plan desde el modal (recibe los items ya construidos)
-  function handleGuardarPlan(machoPlan, hembraPlan, observaciones) {
-    const nuevoPlan = {
-      id:               Date.now().toString(),
-      bioterioActivo,
+  // Guardar nuevo plan desde el modal
+  async function handleGuardarPlan(machoPlan, hembraPlan, observaciones) {
+    const plan = {
       fecha_planificada: fStr(diaSelec),
-      observaciones:    observaciones || null,
-      macho:  machoPlan,
-      hembra: hembraPlan,
-      completado:  false,
-      created_at:  new Date().toISOString(),
+      observaciones:     observaciones || null,
+      macho:             machoPlan,
+      hembra:            hembraPlan,
+      completado:        false,
     }
-    const todos = [...cargarPlanes(bioterioActivo), nuevoPlan]
-    guardarPlanes(bioterioActivo, todos)
-    setPlanes((prev) => [...prev, nuevoPlan])
+    const guardado = await guardarPlan(plan, bioterioActivo)
+    if (guardado) setPlanes((prev) => [...prev, guardado])
     setModalPlan(false)
   }
 
   // Descartar un plan desde el panel lateral
-  function descartarPlan(planId) {
-    const todos    = cargarPlanes(bioterioActivo).filter((p) => p.id !== planId)
-    guardarPlanes(bioterioActivo, todos)
+  async function descartarPlan(planId) {
+    await eliminarPlan(planId, bioterioActivo)
     setPlanes((prev) => prev.filter((p) => p.id !== planId))
   }
 
-  // ── Notas ────────────────────────────────────────────────────────────────────
-  function handleGuardarNota({ titulo, descripcion }) {
-    const nueva = {
-      id:            Date.now().toString(),
-      bioterioActivo,
-      fecha:         fStr(diaSelec),
-      titulo:        titulo.trim() || null,
-      descripcion:   descripcion.trim(),
-      completada:    false,
-      created_at:    new Date().toISOString(),
+  // ── Notas ─────────────────────────────────────────────────────────────────
+  async function handleGuardarNota({ titulo, descripcion }) {
+    const nota = {
+      fecha:       fStr(diaSelec),
+      titulo:      titulo.trim() || null,
+      descripcion: descripcion.trim(),
+      completada:  false,
     }
-    const todas = [...cargarNotas(bioterioActivo), nueva]
-    guardarNotasLS(bioterioActivo, todas)
-    setNotas(todas)
+    const guardada = await guardarNota(nota, bioterioActivo)
+    if (guardada) setNotas((prev) => [...prev, guardada])
     setModalNota(false)
   }
 
-  function completarNota(notaId) {
-    const todas = cargarNotas(bioterioActivo).map((n) =>
-      n.id === notaId ? { ...n, completada: true } : n
-    )
-    guardarNotasLS(bioterioActivo, todas)
-    setNotas(todas)
+  async function completarNota(notaId) {
+    await actualizarNota(notaId, { completada: true }, bioterioActivo)
+    setNotas((prev) => prev.map((n) => n.id === notaId ? { ...n, completada: true } : n))
   }
 
-  function reabrirNota(notaId) {
-    const todas = cargarNotas(bioterioActivo).map((n) =>
-      n.id === notaId ? { ...n, completada: false } : n
-    )
-    guardarNotasLS(bioterioActivo, todas)
-    setNotas(todas)
+  async function reabrirNota(notaId) {
+    await actualizarNota(notaId, { completada: false }, bioterioActivo)
+    setNotas((prev) => prev.map((n) => n.id === notaId ? { ...n, completada: false } : n))
   }
 
-  function eliminarNota(notaId) {
-    const todas = cargarNotas(bioterioActivo).filter((n) => n.id !== notaId)
-    guardarNotasLS(bioterioActivo, todas)
-    setNotas(todas)
+  async function eliminarNota(notaId) {
+    await eliminarNotaDB(notaId, bioterioActivo)
+    setNotas((prev) => prev.filter((n) => n.id !== notaId))
   }
 
   return (

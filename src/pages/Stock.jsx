@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { difDias, parseDate, hoy, formatFecha, calcularPerfilHembra, calcularRendimientoMacho, getAnimalesReservados, getJaulasReservadas, getReservadosParaHibridos, getEstadoCicloHembra } from '../utils/calculos'
 import { generarId } from '../utils/storage'
+import { guardarPlan, eliminarPlan, getPlanes } from '../utils/db'
 import Modal from '../components/Modal'
 import { TestTube2, FlaskConical, Microscope, UserPlus } from 'lucide-react'
 import Sacrificios from '../pages/Sacrificios'
@@ -69,22 +70,7 @@ function sexoBloque(b) {
   return null
 }
 
-// ── Planificación de apareamientos — localStorage ────────────────────────────
-
-function lsKeyPlanes(bioId) {
-  return `appMosca_apareamientos_${bioId}`
-}
-
-function cargarPlanesApareamiento(bioId) {
-  try { return JSON.parse(localStorage.getItem(lsKeyPlanes(bioId)) || '[]') }
-  catch { return [] }
-}
-
-function guardarPlanApareamiento(bioId, plan) {
-  const lista = cargarPlanesApareamiento(bioId)
-  lista.push(plan)
-  localStorage.setItem(lsKeyPlanes(bioId), JSON.stringify(lista))
-}
+// helpers LS eliminados — ahora usa db.js
 
 // ── Componentes ───────────────────────────────────────────────────────────────
 
@@ -2204,15 +2190,13 @@ export default function Stock() {
     salirModoSeleccion()
   }
 
-  // Guardar planificación de apareamiento en localStorage
-  function guardarPlanificacion(fechaPlanificada, observaciones) {
+  // Guardar planificación de apareamiento en Supabase
+  async function guardarPlanificacion(fechaPlanificada, observaciones) {
     if (!machoSel || !hembraSel) return
     const getNombre = (b) => b.tipo === 'reproductor'
       ? b.animal.codigo
       : `${b.madre?.codigo ?? '?'} × ${b.padre?.codigo ?? '?'}`
     const plan = {
-      id: generarId(),
-      bioterioActivo,
       fecha_planificada: fechaPlanificada,
       observaciones,
       macho: {
@@ -2230,9 +2214,8 @@ export default function Stock() {
         edad: hembraSel.edad,
       },
       completado: false,
-      created_at: hoy(),
     }
-    guardarPlanApareamiento(bioterioActivo, plan)
+    await guardarPlan(plan, bioterioActivo)
     setModalPlanificar(false)
     salirModoSeleccion()
   }

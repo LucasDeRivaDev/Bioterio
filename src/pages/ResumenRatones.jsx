@@ -8,6 +8,7 @@ import {
 import { BIO_RATONES } from '../utils/constants'
 import { generarId } from '../utils/storage'
 import { ArrowLeft, RefreshCw } from 'lucide-react'
+import { getPlanes, getNotas } from '../utils/db'
 
 // ── Grupos de ratones ─────────────────────────────────────────────────────────
 const GRUPOS = ['ratones_balbc', 'ratones_c57', 'ratones_hibridos']
@@ -104,19 +105,13 @@ function calcularStockGrupo(jaulas, camadas, sacrificios, entregas, animalesActi
   return result
 }
 
-// Lee planes de apareamiento de localStorage para un bioterio
-function leerPlanesApareamiento(bioId) {
-  try { return JSON.parse(localStorage.getItem(`appMosca_apareamientos_${bioId}`) || '[]') }
-  catch { return [] }
-}
+// Lee planes desde el cache en memoria (cargado desde Supabase al iniciar)
+function leerPlanesApareamiento(bioId) { return getPlanes(bioId) }
 
-// Lee notas pendientes de localStorage para un bioterio
+// Lee notas pendientes desde el cache en memoria
 function leerNotasPendientes(bioId) {
   const hoyStr = hoy()
-  try {
-    const todas = JSON.parse(localStorage.getItem(`appMosca_notas_${bioId}`) || '[]')
-    return todas.filter((n) => !n.completada && n.fecha <= hoyStr)
-  } catch { return [] }
+  return getNotas(bioId).filter((n) => !n.completada && n.fecha <= hoyStr)
 }
 
 // ── Sub-componentes ───────────────────────────────────────────────────────────
