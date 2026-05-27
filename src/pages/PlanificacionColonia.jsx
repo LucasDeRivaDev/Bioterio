@@ -737,637 +737,124 @@ export default function PlanificacionColonia() {
   }
 
   const nivelEst = nivelEstabilidad(indiceEstabilidad.score)
+  const [modoAvanzado, setModoAvanzado] = useState(false)
+  const [proyExpand, setProyExpand]     = useState(false)
+
+  // ── Capacidad de jaulas ─────────────────────────────────────────────────
+  const jaulasAhora = stockReal.stock.bloques.length
+  const h180        = proyeccionAvanzada.horizontes[180]
+  const jaulasFut   = jaulasAhora + (h180?.jaulas?.nuevas ?? 0)
+  const satFut      = h180?.jaulas?.saturacion ?? 'normal'
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-5xl mx-auto" style={{ color: tema.textPrimary }}>
+    <div className="p-4 md:p-6 space-y-5 max-w-5xl mx-auto" style={{ color: tema.textPrimary }}>
 
       {/* ── ENCABEZADO ─────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: tema.textPrimary, margin: 0, lineHeight: 1.2 }}>
+          <h1 style={{ fontSize: 20, fontWeight: 800, color: tema.textPrimary, margin: 0, lineHeight: 1.2 }}>
             Planificación de colonia
           </h1>
-          <p style={{ fontSize: 13, color: tema.textMuted, margin: '4px 0 0' }}>
-            Saturación · Renovación · Genética · Producción futura
+          <p style={{ fontSize: 12, color: tema.textMuted, margin: '3px 0 0' }}>
+            Estado · Acciones · Proyección · Renovación
           </p>
         </div>
-        <Chip color={nivelEst.color}>{nivelEst.emoji} {nivelEst.label}</Chip>
+        <button
+          onClick={() => setModoAvanzado(m => !m)}
+          style={{
+            padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+            background: modoAvanzado ? 'rgba(64,196,255,0.15)' : 'rgba(255,255,255,0.04)',
+            border: `1px solid ${modoAvanzado ? 'rgba(64,196,255,0.4)' : tema.bgCardBorde}`,
+            color: modoAvanzado ? '#40c4ff' : tema.textMuted,
+          }}
+        >
+          {modoAvanzado ? '⚡ Modo avanzado' : '⚡ Modo avanzado'}
+        </button>
       </div>
 
-      {/* ── ÍNDICE DE ESTABILIDAD ───────────────────────────────────────────── */}
-      <div style={{
-        background: tema.bgCard,
-        border: `1px solid ${nivelEst.borde}`,
-        borderRadius: 16, padding: '20px 24px',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-          <GaugeScore score={indiceEstabilidad.score} size={100} />
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* 1. ESTADO GLOBAL                                                      */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      <div style={{ background: tema.bgCard, border: `1px solid ${nivelEst.borde}`, borderRadius: 16, padding: '16px 20px' }}>
+        {/* Fila: gauge + factores */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          <GaugeScore score={indiceSostenibilidad.score} size={86} />
 
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ fontSize: 18, fontWeight: 800, color: nivelEst.color, marginBottom: 2 }}>
-              {nivelEst.emoji} {nivelEst.label}
-            </div>
-            <div style={{ fontSize: 12, color: tema.textMuted, marginBottom: 16 }}>
-              Índice de estabilidad de la colonia
-            </div>
-
-            {/* Desglose por componente */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {[
-                { label: 'Renovación',  valor: indiceEstabilidad.detalle.renovacion, max: 25, color: '#a78bfa' },
-                { label: 'Genética',    valor: indiceEstabilidad.detalle.genetica,   max: 20, color: '#40c4ff' },
-                { label: 'Producción',  valor: indiceEstabilidad.detalle.produccion, max: 20, color: '#00e676' },
-                { label: 'Híbridos',    valor: indiceEstabilidad.detalle.hibridos,   max: 15, color: '#ffd740' },
-                { label: 'Sanitario',   valor: indiceEstabilidad.detalle.sanitario,  max: 10, color: '#ff9100' },
-                { label: 'Saturación',  valor: indiceEstabilidad.detalle.saturacion, max: 10, color: '#ce93d8' },
-              ].map(({ label, valor, max, color }) => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 72, fontSize: 11, color: tema.textMuted, flexShrink: 0 }}>{label}</div>
-                  <div style={{ flex: 1 }}>
-                    <BarraProgreso valor={valor} max={max} color={color} height={5} />
-                  </div>
-                  <div style={{ width: 44, fontSize: 11, textAlign: 'right', color, fontFamily: 'monospace', flexShrink: 0 }}>
-                    {valor}/{max}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── MÍNIMOS CRÍTICOS ─────────────────────────────────────────────────── */}
-      <div style={{ background: tema.bgCard, border: `1px solid ${minimos.critico ? 'rgba(255,61,87,0.25)' : tema.bgCardBorde}`, borderRadius: 16, padding: '18px 20px' }}>
-        <SeccionTitulo
-          icono={<Shield size={16} color={minimos.critico ? '#ff6b80' : '#00e676'} />}
-          titulo="Mínimos obligatorios"
-          subtitulo="Reproductores mínimos para garantizar la supervivencia de la colonia"
-        />
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
-          {[
-            { label: 'Machos colonia',  actual: stockReal.reproductores.machos.filter(m => !m.exportado_hibridos).length, minimo: minimosCfg.machos_colonia, color: '#40c4ff' },
-            { label: 'Hembras colonia', actual: stockReal.reproductores.hembras.filter(h => !h.exportado_hibridos).length, minimo: minimosCfg.hembras_colonia, color: '#ce93d8' },
-            ...(minimosCfg.machos_hibridos > 0 ? [{ label: 'Machos F1', actual: stockReal.reproductores.machosHibridos.length, minimo: minimosCfg.machos_hibridos, color: '#ffd740' }] : []),
-            ...(minimosCfg.hembras_hibridos > 0 ? [{ label: 'Hembras F1', actual: stockReal.reproductores.hembrasHibridos.length, minimo: minimosCfg.hembras_hibridos, color: '#ffd740' }] : []),
-          ].map(({ label, actual, minimo, color }) => {
-            const ok = actual >= minimo
-            return (
-              <div key={label} style={{
-                background: ok ? 'rgba(0,230,118,0.04)' : 'rgba(255,61,87,0.06)',
-                border: `1px solid ${ok ? 'rgba(0,230,118,0.15)' : 'rgba(255,61,87,0.2)'}`,
-                borderRadius: 12, padding: '12px 14px', textAlign: 'center',
-              }}>
-                <div style={{ fontSize: 26, fontWeight: 800, color: ok ? color : '#ff6b80', lineHeight: 1 }}>
-                  {actual}
-                </div>
-                <div style={{ fontSize: 10, color: ok ? color : '#ff6b80', fontFamily: 'monospace', margin: '2px 0' }}>
-                  mín. {minimo}
-                </div>
-                <div style={{ fontSize: 11, color: tema.textMuted }}>{label}</div>
-                <div style={{ marginTop: 6 }}>
-                  {ok
-                    ? <Chip color="#00e676">✓ OK</Chip>
-                    : <Chip color="#ff6b80">✕ Déficit {minimo - actual}</Chip>}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Alertas de mínimos */}
-        {minimos.alertas.length > 0 && (
-          <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {minimos.alertas.map((a, i) => (
-              <div key={i} style={{
-                display: 'flex', alignItems: 'flex-start', gap: 10,
-                background: a.critico ? 'rgba(255,61,87,0.08)' : 'rgba(255,179,0,0.08)',
-                border: `1px solid ${a.critico ? 'rgba(255,61,87,0.25)' : 'rgba(255,179,0,0.2)'}`,
-                borderRadius: 10, padding: '10px 14px',
-              }}>
-                <AlertTriangle size={15} color={a.critico ? '#ff6b80' : '#ffb300'} style={{ marginTop: 1, flexShrink: 0 }} />
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: a.critico ? '#ff6b80' : '#ffb300' }}>{a.mensaje}</div>
-                  <div style={{ fontSize: 11, color: tema.textMuted, marginTop: 2 }}>
-                    Jerarquía {a.jerarquia} — {a.critico ? 'Bloquea sacrificios y entregas' : 'Advertencia'}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ── PROYECCIÓN AVANZADA ──────────────────────────────────────────────── */}
-      <div style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}`, borderRadius: 16, padding: '18px 20px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
-          <SeccionTitulo
-            icono={<Clock size={16} color="#40c4ff" />}
-            titulo="Proyección temporal"
-            subtitulo="Partos · Crías · Jaulas · Déficit · Saturación — simulación completa"
-          />
-          {/* Patrón configurable */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <span style={{ fontSize: 11, color: tema.textMuted }}>1 pareja /</span>
-            <input
-              type="number" min={7} max={60} value={parejasCadaDias}
-              onChange={e => setParejasCadaDias(Math.max(7, Math.min(60, Number(e.target.value))))}
-              style={{
-                width: 52, padding: '4px 8px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                background: 'rgba(64,196,255,0.1)', border: '1px solid rgba(64,196,255,0.3)',
-                color: '#40c4ff', textAlign: 'center', outline: 'none',
-              }}
-            />
-            <span style={{ fontSize: 11, color: tema.textMuted }}>días</span>
-          </div>
-        </div>
-
-        {/* Patrones históricos usados */}
-        <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-          {[
-            { label: `~${proyeccionAvanzada.patrones.promCrias} crías/parto`, color: '#00e676' },
-            { label: `${proyeccionAvanzada.patrones.tasaSupervivencia}% superv.`, color: '#40c4ff' },
-            { label: `${proyeccionAvanzada.patrones.tasaFallo}% fallos`, color: proyeccionAvanzada.patrones.tasaFallo > 25 ? '#ff6b80' : '#ffb300' },
-            { label: `${proyeccionAvanzada.patrones.parejasLibres} par${proyeccionAvanzada.patrones.parejasLibres !== 1 ? 'ejas' : 'eja'} libre${proyeccionAvanzada.patrones.parejasLibres !== 1 ? 's' : ''}`, color: '#a78bfa' },
-          ].map(({ label, color }) => (
-            <Chip key={label} color={color}>{label}</Chip>
-          ))}
-        </div>
-
-        {/* Tarjetas de 4 horizontes */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
-          {[30, 60, 90, 180].map(h => {
-            const d = proyeccionAvanzada.horizontes[h]
-            const colorBorde = d.ok ? 'rgba(0,230,118,0.15)' : 'rgba(255,61,87,0.2)'
-            const colorTit   = d.ok ? '#00e676' : '#ff6b80'
-            return (
-              <div key={h} style={{
-                background: tema.bgCard, border: `1px solid ${colorBorde}`,
-                borderRadius: 14, padding: '12px 14px',
-              }}>
-                {/* Encabezado */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <div>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: colorTit, lineHeight: 1 }}>{h}d</div>
-                    <div style={{ fontSize: 9, color: tema.textMuted, fontFamily: 'monospace' }}>horizonte</div>
-                  </div>
-                  <span style={{ fontSize: 16 }}>{d.ok ? '🟢' : d.deficit.puedeCubrirConStock ? '🟡' : '🔴'}</span>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {/* Reproductores futuros */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: tema.textMuted }}>
-                    <span>♂ colonia</span>
-                    <span style={{ color: d.deficit.machos > 0 ? '#ff6b80' : '#c9d4e0', fontWeight: 600 }}>
-                      {d.reproductores.machosFuturos}/{minimosCfg.machos_colonia}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: tema.textMuted }}>
-                    <span>♀ colonia</span>
-                    <span style={{ color: d.deficit.hembras > 0 ? '#ff6b80' : '#c9d4e0', fontWeight: 600 }}>
-                      {d.reproductores.hembrasFuturas}/{minimosCfg.hembras_colonia}
-                    </span>
-                  </div>
-                  {/* Partos */}
-                  <div style={{ borderTop: `1px solid rgba(255,255,255,0.05)`, marginTop: 3, paddingTop: 3 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: tema.textMuted }}>
-                      <span>partos</span>
-                      <span style={{ color: '#00e676', fontWeight: 600 }}>
-                        {d.partos.deActivos}✦ +{d.partos.dePatron}⊕
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: tema.textMuted }}>
-                      <span>crías</span>
-                      <span style={{ color: '#40c4ff', fontWeight: 600 }}>~{d.crias.total}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: tema.textMuted }}>
-                      <span>+jaulas</span>
-                      <span style={{ color: d.jaulas.saturacion === 'alta' ? '#ff6b80' : '#c9d4e0', fontWeight: 600 }}>
-                        +{d.jaulas.nuevas} {d.jaulas.saturacion === 'alta' ? '⚠' : ''}
-                      </span>
-                    </div>
-                  </div>
-                  {/* Bajas + candidatos */}
-                  {(d.reproductores.machosBajas > 0 || d.reproductores.hembrasBajas > 0) && (
-                    <div style={{ fontSize: 9, color: '#ffb300', fontFamily: 'monospace' }}>
-                      ⚠ {d.reproductores.machosBajas + d.reproductores.hembrasBajas} reprod. alcanzan límite
-                    </div>
-                  )}
-                  {d.reproductores.candidatosMaduran > 0 && (
-                    <div style={{ fontSize: 9, color: '#a78bfa', fontFamily: 'monospace' }}>
-                      ↑ {d.reproductores.candidatosMaduran} candidato(s) maduran
-                    </div>
-                  )}
-                  {/* Stock neto */}
-                  {d.stockNeto && (
-                    <div style={{ borderTop: `1px solid rgba(255,255,255,0.04)`, marginTop: 3, paddingTop: 3 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: tema.textMuted }}>
-                        <span>stock neto</span>
-                        <span style={{ color: d.stockNeto.neto > 0 ? '#a78bfa' : '#ff6b80', fontWeight: 700 }}>
-                          ~{d.stockNeto.neto}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  {/* Déficit */}
-                  {d.deficit.hayDeficit && (
-                    <div style={{
-                      marginTop: 4, fontSize: 10, fontWeight: 600, textAlign: 'center',
-                      background: d.deficit.puedeCubrirConStock ? 'rgba(255,179,0,0.1)' : 'rgba(255,61,87,0.1)',
-                      border: `1px solid ${d.deficit.puedeCubrirConStock ? 'rgba(255,179,0,0.3)' : 'rgba(255,61,87,0.3)'}`,
-                      borderRadius: 6, padding: '3px 6px',
-                      color: d.deficit.puedeCubrirConStock ? '#ffb300' : '#ff6b80',
-                    }}>
-                      {d.deficit.machos > 0 ? `−${d.deficit.machos}♂` : ''}
-                      {d.deficit.machos > 0 && d.deficit.hembras > 0 ? ' ' : ''}
-                      {d.deficit.hembras > 0 ? `−${d.deficit.hembras}♀` : ''}
-                      {d.deficit.puedeCubrirConStock ? ' (stock ↑)' : ' sin cobertura'}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Leyenda */}
-        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 10, color: tema.textMuted, marginBottom: 14 }}>
-          <span>✦ partos activos en curso</span>
-          <span>⊕ partos del patrón ({parejasCadaDias}d)</span>
-          <span>↑ candidatos maduran en el horizonte</span>
-        </div>
-
-        {/* Selector de horizonte + detalle de partos/destetes */}
-        <div style={{ borderTop: `1px solid ${tema.bgCardBorde}`, paddingTop: 14 }}>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-            {[30, 60, 90, 180].map(d => (
-              <button
-                key={d}
-                onClick={() => setTabHorizonte(d)}
-                style={{
-                  padding: '5px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                  background: tabHorizonte === d ? 'rgba(64,196,255,0.15)' : 'transparent',
-                  border: `1px solid ${tabHorizonte === d ? 'rgba(64,196,255,0.4)' : tema.bgCardBorde}`,
-                  color: tabHorizonte === d ? '#40c4ff' : tema.textMuted,
-                }}
-              >
-                {d}d
-              </button>
-            ))}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            {/* Partos confirmados */}
-            <div>
-              <div style={{ fontSize: 11, color: tema.textMuted, fontWeight: 600, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Partos en curso ({proyeccion.partosPendientes.length})
-              </div>
-              {proyeccion.partosPendientes.length === 0
-                ? <div style={{ fontSize: 12, color: tema.textMuted, padding: '8px 0' }}>Sin apareamientos activos</div>
-                : proyeccion.partosPendientes.slice(0, 5).map((p, i) => (
-                  <div key={p.camadaId} style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '6px 10px', borderRadius: 8, marginBottom: 4,
-                    background: p.vencido ? 'rgba(255,61,87,0.06)' : 'rgba(0,230,118,0.04)',
-                    border: `1px solid ${p.vencido ? 'rgba(255,61,87,0.15)' : 'rgba(0,230,118,0.1)'}`,
-                  }}>
-                    <span style={{ fontSize: 11, color: tema.textSecondary }}>Parto #{i + 1}</span>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 11, color: p.vencido ? '#ff6b80' : '#00e676', fontFamily: 'monospace' }}>
-                        {p.vencido ? 'Vencido' : `${p.diasRestantes}d`}
-                      </div>
-                      <div style={{ fontSize: 10, color: tema.textMuted }}>{formatFecha(p.partoProbable)}</div>
-                    </div>
-                  </div>
-                ))
-              }
-            </div>
-
-            {/* Destetes */}
-            <div>
-              <div style={{ fontSize: 11, color: tema.textMuted, fontWeight: 600, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Destetes pendientes ({proyeccion.destesPendientes.length})
-              </div>
-              {proyeccion.destesPendientes.length === 0
-                ? <div style={{ fontSize: 12, color: tema.textMuted, padding: '8px 0' }}>Sin camadas en lactancia</div>
-                : proyeccion.destesPendientes.slice(0, 5).map((d, i) => (
-                  <div key={d.camadaId} style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '6px 10px', borderRadius: 8, marginBottom: 4,
-                    background: d.vencido ? 'rgba(255,61,87,0.06)' : 'rgba(64,196,255,0.04)',
-                    border: `1px solid ${d.vencido ? 'rgba(255,61,87,0.15)' : 'rgba(64,196,255,0.1)'}`,
-                  }}>
-                    <div>
-                      <span style={{ fontSize: 11, color: tema.textSecondary }}>Destete #{i + 1}</span>
-                      {d.totalCrias > 0 && <span style={{ fontSize: 10, color: tema.textMuted, marginLeft: 8 }}>{d.totalCrias} crías</span>}
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 11, color: d.vencido ? '#ff6b80' : '#40c4ff', fontFamily: 'monospace' }}>
-                        {d.vencido ? 'Vencido' : `${d.diasRestantes}d`}
-                      </div>
-                      <div style={{ fontSize: 10, color: tema.textMuted }}>{formatFecha(d.fechaDestete)}</div>
-                    </div>
-                  </div>
-                ))
-              }
-            </div>
-          </div>
-
-          {/* KPIs de producción + stock neto en horizonte seleccionado */}
-          {(() => {
-            const hData = proyeccionAvanzada.horizontes[tabHorizonte]
-            const sn = hData.stockNeto
-            return (
-              <div style={{ marginTop: 14 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
-                  {[
-                    { label: 'Partos totales',     valor: hData.partos.total,              color: '#00e676' },
-                    { label: 'Crías estimadas',    valor: hData.crias.total,               color: '#40c4ff' },
-                    { label: 'Jaulas nuevas',      valor: hData.jaulas.nuevas,             color: '#a78bfa' },
-                    { label: 'Prom. camada hist.', valor: proyeccionAvanzada.patrones.promCrias, color: '#ffd740' },
-                  ].map(({ label, valor, color }) => (
-                    <div key={label} style={{ textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '10px' }}>
-                      <div style={{ fontSize: 20, fontWeight: 800, color, lineHeight: 1 }}>{valor}</div>
-                      <div style={{ fontSize: 10, color: tema.textMuted, marginTop: 3 }}>{label}</div>
-                    </div>
-                  ))}
-                </div>
-                {/* Stock futuro neto */}
-                {sn && (
-                  <div style={{ marginTop: 10, background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '10px 14px' }}>
-                    <div style={{ fontSize: 11, color: tema.textMuted, fontWeight: 600, marginBottom: 8 }}>
-                      Stock futuro neto en {tabHorizonte}d
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: tema.textSecondary, flexWrap: 'wrap' }}>
-                      <span style={{ color: '#00e676', fontWeight: 700 }}>+{sn.sobreviven}</span>
-                      <span style={{ color: tema.textMuted }}>crías</span>
-                      <span style={{ color: tema.textMuted }}>−</span>
-                      <span style={{ color: '#ff6b80' }}>{sn.sacrificiosEstimados}</span>
-                      <span style={{ color: tema.textMuted }}>sacrificios est.</span>
-                      <span style={{ color: tema.textMuted }}>−</span>
-                      <span style={{ color: '#a78bfa' }}>{sn.promocionesEstimadas}</span>
-                      <span style={{ color: tema.textMuted }}>promociones</span>
-                      <span style={{ color: tema.textMuted }}>−</span>
-                      <span style={{ color: '#ffb300' }}>{sn.mortalidadNatural}</span>
-                      <span style={{ color: tema.textMuted }}>mortalidad nat.</span>
-                      <span style={{ color: tema.textMuted }}>=</span>
-                      <span style={{
-                        fontSize: 13, fontWeight: 800,
-                        color: sn.neto > 10 ? '#00e676' : sn.neto > 0 ? '#ffb300' : '#ff6b80',
-                      }}>
-                        ~{sn.neto} animales netos
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          })()}
-        </div>
-      </div>
-
-      {/* ── ¿PUEDE LA COLONIA SOSTENER PRODUCCIÓN? ──────────────────────────── */}
-      <div style={{
-        background: tema.bgCard,
-        border: `1px solid ${sostenibilidad.nivel === 'critico' ? 'rgba(255,61,87,0.25)' : sostenibilidad.nivel === 'vigilar' ? 'rgba(255,179,0,0.2)' : 'rgba(0,230,118,0.15)'}`,
-        borderRadius: 16, padding: '18px 20px',
-      }}>
-        <SeccionTitulo
-          icono={<Target size={16} color={sostenibilidad.nivel === 'critico' ? '#ff6b80' : sostenibilidad.nivel === 'vigilar' ? '#ffb300' : '#00e676'} />}
-          titulo="¿Puede la colonia sostener producción?"
-          subtitulo="Análisis integrado: genética · renovación · saturación · mínimos"
-        />
-
-        {/* Conclusión principal */}
-        <div style={{
-          borderRadius: 12, padding: '14px 16px', marginBottom: 14,
-          background: sostenibilidad.nivel === 'critico' ? 'rgba(255,61,87,0.08)' : sostenibilidad.nivel === 'vigilar' ? 'rgba(255,179,0,0.08)' : 'rgba(0,230,118,0.06)',
-          border: `1px solid ${sostenibilidad.nivel === 'critico' ? 'rgba(255,61,87,0.25)' : sostenibilidad.nivel === 'vigilar' ? 'rgba(255,179,0,0.2)' : 'rgba(0,230,118,0.2)'}`,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 22 }}>
-              {sostenibilidad.nivel === 'critico' ? '🔴' : sostenibilidad.nivel === 'vigilar' ? '🟡' : '🟢'}
-            </span>
-            <span style={{
-              fontSize: 14, fontWeight: 700,
-              color: sostenibilidad.nivel === 'critico' ? '#ff6b80' : sostenibilidad.nivel === 'vigilar' ? '#ffb300' : '#00e676',
-            }}>
-              {sostenibilidad.conclusion}
-            </span>
-          </div>
-        </div>
-
-        {/* KPIs de producción 90d */}
-        {sostenibilidad.produccion90d && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
-            {[
-              { label: 'Partos en 90d', valor: sostenibilidad.produccion90d.partos, color: '#00e676' },
-              { label: 'Crías en 90d', valor: sostenibilidad.produccion90d.crias, color: '#40c4ff' },
-              { label: 'Jaulas proy. 90d', valor: sostenibilidad.produccion90d.jaulas, color: '#a78bfa' },
-            ].map(({ label, valor, color }) => (
-              <div key={label} style={{ textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '10px' }}>
-                <div style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1 }}>{valor}</div>
-                <div style={{ fontSize: 10, color: tema.textMuted, marginTop: 3 }}>{label}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Riesgos detectados */}
-        {sostenibilidad.riesgos.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {sostenibilidad.riesgos.map((r, i) => (
-              <div key={i} style={{
-                display: 'flex', alignItems: 'flex-start', gap: 8,
-                fontSize: 12, color: r.nivel === 'critico' ? '#ff6b80' : r.nivel === 'advertencia' ? '#ffb300' : tema.textMuted,
-                background: r.nivel === 'critico' ? 'rgba(255,61,87,0.06)' : r.nivel === 'advertencia' ? 'rgba(255,179,0,0.06)' : 'rgba(255,255,255,0.02)',
-                borderRadius: 8, padding: '6px 10px',
-              }}>
-                <span>{r.nivel === 'critico' ? '✕' : r.nivel === 'advertencia' ? '⚠' : 'ℹ'}</span>
-                <span>{r.mensaje}</span>
-                <Chip color={r.nivel === 'critico' ? '#ff6b80' : r.nivel === 'advertencia' ? '#ffb300' : '#4a5f7a'}>
-                  {r.horizonte}d
-                </Chip>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {sostenibilidad.riesgos.length === 0 && (
-          <div style={{ fontSize: 12, color: tema.textMuted, textAlign: 'center', padding: '6px 0' }}>
-            Sin riesgos detectados en los próximos 180 días
-          </div>
-        )}
-      </div>
-
-      {/* ── ÍNDICE DE SOSTENIBILIDAD ─────────────────────────────────────────── */}
-      <div style={{
-        background: tema.bgCard,
-        border: `1px solid ${indiceSostenibilidad.borde}`,
-        borderRadius: 16, padding: '20px 24px',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-          <GaugeScore score={indiceSostenibilidad.score} size={100} />
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ fontSize: 18, fontWeight: 800, color: indiceSostenibilidad.color, marginBottom: 2 }}>
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: indiceSostenibilidad.color, marginBottom: 10 }}>
               {indiceSostenibilidad.emoji} {indiceSostenibilidad.nivel}
             </div>
-            <div style={{ fontSize: 12, color: tema.textMuted, marginBottom: 16 }}>
-              Índice de sostenibilidad — capacidad de mantener producción futura
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+
+            {/* 5 factores en fila compacta */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {[
-                { label: 'Genética',    valor: indiceSostenibilidad.detalle.genetica,   max: 20, color: '#40c4ff' },
-                { label: 'Renovación',  valor: indiceSostenibilidad.detalle.renovacion, max: 20, color: '#a78bfa' },
-                { label: 'Producción',  valor: indiceSostenibilidad.detalle.produccion, max: 15, color: '#00e676' },
-                { label: 'Sanidad',     valor: indiceSostenibilidad.detalle.sanidad,    max: 15, color: '#ff9100' },
-                { label: 'Saturación',  valor: indiceSostenibilidad.detalle.saturacion, max: 10, color: '#ce93d8' },
-                { label: 'Pedidos',     valor: indiceSostenibilidad.detalle.pedidos,    max: 10, color: '#ffd740' },
-                { label: 'Capacidad',   valor: indiceSostenibilidad.detalle.capacidad,  max: 10, color: '#80cbc4' },
-              ].map(({ label, valor, max, color }) => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 72, fontSize: 11, color: tema.textMuted, flexShrink: 0 }}>{label}</div>
-                  <div style={{ flex: 1 }}>
-                    <BarraProgreso valor={valor} max={max} color={color} height={5} />
-                  </div>
-                  <div style={{ width: 44, fontSize: 11, textAlign: 'right', color, fontFamily: 'monospace', flexShrink: 0 }}>
-                    {valor}/{max}
-                  </div>
+                { label: 'Genética',   valor: indiceSostenibilidad.detalle.genetica,   max: 20, color: '#40c4ff',  emoji: indiceSostenibilidad.detalle.genetica   >= 14 ? '🟢' : indiceSostenibilidad.detalle.genetica   >= 8  ? '🟡' : '🔴' },
+                { label: 'Renovación', valor: indiceSostenibilidad.detalle.renovacion, max: 20, color: '#a78bfa',  emoji: indiceSostenibilidad.detalle.renovacion >= 14 ? '🟢' : indiceSostenibilidad.detalle.renovacion >= 8  ? '🟡' : '🔴' },
+                { label: 'Saturación', valor: indiceSostenibilidad.detalle.saturacion, max: 10, color: '#ce93d8',  emoji: indiceSostenibilidad.detalle.saturacion >= 7  ? '🟢' : indiceSostenibilidad.detalle.saturacion >= 4  ? '🟡' : '🔴' },
+                { label: 'Sanidad',    valor: indiceSostenibilidad.detalle.sanidad,    max: 15, color: '#ff9100',  emoji: indiceSostenibilidad.detalle.sanidad    >= 10 ? '🟢' : indiceSostenibilidad.detalle.sanidad    >= 6  ? '🟡' : '🔴' },
+                { label: 'Producción', valor: indiceSostenibilidad.detalle.produccion, max: 15, color: '#00e676',  emoji: indiceSostenibilidad.detalle.produccion >= 10 ? '🟢' : indiceSostenibilidad.detalle.produccion >= 6  ? '🟡' : '🔴' },
+              ].map(({ label, valor, max, color, emoji }) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 12, width: 14 }}>{emoji}</span>
+                  <span style={{ fontSize: 11, color: tema.textMuted, width: 72, flexShrink: 0 }}>{label}</span>
+                  <div style={{ flex: 1 }}><BarraProgreso valor={valor} max={max} color={color} height={4} /></div>
+                  <span style={{ fontSize: 10, color, fontFamily: 'monospace', width: 36, textAlign: 'right', flexShrink: 0 }}>{valor}/{max}</span>
                 </div>
               ))}
             </div>
           </div>
         </div>
-        {indiceSostenibilidad.hayDeficit && (
-          <div style={{ marginTop: 14, fontSize: 12, color: '#ffb300', background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.2)', borderRadius: 8, padding: '8px 12px' }}>
-            ⚠ Déficit activo de reproductores — índice de sostenibilidad limitado a 75 hasta resolver
-          </div>
-        )}
-      </div>
 
-      {/* ── MODO ESTRATEGIA ──────────────────────────────────────────────────── */}
-      <div style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}`, borderRadius: 16, padding: '18px 20px' }}>
-        <SeccionTitulo
-          icono={<Layers size={16} color="#40c4ff" />}
-          titulo="Modo estrategia"
-          subtitulo="Elegí un objetivo → el motor ajusta recomendaciones automáticamente"
-        />
-
-        {/* Selector de objetivo */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-          {Object.entries(OBJETIVOS_ESTRATEGIA).map(([key, cfg]) => {
-            const activo = objetivoEstrategia === key
-            return (
-              <button
-                key={key}
-                onClick={() => setObjetivoEstrategia(key)}
-                style={{
-                  padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                  background: activo ? 'rgba(64,196,255,0.18)' : 'transparent',
-                  border: `1px solid ${activo ? 'rgba(64,196,255,0.5)' : tema.bgCardBorde}`,
-                  color: activo ? '#40c4ff' : tema.textMuted,
-                  transition: 'all 0.15s',
-                }}
-              >
-                {cfg.emoji} {cfg.label}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Descripción del objetivo */}
-        <div style={{
-          borderRadius: 10, padding: '10px 14px', marginBottom: 14,
-          background: 'rgba(64,196,255,0.06)', border: '1px solid rgba(64,196,255,0.15)',
-          fontSize: 12, color: '#40c4ff',
-        }}>
-          {modoEstrategia.config.emoji} <strong>{modoEstrategia.config.label}:</strong> {modoEstrategia.config.desc}
-        </div>
-
-        {/* KPIs rápidos */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 8, marginBottom: 16 }}>
-          {[
-            { label: '♂ activos',      valor: modoEstrategia.kpis.machosActivos,       color: '#40c4ff' },
-            { label: '♀ libres',       valor: modoEstrategia.kpis.libres,              color: '#ce93d8' },
-            { label: 'candidatos ✓',   valor: modoEstrategia.kpis.candidatosDisp,      color: '#00e676' },
-            { label: 'candidatos ~',   valor: modoEstrategia.kpis.candidatosPronto,    color: '#ffb300' },
-            { label: 'partos 90d',     valor: modoEstrategia.kpis.partos90d,           color: '#ffd740' },
-            { label: 'crías 90d',      valor: modoEstrategia.kpis.crias90d,            color: '#a78bfa' },
-          ].map(({ label, valor, color }) => (
-            <div key={label} style={{ textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: 8, padding: '8px 6px' }}>
-              <div style={{ fontSize: 18, fontWeight: 800, color, lineHeight: 1 }}>{valor}</div>
-              <div style={{ fontSize: 9, color: tema.textMuted, marginTop: 2 }}>{label}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Recomendaciones del modo */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
-          {modoEstrategia.recomendaciones.map((r, i) => {
-            const colorMap = { 0: '#ff6b80', 1: '#ff9100', 2: '#ffb300', 3: '#ffd740', 4: '#00e676' }
-            const color = colorMap[r.prioridad] ?? '#40c4ff'
-            return (
+        {/* Alertas resumen compactas */}
+        {(minimos.alertas.length > 0 || sostenibilidad.riesgos.filter(r => r.nivel === 'critico').length > 0) && (
+          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {minimos.alertas.map((a, i) => (
               <div key={i} style={{
-                display: 'flex', alignItems: 'flex-start', gap: 12,
-                background: `${color}08`, border: `1px solid ${color}25`,
-                borderRadius: 12, padding: '12px 14px',
+                display: 'flex', alignItems: 'center', gap: 8, borderRadius: 8, padding: '6px 10px',
+                background: a.critico ? 'rgba(255,61,87,0.08)' : 'rgba(255,179,0,0.07)',
+                fontSize: 12, color: a.critico ? '#ff6b80' : '#ffb300',
               }}>
-                <div style={{ fontSize: 18, flexShrink: 0 }}>{r.icono}</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color, marginBottom: 2 }}>{r.texto}</div>
-                  {r.detalle && <div style={{ fontSize: 11, color: tema.textMuted }}>{r.detalle}</div>}
-                </div>
-                <Chip color={color}>
-                  {r.prioridad === 0 ? 'Urgente' : r.prioridad === 1 ? 'Prioritario' : r.prioridad === 2 ? 'Recomendado' : 'Info'}
-                </Chip>
+                <AlertTriangle size={13} color={a.critico ? '#ff6b80' : '#ffb300'} />
+                {a.mensaje}
               </div>
-            )
-          })}
-        </div>
-
-        {/* Restricciones activas */}
-        {modoEstrategia.restricciones.length > 0 && (
-          <div style={{ borderTop: `1px solid ${tema.bgCardBorde}`, paddingTop: 12 }}>
-            <div style={{ fontSize: 11, color: tema.textMuted, fontWeight: 600, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Restricciones activas
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {modoEstrategia.restricciones.map((r, i) => (
-                <div key={i} style={{ fontSize: 11, color: '#ffb300', display: 'flex', gap: 6 }}>
-                  <span>⚑</span><span>{r}</span>
-                </div>
-              ))}
-            </div>
+            ))}
+            {sostenibilidad.riesgos.filter(r => r.nivel === 'critico').map((r, i) => (
+              <div key={`r${i}`} style={{
+                display: 'flex', alignItems: 'center', gap: 8, borderRadius: 8, padding: '6px 10px',
+                background: 'rgba(255,61,87,0.06)', fontSize: 12, color: '#ff6b80',
+              }}>
+                <AlertTriangle size={13} color="#ff6b80" />
+                {r.mensaje}
+                <Chip color="#ff6b80">{r.horizonte}d</Chip>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
-      {/* ── MOTOR "¿QUÉ HACER HOY?" ─────────────────────────────────────────── */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* 2. ¿QUÉ HACER HOY?                                                    */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
       {accionesHoy.length > 0 && (
-        <div style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}`, borderRadius: 16, padding: '18px 20px' }}>
-          <SeccionTitulo
-            icono={<Zap size={16} color="#ffd740" />}
-            titulo="¿Qué hacer hoy?"
-            subtitulo="Acciones concretas para evitar déficits futuros — ordenadas por urgencia"
-          />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ background: tema.bgCard, border: `1px solid ${accionesHoy[0]?.prioridad === 0 ? 'rgba(255,61,87,0.25)' : tema.bgCardBorde}`, borderRadius: 16, padding: '16px 20px' }}>
+          <SeccionTitulo icono={<Zap size={16} color="#ffd740" />} titulo="¿Qué hacer hoy?" subtitulo="Urgente → Preventivo → Opcional" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {accionesHoy.map((accion, i) => {
               const colorMapa = { 0: '#ff6b80', 1: '#ff9100', 2: '#ffb300', 3: '#ffd740', 4: '#00e676' }
+              const labelMapa = { 0: 'Urgente', 1: 'Esta semana', 2: 'Próximamente', 3: 'Preventivo', 4: 'Opcional' }
               const color = colorMapa[accion.prioridad] ?? '#c9d4e0'
               return (
                 <div key={i} style={{
-                  display: 'flex', alignItems: 'flex-start', gap: 12,
-                  background: `${color}08`, border: `1px solid ${color}25`,
-                  borderRadius: 12, padding: '12px 14px',
+                  display: 'flex', alignItems: 'flex-start', gap: 10,
+                  background: `${color}07`, border: `1px solid ${color}22`,
+                  borderRadius: 10, padding: '10px 12px',
                 }}>
-                  <div style={{ fontSize: 18, flexShrink: 0 }}>{accion.icono}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color, marginBottom: 3 }}>{accion.titulo}</div>
-                    <div style={{ fontSize: 12, color: tema.textSecondary }}>{accion.descripcion}</div>
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>{accion.icono}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color }}>{accion.titulo}</div>
+                    <div style={{ fontSize: 11, color: tema.textSecondary, marginTop: 2 }}>{accion.descripcion}</div>
                   </div>
-                  <Chip color={color}>
-                    {accion.prioridad === 0 ? 'Urgente' : accion.prioridad === 1 ? 'Esta semana' : accion.prioridad === 2 ? 'Próximamente' : accion.prioridad === 3 ? 'Preventivo' : 'Info'}
-                  </Chip>
+                  <Chip color={color}>{labelMapa[accion.prioridad] ?? 'Info'}</Chip>
                 </div>
               )
             })}
@@ -1375,216 +862,383 @@ export default function PlanificacionColonia() {
         </div>
       )}
 
-      {/* ── SUGERENCIAS AUTOMÁTICAS DE PROMOCIÓN ────────────────────────────── */}
-      {sugerenciasPromocion.length > 0 && (
-        <div style={{ background: tema.bgCard, border: '1px solid rgba(167,139,250,0.2)', borderRadius: 16, padding: '18px 20px' }}>
-          <SeccionTitulo
-            icono={<TrendingUp size={16} color="#a78bfa" />}
-            titulo="Sugerencias de promoción automática"
-            subtitulo="Candidatos del stock para cubrir déficits proyectados — ordenados por urgencia"
-          />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {sugerenciasPromocion.map((s, i) => {
-              const urgColor = s.urgencia === 'urgente' ? '#ff6b80' : s.urgencia === 'importante' ? '#ffb300' : '#a78bfa'
-              return (
-                <div key={i} style={{
-                  background: `${urgColor}06`, border: `1px solid ${urgColor}25`,
-                  borderRadius: 12, padding: '14px 16px',
-                }}>
-                  {/* Header */}
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: urgColor, marginBottom: 2 }}>
-                        {s.problema}
-                      </div>
-                      <div style={{ fontSize: 12, color: tema.textSecondary }}>{s.solucion}</div>
-                    </div>
-                    <Chip color={urgColor}>
-                      {s.urgencia === 'urgente' ? '🔴 Urgente' : s.urgencia === 'importante' ? '🟠 Importante' : '🔵 Preventivo'}
-                    </Chip>
-                  </div>
-
-                  {/* Impacto */}
-                  <div style={{
-                    background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.2)',
-                    borderRadius: 8, padding: '6px 10px', marginBottom: 8,
-                    fontSize: 12, fontWeight: 600, color: '#00e676',
-                  }}>
-                    Impacto: {s.impacto}
-                  </div>
-
-                  {/* Criterios y métricas */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                    {/* Métricas del candidato */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      {[
-                        { label: 'Score', valor: s.candidato.priorityScore + '/100', color: '#00e676' },
-                        { label: 'F padres', valor: s.candidato.fPorcentaje, color: colorNivelF(s.candidato.nivelF) },
-                        { label: 'Fam. score', valor: s.candidato.scoreFamiliar + '/10', color: '#40c4ff' },
-                        { label: s.listo ? 'Listo ahora' : `Listo en ${s.enDias}d`, valor: '', color: s.listo ? '#00e676' : '#ffb300' },
-                      ].map(({ label, valor, color }) => (
-                        <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                          <span style={{ color: tema.textMuted }}>{label}</span>
-                          {valor && <span style={{ color, fontWeight: 600 }}>{valor}</span>}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Criterios de selección */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      <div style={{ fontSize: 10, color: tema.textMuted, fontWeight: 600, marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                        Por qué este candidato
-                      </div>
-                      {s.criterios.map((c, j) => (
-                        <div key={j} style={{ fontSize: 11, color: tema.textSecondary }}>✓ {c}</div>
-                      ))}
-                      <div style={{ fontSize: 11, color: tema.textMuted, marginTop: 4 }}>
-                        Padres: {s.padres.madre} × {s.padres.padre}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* 3. PROYECCIÓN 30/60/90/180d                                           */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      <div style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}`, borderRadius: 16, padding: '16px 20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 10 }}>
+          <SeccionTitulo icono={<Clock size={16} color="#40c4ff" />} titulo="Proyección" subtitulo={`1 pareja / ${parejasCadaDias}d — ~${proyeccionAvanzada.patrones.promCrias} crías/parto`} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            <span style={{ fontSize: 11, color: tema.textMuted }}>1 par /</span>
+            <input
+              type="number" min={7} max={60} value={parejasCadaDias}
+              onChange={e => setParejasCadaDias(Math.max(7, Math.min(60, Number(e.target.value))))}
+              style={{ width: 46, padding: '3px 6px', borderRadius: 7, fontSize: 12, fontWeight: 700, background: 'rgba(64,196,255,0.1)', border: '1px solid rgba(64,196,255,0.3)', color: '#40c4ff', textAlign: 'center', outline: 'none' }}
+            />
+            <span style={{ fontSize: 11, color: tema.textMuted }}>d</span>
           </div>
         </div>
-      )}
 
-      {/* ── ÍNDICE GENÉTICO (enriquecido con déficit + proyección) ─────────── */}
-      <div style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}`, borderRadius: 16, padding: '18px 20px' }}>
-        <SeccionTitulo
-          icono={<Dna size={16} color="#a78bfa" />}
-          titulo="Índice de renovación genética"
-          subtitulo="Consanguinidad · Tendencia · Déficit reproductivo · Reemplazos disponibles · Riesgo futuro"
-        />
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-          <GaugeScore score={indiceGeneticoEnriquecido.score} size={90} />
-
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <span style={{ fontSize: 15, fontWeight: 700, color: indiceGeneticoEnriquecido.color }}>{indiceGeneticoEnriquecido.nivel}</span>
-              {indiceGeneticoEnriquecido.tendencia !== 'estable' && (
-                <Chip color={indiceGeneticoEnriquecido.tendencia === 'mejorando' ? '#00e676' : '#ff6b80'}>
-                  {indiceGeneticoEnriquecido.tendencia === 'mejorando' ? '↑ Mejorando' : '↓ Deteriorando'}
-                </Chip>
-              )}
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
-              <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 8, padding: '8px 10px' }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#a78bfa' }}>{indiceGeneticoEnriquecido.fPorcentaje}</div>
-                <div style={{ fontSize: 9, color: tema.textMuted }}>F promedio</div>
-              </div>
-              <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 8, padding: '8px 10px' }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#40c4ff' }}>
-                  {indiceGeneticoEnriquecido.animalesConPadres}/{indiceGeneticoEnriquecido.totalReproductores}
+        {/* 4 horizontes compactos */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 10 }}>
+          {[30, 60, 90, 180].map(h => {
+            const d = proyeccionAvanzada.horizontes[h]
+            const ok = d.ok
+            const hasDef = d.deficit.hayDeficit
+            const sat    = d.jaulas.saturacion === 'alta'
+            const colorTit = ok ? '#00e676' : hasDef && !d.deficit.puedeCubrirConStock ? '#ff6b80' : '#ffb300'
+            const emoji    = ok ? '🟢' : hasDef && !d.deficit.puedeCubrirConStock ? '🔴' : '🟡'
+            return (
+              <div key={h} style={{ background: `${colorTit}08`, border: `1px solid ${colorTit}25`, borderRadius: 12, padding: '10px 12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontSize: 17, fontWeight: 800, color: colorTit }}>{h}d</span>
+                  <span style={{ fontSize: 14 }}>{emoji}</span>
                 </div>
-                <div style={{ fontSize: 9, color: tema.textMuted }}>con genealogía</div>
-              </div>
-              <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 8, padding: '8px 10px' }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: candidatos.filter(c => c.recomendado && c.tiempoHastaUtilidad === 0).length > 0 ? '#00e676' : '#ffb300' }}>
-                  {candidatos.filter(c => c.recomendado && c.tiempoHastaUtilidad === 0).length}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: tema.textMuted }}>
+                    <span>partos</span>
+                    <span style={{ color: '#00e676', fontWeight: 600 }}>{d.partos.total}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: tema.textMuted }}>
+                    <span>crías</span>
+                    <span style={{ color: '#40c4ff', fontWeight: 600 }}>~{d.crias.total}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: tema.textMuted }}>
+                    <span>saturación</span>
+                    <span style={{ color: sat ? '#ff6b80' : '#c9d4e0', fontWeight: 600 }}>{sat ? '⚠ Alta' : 'OK'}</span>
+                  </div>
+                  {hasDef && (
+                    <div style={{ fontSize: 9, fontWeight: 700, color: d.deficit.puedeCubrirConStock ? '#ffb300' : '#ff6b80', marginTop: 2, textAlign: 'center', background: d.deficit.puedeCubrirConStock ? 'rgba(255,179,0,0.1)' : 'rgba(255,61,87,0.1)', borderRadius: 4, padding: '1px 4px' }}>
+                      {d.deficit.machos > 0 ? `−${d.deficit.machos}♂` : ''}{d.deficit.machos > 0 && d.deficit.hembras > 0 ? ' ' : ''}{d.deficit.hembras > 0 ? `−${d.deficit.hembras}♀` : ''}
+                      {d.deficit.puedeCubrirConStock ? ' (cub.)' : ' ⚠'}
+                    </div>
+                  )}
+                  {d.stockNeto && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: tema.textMuted, borderTop: '1px solid rgba(255,255,255,0.04)', marginTop: 2, paddingTop: 2 }}>
+                      <span>neto</span>
+                      <span style={{ color: d.stockNeto.neto > 0 ? '#a78bfa' : '#ff6b80', fontWeight: 700 }}>~{d.stockNeto.neto}</span>
+                    </div>
+                  )}
                 </div>
-                <div style={{ fontSize: 9, color: tema.textMuted }}>reemplazos listos</div>
               </div>
-            </div>
-
-            {indiceGeneticoEnriquecido.advertencias.map((adv, i) => (
-              <div key={i} style={{ fontSize: 11, color: '#ffb300', marginBottom: 4 }}>⚠ {adv}</div>
-            ))}
-          </div>
+            )
+          })}
         </div>
-      </div>
 
-      {/* ── CANDIDATOS A RENOVACIÓN ─────────────────────────────────────────── */}
-      <div style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}`, borderRadius: 16, padding: '18px 20px' }}>
-        <SeccionTitulo
-          icono={<RefreshCcw size={16} color="#00e676" />}
-          titulo="Candidatos a renovación"
-          subtitulo="Jaulas de stock ordenadas por prioridad de promoción a reproductores"
-        />
+        {/* Expandir: partos/destetes en curso */}
+        <button
+          onClick={() => setProyExpand(e => !e)}
+          style={{ width: '100%', padding: '5px 0', background: 'transparent', border: `1px solid ${tema.bgCardBorde}`, borderRadius: 8, fontSize: 11, color: tema.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+        >
+          {proyExpand ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          {proyExpand ? 'Ocultar detalle' : `Ver partos/destetes en curso (${proyeccion.partosPendientes.length + proyeccion.destesPendientes.length})`}
+        </button>
 
-        {candidatos.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '24px 0', color: tema.textMuted, fontSize: 13 }}>
-            <div style={{ fontSize: 28, marginBottom: 8 }}>📦</div>
-            No hay crías en edad de renovación actualmente.<br />
-            Los candidatos aparecen cuando las crías se acercan a la madurez reproductiva ({bio?.MADUREZ_DIAS ?? 56} días).
+        {proyExpand && (
+          <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 10, color: tema.textMuted, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Partos ({proyeccion.partosPendientes.length})</div>
+              {proyeccion.partosPendientes.length === 0
+                ? <div style={{ fontSize: 11, color: tema.textMuted }}>Sin apareamientos activos</div>
+                : proyeccion.partosPendientes.slice(0, 5).map((p, i) => (
+                  <div key={p.camadaId} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 8px', borderRadius: 7, marginBottom: 3, background: p.vencido ? 'rgba(255,61,87,0.06)' : 'rgba(0,230,118,0.04)' }}>
+                    <span style={{ fontSize: 11, color: tema.textSecondary }}>#{i + 1}</span>
+                    <span style={{ fontSize: 11, color: p.vencido ? '#ff6b80' : '#00e676', fontFamily: 'monospace' }}>{p.vencido ? 'Vencido' : `${p.diasRestantes}d`}</span>
+                  </div>
+                ))
+              }
+            </div>
+            <div>
+              <div style={{ fontSize: 10, color: tema.textMuted, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Destetes ({proyeccion.destesPendientes.length})</div>
+              {proyeccion.destesPendientes.length === 0
+                ? <div style={{ fontSize: 11, color: tema.textMuted }}>Sin camadas en lactancia</div>
+                : proyeccion.destesPendientes.slice(0, 5).map((d, i) => (
+                  <div key={d.camadaId} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 8px', borderRadius: 7, marginBottom: 3, background: d.vencido ? 'rgba(255,61,87,0.06)' : 'rgba(64,196,255,0.04)' }}>
+                    <span style={{ fontSize: 11, color: tema.textSecondary }}>#{i + 1}{d.totalCrias > 0 ? ` · ${d.totalCrias}cr` : ''}</span>
+                    <span style={{ fontSize: 11, color: d.vencido ? '#ff6b80' : '#40c4ff', fontFamily: 'monospace' }}>{d.vencido ? 'Vencido' : `${d.diasRestantes}d`}</span>
+                  </div>
+                ))
+              }
+            </div>
           </div>
         )}
+      </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
-          {candidatos.slice(0, 9).map((candidato, i) => (
-            <TarjetaCandidato
-              key={`${candidato.jaulaId}-${reservasKey}`}
-              candidato={candidato}
-              index={i}
-              camadas={todasCamadas}
-              reservado={esReservado(candidato.jaulaId)}
-              onReservar={handleReservar}
-              onLiberar={handleLiberar}
-            />
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* 4. CAPACIDAD DE JAULAS                                                */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      <div style={{ background: tema.bgCard, border: `1px solid ${satFut === 'alta' ? 'rgba(255,61,87,0.2)' : tema.bgCardBorde}`, borderRadius: 16, padding: '16px 20px' }}>
+        <SeccionTitulo icono={<Package size={16} color="#a78bfa" />} titulo="Capacidad" subtitulo="Jaulas actuales vs proyectadas a 180d" />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+          {[
+            { label: 'Ahora',  valor: jaulasAhora, sub: 'jaulas activas',  color: '#a78bfa' },
+            { label: '+ 180d', valor: `+${h180?.jaulas?.nuevas ?? 0}`, sub: 'nuevas est.',  color: '#40c4ff' },
+            { label: 'Total',  valor: jaulasFut,   sub: satFut === 'alta' ? '⚠ Saturación alta' : 'proyectado', color: satFut === 'alta' ? '#ff6b80' : '#00e676' },
+          ].map(({ label, valor, sub, color }) => (
+            <div key={label} style={{ textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '10px' }}>
+              <div style={{ fontSize: 10, color: tema.textMuted, marginBottom: 4 }}>{label}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1 }}>{valor}</div>
+              <div style={{ fontSize: 10, color: tema.textMuted, marginTop: 3 }}>{sub}</div>
+            </div>
           ))}
         </div>
-
-        {candidatos.length > 9 && (
-          <div style={{ textAlign: 'center', marginTop: 12, fontSize: 12, color: tema.textMuted }}>
-            + {candidatos.length - 9} candidatos adicionales con menor prioridad
+        {satFut === 'alta' && (
+          <div style={{ marginTop: 10, fontSize: 11, color: '#ff6b80', background: 'rgba(255,61,87,0.07)', border: '1px solid rgba(255,61,87,0.2)', borderRadius: 8, padding: '7px 10px' }}>
+            ⚠ Riesgo de saturación en 180d — considerar incrementar sacrificios o reducir apareamientos
           </div>
         )}
       </div>
 
-      {/* ── REPRODUCTORES PRÓXIMOS AL LÍMITE ────────────────────────────────── */}
-      {proyeccion.reproProximosLimite.length > 0 && (
-        <div style={{ background: tema.bgCard, border: '1px solid rgba(255,179,0,0.2)', borderRadius: 16, padding: '18px 20px' }}>
-          <SeccionTitulo
-            icono={<AlertTriangle size={16} color="#ffb300" />}
-            titulo="Reproductores próximos al límite"
-            subtitulo="Animales que alcanzarán o superaron la edad reproductiva máxima"
-          />
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* 5. RENOVACIÓN (mínimos + déficit + candidatos + edad límite)          */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      <div style={{ background: tema.bgCard, border: `1px solid ${minimos.critico ? 'rgba(255,61,87,0.25)' : tema.bgCardBorde}`, borderRadius: 16, padding: '16px 20px' }}>
+        <SeccionTitulo icono={<RefreshCcw size={16} color={minimos.critico ? '#ff6b80' : '#00e676'} />} titulo="Renovación" subtitulo="Reproductores · Déficit · Candidatos · Edad límite" />
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {proyeccion.reproProximosLimite.map(r => {
-              const colorAlerta = r.yaLimite ? '#ff6b80' : r.enAlerta ? '#ffb300' : '#40c4ff'
-              return (
-                <div key={r.animalId} style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-                  background: `${colorAlerta}08`, border: `1px solid ${colorAlerta}25`,
-                  borderRadius: 10, padding: '10px 14px',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 13, color: r.sexo === 'macho' ? '#40c4ff' : '#ce93d8' }}>
-                      {r.sexo === 'macho' ? '♂' : '♀'}
+        {/* Fila: machos y hembras con déficit + candidato en una sola vista */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {[
+            {
+              sexo: 'macho', emoji: '♂', colorSexo: '#40c4ff',
+              actual: stockReal.reproductores.machos.filter(m => !m.exportado_hibridos).length,
+              minimo: minimosCfg.machos_colonia,
+            },
+            {
+              sexo: 'hembra', emoji: '♀', colorSexo: '#ce93d8',
+              actual: stockReal.reproductores.hembras.filter(h => !h.exportado_hibridos).length,
+              minimo: minimosCfg.hembras_colonia,
+            },
+            ...(minimosCfg.machos_hibridos > 0 ? [{
+              sexo: 'macho', emoji: '♂F1', colorSexo: '#ffd740',
+              actual: stockReal.reproductores.machosHibridos.length,
+              minimo: minimosCfg.machos_hibridos,
+            }] : []),
+            ...(minimosCfg.hembras_hibridos > 0 ? [{
+              sexo: 'hembra', emoji: '♀F1', colorSexo: '#ffd740',
+              actual: stockReal.reproductores.hembrasHibridos.length,
+              minimo: minimosCfg.hembras_hibridos,
+            }] : []),
+          ].map(({ sexo, emoji, colorSexo, actual, minimo }) => {
+            const ok      = actual >= minimo
+            const deficit = Math.max(0, minimo - actual)
+            // Candidato del motor que cubre este sexo
+            const accion  = motorUnificado.accionesRecomendadas.find(a => a.sexo === sexo && (a.tipo === 'deficit' || a.tipo === 'reemplazo'))
+            const cand    = accion?.candidato ?? null
+            // Próximo al límite de este sexo
+            const proxLim = proyeccion.reproProximosLimite.filter(r => r.sexo === sexo)
+            return (
+              <div key={emoji} style={{
+                borderRadius: 12, padding: '10px 14px',
+                background: ok ? 'rgba(255,255,255,0.02)' : 'rgba(255,61,87,0.05)',
+                border: `1px solid ${ok ? tema.bgCardBorde : 'rgba(255,61,87,0.2)'}`,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  {/* Conteo */}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, minWidth: 90 }}>
+                    <span style={{ fontSize: 22, fontWeight: 800, color: ok ? colorSexo : '#ff6b80', lineHeight: 1 }}>{actual}</span>
+                    <span style={{ fontSize: 12, color: tema.textMuted }}>/ {minimo} mín</span>
+                    <span style={{ fontSize: 16 }}>{emoji}</span>
+                  </div>
+
+                  {/* Estado */}
+                  {ok
+                    ? <Chip color="#00e676">✓ OK</Chip>
+                    : <Chip color="#ff6b80">Déficit {deficit}</Chip>}
+
+                  {/* Candidato a promover */}
+                  {cand && (
+                    <div style={{ fontSize: 11, color: cand.listo ?? cand.tiempoHastaUtilidad === 0 ? '#00e676' : '#ffb300', fontWeight: 600 }}>
+                      → Promover {cand.machos ?? 0}♂{cand.hembras ?? 0}♀
+                      {(cand.tiempoHastaUtilidad ?? 0) === 0
+                        ? ' (listo)'
+                        : ` en ${cand.tiempoHastaUtilidad}d`}
+                    </div>
+                  )}
+                  {!cand && !ok && (
+                    <span style={{ fontSize: 11, color: '#ffb300' }}>⚠ Sin candidato — aparear de emergencia</span>
+                  )}
+
+                  {/* Próximos al límite */}
+                  {proxLim.length > 0 && (
+                    <div style={{ marginLeft: 'auto', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      {proxLim.slice(0, 3).map(r => (
+                        <Chip key={r.animalId} color={r.yaLimite ? '#ff6b80' : '#ffb300'}>
+                          {r.codigo} {r.yaLimite ? '✕' : `${r.diasHastaLimite}d`}
+                        </Chip>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Motor unificado: acciones de reemplazo */}
+        {motorUnificado.accionesRecomendadas.length > 0 && (
+          <div style={{ marginTop: 12, borderTop: `1px solid ${tema.bgCardBorde}`, paddingTop: 12 }}>
+            <div style={{ fontSize: 10, color: tema.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+              Acciones de renovación
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {motorUnificado.accionesRecomendadas.map((accion, i) => {
+                const colorPrio = accion.prioridad === 0 ? '#ff6b80' : accion.prioridad === 1 ? '#ff9100' : accion.prioridad === 2 ? '#ffb300' : '#40c4ff'
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 11, background: `${colorPrio}07`, border: `1px solid ${colorPrio}22`, borderRadius: 8, padding: '7px 10px' }}>
+                    <span style={{ color: colorPrio, fontWeight: 700, flexShrink: 0 }}>
+                      {accion.prioridad === 0 ? 'URGENTE' : accion.prioridad === 1 ? 'CRÍTICO' : accion.prioridad === 2 ? 'ALERTA' : 'INFO'}
                     </span>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: colorAlerta }}>{r.codigo}</div>
-                      <div style={{ fontSize: 11, color: tema.textMuted }}>{r.diasVida} días de vida</div>
+                    <div style={{ flex: 1 }}>
+                      <span style={{ color: accion.sexo === 'macho' ? '#40c4ff' : '#ce93d8' }}>
+                        {accion.sexo === 'macho' ? '♂' : '♀'}
+                      </span>{' '}
+                      <span style={{ color: colorPrio }}>{accion.tipo === 'deficit' ? 'Déficit' : 'Reemplazo'}</span>
+                      {accion.animalSaliente ? ` — ${accion.animalSaliente.codigo}` : ''}
+                      {accion.candidato
+                        ? <span style={{ color: '#00e676', marginLeft: 8 }}>
+                            → {accion.candidato.diasVida}d · {accion.candidato.machos || 0}♂ {accion.candidato.hembras || 0}♀
+                            {accion.impactoEnIndice && <Chip color="#00e676" style={{ marginLeft: 4 }}>{accion.impactoEnIndice}</Chip>}
+                          </span>
+                        : <span style={{ color: '#ffb300', marginLeft: 8 }}>⏳ Sin candidato aún</span>
+                      }
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    {r.yaLimite
-                      ? <Chip color="#ff6b80">Reemplazar ya</Chip>
-                      : r.enAlerta
-                      ? <Chip color="#ffb300">⚠ {r.diasHastaLimite}d al límite</Chip>
-                      : <Chip color="#40c4ff">{r.diasHastaLimite}d al límite</Chip>}
-                  </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
-        </div>
+        )}
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* MODO AVANZADO                                                         */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {modoAvanzado && (
+        <>
+          {/* Modo Estrategia */}
+          <div style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}`, borderRadius: 16, padding: '16px 20px' }}>
+            <SeccionTitulo icono={<Layers size={16} color="#40c4ff" />} titulo="Modo estrategia" subtitulo="Objetivo → ajusta recomendaciones automáticamente" />
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+              {Object.entries(OBJETIVOS_ESTRATEGIA).map(([key, cfg]) => {
+                const activo = objetivoEstrategia === key
+                return (
+                  <button key={key} onClick={() => setObjetivoEstrategia(key)} style={{ padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer', background: activo ? 'rgba(64,196,255,0.18)' : 'transparent', border: `1px solid ${activo ? 'rgba(64,196,255,0.5)' : tema.bgCardBorde}`, color: activo ? '#40c4ff' : tema.textMuted }}>
+                    {cfg.emoji} {cfg.label}
+                  </button>
+                )
+              })}
+            </div>
+            <div style={{ fontSize: 11, color: '#40c4ff', background: 'rgba(64,196,255,0.06)', border: '1px solid rgba(64,196,255,0.15)', borderRadius: 8, padding: '7px 10px', marginBottom: 12 }}>
+              {modoEstrategia.config.emoji} <strong>{modoEstrategia.config.label}:</strong> {modoEstrategia.config.desc}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: 7, marginBottom: 12 }}>
+              {[
+                { label: '♂ activos', valor: modoEstrategia.kpis.machosActivos, color: '#40c4ff' },
+                { label: '♀ libres',  valor: modoEstrategia.kpis.libres,        color: '#ce93d8' },
+                { label: 'cand. ✓',   valor: modoEstrategia.kpis.candidatosDisp,   color: '#00e676' },
+                { label: 'cand. ~',   valor: modoEstrategia.kpis.candidatosPronto, color: '#ffb300' },
+                { label: 'partos 90d', valor: modoEstrategia.kpis.partos90d,   color: '#ffd740' },
+                { label: 'crías 90d',  valor: modoEstrategia.kpis.crias90d,    color: '#a78bfa' },
+              ].map(({ label, valor, color }) => (
+                <div key={label} style={{ textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: 8, padding: '7px 5px' }}>
+                  <div style={{ fontSize: 16, fontWeight: 800, color, lineHeight: 1 }}>{valor}</div>
+                  <div style={{ fontSize: 9, color: tema.textMuted, marginTop: 2 }}>{label}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {modoEstrategia.recomendaciones.map((r, i) => {
+                const colorMap = { 0: '#ff6b80', 1: '#ff9100', 2: '#ffb300', 3: '#ffd740', 4: '#00e676' }
+                const color = colorMap[r.prioridad] ?? '#40c4ff'
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: `${color}07`, border: `1px solid ${color}22`, borderRadius: 10, padding: '10px 12px' }}>
+                    <span style={{ fontSize: 16, flexShrink: 0 }}>{r.icono}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color }}>{r.texto}</div>
+                      {r.detalle && <div style={{ fontSize: 11, color: tema.textMuted }}>{r.detalle}</div>}
+                    </div>
+                    <Chip color={color}>{r.prioridad === 0 ? 'Urgente' : r.prioridad === 1 ? 'Prior.' : r.prioridad === 2 ? 'Recom.' : 'Info'}</Chip>
+                  </div>
+                )
+              })}
+            </div>
+            {modoEstrategia.restricciones.length > 0 && (
+              <div style={{ marginTop: 10, borderTop: `1px solid ${tema.bgCardBorde}`, paddingTop: 10 }}>
+                {modoEstrategia.restricciones.map((r, i) => (
+                  <div key={i} style={{ fontSize: 11, color: '#ffb300', display: 'flex', gap: 6 }}><span>⚑</span><span>{r}</span></div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Índice genético */}
+          <div style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}`, borderRadius: 16, padding: '16px 20px' }}>
+            <SeccionTitulo icono={<Dna size={16} color="#a78bfa" />} titulo="Genética" subtitulo="Consanguinidad · Tendencia · Reemplazos disponibles" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+              <GaugeScore score={indiceGeneticoEnriquecido.score} size={80} />
+              <div style={{ flex: 1, minWidth: 160 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: indiceGeneticoEnriquecido.color }}>{indiceGeneticoEnriquecido.nivel}</span>
+                  {indiceGeneticoEnriquecido.tendencia !== 'estable' && (
+                    <Chip color={indiceGeneticoEnriquecido.tendencia === 'mejorando' ? '#00e676' : '#ff6b80'}>
+                      {indiceGeneticoEnriquecido.tendencia === 'mejorando' ? '↑ Mejorando' : '↓ Deteriorando'}
+                    </Chip>
+                  )}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 7 }}>
+                  {[
+                    { label: 'F prom.',         valor: indiceGeneticoEnriquecido.fPorcentaje, color: '#a78bfa' },
+                    { label: 'Con genealogía',  valor: `${indiceGeneticoEnriquecido.animalesConPadres}/${indiceGeneticoEnriquecido.totalReproductores}`, color: '#40c4ff' },
+                    { label: 'Reemplazos listos', valor: candidatos.filter(c => c.recomendado && c.tiempoHastaUtilidad === 0).length, color: '#00e676' },
+                  ].map(({ label, valor, color }) => (
+                    <div key={label} style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 8, padding: '7px 9px', textAlign: 'center' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color }}>{valor}</div>
+                      <div style={{ fontSize: 9, color: tema.textMuted }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+                {indiceGeneticoEnriquecido.advertencias.map((adv, i) => (
+                  <div key={i} style={{ fontSize: 11, color: '#ffb300', marginTop: 6 }}>⚠ {adv}</div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Candidatos a renovación */}
+          <div style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}`, borderRadius: 16, padding: '16px 20px' }}>
+            <SeccionTitulo icono={<TrendingUp size={16} color="#a78bfa" />} titulo="Candidatos a renovación" subtitulo="Jaulas de stock ordenadas por prioridad de promoción" />
+            {candidatos.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '20px 0', color: tema.textMuted, fontSize: 12 }}>
+                📦 Sin crías en edad de renovación — aparecen al acercarse a {bio?.MADUREZ_DIAS ?? 56} días
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 10 }}>
+                {candidatos.slice(0, 9).map((candidato, i) => (
+                  <TarjetaCandidato
+                    key={`${candidato.jaulaId}-${reservasKey}`}
+                    candidato={candidato} index={i} camadas={todasCamadas}
+                    reservado={esReservado(candidato.jaulaId)}
+                    onReservar={handleReservar} onLiberar={handleLiberar}
+                  />
+                ))}
+              </div>
+            )}
+            {candidatos.length > 9 && (
+              <div style={{ textAlign: 'center', marginTop: 10, fontSize: 11, color: tema.textMuted }}>
+                + {candidatos.length - 9} candidatos adicionales
+              </div>
+            )}
+          </div>
+
+          {/* Simulador de impacto */}
+          <SimuladorImpacto
+            animales={animales}
+            stockReal={stockReal}
+            bioterioId={bioterioActivo}
+            motorUnificado={motorUnificado}
+          />
+        </>
       )}
-
-      {/* ── MOTOR DE RENOVACIÓN UNIFICADO ────────────────────────────────────── */}
-      <PanelMotorUnificado motorUnificado={motorUnificado} />
-
-      {/* ── SIMULADOR DE IMPACTO ─────────────────────────────────────────────── */}
-      <SimuladorImpacto
-        animales={animales}
-        stockReal={stockReal}
-        bioterioId={bioterioActivo}
-        motorUnificado={motorUnificado}
-      />
 
     </div>
   )
