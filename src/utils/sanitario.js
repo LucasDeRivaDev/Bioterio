@@ -1080,30 +1080,108 @@ export function generarMotorCausalCompleto(
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DETERIORO PROGRESIVO — Ventanas 30 / 60 / 90 / 180 / 365 días
-// Detecta si fertilidad↓ mortalidad↑ malformaciones↑ en tendencia reciente
+// Detecta deterioro reproductivo progresivo interpretando el contexto biológico activo.
+// NO asume que ausencia de partos = fracaso. Primero evalúa si hay gestaciones en curso,
+// apareamientos activos o partos pendientes antes de concluir deterioro.
+//
+// @param animales  — lista de animales del bioterio (para evaluar contexto activo)
+// @param bio       — parámetros biológicos de la especie (para ventana de gestación)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function detectarDeterioroProgresivo(camadas, incidentes, bioterioId) {
-  const ventanas = [30, 60, 90, 180, 365]
+export function detectarDeterioroProgresivo(camadas, incidentes, bioterioId, animales = [], bio = null) {
+  // Ventana de gestación para distinguir "en espera" de "demorado"
+  const GESTACION_MAX = bio?.GESTACION_MAX ?? 26  // días máximo normal (con margen)
+
+  const VENTANAS = [30, 60, 90, 180, 365]
   const hoy    = new Date()
+  hoy.setHours(0, 0, 0, 0)
   const hoyStr = hoy.toISOString().slice(0, 10)
-  const resultado = {}
 
-  const camBio = bioterioId && bioterioId !== 'todos' ? camadas.filter(c => c.bioterio_id === bioterioId) : camadas
-  const incBio = bioterioId && bioterioId !== 'todos' ? incidentes.filter(i => i.bioterio_id === bioterioId) : incidentes
+  const camBio  = bioterioId && bioterioId !== 'todos' ? camadas.filter(c => c.bioterio_id === bioterioId)  : camadas
+  const incBio  = bioterioId && bioterioId !== 'todos' ? incidentes.filter(i => i.bioterio_id === bioterioId) : incidentes
+  const animBio = bioterioId && bioterioId !== 'todos' ? animales.filter(a => a.bioterio_id === bioterioId)  : animales
 
-  for (const dias of ventanas) {
+  // ── Contexto reproductivo activo HOY ───────────────────────────────────────
+  const apareamientosActivos = animBio.filter(a => a.estado === 'en_apareamiento').length
+  const lactanciasActivas    = animBio.filter(a => a.estado === 'en_cria').length
+  // Partos pendientes = camadas con cópula, sin nacimiento, sin fallo
+  const partosPendientes     = camBio.filter(c => c.fecha_copula && !c.fecha_nacimiento && !c.failure_flag).length
+  // Destetes pendientes = nacieron pero aún no se destetaron
+  const destesPendientes     = camBio.filter(c => c.fecha_nacimiento && !c.fecha_destete && !c.failure_flag).length
+
+  // ── Calcular métricas por ventana temporal ─────────────────────────────────
+  const resultadoObj = {}
+  const resultadoArr = []
+
+  for (const dias of VENTANAS) {
     const desde = new Date(hoy.getTime() - dias * 86400000).toISOString().slice(0, 10)
 
     const camPer = camBio.filter(c => (c.fecha_copula ?? '') >= desde && (c.fecha_copula ?? '') <= hoyStr)
     const incPer = incBio.filter(i => i.fecha >= desde && i.fecha <= hoyStr)
 
-    const conParto  = camPer.filter(c => c.fecha_nacimiento && !c.failure_flag)
-    const totalCam  = camPer.filter(c => c.fecha_copula).length
-    const fertilidad = totalCam > 0 ? conParto.length / totalCam : null
+    const conParto = camPer.filter(c => c.fecha_nacimiento && !c.failure_flag)
+    const conFallo = camPer.filter(c => c.failure_flag)
+    const totalCam = camPer.filter(c => c.fecha_copula).length
 
-    const conDestete = conParto.filter(c => c.total_crias > 0 && c.total_destetados != null)
-    const supervivencia = conDestete.length > 0
+    // Apareamientos que TODAVÍA están dentro de la ventana normal de gestación
+    // → no cuentan como fallo, su resultado aún es incierto
+    const enEsperaVigentes = camPer.filter(c => {
+      if (c.fecha_nacimiento || c.failure_flag) return false
+      const ms = hoy - new Date(c.fecha_copula)
+      const diasDesde = Math.floor(ms / 86400000)
+      return diasDesde <= GESTACION_MAX
+    })
+
+    // Apareamientos que pasaron el máximo sin parto ni fallo registrado
+    const enEsperaDemoradas = camPer.filter(c => {
+      if (c.fecha_nacimiento || c.failure_flag) return false
+      const ms = hoy - new Date(c.fecha_copula)
+      const diasDesde = Math.floor(ms / 86400000)
+      return diasDesde > GESTACION_MAX
+    })
+
+    // Completadas = tuvieron parto confirmado O fallo confirmado (resultado conocido)
+    const camadasCompletadas = conParto.length + conFallo.length
+
+    // Fertilidad REAL: solo sobre completadas. No incluir "en espera" como fracaso.
+    const fertilidadReal = camadasCompletadas >= 2
+      ? conParto.length / camadasCompletadas
+      : null  // datos insuficientes → indeterminado
+
+    // Confianza de la métrica de fertilidad para esta ventana
+    let confianza, contexto
+    if (camadasCompletadas >= 4) {
+      confianza = 'alta'
+      contexto  = null
+    } else if (camadasCompletadas >= 2) {
+      confianza = 'media'
+      contexto  = enEsperaVigentes.length > 0
+        ? `${enEsperaVigentes.length} gestación(es) activa(s) — resultado aún pendiente`
+        : null
+    } else if (camadasCompletadas === 1) {
+      confianza = 'baja'
+      contexto  = enEsperaVigentes.length > 0
+        ? `Solo 1 completada — ${enEsperaVigentes.length} gestando actualmente`
+        : 'Pocos eventos — interpretación limitada'
+    } else {
+      // 0 completadas
+      if (enEsperaVigentes.length > 0) {
+        confianza = 'espera'
+        contexto  = `${enEsperaVigentes.length} parto(s) en espera — sin datos suficientes aún`
+      } else if (enEsperaDemoradas.length > 0) {
+        confianza = 'baja'
+        contexto  = `${enEsperaDemoradas.length} apareamiento(s) demorado(s) — verificar estado`
+      } else if (totalCam > 0) {
+        confianza = 'baja'
+        contexto  = 'Sin resultado registrado en este período'
+      } else {
+        confianza = 'sin_datos'
+        contexto  = 'Sin apareamientos en este período'
+      }
+    }
+
+    const conDestete   = conParto.filter(c => c.total_crias > 0 && c.total_destetados != null)
+    const supervivencia = conDestete.length >= 2
       ? conDestete.reduce((s, c) => s + c.total_destetados / c.total_crias, 0) / conDestete.length
       : null
 
@@ -1111,37 +1189,107 @@ export function detectarDeterioroProgresivo(camadas, incidentes, bioterioId) {
     const malformaciones = incPer.filter(i =>
       ['malformacion', 'ausencia_cola', 'ausencia_extremidad'].includes(i.tipo_incidente)
     ).length
-    const fallos = camPer.filter(c => c.failure_flag).length
+    const fallos = conFallo.length
 
-    resultado[dias] = { dias, desde, fertilidad, supervivencia, mortalidadNeo, malformaciones, fallos, totalCamadas: totalCam }
+    const entry = {
+      dias, desde,
+      fertilidad:        fertilidadReal,   // solo sobre completadas
+      confianza,
+      contexto,
+      supervivencia,
+      mortalidadNeo,
+      malformaciones,
+      fallos,
+      totalCamadas:      totalCam,
+      camadasCompletadas,
+      enEsperaVigentes:  enEsperaVigentes.length,
+      enEsperaDemoradas: enEsperaDemoradas.length,
+    }
+    resultadoObj[dias] = entry
+    resultadoArr.push(entry)
   }
 
-  const v30  = resultado[30]
-  const v90  = resultado[90]
-  const v180 = resultado[180]
+  const v30  = resultadoObj[30]
+  const v90  = resultadoObj[90]
+  const v180 = resultadoObj[180]
 
-  // fertilidad más reciente peor que más larga
-  const fertilidadDet = v30.fertilidad !== null && v180.fertilidad !== null && v30.fertilidad < v180.fertilidad - 0.10
-  // mortalidad neonatal se acelera (30d dense > ritmo 90d/3)
+  // ── SEÑAL 1: Fertilidad deteriorando ──────────────────────────────────────
+  // Solo aplica si AMBAS ventanas tienen suficientes completadas Y no hay gestaciones
+  // activas que expliquen el descenso reciente (serían las "en espera vigentes")
+  const fertilidadDet = (
+    v30.fertilidad !== null && v180.fertilidad !== null &&
+    v30.camadasCompletadas >= 2 && v180.camadasCompletadas >= 2 &&
+    v30.fertilidad < v180.fertilidad - 0.10 &&
+    v30.enEsperaVigentes === 0   // no hay gestaciones activas en ese período
+  )
+
+  // ── SEÑAL 2: Mortalidad neonatal acelerándose ──────────────────────────────
   const mortalidadSube = v90.mortalidadNeo > 0 && v30.mortalidadNeo > v90.mortalidadNeo / 3
-  // malformaciones crecen en ventana corta
+
+  // ── SEÑAL 3: Malformaciones creciendo ─────────────────────────────────────
   const malformCrece = v90.malformaciones > 0 && v30.malformaciones > v90.malformaciones / 3
 
-  const señales = [fertilidadDet, mortalidadSube, malformCrece].filter(Boolean).length
-  const tieneDeterioro = señales >= 2 || (señales >= 1 && v30.fallos >= 2)
+  // Señales como array de strings (para poder mapear en UI)
+  const señalesActivas = []
+  if (fertilidadDet)   señalesActivas.push('Fertilidad en descenso — diferencia >10% entre 30d y 180d')
+  if (mortalidadSube)  señalesActivas.push('Mortalidad neonatal en aumento — ritmo 30d supera media 90d')
+  if (malformCrece)    señalesActivas.push('Malformaciones congénitas en aumento')
 
+  const tieneDeterioro = señalesActivas.length >= 2 ||
+    (señalesActivas.length >= 1 && v30.fallos >= 2)
+
+  // ── Confianza global (basada en ventana 30d) ───────────────────────────────
+  const confianzaGlobal = v30.camadasCompletadas >= 4 ? 'alta'
+    : v30.camadasCompletadas >= 2 ? 'media'
+    : v30.enEsperaVigentes > 0 ? 'baja'
+    : 'sin_datos'
+
+  // ── Hay actividad reproductiva activa HOY ─────────────────────────────────
+  const hayContextoActivo = apareamientosActivos > 0 || lactanciasActivas > 0 || partosPendientes > 0
+
+  // ── Resumen contextual (no alarmista, refleja estado biológico real) ───────
+  let resumen
+  if (!tieneDeterioro) {
+    if (hayContextoActivo) {
+      const partes = []
+      if (partosPendientes > 0)   partes.push(`${partosPendientes} parto(s) en espera`)
+      if (lactanciasActivas > 0)  partes.push(`${lactanciasActivas} hembra(s) en cría`)
+      if (apareamientosActivos > 0) partes.push(`${apareamientosActivos} apareamiento(s) activo(s)`)
+      resumen = `Actividad reproductiva continúa — ${partes.join(' · ')}`
+    } else if (v30.enEsperaVigentes > 0) {
+      resumen = `${v30.enEsperaVigentes} parto(s) esperado(s) — actividad normal`
+    } else if (v30.totalCamadas === 0) {
+      resumen = 'Sin apareamientos en los últimos 30 días'
+    } else {
+      resumen = 'Sin señales de deterioro reproductivo'
+    }
+  } else {
+    resumen = `Deterioro detectado: ${señalesActivas.length} señal(es) activa(s) — ${señalesActivas[0]}`
+  }
+
+  // ── Ventana más corta con valores preocupantes ─────────────────────────────
   const ventanaSignificativa = [30, 60, 90].find(v => {
-    const d = resultado[v]
-    return (d.fertilidad !== null && d.fertilidad < 0.60) || d.mortalidadNeo >= 3 || d.malformaciones >= 3
+    const d = resultadoObj[v]
+    return (d.fertilidad !== null && d.camadasCompletadas >= 2 && d.fertilidad < 0.60) ||
+           d.mortalidadNeo >= 3 || d.malformaciones >= 3
   }) ?? null
 
   return {
-    ventanas: resultado,
+    ventanas:            resultadoArr,   // array — para .map() en UI
+    ventanasObj:         resultadoObj,   // objeto — para acceso por clave
     tieneDeterioro,
     ventanaSignificativa,
-    señalesActivas: señales,
-    patron: tieneDeterioro ? 'Deterioro progresivo — fertilidad↓ mortalidad↑ malformaciones↑' : null,
-    nivel: tieneDeterioro ? (ventanaSignificativa && ventanaSignificativa <= 60 ? 'critico' : 'alerta') : 'ok',
+    señalesActivas,                      // array de strings
+    patron: tieneDeterioro
+      ? `Deterioro progresivo — ${señalesActivas.join(' · ').toLowerCase()}`
+      : null,
+    nivel: tieneDeterioro
+      ? (ventanaSignificativa && ventanaSignificativa <= 60 ? 'critico' : 'alerta')
+      : 'ok',
+    confianzaGlobal,
+    resumen,
+    hayContextoActivo,
+    contextoActivo: { apareamientosActivos, lactanciasActivas, partosPendientes, destesPendientes },
   }
 }
 

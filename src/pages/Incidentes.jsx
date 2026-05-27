@@ -27,7 +27,7 @@ const BIOTERIOS_SIN_TODOS = LISTA_BIOTERIOS.slice(1)
 
 export default function Incidentes() {
   const { incidentes, animales, camadas, temperaturas, agregarIncidente, editarIncidente, eliminarIncidente } = useBioterio()
-  const { bioterioActivo } = useBioterioActivo()
+  const { bioterioActivo, bio } = useBioterioActivo()
 
   const [filtroColonia,   setFiltroColonia]   = useState('todos')
   const [filtroCategoria, setFiltroCategoria] = useState('todos')
@@ -129,8 +129,8 @@ export default function Incidentes() {
   )
 
   const deterioro = useMemo(() =>
-    detectarDeterioroProgresivo(camadas, incidentes, bioterioActivo),
-    [camadas, incidentes, bioterioActivo]
+    detectarDeterioroProgresivo(camadas, incidentes, bioterioActivo, animales, bio),
+    [camadas, incidentes, bioterioActivo, animales, bio]
   )
 
   const decisionesConcretas = useMemo(() =>
@@ -616,89 +616,159 @@ export default function Incidentes() {
             </div>
           </div>
 
-          {/* ── Deterioro progresivo (ventanas 30/60/90/180/365d) ────────────── */}
-          {deterioro?.tieneDeterioro && (
-            <div className="rounded-2xl overflow-hidden"
-              style={{
-                background: 'rgba(13,21,40,0.9)',
-                border: `1px solid ${deterioro.nivel === 'critico' ? 'rgba(255,107,128,0.3)' : deterioro.nivel === 'importante' ? 'rgba(255,152,0,0.3)' : 'rgba(255,179,0,0.25)'}`,
-              }}>
-              <div className="px-5 py-3 flex items-center gap-2 justify-between"
-                style={{
-                  borderBottom: `1px solid ${deterioro.nivel === 'critico' ? 'rgba(255,107,128,0.12)' : 'rgba(255,179,0,0.1)'}`,
-                  background: `${deterioro.nivel === 'critico' ? 'rgba(255,107,128,0.04)' : 'rgba(255,179,0,0.03)'}`,
-                }}>
-                <div className="flex items-center gap-2">
-                  <TrendingDown size={13} style={{ color: deterioro.nivel === 'critico' ? '#ff6b80' : '#ffb300' }} />
-                  <span className="text-xs font-semibold uppercase tracking-widest"
-                    style={{ color: deterioro.nivel === 'critico' ? '#ff6b80' : '#ffb300' }}>
-                    Deterioro progresivo detectado
-                  </span>
-                </div>
-                <span className="text-xs font-mono px-2 py-0.5 rounded-full"
-                  style={{
-                    background: deterioro.nivel === 'critico' ? 'rgba(255,107,128,0.12)' : 'rgba(255,179,0,0.1)',
-                    color: deterioro.nivel === 'critico' ? '#ff6b80' : '#ffb300',
-                    border: `1px solid ${deterioro.nivel === 'critico' ? 'rgba(255,107,128,0.3)' : 'rgba(255,179,0,0.25)'}`,
-                  }}>
-                  ventana {deterioro.ventanaSignificativa}d
-                </span>
-              </div>
-              <div className="px-5 py-4">
-                {/* Señales activas */}
-                <div className="space-y-1.5 mb-4">
-                  {(deterioro.señalesActivas ?? []).map((s, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs font-mono" style={{ color: '#c9d4e0' }}>
-                      <span style={{ color: '#ff6b80' }}>↘</span>
-                      {s}
-                    </div>
-                  ))}
-                </div>
+          {/* ── Auditoría reproductiva contextual ────────────────────────── */}
+          {deterioro && (() => {
+            const colorNiv = deterioro.nivel === 'critico' ? '#ff6b80' : deterioro.nivel === 'alerta' ? '#ffb300' : '#00e676'
+            const bordeNiv = deterioro.nivel === 'critico' ? 'rgba(255,107,128,0.3)' : deterioro.nivel === 'alerta' ? 'rgba(255,179,0,0.25)' : 'rgba(0,230,118,0.2)'
+            const bgNiv    = deterioro.nivel === 'critico' ? 'rgba(255,107,128,0.04)' : deterioro.nivel === 'alerta' ? 'rgba(255,179,0,0.03)' : 'rgba(0,230,118,0.03)'
 
-                {/* Tabla de ventanas */}
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs font-mono border-collapse">
-                    <thead>
-                      <tr style={{ color: '#4a5f7a' }}>
-                        <th className="text-left py-1.5 pr-4">Ventana</th>
-                        <th className="text-right py-1.5 px-2">Fertilidad</th>
-                        <th className="text-right py-1.5 px-2">Supervivencia</th>
-                        <th className="text-right py-1.5 px-2">Fallos</th>
-                        <th className="text-right py-1.5 px-2">Malform.</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(deterioro.ventanas ?? []).map((v, i) => (
-                        <tr key={i} className="transition-colors"
-                          style={{ borderTop: '1px solid rgba(255,255,255,0.04)', color: '#8a9bb0' }}>
-                          <td className="py-1.5 pr-4 text-white font-bold">{v.dias}d</td>
-                          <td className="text-right px-2" style={{ color: v.fertilidad < 0.6 ? '#ff6b80' : '#c9d4e0' }}>
-                            {(v.fertilidad * 100).toFixed(0)}%
-                          </td>
-                          <td className="text-right px-2" style={{ color: v.supervivencia < 0.65 ? '#ff6b80' : '#c9d4e0' }}>
-                            {(v.supervivencia * 100).toFixed(0)}%
-                          </td>
-                          <td className="text-right px-2" style={{ color: v.fallos > 3 ? '#ffb300' : '#c9d4e0' }}>
-                            {v.fallos}
-                          </td>
-                          <td className="text-right px-2" style={{ color: v.malformaciones > 2 ? '#ffb300' : '#c9d4e0' }}>
-                            {v.malformaciones}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+            // Badge de confianza
+            const confColor = deterioro.confianzaGlobal === 'alta' ? '#00e676'
+              : deterioro.confianzaGlobal === 'media' ? '#ffb300'
+              : '#ff9100'
+            const confLabel = deterioro.confianzaGlobal === 'alta' ? '🟢 Confianza alta'
+              : deterioro.confianzaGlobal === 'media' ? '🟡 Confianza media'
+              : deterioro.confianzaGlobal === 'sin_datos' ? '⚪ Sin datos suficientes'
+              : '🟠 Confianza baja'
 
-                {deterioro.patron && (
-                  <div className="mt-3 text-xs font-mono px-3 py-2 rounded-xl"
-                    style={{ background: 'rgba(255,107,128,0.06)', border: '1px solid rgba(255,107,128,0.15)', color: '#8a9bb0' }}>
-                    📊 {deterioro.patron}
+            return (
+              <div className="rounded-2xl overflow-hidden"
+                style={{ background: 'rgba(13,21,40,0.9)', border: `1px solid ${bordeNiv}` }}>
+
+                {/* Header */}
+                <div className="px-5 py-3 flex items-center gap-2 justify-between"
+                  style={{ borderBottom: `1px solid ${bordeNiv.replace('0.3', '0.12').replace('0.25', '0.1').replace('0.2', '0.1')}`, background: bgNiv }}>
+                  <div className="flex items-center gap-2">
+                    {deterioro.tieneDeterioro
+                      ? <TrendingDown size={13} style={{ color: colorNiv }} />
+                      : <TrendingUp size={13} style={{ color: colorNiv }} />}
+                    <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: colorNiv }}>
+                      {deterioro.tieneDeterioro ? 'Deterioro progresivo detectado' : 'Auditoría reproductiva'}
+                    </span>
                   </div>
-                )}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono px-2 py-0.5 rounded-full"
+                      style={{ background: `${confColor}18`, color: confColor, border: `1px solid ${confColor}40` }}>
+                      {confLabel}
+                    </span>
+                    {deterioro.ventanaSignificativa && (
+                      <span className="text-xs font-mono px-2 py-0.5 rounded-full"
+                        style={{ background: `${colorNiv}18`, color: colorNiv, border: `1px solid ${colorNiv}40` }}>
+                        ventana {deterioro.ventanaSignificativa}d
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="px-5 py-4 space-y-4">
+
+                  {/* Resumen contextual */}
+                  <div className="text-xs font-mono px-3 py-2.5 rounded-xl"
+                    style={{ background: `${colorNiv}0d`, border: `1px solid ${colorNiv}25`, color: '#c9d4e0' }}>
+                    {deterioro.resumen}
+                  </div>
+
+                  {/* Contexto activo (si hay actividad reproductiva en curso) */}
+                  {deterioro.hayContextoActivo && !deterioro.tieneDeterioro && (
+                    <div className="flex flex-wrap gap-2">
+                      {deterioro.contextoActivo.partosPendientes > 0 && (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-mono"
+                          style={{ background: 'rgba(64,196,255,0.1)', color: '#40c4ff', border: '1px solid rgba(64,196,255,0.25)' }}>
+                          🍼 {deterioro.contextoActivo.partosPendientes} parto(s) en espera
+                        </span>
+                      )}
+                      {deterioro.contextoActivo.lactanciasActivas > 0 && (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-mono"
+                          style={{ background: 'rgba(167,139,250,0.1)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.25)' }}>
+                          ♀ {deterioro.contextoActivo.lactanciasActivas} en cría
+                        </span>
+                      )}
+                      {deterioro.contextoActivo.apareamientosActivos > 0 && (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-mono"
+                          style={{ background: 'rgba(0,230,118,0.1)', color: '#00e676', border: '1px solid rgba(0,230,118,0.25)' }}>
+                          ⚡ {deterioro.contextoActivo.apareamientosActivos} apareamiento(s) activo(s)
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Señales activas (solo si hay deterioro) */}
+                  {deterioro.tieneDeterioro && deterioro.señalesActivas.length > 0 && (
+                    <div className="space-y-1.5">
+                      {deterioro.señalesActivas.map((s, i) => (
+                        <div key={i} className="flex items-center gap-2 text-xs font-mono" style={{ color: '#c9d4e0' }}>
+                          <span style={{ color: '#ff6b80' }}>↘</span>
+                          {s}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Tabla de ventanas */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs font-mono border-collapse">
+                      <thead>
+                        <tr style={{ color: '#4a5f7a' }}>
+                          <th className="text-left py-1.5 pr-3">Ventana</th>
+                          <th className="text-right py-1.5 px-2">Fertilidad</th>
+                          <th className="text-right py-1.5 px-2">Confianza</th>
+                          <th className="text-right py-1.5 px-2">Supervivencia</th>
+                          <th className="text-right py-1.5 px-2">Fallos</th>
+                          <th className="text-right py-1.5 px-2">Malform.</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(deterioro.ventanas ?? []).map((v, i) => {
+                          const confC = v.confianza === 'alta' ? '#00e676'
+                            : v.confianza === 'media' ? '#ffb300'
+                            : v.confianza === 'espera' ? '#40c4ff'
+                            : '#ff9100'
+                          const fertDisplay = v.fertilidad !== null
+                            ? `${(v.fertilidad * 100).toFixed(0)}%`
+                            : v.confianza === 'espera' ? '⏳ espera'
+                            : v.confianza === 'sin_datos' ? '—'
+                            : 'insuf.'
+                          const fertColor = v.fertilidad !== null && v.fertilidad < 0.6
+                            ? '#ff6b80'
+                            : v.fertilidad === null ? '#4a5f7a'
+                            : '#c9d4e0'
+                          return (
+                            <tr key={i} style={{ borderTop: '1px solid rgba(255,255,255,0.04)', color: '#8a9bb0' }}>
+                              <td className="py-1.5 pr-3 text-white font-bold">{v.dias}d</td>
+                              <td className="text-right px-2" style={{ color: fertColor }}>{fertDisplay}</td>
+                              <td className="text-right px-2">
+                                <span style={{ color: confC, fontSize: 10 }}>{v.confianza}</span>
+                                {v.contexto && (
+                                  <span className="ml-1" style={{ color: '#4a5f7a', fontSize: 9 }} title={v.contexto}>ℹ</span>
+                                )}
+                              </td>
+                              <td className="text-right px-2" style={{ color: v.supervivencia !== null && v.supervivencia < 0.65 ? '#ff6b80' : '#c9d4e0' }}>
+                                {v.supervivencia !== null ? `${(v.supervivencia * 100).toFixed(0)}%` : '—'}
+                              </td>
+                              <td className="text-right px-2" style={{ color: v.fallos > 3 ? '#ffb300' : '#c9d4e0' }}>
+                                {v.fallos}
+                              </td>
+                              <td className="text-right px-2" style={{ color: v.malformaciones > 2 ? '#ffb300' : '#c9d4e0' }}>
+                                {v.malformaciones}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Patrón conclusivo */}
+                  {deterioro.patron && (
+                    <div className="text-xs font-mono px-3 py-2 rounded-xl"
+                      style={{ background: 'rgba(255,107,128,0.06)', border: '1px solid rgba(255,107,128,0.15)', color: '#8a9bb0' }}>
+                      📊 {deterioro.patron}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* Causas detectadas */}
           {causas.length === 0 ? (

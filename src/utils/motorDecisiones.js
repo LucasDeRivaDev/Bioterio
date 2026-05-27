@@ -762,11 +762,12 @@ export function calcularIndiceEstabilidad({
   detalle.sanitario = Math.max(0, Math.min(10, sanitario))
 
   // ── 6. SATURACIÓN (10 pts) ────────────────────────────────────────────────
-  // Sin capacidad máxima configurada, evaluamos solo si hay reproductores activos
   let saturacion = 10
-  if (reproductores.totalMachos + reproductores.totalHembras > 20) {
-    saturacion -= 3 // muchos reproductores, posible saturación
-  }
+  const capEst = getCapacidadJaulas(bioterioId)
+  const jaulasEst = stockReal?.jaulas?.total ?? 0
+  if      (jaulasEst >= capEst.critica)    saturacion -= 8
+  else if (jaulasEst >= capEst.saturacion) saturacion -= 5
+  else if (jaulasEst >= capEst.normal)     saturacion -= 2
   detalle.saturacion = Math.max(0, Math.min(10, saturacion))
 
   score = detalle.renovacion + detalle.genetica + detalle.produccion +
@@ -1579,9 +1580,10 @@ export function calcularProyeccionAvanzada(
     const totalCrias = criasDePartos + criasDeDestetes
 
     // Jaulas nuevas (~10 crías/jaula)
+    const cap        = getCapacidadJaulas(bioterioId)
     const jaulasNuevas  = Math.ceil(totalCrias / 10)
     const jaulasProyect = jaulasActuales + jaulasNuevas
-    const saturacion    = jaulasProyect > 30 ? 'alta' : jaulasProyect > 20 ? 'media' : 'baja'
+    const saturacion    = jaulasProyect >= cap.critica ? 'alta' : jaulasProyect >= cap.saturacion ? 'media' : 'baja'
 
     // Bajas por edad límite
     const machosBajas = machosActivos.filter(m => {
@@ -2033,7 +2035,7 @@ export function calcularIndiceSostenibilidad({
   let saturacion = 10
   if (proyeccionAvanzada) {
     const data90 = proyeccionAvanzada.horizontes?.[90]
-    if (data90?.jaulas.saturacion === 'alta')  saturacion -= 8
+    if (data90?.jaulas.saturacion === 'alta')       saturacion -= 8
     else if (data90?.jaulas.saturacion === 'media') saturacion -= 4
   }
   detalle.saturacion = Math.max(0, Math.min(10, saturacion))
@@ -2045,11 +2047,13 @@ export function calcularIndiceSostenibilidad({
   else if (pedidosPendientes.length > 2) pedidosPts -= 3
   detalle.pedidos = Math.max(0, Math.min(10, pedidosPts))
 
-  // ── 7. CAPACIDAD FÍSICA (10 pts) — jaulas vs umbral ──────────────────────
+  // ── 7. CAPACIDAD FÍSICA (10 pts) — jaulas vs umbral por bioterio ─────────
   let capacidad = 10
+  const capSost   = getCapacidadJaulas(bioterioId)
   const jaulasTotal = stockReal?.jaulas?.total ?? 0
-  if (jaulasTotal > 30)      capacidad -= 8
-  else if (jaulasTotal > 20) capacidad -= 4
+  if      (jaulasTotal >= capSost.critica)    capacidad -= 8
+  else if (jaulasTotal >= capSost.saturacion) capacidad -= 4
+  else if (jaulasTotal >= capSost.normal)     capacidad -= 1
   detalle.capacidad = Math.max(0, Math.min(10, capacidad))
 
   let score = detalle.genetica + detalle.renovacion + detalle.produccion +
@@ -2068,7 +2072,10 @@ export function calcularIndiceSostenibilidad({
   const scoreClamp = Math.max(0, Math.min(100, Math.round(score)))
 
   // Condiciones que impiden mostrar 🟢 aunque el score sea alto
+  const capSostAlta = getCapacidadJaulas(bioterioId)
+  const jaulasActualesCheck = stockReal?.jaulas?.total ?? 0
   const haySaturacionAlta = proyeccionAvanzada?.horizontes?.[90]?.jaulas.saturacion === 'alta'
+    || jaulasActualesCheck >= capSostAlta.saturacion
   const hayRenovUrgente   = (motorRenovacion?.accionesRecomendadas ?? []).some(a => a.prioridad <= 1)
 
   let nivel, emoji, color, bg, borde
@@ -2357,5 +2364,444 @@ export function generarModoEstrategia(objetivo, {
     restricciones,
     ajustes,
     kpis,
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 22 — CAPACIDAD DE JAULAS POR BIOTERIO + SATURACIÓN REAL
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Umbrales de jaulas por bioterio (no hardcodeados).
+ * normal    → operación cómoda
+ * saturacion → hay exceso, considerar reducir
+ * critica   → saturación grave, acción inmediata
+ */
+export const CAPACIDAD_JAULAS = {
+  ratas:            { normal: 15, saturacion: 25, critica: 35 },
+  ratones_balbc:    { normal: 10, saturacion: 18, critica: 25 },
+  ratones_c57:      { normal: 10, saturacion: 18, critica: 25 },
+  ratones_hibridos: { normal: 8,  saturacion: 14, critica: 20 },
+}
+
+export function getCapacidadJaulas(bioterioId) {
+  return CAPACIDAD_JAULAS[bioterioId] ?? CAPACIDAD_JAULAS.ratas
+}
+
+/**
+ * Calcula la saturación real del bioterio con desglose completo por categoría.
+ *
+ * Fuente: SOLO stockReal (ya filtrado — activos, sin históricos, sin duplicados).
+ * Categorías: crías · jóvenes · adultos · reproductores · lactantes · gestantes
+ *             · libres · reservadas para renovación
+ *
+ * @param {object} stockReal     — resultado de calcularStockReal()
+ * @param {string} bioterioId
+ * @param {object} reservas      — mapa { [jaulaId]: { tipo, motivo } } (opcional)
+ * @returns {{ jaulas, umbral, nivel, exceso, pctUso, distribucion, animalesTotal }}
+ */
+export function calcularSaturacionReal(stockReal, bioterioId, reservas = {}) {
+  const cap = getCapacidadJaulas(bioterioId)
+  const { reproductores, stock, jaulas } = stockReal
+
+  // Conteo de bloques reservados para renovación
+  const bloquesReservados = stock.bloques.filter(
+    b => reservas[b.jaulaId]?.tipo === 'renovacion'
+  ).length
+
+  const jaulasTotal = jaulas.total
+
+  // Nivel de saturación con umbrales por bioterio
+  let nivel
+  if      (jaulasTotal >= cap.critica)    nivel = 'critico'
+  else if (jaulasTotal >= cap.saturacion) nivel = 'saturado'
+  else if (jaulasTotal >= cap.normal)     nivel = 'ocupado'
+  else                                    nivel = 'normal'
+
+  const exceso  = Math.max(0, jaulasTotal - cap.normal)
+  const pctUso  = cap.saturacion > 0 ? Math.round((jaulasTotal / cap.saturacion) * 100) : 0
+
+  return {
+    jaulas:  { repro: jaulas.repro, stock: jaulas.stock, total: jaulasTotal },
+    umbral:  cap,
+    nivel,
+    exceso,
+    pctUso,
+    distribucion: {
+      // Stock por edad
+      crias:        stock.crias,
+      jaulasCrias:  stock.jaulasCrias,
+      jovenes:      stock.jovenes,
+      jaulasJovenes: stock.jaulasJovenes,
+      adultos:      stock.adultos,
+      jaulasAdultos: stock.jaulasAdultos,
+      // Reproductores por estado
+      reproMachos:  reproductores.totalMachos,
+      reproHembras: reproductores.totalHembras,
+      lactantes:    reproductores.gestantes.length,     // en_cria = criando/lactando
+      gestantes:    reproductores.apareadas.length,     // en_apareamiento = posiblemente gestando
+      libres:       reproductores.activasLibres.length, // activas sin aparear
+      reservadas:   bloquesReservados,
+    },
+    animalesTotal: stockReal.totales.animalesTotal,
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 23 — SUGERENCIAS DE SACRIFICIO INTELIGENTE
+// Prioriza qué sacrificar sin comprometer reproducción futura.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Genera sugerencias de sacrificio ordenadas por prioridad.
+ * Nunca sugiere animales que comprometan mínimos, renovación, genética o pedidos.
+ *
+ * Prioridad de sacrificio:
+ *   1. Sin utilidad reproductiva (adultos >edad_util_max)
+ *   2. Baja genética + infertilidad parental + problemas sanitarios
+ *   3. Exceso de reproductores (por encima de mínimos + buffer)
+ *
+ * Protegidos (nunca se sugieren):
+ *   - Bajo mínimos de reproductores
+ *   - Reservados para renovación
+ *   - Exportados para híbridos
+ *   - Próximos a madurez con buena genética (candidatos de renovación)
+ *   - Cubrirían déficit futuro proyectado
+ *
+ * @returns {Array<{ tipo, prioridad, problema, solucion, impacto, bloqueado, ... }>}
+ */
+export function generarSugerenciasSacrificio({
+  stockReal,
+  animales,
+  camadas,
+  bio,
+  bioterioId,
+  proyeccionAvanzada = null,
+  candidatos = [],         // resultado de calcularCandidatosRenovacion
+  incidentes = [],
+  lineasProblematicas = new Map(),
+  pedidos = [],
+  reservas = {},
+}) {
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+
+  const MADUREZ      = bio?.MADUREZ_DIAS   ?? 56
+  const EDAD_UTIL_MAX = MADUREZ * 2         // >112d (ratón) />112d (rata) → ya no candidato óptimo
+  const LIMITE_REPRO  = 270
+
+  const minimos = getMinimosCriticos(bioterioId)
+  const { reproductores, stock } = stockReal
+  const sugerencias = []
+
+  // IDs de candidatos a renovación (protegidos)
+  const candidatosProtegidos = new Set(
+    candidatos
+      .filter(c => c.recomendado && c.tiempoHastaUtilidad <= MADUREZ * 0.3)
+      .map(c => c.jaulaId)
+  )
+
+  // Déficit futuro: qué sexos se necesitan en proyección
+  const sexosNecesariosFuturo = new Set()
+  if (proyeccionAvanzada) {
+    for (const h of [30, 60, 90]) {
+      const d = proyeccionAvanzada.horizontes[h]
+      if (d?.deficit?.machos  > 0) sexosNecesariosFuturo.add('macho')
+      if (d?.deficit?.hembras > 0) sexosNecesariosFuturo.add('hembra')
+    }
+  }
+
+  // Pedidos activos: no sacrificar si reduce stock disponible para pedido
+  const pedidosPendientes = pedidos.filter(
+    p => ['pendiente', 'en_proceso'].includes(p.estado ?? p.status)
+  )
+  const hayPedidosActivos = pedidosPendientes.length > 0
+
+  // ─── 1. STOCK POR JAULAS ─────────────────────────────────────────────────
+  for (const bloque of stock.bloques) {
+    if (reservas[bloque.jaulaId]) continue // reservado → skip
+
+    const esCandidatoRenovacion = candidatosProtegidos.has(bloque.jaulaId)
+
+    // Score de prioridad de sacrificio (0-100, mayor = más candidato a sacrificar)
+    let scoreSacrificio = 0
+    const razones = []
+    let bloqueado = false
+    let razonBloqueo = null
+
+    const diasVida = bloque.diasVida ?? 0
+
+    // ── Prioridad 1: Edad útil superada ─────────────────────────────────────
+    if (diasVida >= EDAD_UTIL_MAX) {
+      const excesoDias = diasVida - EDAD_UTIL_MAX
+      scoreSacrificio += Math.min(80, 40 + Math.floor(excesoDias / 7) * 5)
+      razones.push(`${diasVida}d de vida — superó la edad útil máxima (${EDAD_UTIL_MAX}d)`)
+    } else if (diasVida >= MADUREZ * 1.5) {
+      scoreSacrificio += 30
+      razones.push(`${diasVida}d — pasó el óptimo reproductivo`)
+    }
+
+    // ── Prioridad 2: Genética baja en padres ────────────────────────────────
+    const camada = camadas.find(c => c.id === bloque.camadaId)
+    if (camada) {
+      const linMadre = lineasProblematicas.get(camada.id_madre)
+      const linPadre = lineasProblematicas.get(camada.id_padre)
+      if (linMadre?.nivel === 'critico' || linPadre?.nivel === 'critico') {
+        scoreSacrificio += 50
+        razones.push('Padres con línea genética crítica (malformaciones/infertilidad)')
+      } else if (linMadre?.nivel === 'moderado' || linPadre?.nivel === 'moderado') {
+        scoreSacrificio += 25
+        razones.push('Padres con línea genética problemática')
+      }
+
+      // Supervivencia baja de la camada
+      if (camada.total_crias > 0 && camada.total_destetados != null) {
+        const tasa = camada.total_destetados / camada.total_crias
+        if (tasa < 0.5) {
+          scoreSacrificio += 20
+          razones.push(`Supervivencia baja al destete (${Math.round(tasa * 100)}%)`)
+        }
+      }
+    }
+
+    // Incidentes graves en esta camada
+    const incGravesCamada = incidentes.filter(i =>
+      i.camada_id === bloque.camadaId && i.severidad === 'grave' && !i.resuelto
+    )
+    if (incGravesCamada.length > 0) {
+      scoreSacrificio += 15
+      razones.push(`${incGravesCamada.length} incidente(s) grave(s) activo(s)`)
+    }
+
+    // ── PROTECCIONES ─────────────────────────────────────────────────────────
+    // Candidato a renovación → reducir prioridad
+    if (esCandidatoRenovacion) {
+      scoreSacrificio = Math.max(0, scoreSacrificio - 50)
+      razones.push('⚠ Es candidato para renovación reproductora')
+    }
+
+    // Sexo necesario para déficit futuro → bloquear si tiene ese sexo
+    if (bloque.machos > 0 && sexosNecesariosFuturo.has('macho')) {
+      bloqueado = true
+      razonBloqueo = 'Hay machos en esta jaula — se necesitan para cubrir déficit futuro proyectado'
+    } else if (bloque.hembras > 0 && sexosNecesariosFuturo.has('hembra')) {
+      bloqueado = true
+      razonBloqueo = 'Hay hembras en esta jaula — se necesitan para cubrir déficit futuro proyectado'
+    }
+
+    // Pedidos activos con animales de esta edad → no sacrificar
+    if (hayPedidosActivos && diasVida >= MADUREZ * 0.8 && diasVida <= MADUREZ * 2) {
+      bloqueado = true
+      razonBloqueo = 'Hay pedidos activos — estos animales pueden ser necesarios para entrega'
+    }
+
+    if (razones.length === 0 && scoreSacrificio < 20) continue // sin motivo claro → skip
+
+    const impactoJaulas  = -1
+    const impactoAnimales = -(bloque.total)
+
+    sugerencias.push({
+      tipo:        'stock',
+      prioridad:   scoreSacrificio >= 60 ? 1 : scoreSacrificio >= 30 ? 2 : 3,
+      jaulaId:     bloque.jaulaId,
+      camadaId:    bloque.camadaId,
+      total:       bloque.total,
+      machos:      bloque.machos,
+      hembras:     bloque.hembras,
+      diasVida,
+      scoreSacrificio,
+      problema:    razones[0],
+      razones,
+      solucion:    `Sacrificar ${bloque.total} animal(es) — jaula de ${diasVida}d`,
+      impacto:     `${impactoJaulas} jaula · ${impactoAnimales} animales — sin afectar reproductores`,
+      impactoJaulas,
+      impactoAnimales,
+      bloqueado,
+      razonBloqueo,
+      esProtegido: esCandidatoRenovacion,
+    })
+  }
+
+  // ─── 2. EXCESO DE REPRODUCTORES ─────────────────────────────────────────
+  const BUFFER_REPRO = 1 // animales "de seguridad" por encima del mínimo
+
+  const machosColonia  = reproductores.machos.filter(m => !m.exportado_hibridos)
+  const hembrasColonia = reproductores.hembras.filter(h => !h.exportado_hibridos)
+
+  const excesoMachos  = machosColonia.length  - (minimos.machos_colonia  + BUFFER_REPRO)
+  const excesoHembras = hembrasColonia.length - (minimos.hembras_colonia + BUFFER_REPRO)
+
+  if (excesoMachos > 0) {
+    // Candidatos: machos de mayor edad o peor perfil (usando perfiles del motor si están disponibles)
+    const candidatosMacho = machosColonia
+      .filter(m => m.fecha_nacimiento)
+      .sort((a, b) => difDias(a.fecha_nacimiento, hoy) - difDias(b.fecha_nacimiento, hoy)) // más viejos primero
+      .slice(0, excesoMachos)
+
+    for (const m of candidatosMacho) {
+      const diasVida = difDias(m.fecha_nacimiento, hoy)
+      const linea = lineasProblematicas.get(m.id)
+      const bloqueado = sexosNecesariosFuturo.has('macho')
+
+      sugerencias.push({
+        tipo:        'reproductor',
+        prioridad:   1,
+        animalId:    m.id,
+        codigo:      m.codigo,
+        sexo:        'macho',
+        diasVida,
+        scoreSacrificio: 60 + (diasVida >= LIMITE_REPRO ? 20 : 0),
+        problema:    `Exceso de machos reproductores — ${machosColonia.length} activos (mínimo + buffer: ${minimos.machos_colonia + BUFFER_REPRO})`,
+        razones:     [
+          `${excesoMachos} macho(s) por encima del mínimo con buffer`,
+          diasVida >= LIMITE_REPRO ? `${m.codigo}: límite de edad superado (${diasVida}d ≥ ${LIMITE_REPRO}d)` : `${m.codigo}: ${diasVida}d de vida`,
+          linea ? `Línea: ${linea.razones[0]}` : null,
+        ].filter(Boolean),
+        solucion:    `Sacrificar ${m.codigo} (${diasVida}d) — mayor prioridad por edad`,
+        impacto:     `♂ ${machosColonia.length} → ${machosColonia.length - 1} (mínimo: ${minimos.machos_colonia})`,
+        impactoJaulas:    0,
+        impactoAnimales: -1,
+        bloqueado,
+        razonBloqueo: bloqueado ? 'Se necesitan machos para cubrir déficit proyectado' : null,
+        esProtegido: false,
+      })
+    }
+  }
+
+  if (excesoHembras > 0) {
+    const candidatasHembra = hembrasColonia
+      .filter(h => h.fecha_nacimiento && h.estado === 'activo') // solo las libres (no gestando)
+      .sort((a, b) => difDias(a.fecha_nacimiento, hoy) - difDias(b.fecha_nacimiento, hoy))
+      .slice(0, excesoHembras)
+
+    for (const h of candidatasHembra) {
+      const diasVida = difDias(h.fecha_nacimiento, hoy)
+      const linea = lineasProblematicas.get(h.id)
+      const bloqueado = sexosNecesariosFuturo.has('hembra')
+
+      sugerencias.push({
+        tipo:        'reproductor',
+        prioridad:   2,
+        animalId:    h.id,
+        codigo:      h.codigo,
+        sexo:        'hembra',
+        diasVida,
+        scoreSacrificio: 45 + (diasVida >= LIMITE_REPRO ? 20 : 0),
+        problema:    `Exceso de hembras reproductoras — ${hembrasColonia.length} activas (mínimo + buffer: ${minimos.hembras_colonia + BUFFER_REPRO})`,
+        razones:     [
+          `${excesoHembras} hembra(s) por encima del mínimo con buffer`,
+          diasVida >= LIMITE_REPRO ? `${h.codigo}: límite de edad superado (${diasVida}d ≥ ${LIMITE_REPRO}d)` : `${h.codigo}: ${diasVida}d de vida`,
+          linea ? `Línea: ${linea.razones[0]}` : null,
+        ].filter(Boolean),
+        solucion:    `Sacrificar ${h.codigo} (${diasVida}d) — mayor prioridad por edad`,
+        impacto:     `♀ ${hembrasColonia.length} → ${hembrasColonia.length - 1} (mínimo: ${minimos.hembras_colonia})`,
+        impactoJaulas:    0,
+        impactoAnimales: -1,
+        bloqueado,
+        razonBloqueo: bloqueado ? 'Se necesitan hembras para cubrir déficit proyectado' : null,
+        esProtegido: false,
+      })
+    }
+  }
+
+  // Ordenar: no bloqueados primero, luego por score descendente
+  return sugerencias.sort((a, b) => {
+    if (a.bloqueado !== b.bloqueado) return a.bloqueado ? 1 : -1
+    return b.scoreSacrificio - a.scoreSacrificio
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 24 — ¿QUÉ REDUCIR HOY? OPTIMIZADOR DE SATURACIÓN
+// Responde: ¿qué sacrificar hoy minimiza saturación SIN comprometer
+// renovación · genética · producción · consanguinidad · pedidos?
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Genera un plan optimizado de sacrificio para reducir saturación.
+ *
+ * Considera simultáneamente:
+ *   - Espacio liberado (jaulas)
+ *   - Renovación genética (no sacrificar candidatos)
+ *   - Genética y consanguinidad (preferir F alto para sacrificar)
+ *   - Producción futura (no comprometer pedidos ni déficit)
+ *   - Mínimos reproductivos (nunca romper)
+ *
+ * @returns {{ exceso, plan, totales, bloqueado, conclusion }}
+ */
+export function responderQueReducirHoy({
+  saturacionReal,
+  sugerencias,
+  stockReal,
+  proyeccionAvanzada,
+  bioterioId,
+}) {
+  const { exceso, nivel, umbral, jaulas } = saturacionReal
+
+  if (nivel === 'normal') {
+    return {
+      exceso: 0,
+      plan: [],
+      totales: { jaulasReducidas: 0, animalesSacrificados: 0 },
+      bloqueado: false,
+      conclusion: `Saturación normal (${jaulas.total}/${umbral.normal} jaulas) — no se requieren sacrificios`,
+      nivel: 'ok',
+    }
+  }
+
+  // Filtrar sugerencias ejecutables (no bloqueadas, de tipo stock = reducen jaulas)
+  const ejecutables = sugerencias.filter(s => !s.bloqueado && s.tipo === 'stock')
+  const repros       = sugerencias.filter(s => !s.bloqueado && s.tipo === 'reproductor')
+
+  // Construir plan: tomar ejecutables hasta cubrir el exceso
+  let jaulasReducidas    = 0
+  let animalesSacrificados = 0
+  const plan = []
+
+  for (const sug of ejecutables) {
+    if (jaulasReducidas >= exceso) break
+    plan.push(sug)
+    jaulasReducidas    += Math.abs(sug.impactoJaulas)
+    animalesSacrificados += Math.abs(sug.impactoAnimales)
+  }
+
+  // Si quedan reproductores de exceso, agregarlos también
+  for (const sug of repros) {
+    plan.push(sug)
+    animalesSacrificados += 1
+  }
+
+  const jaulasResultantes = jaulas.total - jaulasReducidas
+  const cobertura = exceso > 0 ? Math.min(100, Math.round((jaulasReducidas / exceso) * 100)) : 100
+  const hayDeficitPost = proyeccionAvanzada
+    ? Object.values(proyeccionAvanzada.horizontes).some(h => h.deficit?.hayDeficit && !h.deficit?.puedeCubrirConStock)
+    : false
+
+  let conclusion
+  let nivelRes
+
+  if (plan.length === 0) {
+    conclusion = `Saturación ${nivel} (${jaulas.total} jaulas) pero no hay candidatos seguros para sacrificar — todos los animales están protegidos`
+    nivelRes = 'bloqueado'
+  } else if (cobertura >= 100) {
+    conclusion = `Sacrificando ${plan.length} jaula(s): ${exceso} jaula(s) menos → ${jaulasResultantes} jaulas totales (por debajo del umbral normal de ${umbral.normal})`
+    nivelRes = 'resuelto'
+  } else {
+    conclusion = `Sacrificando ${plan.length} jaula(s): se liberan ${jaulasReducidas} de ${exceso} jaulas en exceso (${cobertura}% de cobertura)`
+    nivelRes = 'parcial'
+  }
+
+  if (hayDeficitPost) {
+    conclusion += ' · ⚠ El déficit futuro proyectado limita los sacrificios posibles'
+  }
+
+  return {
+    exceso,
+    plan,
+    totales: { jaulasReducidas, animalesSacrificados, jaulasResultantes, cobertura },
+    bloqueado: plan.length === 0,
+    conclusion,
+    nivel: nivelRes,
+    hayDeficitPost,
   }
 }

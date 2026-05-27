@@ -28,6 +28,10 @@ import {
   calcularIndiceSostenibilidad,
   generarModoEstrategia,
   OBJETIVOS_ESTRATEGIA,
+  calcularSaturacionReal,
+  generarSugerenciasSacrificio,
+  responderQueReducirHoy,
+  detectarLineasProblematicas,
 } from '../utils/motorDecisiones'
 import { formatFecha, difDias } from '../utils/calculos'
 import {
@@ -729,6 +733,38 @@ export default function PlanificacionColonia() {
   const minimosCfg = getMinimosCriticos(bioterioActivo)
   const reservas   = getReservas() // recalcula al cambiar reservasKey
 
+  // Saturación real por categoría
+  const saturacionReal = useMemo(
+    () => calcularSaturacionReal(stockReal, bioterioActivo, reservas),
+    [stockReal, bioterioActivo, reservas]
+  )
+
+  // Líneas problemáticas (para sugerencias de sacrificio)
+  const lineasProblematicas = useMemo(
+    () => detectarLineasProblematicas(todosAnimales, todasCamadas, incidentes),
+    [todosAnimales, todasCamadas, incidentes]
+  )
+
+  // Sugerencias de sacrificio inteligente
+  const sugerenciasSacrificio = useMemo(
+    () => generarSugerenciasSacrificio({
+      stockReal, animales: todosAnimales, camadas: todasCamadas,
+      bio, bioterioId: bioterioActivo,
+      proyeccionAvanzada, candidatos, incidentes,
+      lineasProblematicas, pedidos: [], reservas,
+    }),
+    [stockReal, todosAnimales, todasCamadas, bio, bioterioActivo, proyeccionAvanzada, candidatos, incidentes, lineasProblematicas, reservas]
+  )
+
+  // ¿Qué reducir hoy?
+  const respuestaSaturacion = useMemo(
+    () => responderQueReducirHoy({
+      saturacionReal, sugerencias: sugerenciasSacrificio,
+      stockReal, proyeccionAvanzada, bioterioId: bioterioActivo,
+    }),
+    [saturacionReal, sugerenciasSacrificio, stockReal, proyeccionAvanzada, bioterioActivo]
+  )
+
   async function handleReservar(id, tipo, motivo) {
     await reservarAnimal(id, tipo, motivo, bioterioActivo)
     setReservasKey(k => k + 1)
@@ -748,7 +784,8 @@ export default function PlanificacionColonia() {
   const h180            = proyeccionAvanzada.horizontes[180]
   const jaulasNetasNew  = Math.max(0, Math.ceil((h180?.stockNeto?.neto ?? 0) / 10))
   const jaulasFut       = jaulasAhora + jaulasNetasNew
-  const satFut          = jaulasFut > 30 ? 'alta' : jaulasFut > 20 ? 'media' : 'baja'
+  const _cap180         = saturacionReal.umbral
+  const satFut          = jaulasFut >= _cap180.critica ? 'alta' : jaulasFut >= _cap180.saturacion ? 'media' : 'baja'
 
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-5xl mx-auto" style={{ color: tema.textPrimary }}>
@@ -1056,6 +1093,197 @@ export default function PlanificacionColonia() {
         {satFut === 'alta' && (
           <div style={{ marginTop: 10, fontSize: 11, color: '#ff6b80', background: 'rgba(255,61,87,0.07)', border: '1px solid rgba(255,61,87,0.2)', borderRadius: 8, padding: '7px 10px' }}>
             ⚠ Riesgo de saturación en 180d — considerar incrementar sacrificios o reducir apareamientos
+          </div>
+        )}
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* 4b. SATURACIÓN REAL + SACRIFICIOS INTELIGENTES                        */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      <div style={{
+        background: tema.bgCard,
+        border: `1px solid ${
+          saturacionReal.nivel === 'critico'  ? 'rgba(255,61,87,0.3)' :
+          saturacionReal.nivel === 'saturado' ? 'rgba(255,145,0,0.25)' :
+          saturacionReal.nivel === 'ocupado'  ? 'rgba(255,179,0,0.2)' :
+          tema.bgCardBorde
+        }`,
+        borderRadius: 16, padding: '16px 20px',
+      }}>
+        <SeccionTitulo
+          icono={<Layers size={16} color={
+            saturacionReal.nivel === 'critico'  ? '#ff6b80' :
+            saturacionReal.nivel === 'saturado' ? '#ff9100' :
+            saturacionReal.nivel === 'ocupado'  ? '#ffb300' : '#00e676'
+          } />}
+          titulo="Saturación real + Sacrificios inteligentes"
+          subtitulo="Stock vivo activo · Sin históricos · Sacrificio seguro"
+        />
+
+        {/* ── Conteo real por categoría ─────────────────────────────────── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8, marginBottom: 14 }}>
+          {[
+            { label: 'Crías',      valor: saturacionReal.distribucion.crias,    jaulas: saturacionReal.distribucion.jaulasCrias,    color: '#a78bfa', desc: '< 6 sem' },
+            { label: 'Jóvenes',    valor: saturacionReal.distribucion.jovenes,   jaulas: saturacionReal.distribucion.jaulasJovenes,   color: '#40c4ff', desc: '6–10 sem' },
+            { label: 'Adultos',    valor: saturacionReal.distribucion.adultos,   jaulas: saturacionReal.distribucion.jaulasAdultos,   color: '#ffd740', desc: '> 10 sem' },
+            { label: '♂ Reprod.',  valor: saturacionReal.distribucion.reproMachos,  jaulas: null, color: '#40c4ff', desc: 'activos' },
+            { label: '♀ Libres',   valor: saturacionReal.distribucion.libres,    jaulas: null, color: '#ce93d8', desc: 'sin aparear' },
+            { label: '♀ Gestando', valor: saturacionReal.distribucion.gestantes, jaulas: null, color: '#ff9100', desc: 'en apareamiento' },
+            { label: '♀ Lactando', valor: saturacionReal.distribucion.lactantes, jaulas: null, color: '#ff6b80', desc: 'en cría' },
+            { label: 'Reservadas', valor: saturacionReal.distribucion.reservadas, jaulas: null, color: '#00e676', desc: 'renovación' },
+          ].map(({ label, valor, jaulas: j, color, desc }) => (
+            <div key={label} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '8px 10px', textAlign: 'center' }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color, lineHeight: 1 }}>{valor}</div>
+              {j != null && <div style={{ fontSize: 9, color: '#ffb300', fontFamily: 'monospace' }}>{j} jaula{j !== 1 ? 's' : ''}</div>}
+              <div style={{ fontSize: 10, color: tema.textMuted, marginTop: 2 }}>{label}</div>
+              <div style={{ fontSize: 9, color: tema.textMuted, fontStyle: 'italic' }}>{desc}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Barra de saturación ───────────────────────────────────────── */}
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+            <span style={{ fontSize: 12, color: tema.textMuted }}>
+              Jaulas: <strong style={{ color: tema.textPrimary }}>{saturacionReal.jaulas.total}</strong>
+              <span style={{ marginLeft: 6, color: tema.textMuted }}>/ {saturacionReal.umbral.saturacion} umbral · {saturacionReal.umbral.critica} crítico</span>
+            </span>
+            <Chip color={
+              saturacionReal.nivel === 'critico'  ? '#ff6b80' :
+              saturacionReal.nivel === 'saturado' ? '#ff9100' :
+              saturacionReal.nivel === 'ocupado'  ? '#ffb300' : '#00e676'
+            }>
+              {saturacionReal.nivel === 'critico'  ? '🔴 Crítico' :
+               saturacionReal.nivel === 'saturado' ? '🟠 Saturado' :
+               saturacionReal.nivel === 'ocupado'  ? '🟡 Ocupado' : '🟢 Normal'}
+            </Chip>
+          </div>
+          <BarraProgreso
+            valor={saturacionReal.jaulas.total}
+            max={saturacionReal.umbral.critica}
+            color={
+              saturacionReal.nivel === 'critico'  ? '#ff6b80' :
+              saturacionReal.nivel === 'saturado' ? '#ff9100' :
+              saturacionReal.nivel === 'ocupado'  ? '#ffb300' : '#00e676'
+            }
+            height={8}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: tema.textMuted, marginTop: 3 }}>
+            <span>0</span>
+            <span style={{ color: '#ffb300' }}>Normal: {saturacionReal.umbral.normal}</span>
+            <span style={{ color: '#ff9100' }}>Saturado: {saturacionReal.umbral.saturacion}</span>
+            <span style={{ color: '#ff6b80' }}>Crítico: {saturacionReal.umbral.critica}</span>
+          </div>
+        </div>
+
+        {/* ── ¿Qué reducir hoy? ────────────────────────────────────────────── */}
+        <div style={{
+          background: respuestaSaturacion.bloqueado ? 'rgba(255,179,0,0.05)' :
+                      respuestaSaturacion.nivel === 'resuelto' ? 'rgba(0,230,118,0.05)' :
+                      'rgba(255,145,0,0.05)',
+          border: `1px solid ${
+            respuestaSaturacion.bloqueado ? 'rgba(255,179,0,0.2)' :
+            respuestaSaturacion.nivel === 'resuelto' ? 'rgba(0,230,118,0.15)' :
+            'rgba(255,145,0,0.2)'
+          }`,
+          borderRadius: 12, padding: '12px 14px', marginBottom: 12,
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: tema.textMuted, marginBottom: 4 }}>
+            ¿Qué reducir hoy minimiza saturación SIN comprometer estabilidad?
+          </div>
+          <div style={{ fontSize: 12, color: tema.textPrimary, marginBottom: 6 }}>
+            {respuestaSaturacion.conclusion}
+          </div>
+          {respuestaSaturacion.totales.jaulasReducidas > 0 && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Chip color="#ff9100">−{respuestaSaturacion.totales.jaulasReducidas} jaula{respuestaSaturacion.totales.jaulasReducidas !== 1 ? 's' : ''}</Chip>
+              <Chip color="#ce93d8">−{respuestaSaturacion.totales.animalesSacrificados} animales</Chip>
+              <Chip color={respuestaSaturacion.totales.cobertura >= 100 ? '#00e676' : '#ffb300'}>
+                {respuestaSaturacion.totales.cobertura}% cobertura
+              </Chip>
+            </div>
+          )}
+        </div>
+
+        {/* ── Sugerencias de sacrificio ─────────────────────────────────── */}
+        {sugerenciasSacrificio.length > 0 && (
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: tema.textMuted, marginBottom: 8 }}>
+              Candidatos a sacrificio ({sugerenciasSacrificio.filter(s => !s.bloqueado).length} ejecutables · {sugerenciasSacrificio.filter(s => s.bloqueado).length} bloqueados)
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {sugerenciasSacrificio.slice(0, 6).map((sug, i) => {
+                const colorBorde = sug.bloqueado ? 'rgba(255,179,0,0.2)' :
+                  sug.prioridad === 1 ? 'rgba(255,61,87,0.25)' :
+                  sug.prioridad === 2 ? 'rgba(255,145,0,0.2)' : 'rgba(255,255,255,0.08)'
+                const colorTxt = sug.bloqueado ? '#ffb300' :
+                  sug.prioridad === 1 ? '#ff6b80' :
+                  sug.prioridad === 2 ? '#ff9100' : '#c9d4e0'
+
+                return (
+                  <div key={i} style={{
+                    background: `${colorTxt}06`, border: `1px solid ${colorBorde}`,
+                    borderRadius: 10, padding: '10px 12px',
+                    opacity: sug.bloqueado ? 0.7 : 1,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {sug.bloqueado
+                          ? <Chip color="#ffb300">🔒 Bloqueado</Chip>
+                          : sug.prioridad === 1 ? <Chip color="#ff6b80">Alta prioridad</Chip>
+                          : sug.prioridad === 2 ? <Chip color="#ff9100">Media</Chip>
+                          : <Chip color="#4a5f7a">Baja</Chip>
+                        }
+                        {sug.tipo === 'reproductor' && <Chip color="#a78bfa">Reproductor</Chip>}
+                        {sug.esProtegido && <Chip color="#00e676">Candidato renovación</Chip>}
+                      </div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: colorTxt, fontFamily: 'monospace' }}>
+                        {sug.tipo === 'stock'
+                          ? `${sug.total} animales · ${sug.diasVida}d`
+                          : `${sug.codigo} · ${sug.diasVida}d`}
+                      </div>
+                    </div>
+
+                    {/* Problema → Solución → Impacto */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <div style={{ fontSize: 11, color: colorTxt }}>
+                        <span style={{ color: tema.textMuted }}>Problema: </span>{sug.problema}
+                      </div>
+                      {!sug.bloqueado && (
+                        <div style={{ fontSize: 11, color: '#c9d4e0' }}>
+                          <span style={{ color: tema.textMuted }}>Solución: </span>{sug.solucion}
+                        </div>
+                      )}
+                      {sug.bloqueado && sug.razonBloqueo && (
+                        <div style={{ fontSize: 11, color: '#ffb300' }}>
+                          <span style={{ color: tema.textMuted }}>Bloqueado: </span>{sug.razonBloqueo}
+                        </div>
+                      )}
+                      <div style={{ fontSize: 11, color: '#4a5f7a' }}>
+                        <span style={{ color: tema.textMuted }}>Impacto: </span>{sug.impacto}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            {sugerenciasSacrificio.length > 6 && (
+              <div style={{ fontSize: 11, color: tema.textMuted, textAlign: 'center', marginTop: 8 }}>
+                +{sugerenciasSacrificio.length - 6} candidatos más
+              </div>
+            )}
+          </div>
+        )}
+
+        {sugerenciasSacrificio.length === 0 && saturacionReal.nivel === 'normal' && (
+          <div style={{ textAlign: 'center', padding: '12px 0', color: '#00e676', fontSize: 12 }}>
+            ✅ Sin exceso de stock — no se requieren sacrificios
+          </div>
+        )}
+
+        {sugerenciasSacrificio.length === 0 && saturacionReal.nivel !== 'normal' && (
+          <div style={{ padding: '10px', background: 'rgba(255,179,0,0.06)', borderRadius: 8, fontSize: 11, color: '#ffb300' }}>
+            ⚠ Hay saturación pero todos los animales están protegidos (mínimos, renovación, pedidos o déficit futuro). Revisar manualmente.
           </div>
         )}
       </div>
