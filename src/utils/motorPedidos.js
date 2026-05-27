@@ -444,6 +444,12 @@ export function evaluarImpactoColonia(pedido, reproductoresSeleccionados, animal
     rompeHembras, rompeMachos,
     riesgoNivel, impactos,
     estabilidadEmpeora: riesgoNivel !== 'ok',
+    // Texto para la UI: nunca mostrar "Operación segura" si rompe mínimos
+    etiquetaRiesgo: (rompeHembras || rompeMachos)
+      ? '🔴 Riesgo colonia'
+      : riesgoNivel === 'advertencia'
+      ? '🟠 Advertencia'
+      : '🟢 Sin riesgo para la colonia',
   }
 }
 
@@ -520,7 +526,14 @@ export function calcularIndiceViabilidad({
     detalle.riesgoMultifactorial = riesgoMultifactorial.penalizacion ?? 0
   }
 
-  return { score: Math.round(score), detalle }
+  // REGLA DURA: si se rompen mínimos reproductivos → nunca mostrar "Viable"
+  // Cap a 59 para forzar "Con riesgo" o peor, nunca "Viable" (≥75)
+  const rompeMinimosCriticos = impactoColonia.riesgoNivel === 'critico'
+  if (rompeMinimosCriticos) {
+    score = Math.min(score, 59)
+  }
+
+  return { score: Math.round(score), detalle, rompeMinimosCriticos }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

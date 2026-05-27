@@ -1320,20 +1320,43 @@ export function calcularMotorRenovacionUnificado(
   const deficitMachos  = Math.max(0, minimos.machos_colonia  - machosColonia.length)
   const deficitHembras = Math.max(0, minimos.hembras_colonia - hembrasColonia.length)
 
-  // Bloques de stock con animales que ya superaron la madurez
-  const bloquesListos = stockReal.stock.bloques.filter(b => {
+  const MADUREZ_MIN = Math.round(MADUREZ * 0.85) // 85% → próximo a madurez
+
+  // Bloques LISTOS ahora (superaron la madurez)
+  const bloquesListosAhora = stockReal.stock.bloques.filter(b => {
     const c = camadas.find(cam => cam.id === b.camadaId)
     return c && difDias(c.fecha_nacimiento, hoy) >= MADUREZ
   })
-  const bloquesMachos  = bloquesListos.filter(b => (b.machos  || 0) > 0)
-  const bloquesHembras = bloquesListos.filter(b => (b.hembras || 0) > 0)
+  // Bloques CASI LISTOS (entre 85% y 100% de madurez — maduran en ≤ MADUREZ * 0.15 días)
+  const bloquesMaduranPronto = stockReal.stock.bloques.filter(b => {
+    const c = camadas.find(cam => cam.id === b.camadaId)
+    if (!c) return false
+    const dv = difDias(c.fecha_nacimiento, hoy)
+    return dv >= MADUREZ_MIN && dv < MADUREZ
+  })
+
+  const bloquesMachosAhora   = bloquesListosAhora.filter(b => (b.machos  || 0) > 0)
+  const bloquesHembrasAhora  = bloquesListosAhora.filter(b => (b.hembras || 0) > 0)
+  const bloquesMachosPronto  = bloquesMaduranPronto.filter(b => (b.machos  || 0) > 0)
+  const bloquesHembrasPronto = bloquesMaduranPronto.filter(b => (b.hembras || 0) > 0)
 
   // Candidatos bloques ya usados (para no asignar el mismo a dos acciones)
   const candidatosUsados = new Set()
 
   function mejorBloque(sexo) {
-    const lista = sexo === 'macho' ? bloquesMachos : bloquesHembras
-    return lista.find(b => !candidatosUsados.has(b.jaulaId)) ?? null
+    // Prioridad 1: listo ahora
+    const listaAhora = sexo === 'macho' ? bloquesMachosAhora : bloquesHembrasAhora
+    const inmediato  = listaAhora.find(b => !candidatosUsados.has(b.jaulaId))
+    if (inmediato) return { ...inmediato, tiempoHastaUtilidad: 0, listo: true }
+    // Prioridad 2: casi listo (faltan pocos días)
+    const listaPronto = sexo === 'macho' ? bloquesMachosPronto : bloquesHembrasPronto
+    const proximo = listaPronto.find(b => !candidatosUsados.has(b.jaulaId))
+    if (proximo) {
+      const c = camadas.find(cam => cam.id === proximo.camadaId)
+      const dv = c ? difDias(c.fecha_nacimiento, hoy) : MADUREZ
+      return { ...proximo, tiempoHastaUtilidad: MADUREZ - dv, listo: false }
+    }
+    return null
   }
 
   const accionesRecomendadas = []
@@ -1342,6 +1365,11 @@ export function calcularMotorRenovacionUnificado(
   for (let i = 0; i < deficitMachos; i++) {
     const bloque = mejorBloque('macho')
     if (bloque) candidatosUsados.add(bloque.jaulaId)
+    const descCandidato = !bloque
+      ? '⚠️ Sin candidatos en stock — iniciar apareamiento de emergencia'
+      : bloque.listo
+      ? `→ Promover ahora (${bloque.diasVida ?? '?'}d de vida)`
+      : `→ Promover en ${bloque.tiempoHastaUtilidad}d (${bloque.diasVida ?? '?'}d de vida)`
     accionesRecomendadas.push({
       tipo:               'deficit',
       prioridad:          0,
@@ -1349,14 +1377,19 @@ export function calcularMotorRenovacionUnificado(
       animalSaliente:     null,
       candidato:          bloque,
       motivosPrincipales: ['Déficit activo de machos reproductores'],
-      descripcionCorta:   `Cubrir déficit ♂ — promover ${bloque ? 'candidato listo' : 'próxima camada'}`,
+      descripcionCorta:   `Cubrir déficit ♂ — ${descCandidato}`,
       resolucionPosible:  !!bloque,
-      impactoEnIndice:    bloque ? '+10 pts renovación' : null,
+      impactoEnIndice:    bloque ? (bloque.listo ? '+10 pts renovación' : `+10 pts en ${bloque.tiempoHastaUtilidad}d`) : null,
     })
   }
   for (let i = 0; i < deficitHembras; i++) {
     const bloque = mejorBloque('hembra')
     if (bloque) candidatosUsados.add(bloque.jaulaId)
+    const descCandidato = !bloque
+      ? '⚠️ Sin candidatos en stock — iniciar apareamiento de emergencia'
+      : bloque.listo
+      ? `→ Promover ahora (${bloque.diasVida ?? '?'}d de vida)`
+      : `→ Promover en ${bloque.tiempoHastaUtilidad}d (${bloque.diasVida ?? '?'}d de vida)`
     accionesRecomendadas.push({
       tipo:               'deficit',
       prioridad:          0,
@@ -1364,9 +1397,9 @@ export function calcularMotorRenovacionUnificado(
       animalSaliente:     null,
       candidato:          bloque,
       motivosPrincipales: ['Déficit activo de hembras reproductoras'],
-      descripcionCorta:   `Cubrir déficit ♀ — promover ${bloque ? 'candidata lista' : 'próxima camada'}`,
+      descripcionCorta:   `Cubrir déficit ♀ — ${descCandidato}`,
       resolucionPosible:  !!bloque,
-      impactoEnIndice:    bloque ? '+10 pts renovación' : null,
+      impactoEnIndice:    bloque ? (bloque.listo ? '+10 pts renovación' : `+10 pts en ${bloque.tiempoHastaUtilidad}d`) : null,
     })
   }
 
@@ -1392,7 +1425,7 @@ export function calcularMotorRenovacionUnificado(
       animalSaliente:     perfil.animal,
       candidato:          bloque,
       motivosPrincipales: motivosTexto,
-      descripcionCorta:   `Reemplazar ${perfil.animal.codigo} → ${bloque ? 'promover candidato listo' : 'sin candidato aún'}`,
+      descripcionCorta:   `Reemplazar ${perfil.animal.codigo} → ${!bloque ? '⚠️ Sin candidato' : bloque.listo ? 'promover ahora' : `promover en ${bloque.tiempoHastaUtilidad}d`}`,
       resolucionPosible:  !!bloque,
       impactoEnIndice:    bloque ? '+5 pts renovación' : null,
     })
@@ -1594,6 +1627,18 @@ export function calcularProyeccionAvanzada(
     const hayDeficit     = deficitMachos > 0 || deficitHembras > 0
     const puedeCubrir    = hayDeficit && candidatosMaduran >= (deficitMachos + deficitHembras)
 
+    // ── STOCK FUTURO NETO ────────────────────────────────────────────────────
+    // Nacidos (bruto, sin aplicar supervivencia todavía)
+    const criasNacidas = Math.round(totalPartos * promCrias)
+    // Mortalidad natural = nacidos - sobreviven (la diferencia ya aplicada en criasDePartos)
+    const mortalidadNatural = Math.max(0, criasNacidas - criasDePartos)
+    // Sacrificios proyectados: estimación histórica 15% del stock que sobrevive
+    const sacrificiosEstimados = Math.round(totalCrias * 0.15)
+    // Candidatos en stock que pasan a reproductores (salen del stock)
+    const promocionesEstimadas = candidatosMaduran
+    // Stock neto del período = entradas - salidas estimadas
+    const stockNetoPeriodo = Math.max(0, totalCrias - sacrificiosEstimados - promocionesEstimadas)
+
     resultados[h] = {
       diasHorizonte: h,
       partos:  { total: totalPartos, deActivos: partosDeActivos, dePatron: partosPatron },
@@ -1604,6 +1649,16 @@ export function calcularProyeccionAvanzada(
         machos: deficitMachos, hembras: deficitHembras,
         total: deficitMachos + deficitHembras,
         hayDeficit, puedeCubrirConStock: puedeCubrir,
+      },
+      // Stock futuro neto: Partos + Destetes - Mortalidad - Sacrificios - Promociones
+      stockNeto: {
+        nacidos:              criasNacidas,
+        sobreviven:           totalCrias,
+        mortalidadNatural,
+        sacrificiosEstimados,
+        promocionesEstimadas,
+        entregasEstimadas:    0, // se enriquece con pedidos si se pasan al llamador
+        neto:                 stockNetoPeriodo,
       },
       ok: !hayDeficit,
     }
@@ -1876,4 +1931,360 @@ export function generarAccionesHoyPlanificacion(
   }
 
   return acciones.sort((a, b) => a.prioridad - b.prioridad)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 20 — ÍNDICE DE SOSTENIBILIDAD DE COLONIA (0-100)
+// Diferente al índice de estabilidad (que mide el estado actual):
+// Mide si la colonia puede SOSTENER producción futura a largo plazo.
+// Factores: genética · renovación · producción · sanidad · saturación · pedidos · capacidad
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Índice 0-100 que mide la capacidad de sostener producción futura.
+ * 🟢 ≥75 Sostenible · 🟡 50-74 Intervención · 🔴 <50 Riesgo
+ *
+ * Diferencia con calcularIndiceEstabilidad:
+ *   - Incluye factor "pedidos" (carga de trabajo futura)
+ *   - Usa motorRenovacion.indiceRenovacion (ya unificado)
+ *   - Pesa más la genética y la renovación que la híbridos
+ */
+export function calcularIndiceSostenibilidad({
+  stockReal,
+  motorRenovacion,
+  indiceSanitario = 100,
+  indiceGenetico = null,
+  proyeccionAvanzada = null,
+  pedidos = [],
+  bioterioId,
+}) {
+  const detalle = {}
+
+  // ── 1. GENÉTICA (20 pts) ──────────────────────────────────────────────────
+  const genetica = indiceGenetico
+    ? Math.round(indiceGenetico.score * 0.20)
+    : 15 // sin datos: asumir neutro
+  detalle.genetica = Math.max(0, Math.min(20, genetica))
+
+  // ── 2. RENOVACIÓN (20 pts) — usa el índice unificado ─────────────────────
+  const renovacion = Math.round((motorRenovacion?.indiceRenovacion ?? 100) * 0.20)
+  detalle.renovacion = Math.max(0, Math.min(20, renovacion))
+
+  // ── 3. PRODUCCIÓN (15 pts) ────────────────────────────────────────────────
+  let produccion = 15
+  if (proyeccionAvanzada) {
+    const pat = proyeccionAvanzada.patrones
+    if (pat.parejasLibres === 0 && pat.hembrasApareadas === 0 && pat.hembrasEnCria === 0) {
+      produccion -= 10 // ninguna actividad reproductiva
+    } else if (pat.parejasLibres === 0) {
+      produccion -= 4
+    }
+    const data90 = proyeccionAvanzada.horizontes?.[90]
+    if (data90 && data90.partos.total < 2) produccion -= 5
+  }
+  detalle.produccion = Math.max(0, Math.min(15, produccion))
+
+  // ── 4. SANIDAD (15 pts) ───────────────────────────────────────────────────
+  const sanidad = Math.round((indiceSanitario / 100) * 15)
+  detalle.sanidad = Math.max(0, Math.min(15, sanidad))
+
+  // ── 5. SATURACIÓN (10 pts) ────────────────────────────────────────────────
+  let saturacion = 10
+  if (proyeccionAvanzada) {
+    const data90 = proyeccionAvanzada.horizontes?.[90]
+    if (data90?.jaulas.saturacion === 'alta')  saturacion -= 8
+    else if (data90?.jaulas.saturacion === 'media') saturacion -= 4
+  }
+  detalle.saturacion = Math.max(0, Math.min(10, saturacion))
+
+  // ── 6. PEDIDOS (10 pts) — carga de trabajo futura ────────────────────────
+  let pedidosPts = 10
+  const pedidosPendientes = pedidos.filter(p => ['pendiente', 'en_proceso'].includes(p.estado ?? p.status))
+  if (pedidosPendientes.length > 5)      pedidosPts -= 7
+  else if (pedidosPendientes.length > 2) pedidosPts -= 3
+  detalle.pedidos = Math.max(0, Math.min(10, pedidosPts))
+
+  // ── 7. CAPACIDAD FÍSICA (10 pts) — jaulas vs umbral ──────────────────────
+  let capacidad = 10
+  const jaulasTotal = stockReal?.jaulas?.total ?? 0
+  if (jaulasTotal > 30)      capacidad -= 8
+  else if (jaulasTotal > 20) capacidad -= 4
+  detalle.capacidad = Math.max(0, Math.min(10, capacidad))
+
+  let score = detalle.genetica + detalle.renovacion + detalle.produccion +
+              detalle.sanidad + detalle.saturacion + detalle.pedidos + detalle.capacidad
+
+  // REGLA DURA: déficit activo de reproductores → máximo 75
+  const hayDeficit = motorRenovacion?.hayDeficit ?? false
+  if (hayDeficit) score = Math.min(score, 75)
+
+  // REGLA DURA: déficit futuro sin cobertura en 60d → máximo 65
+  const data60 = proyeccionAvanzada?.horizontes?.[60]
+  if (data60?.deficit?.hayDeficit && !data60.deficit.puedeCubrirConStock) {
+    score = Math.min(score, 65)
+  }
+
+  const scoreClamp = Math.max(0, Math.min(100, Math.round(score)))
+
+  let nivel, emoji, color, bg, borde
+  if (scoreClamp >= 75) {
+    nivel = 'Sostenible';    emoji = '🟢'; color = '#00e676'
+    bg = 'rgba(0,230,118,0.08)'; borde = 'rgba(0,230,118,0.25)'
+  } else if (scoreClamp >= 50) {
+    nivel = 'Intervención';  emoji = '🟡'; color = '#ffb300'
+    bg = 'rgba(255,179,0,0.08)'; borde = 'rgba(255,179,0,0.25)'
+  } else {
+    nivel = 'Riesgo';        emoji = '🔴'; color = '#ff6b80'
+    bg = 'rgba(255,61,87,0.08)'; borde = 'rgba(255,61,87,0.25)'
+  }
+
+  return { score: scoreClamp, nivel, emoji, color, bg, borde, detalle, hayDeficit }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 21 — MODO ESTRATEGIA
+// El usuario elige un objetivo → el motor ajusta recomendaciones, restricciones
+// y parámetros de sacrificio/apareamiento/renovación/producción.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const OBJETIVOS_ESTRATEGIA = {
+  mantener:   { label: 'Mantener colonia',             emoji: '🏠', desc: 'Prioriza estabilidad y mínimos reproductivos sobre todo' },
+  expandir:   { label: 'Expandir producción',          emoji: '📈', desc: 'Maximiza apareamientos y producción de crías' },
+  reducir:    { label: 'Reducir saturación',           emoji: '📉', desc: 'Prioriza sacrificios y entregas, pausa nuevos apareamientos' },
+  hibridos:   { label: 'Generar híbridos F1',          emoji: '🧬', desc: 'Reserva mejores reproductores para cruzas F1' },
+  pedidos:    { label: 'Cumplir pedidos',              emoji: '📦', desc: 'Orienta apareamientos a las fechas de entrega pendientes' },
+  diversidad: { label: 'Maximizar diversidad genética',emoji: '🔬', desc: 'Evita consanguinidad, prioriza líneas genéticamente diversas' },
+}
+
+/**
+ * Genera recomendaciones, restricciones y ajustes de parámetros según el objetivo elegido.
+ *
+ * @param {'mantener'|'expandir'|'reducir'|'hibridos'|'pedidos'|'diversidad'} objetivo
+ * @param {object} contexto — { stockReal, motorRenovacion, candidatos, proyeccionAvanzada, animales, camadas, bioterioId, pedidos }
+ * @returns {{ objetivo, config, recomendaciones, restricciones, ajustes, kpis }}
+ */
+export function generarModoEstrategia(objetivo, {
+  stockReal,
+  motorRenovacion,
+  candidatos = [],
+  proyeccionAvanzada = null,
+  animales = [],
+  camadas = [],
+  bioterioId,
+  pedidos = [],
+}) {
+  const minimos   = getMinimosCriticos(bioterioId)
+  const config    = OBJETIVOS_ESTRATEGIA[objetivo] ?? OBJETIVOS_ESTRATEGIA.mantener
+  const recomendaciones = []
+  const restricciones   = ['Respetar mínimos reproductivos en toda operación'] // regla siempre presente
+  const ajustes         = {}
+
+  const machosActivos  = stockReal.reproductores.machos.filter(m => !m.exportado_hibridos).length
+  const hembrasActivas = stockReal.reproductores.hembras.filter(h => !h.exportado_hibridos).length
+  const libres         = stockReal.reproductores.activasLibres?.length ?? 0
+  const apareadas      = stockReal.reproductores.apareadas?.length ?? 0
+  const data90         = proyeccionAvanzada?.horizontes?.[90]
+  const patrones       = proyeccionAvanzada?.patrones ?? {}
+
+  switch (objetivo) {
+
+    // ── MANTENER ─────────────────────────────────────────────────────────────
+    case 'mantener':
+      ajustes.maxSacrificiosPorPeriodo = 1
+      ajustes.umbralSaturacion         = 20
+      ajustes.prioridadApareamientos   = 'normal'
+      if (motorRenovacion.hayDeficit) {
+        const accionDef = motorRenovacion.accionesRecomendadas.find(a => a.tipo === 'deficit')
+        recomendaciones.push({
+          tipo: 'deficit', prioridad: 0, icono: '🔴',
+          texto: 'Cubrir déficit antes de cualquier otra acción',
+          accion: accionDef?.resolucionPosible ? 'promover_stock' : 'apareamiento_emergencia',
+          detalle: accionDef?.descripcionCorta ?? '',
+        })
+      }
+      recomendaciones.push({
+        tipo: 'apareamiento', prioridad: 1, icono: '🔗',
+        texto: 'Mantener 1 pareja activa por ciclo (21d) para asegurar continuidad',
+        accion: libres > 0 ? 'iniciar_apareamiento' : null,
+        detalle: libres > 0 ? `${libres} hembra(s) disponible(s)` : 'Sin hembras libres ahora',
+      })
+      recomendaciones.push({
+        tipo: 'info', prioridad: 3, icono: '🟢',
+        texto: 'Objetivo: mantener stock entre mínimos y umbral de saturación (20 jaulas)',
+        accion: null,
+        detalle: `Jaulas actuales: ${stockReal.jaulas.total} / Mínimos: ♂${minimos.machos_colonia} ♀${minimos.hembras_colonia}`,
+      })
+      break
+
+    // ── EXPANDIR ─────────────────────────────────────────────────────────────
+    case 'expandir':
+      ajustes.maxSacrificiosPorPeriodo = 0
+      ajustes.umbralSaturacion         = 35
+      ajustes.prioridadApareamientos   = 'alta'
+      ajustes.pausarSacrificios        = true
+      if (libres > 0 && machosActivos > 0) {
+        recomendaciones.push({
+          tipo: 'apareamiento', prioridad: 0, icono: '🔗',
+          texto: `Iniciar con las ${libres} hembra(s) libre(s) disponibles`,
+          accion: 'iniciar_apareamiento_masivo',
+          detalle: `${libres} hembra(s) + ${machosActivos} macho(s) disponibles`,
+        })
+      }
+      if (data90 && data90.crias.total < 20) {
+        recomendaciones.push({
+          tipo: 'alerta', prioridad: 1, icono: '🟠',
+          texto: `Producción 90d proyectada: ${data90.crias.total} crías — por debajo del objetivo de expansión`,
+          accion: 'revisar_reproductores',
+          detalle: `Partos esperados: ${data90.partos.total} · Promedio camada: ${patrones.promCrias ?? '?'}`,
+        })
+      }
+      restricciones.push('No sacrificar stock hasta alcanzar el objetivo de producción')
+      break
+
+    // ── REDUCIR ───────────────────────────────────────────────────────────────
+    case 'reducir':
+      ajustes.maxSacrificiosPorPeriodo = 999
+      ajustes.umbralSaturacion         = 15
+      ajustes.pausarNuevosApareamamientos = true
+      const jaulasActuales = stockReal.jaulas.total
+      if (jaulasActuales > 15) {
+        recomendaciones.push({
+          tipo: 'sacrificio', prioridad: 0, icono: '🔴',
+          texto: `Reducir ${jaulasActuales - 15} jaula(s) para alcanzar umbral de 15`,
+          accion: 'sacrificio_masivo',
+          detalle: `Jaulas actuales: ${jaulasActuales} · Objetivo: 15`,
+        })
+      }
+      if (apareadas > 0) {
+        recomendaciones.push({
+          tipo: 'alerta', prioridad: 1, icono: '🟠',
+          texto: `Hay ${apareadas} pareja(s) activa — al destetar, evaluar sacrificio del stock resultante`,
+          accion: 'planificar_sacrificio',
+          detalle: 'No iniciar nuevos apareamientos hasta reducir saturación',
+        })
+      }
+      restricciones.push('No iniciar nuevos apareamientos hasta bajar de 15 jaulas')
+      restricciones.push('Sacrificar adultos de ≥10 semanas antes que jóvenes y crías')
+      break
+
+    // ── HÍBRIDOS ──────────────────────────────────────────────────────────────
+    case 'hibridos':
+      ajustes.reservarMejoresPara = 'hibridos'
+      ajustes.umbralF             = 0.0625
+      const candidatosHibridos = candidatos
+        .filter(c => c.nivelF === 'bajo' && c.recomendado && !c.esLineaProblematica)
+        .slice(0, 3)
+      if (candidatosHibridos.length > 0) {
+        for (const cand of candidatosHibridos) {
+          recomendaciones.push({
+            tipo: 'reserva', prioridad: 0, icono: '🧬',
+            texto: `Reservar jaula para F1 — F ${cand.fPorcentaje} · score ${cand.priorityScore}`,
+            accion: 'reservar_hibridos',
+            candidatoId: cand.jaulaId,
+            detalle: `${cand.machos ?? 0}♂ ${cand.hembras ?? 0}♀ · ${cand.diasVida}d · familiar score ${cand.scoreFamiliar}`,
+          })
+        }
+      } else {
+        recomendaciones.push({
+          tipo: 'alerta', prioridad: 0, icono: '🟠',
+          texto: 'Sin candidatos de baja consanguinidad en stock — esperar próximos partos',
+          accion: null,
+          detalle: `Candidatos actuales: ${candidatos.length} · ninguno cumple F < 6.25%`,
+        })
+      }
+      restricciones.push('No sacrificar animales con F < 6.25% — reservar para cruzas F1')
+      restricciones.push('Priorizar líneas con mayor diversidad genética para reproducción')
+      break
+
+    // ── PEDIDOS ───────────────────────────────────────────────────────────────
+    case 'pedidos':
+      const pendientes = pedidos.filter(p => ['pendiente', 'en_proceso'].includes(p.estado ?? p.status))
+      if (pendientes.length === 0) {
+        recomendaciones.push({
+          tipo: 'info', prioridad: 3, icono: '🟢',
+          texto: 'No hay pedidos activos — estrategia de pedidos sin acción urgente',
+          accion: null,
+          detalle: 'Crear un pedido en el módulo Pedidos para activar esta estrategia',
+        })
+      } else {
+        recomendaciones.push({
+          tipo: 'pedido', prioridad: 0, icono: '📦',
+          texto: `${pendientes.length} pedido(s) pendiente(s) — revisar fechas de cópula`,
+          accion: 'revisar_pedidos',
+          detalle: `Ir al módulo Pedidos → verificar fecha de cópula de cada pedido`,
+        })
+        if (libres > 0 && machosActivos > 0) {
+          recomendaciones.push({
+            tipo: 'apareamiento', prioridad: 1, icono: '🔗',
+            texto: `Coordinar apareamientos según fechas de entrega de los pedidos`,
+            accion: 'iniciar_apareamiento',
+            detalle: `${libres} hembra(s) libre(s) disponibles para asignar a pedidos`,
+          })
+        }
+      }
+      break
+
+    // ── DIVERSIDAD ────────────────────────────────────────────────────────────
+    case 'diversidad':
+      ajustes.umbralF              = 0.0625
+      ajustes.priorizarDiversidad  = true
+      const candidatosDiversos = candidatos
+        .filter(c => c.fPadres < 0.0625 && !c.esLineaProblematica)
+        .slice(0, 4)
+      if (candidatosDiversos.length > 0) {
+        recomendaciones.push({
+          tipo: 'promocion', prioridad: 0, icono: '🔬',
+          texto: `Promover ${candidatosDiversos.length} candidato(s) con F bajo — maximiza diversidad`,
+          accion: 'promover_stock_diversidad',
+          detalle: candidatosDiversos.map(c => `Jaula ${c.jaulaId} · F${c.fPorcentaje} · score ${c.priorityScore}`).join(' | '),
+        })
+      }
+      // Reproductores con F alto → candidatos a retiro
+      const altaF = [
+        ...stockReal.reproductores.machos,
+        ...stockReal.reproductores.hembras,
+      ].filter(a => {
+        const perfil = motorRenovacion.perfiles.find(p => p.animal.id === a.id)
+        return perfil && perfil.fPropio >= 0.125
+      })
+      if (altaF.length > 0) {
+        recomendaciones.push({
+          tipo: 'retiro', prioridad: 1, icono: '🟠',
+          texto: `${altaF.length} reproductor(es) con F ≥ 12.5% — evaluar retiro progresivo`,
+          accion: 'revisar_reproductores_f',
+          detalle: altaF.map(a => a.codigo).join(', '),
+        })
+      }
+      restricciones.push('Bloquear cruzas con F ≥ 6.25% bajo este modo')
+      restricciones.push('Priorizar machos sin parentesco con las hembras activas')
+      break
+
+    default:
+      recomendaciones.push({
+        tipo: 'info', prioridad: 4, icono: '⚪',
+        texto: 'Objetivo no reconocido — sin recomendaciones específicas',
+        accion: null, detalle: '',
+      })
+  }
+
+  // KPIs del estado actual relevantes para el objetivo
+  const kpis = {
+    machosActivos, hembrasActivas,
+    libres, apareadas,
+    jaulasTotal:        stockReal.jaulas.total,
+    candidatosDisp:     candidatos.filter(c => c.tiempoHastaUtilidad === 0).length,
+    candidatosPronto:   candidatos.filter(c => c.tiempoHastaUtilidad > 0 && c.tiempoHastaUtilidad <= 30).length,
+    pedidosPendientes:  pedidos.filter(p => ['pendiente', 'en_proceso'].includes(p.estado ?? p.status)).length,
+    crias90d:           data90?.crias?.total ?? 0,
+    partos90d:          data90?.partos?.total ?? 0,
+  }
+
+  return {
+    objetivo,
+    config,
+    recomendaciones: recomendaciones.sort((a, b) => a.prioridad - b.prioridad),
+    restricciones,
+    ajustes,
+    kpis,
+  }
 }

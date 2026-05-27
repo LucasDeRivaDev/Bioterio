@@ -25,6 +25,9 @@ import {
   evaluarSostenibilidadColonia,
   generarAccionesHoyPlanificacion,
   PATRON_APAREAMIENTO_DEFAULT,
+  calcularIndiceSostenibilidad,
+  generarModoEstrategia,
+  OBJETIVOS_ESTRATEGIA,
 } from '../utils/motorDecisiones'
 import { formatFecha, difDias } from '../utils/calculos'
 import {
@@ -588,8 +591,9 @@ export default function PlanificacionColonia() {
   const { bioterioActivo, bio } = useBioterioActivo()
   const { tema } = useTheme()
 
-  const [tabHorizonte, setTabHorizonte] = useState(90)
-  const [reservasKey, setReservasKey]   = useState(0) // fuerza re-render al reservar
+  const [tabHorizonte, setTabHorizonte]           = useState(90)
+  const [reservasKey, setReservasKey]             = useState(0)
+  const [objetivoEstrategia, setObjetivoEstrategia] = useState('mantener')
 
   // Combinar animales propios + exportados para pedigree completo
   const todosAnimales = useMemo(() => [...animales, ...animalesExportados], [animales, animalesExportados])
@@ -697,6 +701,27 @@ export default function PlanificacionColonia() {
   const accionesHoy = useMemo(
     () => generarAccionesHoyPlanificacion(proyeccionAvanzada, sugerenciasPromocion, getMinimosCriticos(bioterioActivo), stockReal, bioterioActivo),
     [proyeccionAvanzada, sugerenciasPromocion, stockReal, bioterioActivo]
+  )
+
+  // Índice de sostenibilidad — mide si la colonia puede sostener producción futura
+  const indiceSostenibilidad = useMemo(
+    () => calcularIndiceSostenibilidad({
+      stockReal, motorRenovacion: motorUnificado,
+      indiceSanitario, indiceGenetico: indiceGeneticoEnriquecido,
+      proyeccionAvanzada, pedidos: [], bioterioId: bioterioActivo,
+    }),
+    [stockReal, motorUnificado, indiceSanitario, indiceGeneticoEnriquecido, proyeccionAvanzada, bioterioActivo]
+  )
+
+  // Modo estrategia — recomendaciones ajustadas según el objetivo elegido
+  const modoEstrategia = useMemo(
+    () => generarModoEstrategia(objetivoEstrategia, {
+      stockReal, motorRenovacion: motorUnificado,
+      candidatos, proyeccionAvanzada,
+      animales: todosAnimales, camadas: todasCamadas,
+      bioterioId: bioterioActivo, pedidos: [],
+    }),
+    [objetivoEstrategia, stockReal, motorUnificado, candidatos, proyeccionAvanzada, todosAnimales, todasCamadas, bioterioActivo]
   )
 
   const minimosCfg = getMinimosCriticos(bioterioActivo)
@@ -933,6 +958,17 @@ export default function PlanificacionColonia() {
                       ↑ {d.reproductores.candidatosMaduran} candidato(s) maduran
                     </div>
                   )}
+                  {/* Stock neto */}
+                  {d.stockNeto && (
+                    <div style={{ borderTop: `1px solid rgba(255,255,255,0.04)`, marginTop: 3, paddingTop: 3 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: tema.textMuted }}>
+                        <span>stock neto</span>
+                        <span style={{ color: d.stockNeto.neto > 0 ? '#a78bfa' : '#ff6b80', fontWeight: 700 }}>
+                          ~{d.stockNeto.neto}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                   {/* Déficit */}
                   {d.deficit.hayDeficit && (
                     <div style={{
@@ -1037,22 +1073,53 @@ export default function PlanificacionColonia() {
             </div>
           </div>
 
-          {/* KPIs de producción en horizonte seleccionado */}
+          {/* KPIs de producción + stock neto en horizonte seleccionado */}
           {(() => {
             const hData = proyeccionAvanzada.horizontes[tabHorizonte]
+            const sn = hData.stockNeto
             return (
-              <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
-                {[
-                  { label: 'Partos totales', valor: hData.partos.total, color: '#00e676' },
-                  { label: 'Crías estimadas', valor: hData.crias.total, color: '#40c4ff' },
-                  { label: 'Jaulas nuevas', valor: hData.jaulas.nuevas, color: '#a78bfa' },
-                  { label: 'Prom. camada hist.', valor: proyeccionAvanzada.patrones.promCrias, color: '#ffd740' },
-                ].map(({ label, valor, color }) => (
-                  <div key={label} style={{ textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '10px' }}>
-                    <div style={{ fontSize: 20, fontWeight: 800, color, lineHeight: 1 }}>{valor}</div>
-                    <div style={{ fontSize: 10, color: tema.textMuted, marginTop: 3 }}>{label}</div>
+              <div style={{ marginTop: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+                  {[
+                    { label: 'Partos totales',     valor: hData.partos.total,              color: '#00e676' },
+                    { label: 'Crías estimadas',    valor: hData.crias.total,               color: '#40c4ff' },
+                    { label: 'Jaulas nuevas',      valor: hData.jaulas.nuevas,             color: '#a78bfa' },
+                    { label: 'Prom. camada hist.', valor: proyeccionAvanzada.patrones.promCrias, color: '#ffd740' },
+                  ].map(({ label, valor, color }) => (
+                    <div key={label} style={{ textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '10px' }}>
+                      <div style={{ fontSize: 20, fontWeight: 800, color, lineHeight: 1 }}>{valor}</div>
+                      <div style={{ fontSize: 10, color: tema.textMuted, marginTop: 3 }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* Stock futuro neto */}
+                {sn && (
+                  <div style={{ marginTop: 10, background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '10px 14px' }}>
+                    <div style={{ fontSize: 11, color: tema.textMuted, fontWeight: 600, marginBottom: 8 }}>
+                      Stock futuro neto en {tabHorizonte}d
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: tema.textSecondary, flexWrap: 'wrap' }}>
+                      <span style={{ color: '#00e676', fontWeight: 700 }}>+{sn.sobreviven}</span>
+                      <span style={{ color: tema.textMuted }}>crías</span>
+                      <span style={{ color: tema.textMuted }}>−</span>
+                      <span style={{ color: '#ff6b80' }}>{sn.sacrificiosEstimados}</span>
+                      <span style={{ color: tema.textMuted }}>sacrificios est.</span>
+                      <span style={{ color: tema.textMuted }}>−</span>
+                      <span style={{ color: '#a78bfa' }}>{sn.promocionesEstimadas}</span>
+                      <span style={{ color: tema.textMuted }}>promociones</span>
+                      <span style={{ color: tema.textMuted }}>−</span>
+                      <span style={{ color: '#ffb300' }}>{sn.mortalidadNatural}</span>
+                      <span style={{ color: tema.textMuted }}>mortalidad nat.</span>
+                      <span style={{ color: tema.textMuted }}>=</span>
+                      <span style={{
+                        fontSize: 13, fontWeight: 800,
+                        color: sn.neto > 10 ? '#00e676' : sn.neto > 0 ? '#ffb300' : '#ff6b80',
+                      }}>
+                        ~{sn.neto} animales netos
+                      </span>
+                    </div>
                   </div>
-                ))}
+                )}
               </div>
             )
           })()}
@@ -1129,6 +1196,148 @@ export default function PlanificacionColonia() {
         {sostenibilidad.riesgos.length === 0 && (
           <div style={{ fontSize: 12, color: tema.textMuted, textAlign: 'center', padding: '6px 0' }}>
             Sin riesgos detectados en los próximos 180 días
+          </div>
+        )}
+      </div>
+
+      {/* ── ÍNDICE DE SOSTENIBILIDAD ─────────────────────────────────────────── */}
+      <div style={{
+        background: tema.bgCard,
+        border: `1px solid ${indiceSostenibilidad.borde}`,
+        borderRadius: 16, padding: '20px 24px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+          <GaugeScore score={indiceSostenibilidad.score} size={100} />
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: indiceSostenibilidad.color, marginBottom: 2 }}>
+              {indiceSostenibilidad.emoji} {indiceSostenibilidad.nivel}
+            </div>
+            <div style={{ fontSize: 12, color: tema.textMuted, marginBottom: 16 }}>
+              Índice de sostenibilidad — capacidad de mantener producción futura
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[
+                { label: 'Genética',    valor: indiceSostenibilidad.detalle.genetica,   max: 20, color: '#40c4ff' },
+                { label: 'Renovación',  valor: indiceSostenibilidad.detalle.renovacion, max: 20, color: '#a78bfa' },
+                { label: 'Producción',  valor: indiceSostenibilidad.detalle.produccion, max: 15, color: '#00e676' },
+                { label: 'Sanidad',     valor: indiceSostenibilidad.detalle.sanidad,    max: 15, color: '#ff9100' },
+                { label: 'Saturación',  valor: indiceSostenibilidad.detalle.saturacion, max: 10, color: '#ce93d8' },
+                { label: 'Pedidos',     valor: indiceSostenibilidad.detalle.pedidos,    max: 10, color: '#ffd740' },
+                { label: 'Capacidad',   valor: indiceSostenibilidad.detalle.capacidad,  max: 10, color: '#80cbc4' },
+              ].map(({ label, valor, max, color }) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 72, fontSize: 11, color: tema.textMuted, flexShrink: 0 }}>{label}</div>
+                  <div style={{ flex: 1 }}>
+                    <BarraProgreso valor={valor} max={max} color={color} height={5} />
+                  </div>
+                  <div style={{ width: 44, fontSize: 11, textAlign: 'right', color, fontFamily: 'monospace', flexShrink: 0 }}>
+                    {valor}/{max}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        {indiceSostenibilidad.hayDeficit && (
+          <div style={{ marginTop: 14, fontSize: 12, color: '#ffb300', background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.2)', borderRadius: 8, padding: '8px 12px' }}>
+            ⚠ Déficit activo de reproductores — índice de sostenibilidad limitado a 75 hasta resolver
+          </div>
+        )}
+      </div>
+
+      {/* ── MODO ESTRATEGIA ──────────────────────────────────────────────────── */}
+      <div style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}`, borderRadius: 16, padding: '18px 20px' }}>
+        <SeccionTitulo
+          icono={<Layers size={16} color="#40c4ff" />}
+          titulo="Modo estrategia"
+          subtitulo="Elegí un objetivo → el motor ajusta recomendaciones automáticamente"
+        />
+
+        {/* Selector de objetivo */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+          {Object.entries(OBJETIVOS_ESTRATEGIA).map(([key, cfg]) => {
+            const activo = objetivoEstrategia === key
+            return (
+              <button
+                key={key}
+                onClick={() => setObjetivoEstrategia(key)}
+                style={{
+                  padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  background: activo ? 'rgba(64,196,255,0.18)' : 'transparent',
+                  border: `1px solid ${activo ? 'rgba(64,196,255,0.5)' : tema.bgCardBorde}`,
+                  color: activo ? '#40c4ff' : tema.textMuted,
+                  transition: 'all 0.15s',
+                }}
+              >
+                {cfg.emoji} {cfg.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Descripción del objetivo */}
+        <div style={{
+          borderRadius: 10, padding: '10px 14px', marginBottom: 14,
+          background: 'rgba(64,196,255,0.06)', border: '1px solid rgba(64,196,255,0.15)',
+          fontSize: 12, color: '#40c4ff',
+        }}>
+          {modoEstrategia.config.emoji} <strong>{modoEstrategia.config.label}:</strong> {modoEstrategia.config.desc}
+        </div>
+
+        {/* KPIs rápidos */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 8, marginBottom: 16 }}>
+          {[
+            { label: '♂ activos',      valor: modoEstrategia.kpis.machosActivos,       color: '#40c4ff' },
+            { label: '♀ libres',       valor: modoEstrategia.kpis.libres,              color: '#ce93d8' },
+            { label: 'candidatos ✓',   valor: modoEstrategia.kpis.candidatosDisp,      color: '#00e676' },
+            { label: 'candidatos ~',   valor: modoEstrategia.kpis.candidatosPronto,    color: '#ffb300' },
+            { label: 'partos 90d',     valor: modoEstrategia.kpis.partos90d,           color: '#ffd740' },
+            { label: 'crías 90d',      valor: modoEstrategia.kpis.crias90d,            color: '#a78bfa' },
+          ].map(({ label, valor, color }) => (
+            <div key={label} style={{ textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: 8, padding: '8px 6px' }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color, lineHeight: 1 }}>{valor}</div>
+              <div style={{ fontSize: 9, color: tema.textMuted, marginTop: 2 }}>{label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Recomendaciones del modo */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+          {modoEstrategia.recomendaciones.map((r, i) => {
+            const colorMap = { 0: '#ff6b80', 1: '#ff9100', 2: '#ffb300', 3: '#ffd740', 4: '#00e676' }
+            const color = colorMap[r.prioridad] ?? '#40c4ff'
+            return (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'flex-start', gap: 12,
+                background: `${color}08`, border: `1px solid ${color}25`,
+                borderRadius: 12, padding: '12px 14px',
+              }}>
+                <div style={{ fontSize: 18, flexShrink: 0 }}>{r.icono}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color, marginBottom: 2 }}>{r.texto}</div>
+                  {r.detalle && <div style={{ fontSize: 11, color: tema.textMuted }}>{r.detalle}</div>}
+                </div>
+                <Chip color={color}>
+                  {r.prioridad === 0 ? 'Urgente' : r.prioridad === 1 ? 'Prioritario' : r.prioridad === 2 ? 'Recomendado' : 'Info'}
+                </Chip>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Restricciones activas */}
+        {modoEstrategia.restricciones.length > 0 && (
+          <div style={{ borderTop: `1px solid ${tema.bgCardBorde}`, paddingTop: 12 }}>
+            <div style={{ fontSize: 11, color: tema.textMuted, fontWeight: 600, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Restricciones activas
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {modoEstrategia.restricciones.map((r, i) => (
+                <div key={i} style={{ fontSize: 11, color: '#ffb300', display: 'flex', gap: 6 }}>
+                  <span>⚑</span><span>{r}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
