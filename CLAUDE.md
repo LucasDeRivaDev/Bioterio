@@ -294,6 +294,13 @@ Perfil reproductivo por animal (4 scores + confiabilidad), sacrificio parcial de
 - **Deterioro progresivo (26/05):** `detectarDeterioroProgresivo` en `sanitario.js` — ventanas 30/60/90/180/365d, detecta fertilidad↓ mortalidad↑ malformaciones↑ en tendencia reciente. Panel tabla en tab Motor Causal de Incidentes.
 - **Motor "¿Qué hacer hoy?" (26/05):** `generarDecisionesHoy` en `sanitario.js` — acciones concretas priorizadas (0=urgente→4=info). Panel visible en tab Motor Causal. Tipos: sanitario/genético/ambiental/saturación/renovación/reproductivo.
 - **Riesgo multifactorial en Pedidos (26/05):** `evaluarRiesgoMultifactorialPedido` en `motorPedidos.js` — evalúa 5 factores (F selección, supervivencia 90d, temperatura 14d, incidentes graves, malformaciones 90d) antes de habilitar pedido. `calcularIndiceViabilidad` aplica penalización (-7 alerta / -15 crítico).
+- **Motor unificado de planificación (26/05):**
+  - **Fix "Sin candidatos":** `calcularMotorRenovacionUnificado` ahora busca candidatos en rango 85%–100% de madurez, mostrando "promover en Xd" en lugar de "sin candidatos" cuando hay uno próximo. Elimina contradicción con sección de candidatos a renovación.
+  - **Fix simulador impacto:** `calcularIndiceViabilidad` capea score a 59 si se rompen mínimos → nunca muestra "Viable" cuando la colonia queda comprometida. `evaluarImpactoColonia` agrega campo `etiquetaRiesgo: '🔴 Riesgo colonia'`.
+  - **stockNeto por horizonte:** `calcularProyeccionAvanzada` agrega `stockNeto: { nacidos, sobreviven, mortalidadNatural, sacrificiosEstimados, promocionesEstimadas, neto }` en cada horizonte. Visible en tarjetas y en la sección de detalle.
+  - **NUEVA `calcularIndiceSostenibilidad(params) → 0-100`:** 7 factores: genética(20)+renovación(20)+producción(15)+sanidad(15)+saturación(10)+pedidos(10)+capacidad(10). Reglas duras: déficit activo→máx 75, déficit futuro sin cobertura 60d→máx 65. Labels: Sostenible/Intervención/Riesgo.
+  - **NUEVA `OBJETIVOS_ESTRATEGIA` + `generarModoEstrategia(objetivo, contexto)`:** 6 modos — mantener/expandir/reducir/hibridos/pedidos/diversidad. Cada modo ajusta recomendaciones, restricciones y parámetros (maxSacrificiosPorPeriodo, umbralSaturacion, prioridadApareamientos).
+  - **PlanificacionColonia.jsx:** 2 nuevas secciones — "Índice de Sostenibilidad" (gauge 0-100 + desglose por factor) y "Modo Estrategia" (selector de objetivo + KPIs + recomendaciones dinámicas + restricciones activas).
 
 ---
 

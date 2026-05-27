@@ -1431,7 +1431,8 @@ export function calcularMotorRenovacionUnificado(
   }
 
   // Bonus por candidatos listos disponibles
-  const totalCandidatos = bloquesMachos.length + bloquesHembras.length
+  const totalCandidatos = bloquesMachosAhora.length + bloquesMachosPronto.length
+                        + bloquesHembrasAhora.length + bloquesHembrasPronto.length
   indiceRenovacion += Math.min(12, totalCandidatos * 3)
 
   // Bonus si todos los problemas tienen solución disponible
