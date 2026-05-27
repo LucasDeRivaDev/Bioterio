@@ -1197,6 +1197,47 @@ export function simularEscenariosEstrategicos(pedido, camadas, animales, jaulas,
   return { escenarios, optima }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 18 — REPRODUCTORES PRÓXIMOS A MADURAR
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Detecta animales que aún no alcanzaron el 85% de madurez pero están en
+ * el rango 60–85%. Usados para mostrar "disponibles en Xd" en lugar de
+ * "sin candidatos".
+ */
+export function detectarReproductoresProximos(pedido, animales) {
+  const { bioterioId } = pedido
+  const bio = getBio(bioterioId)
+  const hoyDate = new Date()
+  hoyDate.setHours(0, 0, 0, 0)
+
+  const MIN_MADURO  = Math.round(bio.MADUREZ_DIAS * 0.85)
+  const MIN_PROXIMO = Math.round(bio.MADUREZ_DIAS * 0.60)
+
+  const proximos = animales
+    .filter(a =>
+      a.bioterio_id === bioterioId &&
+      a.estado === 'activo' &&
+      !a.exportado_hibridos &&
+      a.fecha_nacimiento
+    )
+    .map(a => {
+      const diasVida = difDias(a.fecha_nacimiento, hoyDate)
+      if (diasVida >= MIN_MADURO) return null  // ya maduro — lo toma seleccionarReproductoresOptimos
+      if (diasVida < MIN_PROXIMO) return null  // demasiado joven
+      return { animal: a, diasVida, diasParaMadurar: MIN_MADURO - diasVida }
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.diasParaMadurar - b.diasParaMadurar)
+
+  return {
+    proximos,
+    hembrasProximas: proximos.filter(p => p.animal.sexo === 'hembra'),
+    machosProximos:  proximos.filter(p => p.animal.sexo === 'macho'),
+  }
+}
+
 /**
  * Jerarquía de decisión:
  * 1. No romper mínimos  2. No saturar  3. Mayor score (cumplimiento + sanidad + preparación)
