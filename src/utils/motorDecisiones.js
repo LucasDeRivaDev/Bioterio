@@ -1618,8 +1618,26 @@ export function calcularProyeccionAvanzada(
     const criasNacidas = Math.round(totalPartos * promCrias)
     // Mortalidad natural = nacidos - sobreviven (la diferencia ya aplicada en criasDePartos)
     const mortalidadNatural = Math.max(0, criasNacidas - criasDePartos)
-    // Sacrificios proyectados: estimación histórica 15% del stock que sobrevive
-    const sacrificiosEstimados = Math.round(totalCrias * 0.15)
+
+    // Sacrificios estimados: animales en stock actual que superan edad útil máxima
+    // (>MADUREZ×2: ya no son candidatos valiosos para renovación, alta prob. de sacrificio)
+    const EDAD_UTIL_MAX = MADUREZ * 2
+    let sacrificiosDeStockActual = 0
+    for (const jaula of jaulasBio) {
+      const c = camadas.find(cc => cc.id === jaula.camada_id)
+      if (!c || !c.fecha_nacimiento || c.failure_flag) continue
+      const diasHoy = difDias(c.fecha_nacimiento, hoyDate)
+      const diasFin = difDias(c.fecha_nacimiento, fechaFin)
+      const vivos = (jaula.total || 0) - (sacrPorCamada[jaula.camada_id] || 0) - (entrPorCamada[jaula.camada_id] || 0)
+      if (vivos <= 0) continue
+      // Cruzan umbral de edad útil dentro de este horizonte → sacrificio probable
+      if (diasHoy < EDAD_UTIL_MAX && diasFin >= EDAD_UTIL_MAX) {
+        sacrificiosDeStockActual += vivos
+      }
+    }
+    // + tasa base de nuevas crías (entregas a investigadores / descarte natural)
+    const sacrificiosEstimados = sacrificiosDeStockActual + Math.round(totalCrias * 0.20)
+
     // Candidatos en stock que pasan a reproductores (salen del stock)
     const promocionesEstimadas = candidatosMaduran
     // Stock neto del período = entradas - salidas estimadas
@@ -1846,6 +1864,13 @@ export function generarAccionesHoyPlanificacion(
         ? 'Hay candidatos listos en stock — promover inmediatamente para cubrir déficit actual'
         : 'Sin candidatos listos — iniciar apareamiento de emergencia',
       accion: hayPromo ? 'promover_stock' : 'iniciar_apareamiento',
+      razones: [
+        `Solo hay ${machosActual} macho(s) activo(s) — mínimo requerido: ${minimosCfg.machos_colonia}`,
+        hayPromo
+          ? 'Hay candidatos maduros en stock que pueden promoverse inmediatamente'
+          : 'No hay candidatos listos en stock — iniciar apareamiento de emergencia para generar futuros reproductores',
+        'Un déficit activo compromete toda la capacidad reproductiva del bioterio',
+      ],
     })
   }
 
@@ -1859,6 +1884,13 @@ export function generarAccionesHoyPlanificacion(
         ? 'Hay candidatas listas en stock — promover para cubrir déficit actual'
         : 'Sin candidatas listas — priorizar apareamientos',
       accion: hayPromo ? 'promover_stock' : 'iniciar_apareamiento',
+      razones: [
+        `Solo hay ${hembrasActual} hembra(s) activa(s) — mínimo requerido: ${minimosCfg.hembras_colonia}`,
+        hayPromo
+          ? 'Hay candidatas maduras en stock disponibles para promoción'
+          : 'Sin candidatas disponibles — priorizar nuevos apareamientos',
+        'Las hembras son el factor limitante de producción: sin mínimo cubierto no hay camadas',
+      ],
     })
   }
 
@@ -1875,6 +1907,14 @@ export function generarAccionesHoyPlanificacion(
         titulo:    `Reservar ${sugsPendientes.length} candidato(s) en stock`,
         descripcion: 'Madurarán pronto — reservarlos antes de que sean entregados o sacrificados (déficit proyectado en 30-60d)',
         accion: 'reservar_candidatos',
+        razones: [
+          data30?.deficit.hayDeficit
+            ? 'Se proyecta déficit de reproductores en los próximos 30 días'
+            : 'Se proyecta déficit de reproductores en los próximos 60 días',
+          `${sugsPendientes.length} candidato(s) en stock maduran pronto y pueden cubrir el déficit`,
+          'Si se sacrifican o entregan antes de madurar, se perderá la oportunidad de renovación',
+          'Reservarlos en el módulo de Planificación los protege de operaciones de stock',
+        ],
       })
     }
   }
@@ -1888,6 +1928,11 @@ export function generarAccionesHoyPlanificacion(
       titulo:    `Iniciar apareamiento (${libres} hembra${libres > 1 ? 's' : ''} libre${libres > 1 ? 's' : ''})`,
       descripcion: 'Hay hembras activas sin aparear — iniciar para generar nueva camada y mantener producción',
       accion: 'iniciar_apareamiento',
+      razones: [
+        `${libres} hembra(s) activa(s) disponibles y ${machosActual} macho(s) activo(s) — condiciones óptimas para aparear`,
+        'Ningún apareamiento activo en curso — la producción de crías se detendrá si no se actúa',
+        'Cada ciclo sin apareamiento retrasa la disponibilidad de stock futuro',
+      ],
     })
   }
 
@@ -1903,6 +1948,11 @@ export function generarAccionesHoyPlanificacion(
       titulo:    `Planificar reemplazo (${enAlerta.length} reproductor${enAlerta.length > 1 ? 'es' : ''} en alerta)`,
       descripcion: 'Alcanzarán el límite de 270d próximamente — reservar candidatos para renovación antes de perder capacidad reproductiva',
       accion: 'reservar_renovacion',
+      razones: [
+        `${enAlerta.map(a => `${a.codigo} (${difDias(a.fecha_nacimiento, hoyDate)}d)`).join(', ')}`,
+        'El límite de edad útil reproductiva es 270 días — después de eso la fertilidad cae notoriamente',
+        'Reservar el candidato de reemplazo ahora garantiza continuidad sin gap de producción',
+      ],
     })
   }
 
@@ -1913,6 +1963,11 @@ export function generarAccionesHoyPlanificacion(
       titulo:    'Colonia estable',
       descripcion: 'Sin déficits proyectados en ningún horizonte. Continuar monitoreo regular.',
       accion: null,
+      razones: [
+        'Reproductores dentro del rango mínimo en todos los horizontes temporales',
+        'Sin reproductores próximos al límite de edad',
+        'Sin déficits proyectados a 30, 60, 90 o 180 días',
+      ],
     })
   }
 
@@ -2012,19 +2067,49 @@ export function calcularIndiceSostenibilidad({
 
   const scoreClamp = Math.max(0, Math.min(100, Math.round(score)))
 
+  // Condiciones que impiden mostrar 🟢 aunque el score sea alto
+  const haySaturacionAlta = proyeccionAvanzada?.horizontes?.[90]?.jaulas.saturacion === 'alta'
+  const hayRenovUrgente   = (motorRenovacion?.accionesRecomendadas ?? []).some(a => a.prioridad <= 1)
+
   let nivel, emoji, color, bg, borde
-  if (scoreClamp >= 75) {
-    nivel = 'Sostenible';    emoji = '🟢'; color = '#00e676'
-    bg = 'rgba(0,230,118,0.08)'; borde = 'rgba(0,230,118,0.25)'
+  if (scoreClamp >= 75 && !hayDeficit && !haySaturacionAlta && !hayRenovUrgente) {
+    nivel = 'Estable';                   emoji = '🟢'; color = '#00e676'
+    bg = 'rgba(0,230,118,0.08)';         borde = 'rgba(0,230,118,0.25)'
   } else if (scoreClamp >= 50) {
-    nivel = 'Intervención';  emoji = '🟡'; color = '#ffb300'
-    bg = 'rgba(255,179,0,0.08)'; borde = 'rgba(255,179,0,0.25)'
+    nivel = 'Estable con intervención';  emoji = '🟡'; color = '#ffb300'
+    bg = 'rgba(255,179,0,0.08)';         borde = 'rgba(255,179,0,0.25)'
+  } else if (scoreClamp >= 30) {
+    nivel = 'Riesgo futuro';             emoji = '🟠'; color = '#ff9100'
+    bg = 'rgba(255,145,0,0.08)';         borde = 'rgba(255,145,0,0.25)'
   } else {
-    nivel = 'Riesgo';        emoji = '🔴'; color = '#ff6b80'
-    bg = 'rgba(255,61,87,0.08)'; borde = 'rgba(255,61,87,0.25)'
+    nivel = 'Crítico';                   emoji = '🔴'; color = '#ff6b80'
+    bg = 'rgba(255,61,87,0.08)';         borde = 'rgba(255,61,87,0.25)'
   }
 
-  return { score: scoreClamp, nivel, emoji, color, bg, borde, detalle, hayDeficit }
+  // Agrupación estructural (base de la colonia) vs productivo (rendimiento actual)
+  const grupos = {
+    estructural: {
+      score: detalle.genetica + detalle.renovacion + detalle.saturacion + detalle.capacidad,
+      max: 60,
+      items: [
+        { key: 'genetica',   label: 'Genética',   valor: detalle.genetica,   max: 20, color: '#40c4ff' },
+        { key: 'renovacion', label: 'Renovación', valor: detalle.renovacion, max: 20, color: '#a78bfa' },
+        { key: 'saturacion', label: 'Saturación', valor: detalle.saturacion, max: 10, color: '#ce93d8' },
+        { key: 'capacidad',  label: 'Capacidad',  valor: detalle.capacidad,  max: 10, color: '#ffd740' },
+      ],
+    },
+    productivo: {
+      score: detalle.produccion + detalle.sanidad + detalle.pedidos,
+      max: 40,
+      items: [
+        { key: 'produccion', label: 'Producción', valor: detalle.produccion, max: 15, color: '#00e676' },
+        { key: 'sanidad',    label: 'Sanidad',    valor: detalle.sanidad,    max: 15, color: '#ff9100' },
+        { key: 'pedidos',    label: 'Pedidos',    valor: detalle.pedidos,    max: 10, color: '#40c4ff' },
+      ],
+    },
+  }
+
+  return { score: scoreClamp, nivel, emoji, color, bg, borde, detalle, hayDeficit, grupos }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -297,8 +297,10 @@ function PanelMotorUnificado({ motorUnificado }) {
                   </span>
                 </div>
                 {accion.resolucionPosible
-                  ? <Chip color="#00e676">✓ Candidato listo</Chip>
-                  : <Chip color="#ff6b80">Sin candidato</Chip>}
+                  ? <Chip color={accion.candidato?.tiempoHastaUtilidad === 0 ? '#00e676' : '#ffb300'}>
+                      {accion.candidato?.tiempoHastaUtilidad === 0 ? '✓ Listo ahora' : `⏳ en ${accion.candidato?.tiempoHastaUtilidad}d`}
+                    </Chip>
+                  : <Chip color="#ff9100">Candidatos madurando</Chip>}
               </div>
 
               {/* Motivos */}
@@ -318,8 +320,8 @@ function PanelMotorUnificado({ motorUnificado }) {
                   {accion.impactoEnIndice && <Chip color="#00e676">{accion.impactoEnIndice}</Chip>}
                 </div>
               ) : (
-                <div style={{ fontSize: 11, color: '#ffb300', background: 'rgba(255,179,0,0.06)', borderRadius: 8, padding: '6px 10px' }}>
-                  ⏳ Esperando nuevas camadas para cubrir esta posición
+                <div style={{ fontSize: 11, color: '#ff9100', background: 'rgba(255,145,0,0.06)', borderRadius: 8, padding: '6px 10px' }}>
+                  ⏳ Sin candidatos maduros — iniciar apareamiento o esperar camadas en curso
                 </div>
               )}
             </div>
@@ -737,14 +739,16 @@ export default function PlanificacionColonia() {
   }
 
   const nivelEst = nivelEstabilidad(indiceEstabilidad.score)
-  const [modoAvanzado, setModoAvanzado] = useState(false)
-  const [proyExpand, setProyExpand]     = useState(false)
+  const [modoAvanzado, setModoAvanzado]       = useState(false)
+  const [proyExpand, setProyExpand]           = useState(false)
+  const [accionExpandida, setAccionExpandida] = useState(null)
 
-  // ── Capacidad de jaulas ─────────────────────────────────────────────────
-  const jaulasAhora = stockReal.stock.bloques.length
-  const h180        = proyeccionAvanzada.horizontes[180]
-  const jaulasFut   = jaulasAhora + (h180?.jaulas?.nuevas ?? 0)
-  const satFut      = h180?.jaulas?.saturacion ?? 'normal'
+  // ── Capacidad de jaulas — usa stock NETO (no nacimientos brutos) ──────────
+  const jaulasAhora     = stockReal.stock.bloques.length
+  const h180            = proyeccionAvanzada.horizontes[180]
+  const jaulasNetasNew  = Math.max(0, Math.ceil((h180?.stockNeto?.neto ?? 0) / 10))
+  const jaulasFut       = jaulasAhora + jaulasNetasNew
+  const satFut          = jaulasFut > 30 ? 'alta' : jaulasFut > 20 ? 'media' : 'baja'
 
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-5xl mx-auto" style={{ color: tema.textPrimary }}>
@@ -785,22 +789,51 @@ export default function PlanificacionColonia() {
               {indiceSostenibilidad.emoji} {indiceSostenibilidad.nivel}
             </div>
 
-            {/* 5 factores en fila compacta */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {[
-                { label: 'Genética',   valor: indiceSostenibilidad.detalle.genetica,   max: 20, color: '#40c4ff',  emoji: indiceSostenibilidad.detalle.genetica   >= 14 ? '🟢' : indiceSostenibilidad.detalle.genetica   >= 8  ? '🟡' : '🔴' },
-                { label: 'Renovación', valor: indiceSostenibilidad.detalle.renovacion, max: 20, color: '#a78bfa',  emoji: indiceSostenibilidad.detalle.renovacion >= 14 ? '🟢' : indiceSostenibilidad.detalle.renovacion >= 8  ? '🟡' : '🔴' },
-                { label: 'Saturación', valor: indiceSostenibilidad.detalle.saturacion, max: 10, color: '#ce93d8',  emoji: indiceSostenibilidad.detalle.saturacion >= 7  ? '🟢' : indiceSostenibilidad.detalle.saturacion >= 4  ? '🟡' : '🔴' },
-                { label: 'Sanidad',    valor: indiceSostenibilidad.detalle.sanidad,    max: 15, color: '#ff9100',  emoji: indiceSostenibilidad.detalle.sanidad    >= 10 ? '🟢' : indiceSostenibilidad.detalle.sanidad    >= 6  ? '🟡' : '🔴' },
-                { label: 'Producción', valor: indiceSostenibilidad.detalle.produccion, max: 15, color: '#00e676',  emoji: indiceSostenibilidad.detalle.produccion >= 10 ? '🟢' : indiceSostenibilidad.detalle.produccion >= 6  ? '🟡' : '🔴' },
-              ].map(({ label, valor, max, color, emoji }) => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 12, width: 14 }}>{emoji}</span>
-                  <span style={{ fontSize: 11, color: tema.textMuted, width: 72, flexShrink: 0 }}>{label}</span>
-                  <div style={{ flex: 1 }}><BarraProgreso valor={valor} max={max} color={color} height={4} /></div>
-                  <span style={{ fontSize: 10, color, fontFamily: 'monospace', width: 36, textAlign: 'right', flexShrink: 0 }}>{valor}/{max}</span>
+            {/* Factores agrupados: Estructural / Productivo */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* ESTRUCTURAL */}
+              <div>
+                <div style={{ fontSize: 9, color: tema.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5, display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Estructural</span>
+                  <span style={{ color: '#a78bfa', fontFamily: 'monospace' }}>{indiceSostenibilidad.grupos.estructural.score}/{indiceSostenibilidad.grupos.estructural.max}</span>
                 </div>
-              ))}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {indiceSostenibilidad.grupos.estructural.items.map(({ key, label, valor, max, color }) => {
+                    const pct  = valor / max
+                    const ico  = pct >= 0.7 ? '🟢' : pct >= 0.4 ? '🟡' : '🔴'
+                    const h    = (key === 'renovacion' || key === 'saturacion') ? 6 : 4
+                    return (
+                      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 12, width: 14 }}>{ico}</span>
+                        <span style={{ fontSize: 11, color: tema.textMuted, width: 72, flexShrink: 0 }}>{label}</span>
+                        <div style={{ flex: 1 }}><BarraProgreso valor={valor} max={max} color={color} height={h} /></div>
+                        <span style={{ fontSize: 10, color, fontFamily: 'monospace', width: 36, textAlign: 'right', flexShrink: 0 }}>{valor}/{max}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+              {/* PRODUCTIVO */}
+              <div style={{ borderTop: `1px solid ${tema.bgCardBorde}`, paddingTop: 6 }}>
+                <div style={{ fontSize: 9, color: tema.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5, display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Productivo</span>
+                  <span style={{ color: '#00e676', fontFamily: 'monospace' }}>{indiceSostenibilidad.grupos.productivo.score}/{indiceSostenibilidad.grupos.productivo.max}</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {indiceSostenibilidad.grupos.productivo.items.map(({ key, label, valor, max, color }) => {
+                    const pct = valor / max
+                    const ico = pct >= 0.7 ? '🟢' : pct >= 0.4 ? '🟡' : '🔴'
+                    return (
+                      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 12, width: 14 }}>{ico}</span>
+                        <span style={{ fontSize: 11, color: tema.textMuted, width: 72, flexShrink: 0 }}>{label}</span>
+                        <div style={{ flex: 1 }}><BarraProgreso valor={valor} max={max} color={color} height={4} /></div>
+                        <span style={{ fontSize: 10, color, fontFamily: 'monospace', width: 36, textAlign: 'right', flexShrink: 0 }}>{valor}/{max}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -842,19 +875,44 @@ export default function PlanificacionColonia() {
             {accionesHoy.map((accion, i) => {
               const colorMapa = { 0: '#ff6b80', 1: '#ff9100', 2: '#ffb300', 3: '#ffd740', 4: '#00e676' }
               const labelMapa = { 0: 'Urgente', 1: 'Esta semana', 2: 'Próximamente', 3: 'Preventivo', 4: 'Opcional' }
-              const color = colorMapa[accion.prioridad] ?? '#c9d4e0'
+              const color     = colorMapa[accion.prioridad] ?? '#c9d4e0'
+              const expandKey = `hoy-${i}`
+              const abierto   = accionExpandida === expandKey
+              const tieneRazones = accion.razones?.length > 0
               return (
                 <div key={i} style={{
-                  display: 'flex', alignItems: 'flex-start', gap: 10,
                   background: `${color}07`, border: `1px solid ${color}22`,
                   borderRadius: 10, padding: '10px 12px',
                 }}>
-                  <span style={{ fontSize: 16, flexShrink: 0 }}>{accion.icono}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color }}>{accion.titulo}</div>
-                    <div style={{ fontSize: 11, color: tema.textSecondary, marginTop: 2 }}>{accion.descripcion}</div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <span style={{ fontSize: 16, flexShrink: 0 }}>{accion.icono}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color }}>{accion.titulo}</div>
+                      <div style={{ fontSize: 11, color: tema.textSecondary, marginTop: 2 }}>{accion.descripcion}</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                      <Chip color={color}>{labelMapa[accion.prioridad] ?? 'Info'}</Chip>
+                      {tieneRazones && (
+                        <button
+                          onClick={() => setAccionExpandida(abierto ? null : expandKey)}
+                          style={{ background: 'transparent', border: `1px solid ${color}30`, borderRadius: 6, padding: '2px 6px', fontSize: 10, color, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}
+                        >
+                          {abierto ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+                          ¿Por qué?
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <Chip color={color}>{labelMapa[accion.prioridad] ?? 'Info'}</Chip>
+                  {abierto && tieneRazones && (
+                    <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${color}20`, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {accion.razones.map((r, j) => (
+                        <div key={j} style={{ fontSize: 11, color: tema.textSecondary, display: 'flex', gap: 8 }}>
+                          <span style={{ color, flexShrink: 0 }}>→</span>
+                          <span>{r}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -900,10 +958,20 @@ export default function PlanificacionColonia() {
                     <span style={{ color: '#00e676', fontWeight: 600 }}>{d.partos.total}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: tema.textMuted }}>
-                    <span>crías</span>
-                    <span style={{ color: '#40c4ff', fontWeight: 600 }}>~{d.crias.total}</span>
+                    <span>nacimientos</span>
+                    <span style={{ color: '#40c4ff', fontWeight: 600 }}>+{d.stockNeto?.nacidos ?? d.crias.total}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: tema.textMuted }}>
+                    <span>sacrificios</span>
+                    <span style={{ color: '#ff9100', fontWeight: 600 }}>−{d.stockNeto?.sacrificiosEstimados ?? 0}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: tema.textMuted, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 3 }}>
+                    <span style={{ fontWeight: 700 }}>neto</span>
+                    <span style={{ color: (d.stockNeto?.neto ?? 0) >= 0 ? '#a78bfa' : '#ff6b80', fontWeight: 800 }}>
+                      {(d.stockNeto?.neto ?? 0) >= 0 ? '+' : ''}{d.stockNeto?.neto ?? 0}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: tema.textMuted }}>
                     <span>saturación</span>
                     <span style={{ color: sat ? '#ff6b80' : '#c9d4e0', fontWeight: 600 }}>{sat ? '⚠ Alta' : 'OK'}</span>
                   </div>
@@ -911,12 +979,6 @@ export default function PlanificacionColonia() {
                     <div style={{ fontSize: 9, fontWeight: 700, color: d.deficit.puedeCubrirConStock ? '#ffb300' : '#ff6b80', marginTop: 2, textAlign: 'center', background: d.deficit.puedeCubrirConStock ? 'rgba(255,179,0,0.1)' : 'rgba(255,61,87,0.1)', borderRadius: 4, padding: '1px 4px' }}>
                       {d.deficit.machos > 0 ? `−${d.deficit.machos}♂` : ''}{d.deficit.machos > 0 && d.deficit.hembras > 0 ? ' ' : ''}{d.deficit.hembras > 0 ? `−${d.deficit.hembras}♀` : ''}
                       {d.deficit.puedeCubrirConStock ? ' (cub.)' : ' ⚠'}
-                    </div>
-                  )}
-                  {d.stockNeto && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: tema.textMuted, borderTop: '1px solid rgba(255,255,255,0.04)', marginTop: 2, paddingTop: 2 }}>
-                      <span>neto</span>
-                      <span style={{ color: d.stockNeto.neto > 0 ? '#a78bfa' : '#ff6b80', fontWeight: 700 }}>~{d.stockNeto.neto}</span>
                     </div>
                   )}
                 </div>
@@ -971,9 +1033,9 @@ export default function PlanificacionColonia() {
         <SeccionTitulo icono={<Package size={16} color="#a78bfa" />} titulo="Capacidad" subtitulo="Jaulas actuales vs proyectadas a 180d" />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
           {[
-            { label: 'Ahora',  valor: jaulasAhora, sub: 'jaulas activas',  color: '#a78bfa' },
-            { label: '+ 180d', valor: `+${h180?.jaulas?.nuevas ?? 0}`, sub: 'nuevas est.',  color: '#40c4ff' },
-            { label: 'Total',  valor: jaulasFut,   sub: satFut === 'alta' ? '⚠ Saturación alta' : 'proyectado', color: satFut === 'alta' ? '#ff6b80' : '#00e676' },
+            { label: 'Ahora',  valor: jaulasAhora,        sub: 'jaulas activas',                  color: '#a78bfa' },
+            { label: '+ 180d', valor: `+${jaulasNetasNew}`, sub: `neto (~${h180?.stockNeto?.neto ?? 0} animales)`, color: '#40c4ff' },
+            { label: 'Total',  valor: jaulasFut,           sub: satFut === 'alta' ? '⚠ Saturación' : satFut === 'media' ? '⚡ Media' : 'proyectado', color: satFut === 'alta' ? '#ff6b80' : satFut === 'media' ? '#ffb300' : '#00e676' },
           ].map(({ label, valor, sub, color }) => (
             <div key={label} style={{ textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '10px' }}>
               <div style={{ fontSize: 10, color: tema.textMuted, marginBottom: 4 }}>{label}</div>
@@ -982,6 +1044,15 @@ export default function PlanificacionColonia() {
             </div>
           ))}
         </div>
+        {/* Desglose neto 180d */}
+        {h180?.stockNeto && (
+          <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <Chip color="#40c4ff">+{h180.stockNeto.nacidos} nacimientos</Chip>
+            <Chip color="#ff9100">−{h180.stockNeto.sacrificiosEstimados} sacrificios</Chip>
+            <Chip color="#a78bfa">−{h180.stockNeto.promocionesEstimadas} reemplazos</Chip>
+            <Chip color={h180.stockNeto.neto >= 0 ? '#00e676' : '#ff6b80'}>neto {h180.stockNeto.neto >= 0 ? '+' : ''}{h180.stockNeto.neto}</Chip>
+          </div>
+        )}
         {satFut === 'alta' && (
           <div style={{ marginTop: 10, fontSize: 11, color: '#ff6b80', background: 'rgba(255,61,87,0.07)', border: '1px solid rgba(255,61,87,0.2)', borderRadius: 8, padding: '7px 10px' }}>
             ⚠ Riesgo de saturación en 180d — considerar incrementar sacrificios o reducir apareamientos
@@ -1046,16 +1117,42 @@ export default function PlanificacionColonia() {
                     : <Chip color="#ff6b80">Déficit {deficit}</Chip>}
 
                   {/* Candidato a promover */}
-                  {cand && (
-                    <div style={{ fontSize: 11, color: cand.listo ?? cand.tiempoHastaUtilidad === 0 ? '#00e676' : '#ffb300', fontWeight: 600 }}>
-                      → Promover {cand.machos ?? 0}♂{cand.hembras ?? 0}♀
-                      {(cand.tiempoHastaUtilidad ?? 0) === 0
-                        ? ' (listo)'
-                        : ` en ${cand.tiempoHastaUtilidad}d`}
+                  {cand && (cand.tiempoHastaUtilidad ?? 0) === 0 && (
+                    <div style={{ fontSize: 11, color: '#00e676', fontWeight: 700 }}>
+                      → Promover ahora: {cand.machos ?? 0}♂ {cand.hembras ?? 0}♀
+                    </div>
+                  )}
+                  {cand && (cand.tiempoHastaUtilidad ?? 0) > 0 && (
+                    <div style={{ fontSize: 11, color: '#ffb300', fontWeight: 600 }}>
+                      ⏳ Candidato preventivo en {cand.tiempoHastaUtilidad}d
+                      {' · '}usable{' '}
+                      {(() => {
+                        const d = new Date(); d.setDate(d.getDate() + cand.tiempoHastaUtilidad)
+                        return formatFecha(d.toISOString().slice(0, 10))
+                      })()}
                     </div>
                   )}
                   {!cand && !ok && (
-                    <span style={{ fontSize: 11, color: '#ffb300' }}>⚠ Sin candidato — aparear de emergencia</span>
+                    <span style={{ fontSize: 11, color: (() => {
+                      const prox = candidatos.find(c =>
+                        (sexo === 'macho' ? (c.machos || 0) > 0 : (c.hembras || 0) > 0) &&
+                        c.tiempoHastaUtilidad > 0
+                      )
+                      return prox ? '#ffb300' : '#ff9100'
+                    })() }}>
+                      {(() => {
+                        const prox = candidatos.find(c =>
+                          (sexo === 'macho' ? (c.machos || 0) > 0 : (c.hembras || 0) > 0) &&
+                          c.tiempoHastaUtilidad > 0
+                        )
+                        if (prox) {
+                          const fecha = new Date()
+                          fecha.setDate(fecha.getDate() + prox.tiempoHastaUtilidad)
+                          return `⏳ Candidatos madurando — listo en ${prox.tiempoHastaUtilidad}d (${formatFecha(fecha.toISOString().slice(0, 10))})`
+                        }
+                        return '⚠ Sin candidatos — aparear de emergencia'
+                      })()}
+                    </span>
                   )}
 
                   {/* Próximos al límite */}
