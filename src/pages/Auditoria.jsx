@@ -1,9 +1,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Auditoria.jsx — Comparación histórica e inteligencia automática de la colonia
+// Auditoria.jsx — Sistema estratégico de auditoría histórica de colonia
+// Rediseño v2: interpretativo, contextual, ejecutivo y mobile-first
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, useCallback } from 'react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts'
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  LineChart, Line, CartesianGrid,
+} from 'recharts'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../context/ThemeContext'
 import { useBioterioActivo } from '../context/BioterioActivoContext'
@@ -13,212 +17,471 @@ import {
   calcularMetricasSanidad, calcularMetricasAmbiente, calcularMetricasGenetica,
   calcularMetricasRenovacion, calcularMetricasHibridos, calcularTendencias,
   calcularIndiceGlobal, calcularIndiceEstabilidad,
-  calcularIndiceEvolucion, proyectarTendenciaLineal,
-  compararPeriodos, detectarPatronesGlobales,
-  motorCausalHistorico, generarResumenAutomatico, generarRecomendaciones,
+  proyectarTendenciaLineal, compararPeriodos,
+  motorCausalHistorico,
+  // v2 — motor estratégico
+  detectarPerfilOperativo, interpretarCambioContextual,
+  generarAlertasReales, calcularIndiceSustentabilidad,
+  etiquetaEstado, generarAccionesRecomendadas,
 } from '../utils/auditoria'
 
-// ── Helpers visuales ─────────────────────────────────────────────────────────
+// ── Constantes ────────────────────────────────────────────────────────────────
 const BIOTERIOS = [
-  { id: 'ratas',           label: 'Ratas',         icon: '🐀' },
-  { id: 'ratones_balbc',   label: 'BALB/c',        icon: '🐁' },
-  { id: 'ratones_c57',     label: 'C57BL/6',       icon: '🐁' },
-  { id: 'ratones_hibridos', label: 'Híbridos F1',  icon: '🧬' },
+  { id: 'ratas',            label: 'Ratas',       icon: '🐀' },
+  { id: 'ratones_balbc',    label: 'BALB/c',      icon: '🐁' },
+  { id: 'ratones_c57',      label: 'C57BL/6',     icon: '🐁' },
+  { id: 'ratones_hibridos', label: 'Híbridos F1', icon: '🧬' },
 ]
 
-function señalColor(senal) {
-  if (!senal || senal === 'neutro' || senal === 'estable') return '#8a9bb0'
-  if (senal.includes('mejora'))    return '#00e676'
-  if (senal.includes('deterioro')) return '#ff6b80'
-  return '#8a9bb0'
-}
+const TABS_TECNICO = ['Reproducción', 'Producción', 'Sanidad', 'Ambiente', 'Genética', 'Renovación', 'Híbridos F1']
 
-function señalIcono(senal, esNumero = true) {
-  if (!senal || senal === 'neutro') return '—'
-  if (senal === 'estable')          return '→'
-  if (senal.includes('mejora'))     return '↑'
-  if (senal.includes('deterioro'))  return '↓'
-  return '→'
-}
+// ── Componentes visuales auxiliares ──────────────────────────────────────────
 
-function DeltaBadge({ comp, formato = (v) => v?.toFixed != null ? v.toFixed(1) : String(v ?? '—') }) {
-  if (!comp) return null
-  const color = señalColor(comp.senal)
-  const icono = señalIcono(comp.senal)
-  const sign  = comp.delta > 0 ? '+' : ''
+function GaugeCircle({ valor, color = '#00e676', size = 88 }) {
+  const pct   = Math.max(0, Math.min(100, valor ?? 0))
+  const r     = size * 0.4
+  const circ  = 2 * Math.PI * r
+  const cx    = size / 2
   return (
-    <span
-      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-xs font-mono font-semibold"
-      style={{ background: `${color}15`, color, border: `1px solid ${color}30` }}
-    >
-      {icono} {sign}{formato(comp.delta)}
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle cx={cx} cy={cx} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
+        <circle
+          cx={cx} cy={cx} r={r} fill="none"
+          stroke={color} strokeWidth="8"
+          strokeDasharray={circ}
+          strokeDashoffset={circ * (1 - pct / 100)}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${cx} ${cx})`}
+          style={{ filter: `drop-shadow(0 0 5px ${color}50)`, transition: 'stroke-dashoffset 0.7s ease' }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="font-bold font-mono" style={{ color, fontSize: size * 0.22 }}>{pct}</span>
+        <span style={{ color: '#4a5f7a', fontSize: size * 0.12 }}>/100</span>
+      </div>
+    </div>
+  )
+}
+
+function MiniKpi({ label, valor, color = '#c9d4e0' }) {
+  return (
+    <div className="text-center px-3 py-2">
+      <div className="text-sm font-bold font-mono" style={{ color }}>{valor}</div>
+      <div className="text-xs mt-0.5" style={{ color: '#6a7f9a' }}>{label}</div>
+    </div>
+  )
+}
+
+function ColapsableSeccion({ titulo, children, defaultOpen = false }) {
+  const { tema } = useTheme()
+  const [abierto, setAbierto] = useState(defaultOpen)
+  return (
+    <div className="rounded-2xl overflow-hidden" style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}>
+      <button
+        onClick={() => setAbierto(v => !v)}
+        className="w-full flex items-center justify-between px-5 py-3.5 text-left"
+        style={{ borderBottom: abierto ? `1px solid ${tema.bgCardBorde}` : 'none' }}
+      >
+        <span className="text-sm font-bold" style={{ color: tema.textPrimary }}>{titulo}</span>
+        <span style={{ color: '#4a5f7a', fontSize: 18, lineHeight: 1 }}>{abierto ? '−' : '+'}</span>
+      </button>
+      {abierto && <div className="p-5">{children}</div>}
+    </div>
+  )
+}
+
+function NivelBadge({ nivel }) {
+  const cfg = {
+    critico:    { bg: 'rgba(255,61,87,0.1)',  borde: 'rgba(255,61,87,0.3)',  color: '#ff6b80' },
+    importante: { bg: 'rgba(255,152,0,0.1)',  borde: 'rgba(255,152,0,0.3)', color: '#ff9800' },
+    atencion:   { bg: 'rgba(255,179,0,0.08)', borde: 'rgba(255,179,0,0.25)',color: '#ffb300' },
+  }[nivel] ?? { bg: 'rgba(138,155,176,0.08)', borde: 'rgba(138,155,176,0.2)', color: '#8a9bb0' }
+  return (
+    <span className="px-2 py-0.5 rounded-md text-xs font-semibold uppercase tracking-wide"
+      style={{ background: cfg.bg, border: `1px solid ${cfg.borde}`, color: cfg.color }}>
+      {nivel}
     </span>
   )
 }
 
-function MetricaRow({ label, comp, formato }) {
-  if (!comp) return null
-  const color = señalColor(comp.senal)
-  // % de cambio relativo (B - A) / |A| × 100
-  const pct = comp.A != null && comp.A !== 0 && comp.delta != null
-    ? Math.round((comp.delta / Math.abs(comp.A)) * 100)
-    : null
-  const pctStr = pct != null ? (pct > 0 ? '+' : '') + pct + '%' : null
+// Tabla de métricas comparativas (para sección técnica)
+function FilaMetrica({ label, vA, vB, senal, formato = v => v?.toFixed?.(1) ?? '—' }) {
+  const { tema } = useTheme()
+  const colorSenal = senal?.includes('mejora') ? '#00e676' : senal?.includes('deterioro') ? '#ff6b80' : '#8a9bb0'
+  const icono      = senal?.includes('mejora') ? '↑' : senal?.includes('deterioro') ? '↓' : '→'
+  const delta      = vB != null && vA != null ? vB - vA : null
+  const pct        = delta != null && vA !== 0 ? Math.round((delta / Math.abs(vA)) * 100) : null
   return (
-    <div className="flex items-center gap-2 py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+    <div className="flex items-center gap-2 py-2" style={{ borderBottom: `1px solid ${tema.bgCardBorde}30` }}>
       <span className="text-xs flex-1 min-w-0 truncate" style={{ color: '#8a9bb0' }}>{label}</span>
-      <span className="text-xs font-mono w-14 text-right" style={{ color: '#4a5f7a' }}>
-        {formato ? formato(comp.A) : (comp.A?.toFixed?.(1) ?? '—')}
-      </span>
+      <span className="text-xs font-mono w-14 text-right" style={{ color: '#4a5f7a' }}>{vA != null ? formato(vA) : '—'}</span>
       <span className="text-xs w-4 text-center" style={{ color: '#4a5f7a' }}>→</span>
-      <span className="text-xs font-mono w-14 text-right" style={{ color: '#c9d4e0' }}>
-        {formato ? formato(comp.B) : (comp.B?.toFixed?.(1) ?? '—')}
+      <span className="text-xs font-mono w-14 text-right" style={{ color: tema.textPrimary }}>{vB != null ? formato(vB) : '—'}</span>
+      <span className="text-xs font-mono font-bold w-14 text-right" style={{ color: pct != null && pct !== 0 ? colorSenal : '#4a5f7a' }}>
+        {pct != null ? (pct > 0 ? '+' : '') + pct + '%' : '—'}
       </span>
-      {/* Cambio % */}
-      <span className="text-xs font-mono font-bold w-12 text-right" style={{ color: pct != null && pct !== 0 ? color : '#4a5f7a' }}>
-        {pctStr ?? '—'}
-      </span>
-      <div className="w-14 flex justify-end">
-        <DeltaBadge comp={comp} formato={formato ? (v) => formato(Math.abs(v)) : undefined} />
-      </div>
+      <span className="w-5 text-center text-sm" style={{ color: colorSenal }}>{icono}</span>
     </div>
   )
 }
 
-// ── ¿El bioterio mejora o deteriora? — veredicto por dimensión ───────────────
-function VeredictoPanel({ comp, mA, mB }) {
+// ── Sección técnica colapsable ────────────────────────────────────────────────
+function SeccionTecnica({ resultado, bioterio }) {
   const { tema } = useTheme()
+  const { mA, mB, comp, tendencias } = resultado
+  const [tab, setTab]         = useState(0)
+  const [horizonte, setHz]    = useState(12)
 
-  function veredictoDim(señales) {
-    const m = señales.filter(s => s?.includes('mejora')).length
-    const d = señales.filter(s => s?.includes('deterioro')).length
-    if (d > m) return { emoji: '🔴', label: 'Deterioro', color: '#ff6b80', score: -1 }
-    if (m > d) return { emoji: '🟢', label: 'Mejora',    color: '#00e676', score:  1 }
-    return         { emoji: '🟡', label: 'Estable',   color: '#ffb300', score:  0 }
-  }
+  const rA = mA.repro, rB = mB.repro
+  const pA = mA.prod,  pB = mB.prod
+  const sA = mA.sanidad, sB = mB.sanidad
+  const aA = mA.ambiente, aB = mB.ambiente
+  const rnA = mA.renovacion, rnB = mB.renovacion
 
-  const dimensiones = [
-    { label: 'Reproducción', señales: [comp.fertilidad?.senal, comp.supervivencia?.senal, comp.tamanoCamada?.senal, comp.eficienciaRepro?.senal] },
-    { label: 'Producción',   señales: [comp.nacidos?.senal, comp.destetados?.senal, comp.eficienciaProd?.senal] },
-    { label: 'Sanidad',      señales: [comp.indiceSanitario?.senal, comp.graves?.senal, comp.malformaciones?.senal] },
-    { label: 'Genética',     señales: [comp.fMedia?.senal, comp.diversidad?.senal] },
-    { label: 'Ambiente',     señales: [comp.indiceAmbiental?.senal, comp.diasFueraRango?.senal, comp.estabilidadTemp?.senal] },
-    { label: 'Híbridos F1',  señales: [
-        mB.hibridos.nacidos > mA.hibridos.nacidos ? 'mejora' : mB.hibridos.nacidos < mA.hibridos.nacidos ? 'deterioro' : 'estable',
-        mB.hibridos.eficiencia > mA.hibridos.eficiencia ? 'mejora' : 'estable',
-    ]},
-  ]
-
-  const veredictos = dimensiones.map(d => ({ ...d, v: veredictoDim(d.señales) }))
-  const mejoras    = veredictos.filter(d => d.v.score > 0).length
-  const deterioros = veredictos.filter(d => d.v.score < 0).length
-  const global     = mejoras > deterioros
-    ? { emoji: '🟢', texto: 'El bioterio muestra tendencia de MEJORA', color: '#00e676' }
-    : deterioros > mejoras
-      ? { emoji: '🔴', texto: 'El bioterio muestra tendencia de DETERIORO', color: '#ff6b80' }
-      : { emoji: '🟡', texto: 'El bioterio se mantiene ESTABLE', color: '#ffb300' }
+  const tooltipStyle = { background: '#0d1528', border: '1px solid rgba(0,230,118,0.2)', borderRadius: 10, fontSize: 11 }
+  const xTick = { fontSize: 9, fill: '#4a5f7a' }
+  const yTick = { fontSize: 9, fill: '#4a5f7a' }
 
   return (
-    <div className="rounded-2xl p-5 space-y-4" style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}>
-      {/* Pregunta + veredicto global */}
-      <div>
-        <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
-          ¿El bioterio mejora o se deteriora?
-        </div>
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
-          style={{ background: `${global.color}10`, border: `1px solid ${global.color}30` }}>
-          <span className="text-2xl">{global.emoji}</span>
-          <span className="text-sm font-bold" style={{ color: global.color }}>{global.texto}</span>
-        </div>
-      </div>
-      {/* Grid por dimensión */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-        {veredictos.map(({ label, v }) => (
-          <div key={label} className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
-            style={{ background: `${v.color}08`, border: `1px solid ${v.color}20` }}>
-            <span className="text-base shrink-0">{v.emoji}</span>
-            <div className="min-w-0">
-              <div className="text-xs font-semibold" style={{ color: v.color }}>{v.label}</div>
-              <div className="text-xs truncate" style={{ color: tema.textMuted }}>{label}</div>
+    <div className="space-y-4">
+      {/* KPIs globales */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: 'Fertilidad', vA: (rA.fertilidad * 100).toFixed(0) + '%', vB: (rB.fertilidad * 100).toFixed(0) + '%', comp: comp.fertilidad },
+          { label: 'Nacidos',    vA: pA.nacidos, vB: pB.nacidos, comp: comp.nacidos },
+          { label: 'Sanidad',    vA: sA.indiceSanitario, vB: sB.indiceSanitario, comp: comp.indiceSanitario },
+          { label: 'Supervivencia', vA: (rA.supervivenciaMedio * 100).toFixed(0) + '%', vB: (rB.supervivenciaMedio * 100).toFixed(0) + '%', comp: comp.supervivencia },
+        ].map(({ label, vA, vB, comp: c }) => {
+          const color = c?.senal?.includes('mejora') ? '#00e676' : c?.senal?.includes('deterioro') ? '#ff6b80' : '#8a9bb0'
+          return (
+            <div key={label} className="rounded-xl p-3 text-center" style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${tema.bgCardBorde}` }}>
+              <div className="text-xs mb-1" style={{ color: tema.textMuted }}>{label}</div>
+              <div className="text-xs font-mono" style={{ color: '#8a9bb0' }}>{vA}</div>
+              <div className="text-sm font-mono font-bold" style={{ color }}>{vB}</div>
             </div>
-          </div>
+          )
+        })}
+      </div>
+
+      {/* Tab bar */}
+      <div className="flex gap-1 flex-wrap">
+        {TABS_TECNICO.map((t, i) => (
+          <button key={t} onClick={() => setTab(i)}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+            style={tab === i
+              ? { background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.35)', color: '#00e676' }
+              : { background: 'rgba(255,255,255,0.04)', border: `1px solid ${tema.bgCardBorde}`, color: tema.textMuted }
+            }
+          >{t}</button>
         ))}
       </div>
-    </div>
-  )
-}
 
-function GaugeCircle({ valor, label, color = '#00e676' }) {
-  const pct   = Math.max(0, Math.min(100, valor ?? 0))
-  const r     = 38
-  const circ  = 2 * Math.PI * r
-  const stroke = circ * (1 - pct / 100)
-  return (
-    <div className="flex flex-col items-center gap-1">
-      <div className="relative w-24 h-24">
-        <svg width="96" height="96" viewBox="0 0 96 96">
-          <circle cx="48" cy="48" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
-          <circle
-            cx="48" cy="48" r={r} fill="none"
-            stroke={color} strokeWidth="8"
-            strokeDasharray={circ}
-            strokeDashoffset={stroke}
-            strokeLinecap="round"
-            transform="rotate(-90 48 48)"
-            style={{ filter: `drop-shadow(0 0 6px ${color}60)`, transition: 'stroke-dashoffset 0.6s ease' }}
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-xl font-bold font-mono" style={{ color }}>{pct}</span>
-          <span className="text-xs" style={{ color: '#4a5f7a' }}>/ 100</span>
+      {/* Cabecera columnas */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs flex-1" style={{ color: tema.textMuted }}>Métrica</span>
+        <span className="text-xs w-14 text-right font-semibold" style={{ color: '#4a5f7a' }}>Per. A</span>
+        <span className="text-xs w-4" />
+        <span className="text-xs w-14 text-right font-semibold" style={{ color: '#00e676' }}>Per. B</span>
+        <span className="text-xs w-14 text-right" style={{ color: '#8a9bb0' }}>Cambio</span>
+        <span className="w-5" />
+      </div>
+
+      {/* TAB 0: Reproducción */}
+      {tab === 0 && (
+        <div>
+          <FilaMetrica label="Emparejamientos"       vA={rA.total} vB={rB.total} senal="neutro" formato={v => Math.round(v)} />
+          <FilaMetrica label="Partos exitosos"        vA={rA.exitosos} vB={rB.exitosos} senal={comp.exitosos?.senal} formato={v => Math.round(v)} />
+          <FilaMetrica label="Partos fallidos"        vA={rA.fallidos} vB={rB.fallidos} senal={comp.fallidos?.senal} formato={v => Math.round(v)} />
+          <FilaMetrica label="Fertilidad"             vA={rA.fertilidad * 100} vB={rB.fertilidad * 100} senal={comp.fertilidad?.senal} formato={v => v.toFixed(1) + '%'} />
+          <FilaMetrica label="Latencia media (días)"  vA={rA.latenciaMedia} vB={rB.latenciaMedia} senal={comp.latenciaMedia?.senal} formato={v => v?.toFixed(1) ?? '—'} />
+          <FilaMetrica label="Camada media (crías)"   vA={rA.tamanoCamadaMedio} vB={rB.tamanoCamadaMedio} senal={comp.tamanoCamada?.senal} formato={v => v?.toFixed(1) ?? '—'} />
+          <FilaMetrica label="Supervivencia destete"  vA={rA.supervivenciaMedio * 100} vB={rB.supervivenciaMedio * 100} senal={comp.supervivencia?.senal} formato={v => v.toFixed(1) + '%'} />
+          <FilaMetrica label="Eficiencia reproductiva" vA={rA.eficienciaRepro} vB={rB.eficienciaRepro} senal={comp.eficienciaRepro?.senal} formato={v => v?.toFixed(1) + '%'} />
+          <FilaMetrica label="Abortos/reabsorciones"  vA={rA.abortos} vB={rB.abortos} senal={comp.abortos?.senal} formato={v => Math.round(v)} />
+          <div className="mt-5">
+            <div className="text-xs font-semibold mb-3" style={{ color: tema.textMuted }}>Comparación visual</div>
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={[
+                { name: 'Partos exitosos', A: rA.exitosos, B: rB.exitosos },
+                { name: 'Camada media',    A: +rA.tamanoCamadaMedio.toFixed(1), B: +rB.tamanoCamadaMedio.toFixed(1) },
+                { name: 'Superv. %',       A: +(rA.supervivenciaMedio * 100).toFixed(0), B: +(rB.supervivenciaMedio * 100).toFixed(0) },
+              ]} barGap={4} barCategoryGap="30%">
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                <XAxis dataKey="name" tick={xTick} />
+                <YAxis tick={yTick} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Bar dataKey="A" fill="#4a5f7a" radius={[4,4,0,0]} name="Período A" />
+                <Bar dataKey="B" fill="#00e676" radius={[4,4,0,0]} name="Período B" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-      </div>
-      <span className="text-xs font-semibold text-center" style={{ color: '#8a9bb0' }}>{label}</span>
+      )}
+
+      {/* TAB 1: Producción */}
+      {tab === 1 && (
+        <div>
+          <FilaMetrica label="Nacidos"       vA={pA.nacidos}     vB={pB.nacidos}     senal={comp.nacidos?.senal}     formato={v => Math.round(v)} />
+          <FilaMetrica label="Destetados"    vA={pA.destetados}  vB={pB.destetados}  senal={comp.destetados?.senal}  formato={v => Math.round(v)} />
+          <FilaMetrica label="Entregados"    vA={pA.entregados}  vB={pB.entregados}  senal={comp.entregados?.senal}  formato={v => Math.round(v)} />
+          <FilaMetrica label="Sacrificados"  vA={pA.sacrificados} vB={pB.sacrificados} senal="neutro" formato={v => Math.round(v)} />
+          <FilaMetrica label="Eficiencia (destetados/nacidos)" vA={pA.eficiencia} vB={pB.eficiencia} senal={comp.eficienciaProd?.senal} formato={v => v?.toFixed(1) + '%'} />
+          <div className="mt-4 rounded-xl px-4 py-3 text-xs" style={{ background: 'rgba(255,179,0,0.06)', border: '1px solid rgba(255,179,0,0.2)', color: '#ffb300' }}>
+            ℹ️ Menor producción no implica deterioro. El contexto operativo determina si el cambio es intencional o problemático.
+          </div>
+          <div className="mt-4">
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={[
+                { name: 'Nacidos',     A: pA.nacidos,     B: pB.nacidos },
+                { name: 'Destetados',  A: pA.destetados,  B: pB.destetados },
+                { name: 'Entregados',  A: pA.entregados,  B: pB.entregados },
+                { name: 'Sacrificados',A: pA.sacrificados,B: pB.sacrificados },
+              ]} barGap={4} barCategoryGap="30%">
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                <XAxis dataKey="name" tick={xTick} />
+                <YAxis tick={yTick} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Bar dataKey="A" fill="#4a5f7a" radius={[4,4,0,0]} name="Período A" />
+                <Bar dataKey="B" fill="#00e676" radius={[4,4,0,0]} name="Período B" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: Sanidad */}
+      {tab === 2 && (
+        <div>
+          <FilaMetrica label="Índice sanitario (0–100)" vA={sA.indiceSanitario} vB={sB.indiceSanitario} senal={comp.indiceSanitario?.senal} formato={v => Math.round(v)} />
+          <FilaMetrica label="Incidentes totales"       vA={sA.total}         vB={sB.total}         senal={comp.incidentesTotal?.senal}  formato={v => Math.round(v)} />
+          <FilaMetrica label="Incidentes graves"        vA={sA.graves}        vB={sB.graves}        senal={comp.graves?.senal}           formato={v => Math.round(v)} />
+          <FilaMetrica label="Incidentes moderados"     vA={sA.moderados}     vB={sB.moderados}     senal="neutro"                       formato={v => Math.round(v)} />
+          <FilaMetrica label="Malformaciones en crías"  vA={sA.malformaciones} vB={sB.malformaciones} senal={comp.malformaciones?.senal} formato={v => Math.round(v)} />
+          <FilaMetrica label="Mortalidad neonatal"      vA={sA.mortalidadNeonatal} vB={sB.mortalidadNeonatal} senal={comp.mortalidadNeonatal?.senal} formato={v => Math.round(v)} />
+        </div>
+      )}
+
+      {/* TAB 3: Ambiente */}
+      {tab === 3 && (
+        <div>
+          <FilaMetrica label="Índice ambiental (0–100)" vA={aA.indiceAmbiental} vB={aB.indiceAmbiental} senal={comp.indiceAmbiental?.senal} formato={v => Math.round(v)} />
+          <FilaMetrica label="Temperatura media (°C)"   vA={aA.tempMedia}       vB={aB.tempMedia}       senal="neutro"                      formato={v => v?.toFixed(1) + ' °C'} />
+          <FilaMetrica label="Días fuera de rango"      vA={aA.diasFueraRango}  vB={aB.diasFueraRango}  senal={comp.diasFueraRango?.senal}  formato={v => Math.round(v)} />
+          <FilaMetrica label="Estabilidad térmica"      vA={aA.estabilidad}     vB={aB.estabilidad}     senal={comp.estabilidadTemp?.senal} formato={v => v?.toFixed(0) + '%'} />
+          {aA.totalRegistros === 0 && aB.totalRegistros === 0 && (
+            <p className="text-xs text-center mt-4 py-4" style={{ color: tema.textMuted }}>Sin registros de temperatura en estos períodos.</p>
+          )}
+        </div>
+      )}
+
+      {/* TAB 4: Genética */}
+      {tab === 4 && (
+        <div>
+          <div className="rounded-xl px-4 py-3 mb-4 text-xs" style={{ background: 'rgba(255,179,0,0.06)', border: '1px solid rgba(255,179,0,0.2)', color: '#ffb300' }}>
+            ℹ️ Las métricas genéticas reflejan el estado actual de la colonia. Son continuas — se muestran para contexto, no para comparación temporal.
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: 'F media (consanguinidad)', valor: (mB.genetica.fMedia * 100).toFixed(2) + '%', color: mB.genetica.fMedia > 0.125 ? '#ff6b80' : mB.genetica.fMedia > 0.0625 ? '#ffb300' : '#00e676' },
+              { label: 'Diversidad estimada',      valor: mB.genetica.diversidadEstimada.toFixed(1) + '%', color: '#c9d4e0' },
+              { label: 'Animales con F alto',      valor: mB.genetica.animalesAltoF, color: mB.genetica.animalesAltoF > 0 ? '#ffb300' : '#00e676' },
+              { label: 'Total reproductores',      valor: mB.genetica.totalAnimales, color: '#c9d4e0' },
+            ].map(({ label, valor, color }) => (
+              <div key={label} className="rounded-xl p-4 text-center" style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${tema.bgCardBorde}` }}>
+                <div className="text-lg font-bold font-mono" style={{ color }}>{valor}</div>
+                <div className="text-xs mt-1" style={{ color: tema.textMuted }}>{label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 5: Renovación */}
+      {tab === 5 && (
+        <div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            {[
+              { label: 'Total activos', val: rnA.totalActivos, color: '#c9d4e0' },
+              { label: '♂ Machos',      val: rnA.machos,       color: '#40c4ff' },
+              { label: '♀ Hembras',     val: rnA.hembras,      color: '#ce93d8' },
+              { label: 'Edad media',    val: rnA.edadMedia ? Math.round(rnA.edadMedia) + 'd' : '—', color: '#ffb300' },
+            ].map(({ label, val, color }) => (
+              <div key={label} className="rounded-xl p-3 text-center" style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${tema.bgCardBorde}` }}>
+                <div className="text-lg font-bold font-mono" style={{ color }}>{val}</div>
+                <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>{label}</div>
+              </div>
+            ))}
+          </div>
+          {(rnA.proximosLimite > 0 || rnA.excedidos > 0) && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {rnA.proximosLimite > 0 && (
+                <span className="px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: 'rgba(255,179,0,0.1)', border: '1px solid rgba(255,179,0,0.3)', color: '#ffb300' }}>
+                  ⚠️ {rnA.proximosLimite} próximo(s) al límite (≥240d)
+                </span>
+              )}
+              {rnA.excedidos > 0 && (
+                <span className="px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.3)', color: '#ff6b80' }}>
+                  🔴 {rnA.excedidos} excedido(s) el límite (≥270d)
+                </span>
+              )}
+            </div>
+          )}
+          <FilaMetrica label="Retirados en el período" vA={rnA.retirados} vB={rnB.retirados} senal="neutro" formato={v => Math.round(v)} />
+          <FilaMetrica label="Tasa de renovación"      vA={rnA.tasaRenovacion} vB={rnB.tasaRenovacion} senal="neutro" formato={v => v?.toFixed(1) + '%'} />
+        </div>
+      )}
+
+      {/* TAB 6: Híbridos F1 */}
+      {tab === 6 && (() => {
+        const hA = mA.hibridos, hB = mB.hibridos
+        const sinDatos = hA.total === 0 && hB.total === 0
+        return (
+          <div>
+            {bioterio !== 'ratones_hibridos' && (
+              <div className="rounded-xl px-4 py-3 mb-4 text-xs" style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.18)', color: '#00e676' }}>
+                🧬 Producción F1 separada — no afecta el análisis de la colonia seleccionada.
+              </div>
+            )}
+            {sinDatos ? (
+              <p className="text-xs text-center py-8" style={{ color: tema.textMuted }}>Sin camadas F1 en los períodos seleccionados.</p>
+            ) : (
+              <>
+                <FilaMetrica label="Cruces F1 totales"    vA={hA.total}      vB={hB.total}      senal="neutro" formato={v => Math.round(v)} />
+                <FilaMetrica label="Cruces exitosos"      vA={hA.exitosos}   vB={hB.exitosos}   senal={hB.exitosos > hA.exitosos ? 'mejora' : 'neutro'} formato={v => Math.round(v)} />
+                <FilaMetrica label="Nacidos F1"           vA={hA.nacidos}    vB={hB.nacidos}    senal={hB.nacidos > hA.nacidos ? 'mejora' : 'neutro'} formato={v => Math.round(v)} />
+                <FilaMetrica label="Destetados F1"        vA={hA.destetados} vB={hB.destetados} senal={hB.destetados > hA.destetados ? 'mejora' : 'neutro'} formato={v => Math.round(v)} />
+                <FilaMetrica label="Camada media F1"      vA={hA.tamanoCamadaMedio} vB={hB.tamanoCamadaMedio} senal="neutro" formato={v => v?.toFixed(1) ?? '—'} />
+                <FilaMetrica label="Eficiencia F1"        vA={hA.eficiencia} vB={hB.eficiencia} senal="neutro" formato={v => v?.toFixed(1) + '%'} />
+                <div className="mt-4">
+                  <ResponsiveContainer width="100%" height={160}>
+                    <BarChart data={[
+                      { name: 'Nacidos',    A: hA.nacidos,    B: hB.nacidos },
+                      { name: 'Destetados', A: hA.destetados, B: hB.destetados },
+                      { name: 'Exitosos',   A: hA.exitosos,   B: hB.exitosos },
+                    ]} barGap={4} barCategoryGap="35%">
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                      <XAxis dataKey="name" tick={xTick} />
+                      <YAxis tick={yTick} />
+                      <Tooltip contentStyle={tooltipStyle} />
+                      <Bar dataKey="A" fill="#4a5f7a" radius={[4,4,0,0]} name="Período A" />
+                      <Bar dataKey="B" fill="#00e676" radius={[4,4,0,0]} name="Período B" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </>
+            )}
+          </div>
+        )
+      })()}
+
+      {/* Tendencias históricas */}
+      {tendencias?.length > 0 && (
+        <div className="mt-2 space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold" style={{ color: tema.textPrimary }}>Tendencias históricas</span>
+            <div className="flex gap-1">
+              {[3, 6, 12, 24].map(h => (
+                <button key={h} onClick={() => setHz(h)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-semibold"
+                  style={horizonte === h
+                    ? { background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.35)', color: '#00e676' }
+                    : { background: 'rgba(255,255,255,0.04)', border: `1px solid ${tema.bgCardBorde}`, color: tema.textMuted }
+                  }
+                >{h}m</button>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {[
+              { key: 'fertilidad',   label: 'Fertilidad (%)',                color: '#00e676', domain: [0, 100], fmt: v => v + '%' },
+              { key: 'supervivencia',label: 'Supervivencia al destete (%)',  color: '#ffb300', domain: [0, 100], fmt: v => v + '%' },
+              { key: 'nacidos',      label: 'Nacidos / mes',                 color: '#40c4ff', domain: [0, null] },
+              { key: 'incidentes',   label: 'Incidentes / mes',              color: '#ff9800', domain: [0, null] },
+            ].map(({ key, label, color, domain, fmt }) => (
+              <div key={key}>
+                <div className="text-xs font-semibold mb-2" style={{ color: tema.textMuted }}>{label}</div>
+                <ResponsiveContainer width="100%" height={130}>
+                  <LineChart data={tendencias.slice(-horizonte)}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                    <XAxis dataKey="mes" tick={xTick} />
+                    <YAxis domain={domain} tick={yTick} />
+                    <Tooltip contentStyle={tooltipStyle} formatter={fmt ? v => [fmt(v), label] : undefined} />
+                    <Line type="monotone" dataKey={key} stroke={color} strokeWidth={2} dot={{ r: 2, fill: color }} connectNulls />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ))}
+          </div>
+
+          {/* Proyección lineal */}
+          <div>
+            <div className="text-xs font-semibold mb-3" style={{ color: tema.textMuted }}>Proyección estimada (últimos 6 meses)</div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs rounded-xl overflow-hidden" style={{ borderCollapse: 'collapse', background: 'rgba(255,255,255,0.02)', border: `1px solid ${tema.bgCardBorde}` }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${tema.bgCardBorde}` }}>
+                    {['Métrica', 'Actual', '+3m', '+6m', '+12m', 'Tendencia'].map(h => (
+                      <th key={h} className="px-3 py-2 text-right first:text-left" style={{ color: '#4a5f7a', fontWeight: 600 }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { key: 'fertilidad',   label: 'Fertilidad',   fmt: v => v.toFixed(0) + '%', min: 0, max: 100 },
+                    { key: 'supervivencia',label: 'Supervivencia', fmt: v => v.toFixed(0) + '%', min: 0, max: 100 },
+                    { key: 'nacidos',      label: 'Nacidos',       fmt: v => v.toFixed(0), min: 0 },
+                    { key: 'incidentes',   label: 'Incidentes',    fmt: v => v.toFixed(0), min: 0 },
+                  ].map(({ key, label, fmt, min, max }) => {
+                    const last  = tendencias.length > 0 ? tendencias[tendencias.length - 1][key] : null
+                    const p3    = proyectarTendenciaLineal(tendencias, key, 3,  min ?? 0, max ?? Infinity)
+                    const p6    = proyectarTendenciaLineal(tendencias, key, 6,  min ?? 0, max ?? Infinity)
+                    const p12   = proyectarTendenciaLineal(tendencias, key, 12, min ?? 0, max ?? Infinity)
+                    const slope = p3[0]?.slope ?? 0
+                    const trendColor = slope > 0.3 ? '#00e676' : slope < -0.3 ? '#ff6b80' : '#8a9bb0'
+                    const trendIcon  = slope > 0.3 ? '↑' : slope < -0.3 ? '↓' : '→'
+                    const val = arr => arr.length > 0 ? fmt(arr[arr.length - 1].valor) : '—'
+                    return (
+                      <tr key={key} style={{ borderBottom: `1px solid ${tema.bgCardBorde}20` }}>
+                        <td className="px-3 py-2" style={{ color: '#8a9bb0' }}>{label}</td>
+                        <td className="px-3 py-2 text-right font-mono" style={{ color: '#c9d4e0' }}>{last != null ? fmt(last) : '—'}</td>
+                        <td className="px-3 py-2 text-right font-mono" style={{ color: '#00e676' }}>{val(p3)}</td>
+                        <td className="px-3 py-2 text-right font-mono" style={{ color: '#00e676' }}>{val(p6)}</td>
+                        <td className="px-3 py-2 text-right font-mono" style={{ color: '#00e676' }}>{val(p12)}</td>
+                        <td className="px-3 py-2 text-right font-bold" style={{ color: trendColor }}>{trendIcon} {slope >= 0 ? '+' : ''}{slope.toFixed(1)}/mes</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
-
-function Seccion({ titulo, children }) {
-  const { tema } = useTheme()
-  return (
-    <div className="rounded-2xl overflow-hidden" style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}>
-      <div className="px-5 py-3" style={{ borderBottom: `1px solid ${tema.bgCardBorde}`, background: 'rgba(0,230,118,0.03)' }}>
-        <span className="text-sm font-bold" style={{ color: tema.textPrimary }}>{titulo}</span>
-      </div>
-      <div className="p-5">{children}</div>
-    </div>
-  )
-}
-
-const TABS_LABELS = ['Reproducción', 'Producción', 'Sanidad', 'Ambiente', 'Genética', 'Renovación', 'Híbridos F1']
-const NIVEL_COLORES = { positivo: '#00e676', alerta: '#ffb300', critico: '#ff6b80', riesgo: '#ff6b80', estable: '#8a9bb0' }
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function Auditoria() {
-  const { tema } = useTheme()
+  const { tema }         = useTheme()
   const { bioterioActivo } = useBioterioActivo()
-  const presets = getPresetsPeriodo()
+  const presets          = getPresetsPeriodo()
 
-  // Bioterio seleccionado para la auditoría (por defecto el activo)
   const [bioterio, setBioterio]   = useState(bioterioActivo ?? 'ratas')
   const [presetId, setPresetId]   = useState('trimestre')
   const [customA, setCustomA]     = useState({ desde: '', hasta: '' })
   const [customB, setCustomB]     = useState({ desde: '', hasta: '' })
-  const [tab, setTab]             = useState(0)
-  const [analizando, setAnalizando]         = useState(false)
-  const [error, setError]                   = useState(null)
-  const [resultado, setResultado]           = useState(null)
-  const [horizonteTendencias, setHorizonte] = useState(12)
+  const [analizando, setAnalizando] = useState(false)
+  const [error, setError]           = useState(null)
+  const [resultado, setResultado]   = useState(null)
 
-  // Períodos efectivos
   const preset = presets.find(p => p.id === presetId)
   const periodosEfectivos = presetId === 'custom'
     ? { desdeA: customA.desde, hastaA: customA.hasta, desdeB: customB.desde, hastaB: customB.hasta }
-    : preset
-      ? { desdeA: preset.desdeA, hastaA: preset.hastaA, desdeB: preset.desdeB, hastaB: preset.hastaB }
-      : null
+    : preset ? { desdeA: preset.desdeA, hastaA: preset.hastaA, desdeB: preset.desdeB, hastaB: preset.hastaB } : null
 
-  // ── Fetch + cálculo ──────────────────────────────────────────────────────────
+  // ── Fetch + cálculo (sin cambios en la lógica) ───────────────────────────
   const analizar = useCallback(async () => {
     if (!periodosEfectivos?.desdeA || !periodosEfectivos?.desdeB) {
       setError('Seleccioná un período válido para comparar.')
@@ -230,19 +493,16 @@ export default function Auditoria() {
 
     try {
       const { desdeA, hastaA, desdeB, hastaB } = periodosEfectivos
-
-      // Fecha límite para tendencias (últimos 24 meses)
       const hace24m = new Date()
       hace24m.setMonth(hace24m.getMonth() - 24)
       const hace24mStr = hace24m.toISOString().split('T')[0]
 
-      // Fetch en paralelo de todas las tablas
       const [
         { data: todasCamadas },
         { data: todosAnimales },
-        { data: sacA },  { data: sacB },
-        { data: entA },  { data: entB },
-        { data: incA },  { data: incB },
+        { data: sacA }, { data: sacB },
+        { data: entA }, { data: entB },
+        { data: incA }, { data: incB },
         { data: tempA }, { data: tempB },
         { data: todosIncidentes },
         { data: todasTemperaturas },
@@ -258,23 +518,17 @@ export default function Auditoria() {
         supabase.from('incidentes').select('*').eq('bioterio_id', bioterio).gte('fecha', desdeB).lte('fecha', hastaB),
         supabase.from('temperature_logs').select('*').gte('date', desdeA).lte('date', hastaA).order('date'),
         supabase.from('temperature_logs').select('*').gte('date', desdeB).lte('date', hastaB).order('date'),
-        // Para tendencias: todos los incidentes y temperaturas (últimos 24 meses)
         supabase.from('incidentes').select('*').eq('bioterio_id', bioterio).gte('fecha', hace24mStr),
         supabase.from('temperature_logs').select('*').gte('date', hace24mStr).order('date'),
-        // Para tab Híbridos: camadas F1 si no es el bioterio activo
         bioterio !== 'ratones_hibridos'
           ? supabase.from('camadas').select('*').eq('bioterio_id', 'ratones_hibridos').order('fecha_copula')
           : Promise.resolve({ data: [] }),
       ])
 
-      // Fuente de camadas F1: si ya estamos en híbridos, usar todasCamadas; si no, el fetch separado
       const camF1todas = bioterio === 'ratones_hibridos' ? (todasCamadas || []) : (camadasF1 || [])
-
-      // Filtrar camadas por período usando fecha_copula
       const camA = filtrarPorPeriodo(todasCamadas || [], 'fecha_copula', desdeA, hastaA)
       const camB = filtrarPorPeriodo(todasCamadas || [], 'fecha_copula', desdeB, hastaB)
 
-      // Calcular métricas para cada período
       const reproA    = calcularMetricasReproduccion(camA)
       const reproB    = calcularMetricasReproduccion(camB)
       const prodA     = calcularMetricasProduccion(camA, sacA || [], entA || [])
@@ -284,23 +538,16 @@ export default function Auditoria() {
       const ambienteA = calcularMetricasAmbiente(tempA || [], bioterio)
       const ambienteB = calcularMetricasAmbiente(tempB || [], bioterio)
       const geneticaA = calcularMetricasGenetica(todosAnimales || [], todasCamadas || [])
-      const geneticaB = geneticaA // estado actual — no varía por período
+      const geneticaB = geneticaA
 
-      // Renovación: filtrar retirados del período usando fecha_sacrificio
-      const retiradosA = (todosAnimales || []).filter(a =>
-        a.fecha_sacrificio && a.fecha_sacrificio >= desdeA && a.fecha_sacrificio <= hastaA
-      )
-      const retiradosB = (todosAnimales || []).filter(a =>
-        a.fecha_sacrificio && a.fecha_sacrificio >= desdeB && a.fecha_sacrificio <= hastaB
-      )
+      const retiradosA = (todosAnimales || []).filter(a => a.fecha_sacrificio && a.fecha_sacrificio >= desdeA && a.fecha_sacrificio <= hastaA)
+      const retiradosB = (todosAnimales || []).filter(a => a.fecha_sacrificio && a.fecha_sacrificio >= desdeB && a.fecha_sacrificio <= hastaB)
       const renovacionA = calcularMetricasRenovacion(todosAnimales || [], retiradosA)
       const renovacionB = calcularMetricasRenovacion(todosAnimales || [], retiradosB)
 
-      // Híbridos F1 por período
       const hibridosA = calcularMetricasHibridos(filtrarPorPeriodo(camF1todas, 'fecha_copula', desdeA, hastaA))
       const hibridosB = calcularMetricasHibridos(filtrarPorPeriodo(camF1todas, 'fecha_copula', desdeB, hastaB))
 
-      // Tendencias históricas (todos los meses disponibles, hasta 24m)
       const tendencias = calcularTendencias(todasCamadas || [], todosIncidentes || [], todasTemperaturas || [], bioterio, 24)
 
       const igA = calcularIndiceGlobal({ repro: reproA, prod: prodA, sanidad: sanidadA, ambiente: ambienteA })
@@ -311,13 +558,10 @@ export default function Auditoria() {
       const mA = { repro: reproA, prod: prodA, sanidad: sanidadA, ambiente: ambienteA, genetica: geneticaA, renovacion: renovacionA, hibridos: hibridosA, indiceGlobal: igA, indiceEstabilidad: ieA }
       const mB = { repro: reproB, prod: prodB, sanidad: sanidadB, ambiente: ambienteB, genetica: geneticaB, renovacion: renovacionB, hibridos: hibridosB, indiceGlobal: igB, indiceEstabilidad: ieB }
 
-      const comp            = compararPeriodos(mA, mB)
-      const patrones        = detectarPatronesGlobales(comp)
-      const hipotesis       = motorCausalHistorico(comp)
-      const resumen         = generarResumenAutomatico(comp, hipotesis)
-      const recomendaciones = generarRecomendaciones(comp, hipotesis)
+      const comp     = compararPeriodos(mA, mB)
+      const hipotesis = motorCausalHistorico(comp)
 
-      setResultado({ mA, mB, comp, patrones, hipotesis, resumen, recomendaciones, tendencias, periodoA: { desde: desdeA, hasta: hastaA }, periodoB: { desde: desdeB, hasta: hastaB } })
+      setResultado({ mA, mB, comp, hipotesis, tendencias, periodoA: { desde: desdeA, hasta: hastaA }, periodoB: { desde: desdeB, hasta: hastaB } })
     } catch (err) {
       setError('Error al cargar datos: ' + (err.message || 'Error desconocido'))
     } finally {
@@ -325,48 +569,41 @@ export default function Auditoria() {
     }
   }, [bioterio, periodosEfectivos])
 
-  const estiloCard = { background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}`, borderRadius: '16px', padding: '16px' }
+  const card = { background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}`, borderRadius: '16px' }
 
   return (
-    <div className="p-4 md:p-6 space-y-5 max-w-6xl mx-auto" style={{ color: tema.textPrimary }}>
+    <div className="p-4 md:p-6 space-y-4 max-w-4xl mx-auto" style={{ color: tema.textPrimary }}>
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      {/* ── Header de página ─────────────────────────────────────────────── */}
       <div>
         <h1 className="text-2xl font-bold" style={{ color: tema.textPrimary }}>Auditoría histórica</h1>
-        <p className="text-sm mt-1" style={{ color: tema.textMuted }}>
-          Compará dos períodos y detectá mejoras, deterioros, patrones y causas automáticamente.
-        </p>
+        <p className="text-sm mt-1" style={{ color: tema.textMuted }}>Interpretación estratégica de la colonia — compará dos períodos y entendé qué ocurrió y por qué.</p>
       </div>
 
-      {/* ── Panel de configuración ─────────────────────────────────────────── */}
-      <div className="rounded-2xl p-5 space-y-4" style={estiloCard}>
-
+      {/* ── Panel de configuración ────────────────────────────────────────── */}
+      <div className="rounded-2xl p-5 space-y-4" style={card}>
         {/* Bioterio */}
         <div>
           <label className="text-xs font-semibold uppercase tracking-widest block mb-2" style={{ color: tema.textMuted }}>Colonia a auditar</label>
           <div className="flex flex-wrap gap-2">
             {BIOTERIOS.map(b => (
-              <button
-                key={b.id}
-                onClick={() => setBioterio(b.id)}
+              <button key={b.id} onClick={() => setBioterio(b.id)}
                 className="px-3 py-2 rounded-xl text-xs font-semibold transition-all"
                 style={bioterio === b.id
                   ? { background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.4)', color: '#00e676' }
-                  : { background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}`, color: tema.textSecondary }
+                  : { background: 'rgba(255,255,255,0.04)', border: `1px solid ${tema.bgCardBorde}`, color: tema.textSecondary }
                 }
               >{b.icon} {b.label}</button>
             ))}
           </div>
         </div>
 
-        {/* Presets de período */}
+        {/* Presets */}
         <div>
-          <label className="text-xs font-semibold uppercase tracking-widest block mb-2" style={{ color: tema.textMuted }}>Período a comparar</label>
+          <label className="text-xs font-semibold uppercase tracking-widest block mb-2" style={{ color: tema.textMuted }}>Período</label>
           <div className="flex flex-wrap gap-2">
             {presets.map(p => (
-              <button
-                key={p.id}
-                onClick={() => setPresetId(p.id)}
+              <button key={p.id} onClick={() => setPresetId(p.id)}
                 className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
                 style={presetId === p.id
                   ? { background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.4)', color: '#00e676' }
@@ -374,8 +611,7 @@ export default function Auditoria() {
                 }
               >{p.label}</button>
             ))}
-            <button
-              onClick={() => setPresetId('custom')}
+            <button onClick={() => setPresetId('custom')}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
               style={presetId === 'custom'
                 ? { background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.4)', color: '#00e676' }
@@ -385,17 +621,16 @@ export default function Auditoria() {
           </div>
         </div>
 
-        {/* Custom dates */}
         {presetId === 'custom' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${tema.bgCardBorde}` }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${tema.bgCardBorde}` }}>
               <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>Período A (anterior)</div>
               <div className="flex gap-2">
                 <input type="date" value={customA.desde} onChange={e => setCustomA(p => ({ ...p, desde: e.target.value }))} className="flex-1 px-2 py-1.5 rounded-lg text-xs" style={{ background: 'rgba(8,13,26,0.8)', border: `1px solid ${tema.bgCardBorde}`, color: '#c9d4e0' }} />
                 <input type="date" value={customA.hasta} onChange={e => setCustomA(p => ({ ...p, hasta: e.target.value }))} className="flex-1 px-2 py-1.5 rounded-lg text-xs" style={{ background: 'rgba(8,13,26,0.8)', border: `1px solid ${tema.bgCardBorde}`, color: '#c9d4e0' }} />
               </div>
             </div>
-            <div className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${tema.bgCardBorde}` }}>
+            <div className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${tema.bgCardBorde}` }}>
               <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#00e676' }}>Período B (actual)</div>
               <div className="flex gap-2">
                 <input type="date" value={customB.desde} onChange={e => setCustomB(p => ({ ...p, desde: e.target.value }))} className="flex-1 px-2 py-1.5 rounded-lg text-xs" style={{ background: 'rgba(8,13,26,0.8)', border: `1px solid ${tema.bgCardBorde}`, color: '#c9d4e0' }} />
@@ -405,618 +640,150 @@ export default function Auditoria() {
           </div>
         )}
 
-        {/* Descripción de qué períodos se van a comparar */}
         {periodosEfectivos && presetId !== 'custom' && (
           <div className="flex flex-wrap gap-3 text-xs" style={{ color: tema.textMuted }}>
-            <span>Período A: <b style={{ color: '#c9d4e0' }}>{periodosEfectivos.desdeA}</b> → <b style={{ color: '#c9d4e0' }}>{periodosEfectivos.hastaA}</b></span>
+            <span>Período A: <b style={{ color: '#8a9bb0' }}>{periodosEfectivos.desdeA}</b> → <b style={{ color: '#8a9bb0' }}>{periodosEfectivos.hastaA}</b></span>
             <span style={{ color: '#4a5f7a' }}>vs</span>
             <span>Período B: <b style={{ color: '#00e676' }}>{periodosEfectivos.desdeB}</b> → <b style={{ color: '#00e676' }}>{periodosEfectivos.hastaB}</b></span>
           </div>
         )}
 
-        <button
-          onClick={analizar}
-          disabled={analizando}
+        <button onClick={analizar} disabled={analizando}
           className="px-6 py-2.5 rounded-xl text-sm font-bold transition-all"
           style={{
-            background: analizando ? 'rgba(0,230,118,0.08)' : 'rgba(0,230,118,0.15)',
-            border: '1px solid rgba(0,230,118,0.4)',
-            color: '#00e676',
-            cursor: analizando ? 'not-allowed' : 'pointer',
-            opacity: analizando ? 0.7 : 1,
+            background: analizando ? 'rgba(0,230,118,0.06)' : 'rgba(0,230,118,0.15)',
+            border: '1px solid rgba(0,230,118,0.4)', color: '#00e676',
+            cursor: analizando ? 'not-allowed' : 'pointer', opacity: analizando ? 0.7 : 1,
           }}
-        >
-          {analizando ? '⏳ Analizando...' : '🔬 Analizar y comparar'}
-        </button>
+        >{analizando ? '⏳ Analizando...' : '🔬 Analizar y comparar'}</button>
       </div>
 
-      {/* ── Error ──────────────────────────────────────────────────────────── */}
+      {/* ── Error ─────────────────────────────────────────────────────────── */}
       {error && (
         <div className="rounded-xl px-4 py-3 text-sm" style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.25)', color: '#ff6b80' }}>
           ⚠️ {error}
         </div>
       )}
 
-      {/* ── Resultados ─────────────────────────────────────────────────────── */}
+      {/* ── Resultados ────────────────────────────────────────────────────── */}
       {resultado && (() => {
-        const { mA, mB, comp, patrones, hipotesis, resumen, recomendaciones, periodoA, periodoB } = resultado
-        const { repro: rA, prod: pA, sanidad: sA, ambiente: aA } = mA
-        const { repro: rB, prod: pB, sanidad: sB, ambiente: aB } = mB
+        const { mA, mB, comp, hipotesis } = resultado
+
+        // Motor estratégico v2
+        const perfil        = detectarPerfilOperativo(comp, mA, mB)
+        const alertas       = generarAlertasReales(comp, mA, mB)
+        const interpretacion = interpretarCambioContextual(comp, perfil, mA, mB)
+        const acciones      = generarAccionesRecomendadas(comp, perfil, mA, mB, hipotesis)
+        const scoreSust     = calcularIndiceSustentabilidad(mA, mB, comp)
+        const estado        = etiquetaEstado(scoreSust)
+
+        // Tendencia del índice global
+        const deltaIG = comp.indiceGlobal?.delta ?? 0
+        const tendIcon = deltaIG > 2 ? '↑' : deltaIG < -2 ? '↓' : '→'
+        const tendColor = deltaIG > 2 ? '#00e676' : deltaIG < -2 ? '#ff6b80' : '#8a9bb0'
 
         return (
-          <div className="space-y-5">
+          <div className="space-y-4">
 
-            {/* ── Índices globales ─────────────────────────────────────────── */}
-            <div className="rounded-2xl p-5" style={estiloCard}>
-              <div className="text-sm font-bold mb-4" style={{ color: tema.textPrimary }}>Índices globales</div>
-              <div className="flex flex-wrap justify-around gap-6">
-                <div className="flex flex-col items-center gap-3">
-                  <div className="text-xs uppercase tracking-widest" style={{ color: tema.textMuted }}>Rendimiento</div>
-                  <div className="flex gap-4">
-                    <div className="text-center">
-                      <GaugeCircle valor={mA.indiceGlobal} label="Período A" color="#4a5f7a" />
+            {/* ── HEADER EJECUTIVO ────────────────────────────────────────── */}
+            <div className="rounded-2xl overflow-hidden" style={card}>
+              {/* Badge del perfil operativo */}
+              <div className="px-5 pt-5 pb-4">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  {/* Izquierda: perfil + estado + interpretación */}
+                  <div className="flex-1 min-w-0 space-y-3">
+                    {/* Perfil */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="px-3 py-1.5 rounded-full text-xs font-bold"
+                        style={{ background: `${perfil.color}15`, border: `1px solid ${perfil.color}40`, color: perfil.color }}>
+                        {perfil.emoji} {perfil.label}
+                      </span>
+                      <span className="px-2.5 py-1 rounded-full text-xs font-semibold"
+                        style={{ background: `${estado.color}12`, border: `1px solid ${estado.color}35`, color: estado.color }}>
+                        {estado.emoji} {estado.label}
+                      </span>
                     </div>
-                    <div className="text-center">
-                      <GaugeCircle valor={mB.indiceGlobal} label="Período B" color="#00e676" />
+
+                    {/* Interpretación automática — frase principal */}
+                    <p className="text-sm leading-relaxed" style={{ color: tema.textPrimary, maxWidth: '520px' }}>
+                      {interpretacion}
+                    </p>
+
+                    {/* Mini métricas clave */}
+                    <div className="flex flex-wrap gap-0 divide-x" style={{ borderRadius: 10, overflow: 'hidden', border: `1px solid ${tema.bgCardBorde}` }}>
+                      <MiniKpi label="Fertilidad"     valor={(mB.repro.fertilidad * 100).toFixed(0) + '%'} color={mB.repro.fertilidad >= 0.7 ? '#00e676' : mB.repro.fertilidad >= 0.5 ? '#ffb300' : '#ff6b80'} />
+                      <MiniKpi label="Supervivencia"  valor={(mB.repro.supervivenciaMedio * 100).toFixed(0) + '%'} color={mB.repro.supervivenciaMedio >= 0.8 ? '#00e676' : '#ffb300'} />
+                      <MiniKpi label="Sanidad"        valor={Math.round(mB.sanidad.indiceSanitario)} color={mB.sanidad.indiceSanitario >= 70 ? '#00e676' : mB.sanidad.indiceSanitario >= 50 ? '#ffb300' : '#ff6b80'} />
+                      <MiniKpi label="Tendencia"      valor={tendIcon + ' ' + (deltaIG > 0 ? '+' : '') + Math.round(deltaIG) + ' pts'} color={tendColor} />
                     </div>
                   </div>
-                  <DeltaBadge comp={comp.indiceGlobal} formato={v => (v > 0 ? '+' : '') + Math.round(v)} />
+
+                  {/* Derecha: gauge de sustentabilidad */}
+                  <div className="flex flex-col items-center gap-2 shrink-0">
+                    <GaugeCircle valor={scoreSust} color={estado.color} size={100} />
+                    <span className="text-xs font-semibold text-center" style={{ color: tema.textMuted }}>Sustentabilidad</span>
+                  </div>
                 </div>
-                <div className="flex flex-col items-center gap-3">
-                  <div className="text-xs uppercase tracking-widest" style={{ color: tema.textMuted }}>Estabilidad</div>
-                  <div className="flex gap-4">
-                    <GaugeCircle valor={mA.indiceEstabilidad} label="Período A" color="#4a5f7a" />
-                    <GaugeCircle valor={mB.indiceEstabilidad} label="Período B" color="#a78bfa" />
-                  </div>
-                  <DeltaBadge comp={comp.indiceEstabilidad} formato={v => (v > 0 ? '+' : '') + Math.round(v)} />
-                </div>
-              </div>
-              {/* Mini KPIs */}
-              {/* Índice Evolución Bioterio */}
-              {resultado.indiceEvolucion && (() => {
-                const ie = resultado.indiceEvolucion
-                return (
-                  <div className="mt-5 rounded-xl p-4 flex items-center gap-4"
-                    style={{ background: `${ie.color}08`, border: `1px solid ${ie.color}25` }}>
-                    <div className="text-center shrink-0">
-                      <div className="text-3xl font-bold font-mono" style={{ color: ie.color }}>{ie.score}</div>
-                      <div className="text-xs" style={{ color: ie.color }}>/100</div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: tema.textMuted }}>
-                        Índice evolución bioterio
-                      </div>
-                      <div className="text-sm font-bold mb-1" style={{ color: ie.color }}>
-                        {ie.emoji} {ie.nivel}
-                      </div>
-                      <div className="text-xs" style={{ color: tema.textMuted }}>
-                        ¿La gestión histórica mejora o empeora la estabilidad futura?
-                      </div>
-                    </div>
-                    {/* Mini pendientes */}
-                    <div className="hidden md:flex flex-col gap-1 shrink-0">
-                      {[
-                        { k: 'fertilidad', label: 'Fertilidad' },
-                        { k: 'supervivencia', label: 'Supervivencia' },
-                        { k: 'nacidos', label: 'Nacidos' },
-                      ].map(({ k, label }) => {
-                        const s = ie.pendientes[k]
-                        const c = s > 0.3 ? '#00e676' : s < -0.3 ? '#ff6b80' : '#8a9bb0'
-                        return (
-                          <div key={k} className="flex items-center gap-2 text-xs">
-                            <span style={{ color: '#4a5f7a' }}>{label}</span>
-                            <span style={{ color: c }}>{s > 0.3 ? '↑' : s < -0.3 ? '↓' : '→'} {s >= 0 ? '+' : ''}{s.toFixed(1)}/mes</span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )
-              })()}
-              {/* Mini KPIs */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-                {[
-                  { label: 'Fertilidad', vA: (rA.fertilidad * 100).toFixed(0) + '%', vB: (rB.fertilidad * 100).toFixed(0) + '%', comp: comp.fertilidad },
-                  { label: 'Nacidos',    vA: pA.nacidos, vB: pB.nacidos, comp: comp.nacidos },
-                  { label: 'Índice sanitario', vA: sA.indiceSanitario, vB: sB.indiceSanitario, comp: comp.indiceSanitario },
-                  { label: 'Índice ambiental', vA: aA.indiceAmbiental, vB: aB.indiceAmbiental, comp: comp.indiceAmbiental },
-                ].map(({ label, vA, vB, comp: c }) => (
-                  <div key={label} className="rounded-xl p-3 text-center" style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${tema.bgCardBorde}` }}>
-                    <div className="text-xs mb-1" style={{ color: tema.textMuted }}>{label}</div>
-                    <div className="text-sm font-mono font-bold" style={{ color: '#c9d4e0' }}>{vA} → {vB}</div>
-                    <div className="mt-1"><DeltaBadge comp={c} formato={v => (typeof v === 'number' ? (v > 0 ? '+' : '') + v.toFixed(1) : String(v ?? '—'))} /></div>
-                  </div>
-                ))}
               </div>
             </div>
 
-            {/* ── ¿Mejora o deteriora? ─────────────────────────────────────── */}
-            <VeredictoPanel comp={comp} mA={mA} mB={mB} />
+            {/* ── BLOQUE 2 — ALERTAS REALES ────────────────────────────── */}
+            {alertas.length > 0 ? (
+              <div className="rounded-2xl p-5 space-y-3" style={card}>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-bold" style={{ color: tema.textPrimary }}>Alertas importantes</span>
+                  <span className="px-2 py-0.5 rounded-full text-xs font-bold" style={{ background: 'rgba(255,61,87,0.1)', color: '#ff6b80' }}>{alertas.length}</span>
+                </div>
+                {alertas.map((alerta, i) => {
+                  const cfg = {
+                    critico:    { bg: 'rgba(255,61,87,0.08)',  borde: 'rgba(255,61,87,0.25)',  color: '#ff6b80' },
+                    importante: { bg: 'rgba(255,152,0,0.08)',  borde: 'rgba(255,152,0,0.25)',  color: '#ff9800' },
+                    atencion:   { bg: 'rgba(255,179,0,0.06)',  borde: 'rgba(255,179,0,0.2)',   color: '#ffb300' },
+                  }[alerta.nivel] ?? {}
+                  return (
+                    <div key={i} className="flex items-start gap-3 px-4 py-3 rounded-xl"
+                      style={{ background: cfg.bg, border: `1px solid ${cfg.borde}` }}>
+                      <span className="text-lg shrink-0 mt-0.5">{alerta.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm" style={{ color: tema.textPrimary }}>{alerta.texto}</div>
+                        <NivelBadge nivel={alerta.nivel} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="rounded-2xl px-5 py-4 flex items-center gap-3" style={card}>
+                <span className="text-2xl">✅</span>
+                <div>
+                  <div className="text-sm font-semibold" style={{ color: '#00e676' }}>Sin alertas críticas</div>
+                  <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>No se detectaron problemas reales en el período analizado.</div>
+                </div>
+              </div>
+            )}
 
-            {/* ── Patrones detectados ──────────────────────────────────────── */}
-            <div className="rounded-2xl p-5 space-y-2" style={estiloCard}>
-              <div className="text-sm font-bold mb-3" style={{ color: tema.textPrimary }}>Patrones detectados</div>
-              {patrones.map((p, i) => (
+            {/* ── BLOQUE 3 — ACCIONES RECOMENDADAS ─────────────────────── */}
+            <div className="rounded-2xl p-5 space-y-3" style={card}>
+              <div className="text-sm font-bold mb-1" style={{ color: tema.textPrimary }}>Acciones recomendadas</div>
+              {acciones.map((accion, i) => (
                 <div key={i} className="flex items-start gap-3 px-4 py-3 rounded-xl"
-                  style={{ background: `${NIVEL_COLORES[p.nivel] || '#8a9bb0'}10`, border: `1px solid ${NIVEL_COLORES[p.nivel] || '#8a9bb0'}25` }}>
-                  <span className="font-semibold text-sm shrink-0" style={{ color: NIVEL_COLORES[p.nivel] }}>{p.patron}</span>
-                  <span className="text-xs" style={{ color: tema.textMuted }}>{p.descripcion}</span>
+                  style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${tema.bgCardBorde}` }}>
+                  <span className="text-base shrink-0 mt-0.5">{accion.icono}</span>
+                  <span className="text-sm" style={{ color: tema.textPrimary }}>{accion.texto}</span>
                 </div>
               ))}
             </div>
 
-            {/* ── Tabs de dimensiones ───────────────────────────────────────── */}
-            <div className="rounded-2xl overflow-hidden" style={estiloCard}>
-              {/* Tab bar */}
-              <div className="flex gap-1 flex-wrap mb-4">
-                {TABS_LABELS.map((t, i) => (
-                  <button key={t} onClick={() => setTab(i)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                    style={tab === i
-                      ? { background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.35)', color: '#00e676' }
-                      : { background: 'rgba(255,255,255,0.04)', border: `1px solid ${tema.bgCardBorde}`, color: tema.textMuted }
-                    }
-                  >{t}</button>
-                ))}
-              </div>
+            {/* ── BLOQUE 4 — DETALLE TÉCNICO (colapsable) ──────────────── */}
+            <ColapsableSeccion titulo="📊 Detalle técnico — métricas completas, gráficos y tendencias">
+              <SeccionTecnica resultado={resultado} bioterio={bioterio} />
+            </ColapsableSeccion>
 
-              {/* Encabezado de columnas */}
-              <div className="flex items-center gap-2 px-0 mb-2">
-                <span className="text-xs flex-1" style={{ color: tema.textMuted }}>Métrica</span>
-                <span className="text-xs w-14 text-right font-semibold" style={{ color: '#4a5f7a' }}>Per. A</span>
-                <span className="text-xs w-4" />
-                <span className="text-xs w-14 text-right font-semibold" style={{ color: '#00e676' }}>Per. B</span>
-                <span className="text-xs w-12 text-right font-semibold" style={{ color: '#8a9bb0' }}>Cambio</span>
-                <span className="text-xs w-14 text-right" style={{ color: tema.textMuted }}>Δ</span>
-              </div>
-
-              {/* TAB 0: Reproducción */}
-              {tab === 0 && (
-                <div>
-                  <MetricaRow label="Emparejamientos totales" comp={{ A: rA.total, B: rB.total, delta: rB.total - rA.total, senal: 'neutro' }} formato={v => v?.toFixed(0) ?? '—'} />
-                  <MetricaRow label="Partos exitosos" comp={comp.exitosos} formato={v => v?.toFixed(0) ?? '—'} />
-                  <MetricaRow label="Partos fallidos" comp={comp.fallidos} formato={v => v?.toFixed(0) ?? '—'} />
-                  <MetricaRow label="Fertilidad (%)" comp={{ ...comp.fertilidad, A: rA.fertilidad * 100, B: rB.fertilidad * 100, delta: comp.fertilidad.delta * 100 }} formato={v => v?.toFixed(1) + '%'} />
-                  <MetricaRow label="Latencia media (días)" comp={comp.latenciaMedia} formato={v => v?.toFixed(1) ?? '—'} />
-                  <MetricaRow label="Tamaño de camada (media)" comp={comp.tamanoCamada} formato={v => v?.toFixed(1) ?? '—'} />
-                  <MetricaRow label="Supervivencia al destete" comp={{ ...comp.supervivencia, A: rA.supervivenciaMedio * 100, B: rB.supervivenciaMedio * 100, delta: comp.supervivencia.delta * 100 }} formato={v => v?.toFixed(1) + '%'} />
-                  <MetricaRow label="Proporción sexual (♀%)" comp={{ ...comp.proporcionSexual, A: rA.proporcionSexual * 100, B: rB.proporcionSexual * 100, delta: comp.proporcionSexual.delta * 100 }} formato={v => v?.toFixed(1) + '%'} />
-                  <MetricaRow label="Eficiencia reproductiva" comp={comp.eficienciaRepro} formato={v => v?.toFixed(1) + '%'} />
-                  <MetricaRow label="Abortos / reabsorciones" comp={comp.abortos} formato={v => v?.toFixed(0) ?? '—'} />
-                  {/* Gráfico comparativo */}
-                  <div className="mt-5">
-                    <div className="text-xs font-semibold mb-3" style={{ color: tema.textMuted }}>Comparación visual</div>
-                    <ResponsiveContainer width="100%" height={200}>
-                      <BarChart data={[
-                        { name: 'Partos exitosos', A: rA.exitosos, B: rB.exitosos },
-                        { name: 'Camada media', A: +rA.tamanoCamadaMedio.toFixed(1), B: +rB.tamanoCamadaMedio.toFixed(1) },
-                        { name: 'Superv. %', A: +(rA.supervivenciaMedio * 100).toFixed(0), B: +(rB.supervivenciaMedio * 100).toFixed(0) },
-                      ]} barGap={4} barCategoryGap="30%">
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#4a5f7a' }} />
-                        <YAxis tick={{ fontSize: 10, fill: '#4a5f7a' }} />
-                        <Tooltip contentStyle={{ background: '#0d1528', border: '1px solid rgba(0,230,118,0.2)', borderRadius: 10, fontSize: 12 }} />
-                        <Bar dataKey="A" fill="#4a5f7a" radius={[4, 4, 0, 0]} name="Período A" />
-                        <Bar dataKey="B" fill="#00e676" radius={[4, 4, 0, 0]} name="Período B" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 1: Producción */}
-              {tab === 1 && (
-                <div>
-                  <MetricaRow label="Nacidos" comp={comp.nacidos} formato={v => v?.toFixed(0) ?? '—'} />
-                  <MetricaRow label="Destetados" comp={comp.destetados} formato={v => v?.toFixed(0) ?? '—'} />
-                  <MetricaRow label="Entregados" comp={comp.entregados} formato={v => v?.toFixed(0) ?? '—'} />
-                  <MetricaRow label="Sacrificados" comp={comp.sacrificados} formato={v => v?.toFixed(0) ?? '—'} />
-                  <MetricaRow label="Eficiencia (destetados/nacidos)" comp={comp.eficienciaProd} formato={v => v?.toFixed(1) + '%'} />
-                  <div className="mt-5">
-                    <div className="text-xs font-semibold mb-3" style={{ color: tema.textMuted }}>Comparación visual</div>
-                    <ResponsiveContainer width="100%" height={200}>
-                      <BarChart data={[
-                        { name: 'Nacidos', A: pA.nacidos, B: pB.nacidos },
-                        { name: 'Destetados', A: pA.destetados, B: pB.destetados },
-                        { name: 'Entregados', A: pA.entregados, B: pB.entregados },
-                        { name: 'Sacrificados', A: pA.sacrificados, B: pB.sacrificados },
-                      ]} barGap={4} barCategoryGap="30%">
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#4a5f7a' }} />
-                        <YAxis tick={{ fontSize: 10, fill: '#4a5f7a' }} />
-                        <Tooltip contentStyle={{ background: '#0d1528', border: '1px solid rgba(0,230,118,0.2)', borderRadius: 10, fontSize: 12 }} />
-                        <Bar dataKey="A" fill="#4a5f7a" radius={[4, 4, 0, 0]} name="Período A" />
-                        <Bar dataKey="B" fill="#00e676" radius={[4, 4, 0, 0]} name="Período B" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 2: Sanidad */}
-              {tab === 2 && (
-                <div>
-                  <MetricaRow label="Índice sanitario (0–100)" comp={comp.indiceSanitario} formato={v => v?.toFixed(0) ?? '—'} />
-                  <MetricaRow label="Incidentes totales" comp={comp.incidentesTotal} formato={v => v?.toFixed(0) ?? '—'} />
-                  <MetricaRow label="Incidentes graves" comp={comp.graves} formato={v => v?.toFixed(0) ?? '—'} />
-                  <MetricaRow label="Incidentes moderados" comp={{ A: sA.moderados, B: sB.moderados, delta: sB.moderados - sA.moderados, senal: sB.moderados > sA.moderados ? 'deterioro' : sB.moderados < sA.moderados ? 'mejora' : 'estable' }} formato={v => v?.toFixed(0) ?? '—'} />
-                  <MetricaRow label="Malformaciones en crías" comp={comp.malformaciones} formato={v => v?.toFixed(0) ?? '—'} />
-                  <MetricaRow label="Mortalidad neonatal" comp={comp.mortalidadNeonatal} formato={v => v?.toFixed(0) ?? '—'} />
-                  <MetricaRow label="Incidentes abiertos" comp={{ A: sA.abiertos, B: sB.abiertos, delta: sB.abiertos - sA.abiertos, senal: sB.abiertos > sA.abiertos ? 'deterioro' : 'mejora' }} formato={v => v?.toFixed(0) ?? '—'} />
-                </div>
-              )}
-
-              {/* TAB 3: Ambiente */}
-              {tab === 3 && (
-                <div>
-                  <MetricaRow label="Índice ambiental (0–100)" comp={comp.indiceAmbiental} formato={v => v?.toFixed(0) ?? '—'} />
-                  <MetricaRow label="Temperatura media (°C)" comp={comp.tempMedia} formato={v => v?.toFixed(1) + ' °C'} />
-                  <MetricaRow label="Días fuera de rango" comp={comp.diasFueraRango} formato={v => v?.toFixed(0) ?? '—'} />
-                  <MetricaRow label="Días en atención" comp={{ A: aA.diasAtencion, B: aB.diasAtencion, delta: aB.diasAtencion - aA.diasAtencion, senal: aB.diasAtencion > aA.diasAtencion ? 'deterioro' : 'mejora' }} formato={v => v?.toFixed(0) ?? '—'} />
-                  <MetricaRow label="Estabilidad térmica (%)" comp={comp.estabilidadTemp} formato={v => v?.toFixed(0) + '%'} />
-                  <MetricaRow label="Registros de temperatura" comp={{ A: aA.totalRegistros, B: aB.totalRegistros, delta: aB.totalRegistros - aA.totalRegistros, senal: 'neutro' }} formato={v => v?.toFixed(0) ?? '—'} />
-                  {aA.totalRegistros === 0 && aB.totalRegistros === 0 && (
-                    <p className="text-xs text-center mt-3" style={{ color: tema.textMuted }}>Sin registros de temperatura en estos períodos.</p>
-                  )}
-                </div>
-              )}
-
-              {/* TAB 4: Genética */}
-              {tab === 4 && (
-                <div>
-                  <div className="rounded-xl px-4 py-3 mb-3 text-xs" style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.2)', color: '#ffb300' }}>
-                    ℹ️ Las métricas genéticas reflejan el estado actual de la colonia activa. No varían por período ya que el árbol genealógico es continuo.
-                  </div>
-                  <MetricaRow label="F media (consanguinidad)" comp={{ ...comp.fMedia, A: mA.genetica.fMedia * 100, B: mB.genetica.fMedia * 100, delta: comp.fMedia.delta * 100 }} formato={v => v?.toFixed(2) + '%'} />
-                  <MetricaRow label="Diversidad estimada" comp={{ ...comp.diversidad, A: mA.genetica.diversidadEstimada, B: mB.genetica.diversidadEstimada }} formato={v => v?.toFixed(1) + '%'} />
-                  <MetricaRow label="Animales con F alto (>12.5%)" comp={comp.animalesAltoF} formato={v => v?.toFixed(0) ?? '—'} />
-                  <MetricaRow label="Animales sin ancestros registrados" comp={{ A: mA.genetica.animalesSinAncestros, B: mB.genetica.animalesSinAncestros, delta: 0, senal: 'neutro' }} formato={v => v?.toFixed(0) ?? '—'} />
-                  <MetricaRow label="Total animales activos" comp={{ A: mA.genetica.totalAnimales, B: mB.genetica.totalAnimales, delta: 0, senal: 'neutro' }} formato={v => v?.toFixed(0) ?? '—'} />
-                </div>
-              )}
-
-              {/* TAB 5: Renovación */}
-              {tab === 5 && (() => {
-                const rnA = mA.renovacion
-                const rnB = mB.renovacion
-                const diffRet = { A: rnA.retirados, B: rnB.retirados, delta: rnB.retirados - rnA.retirados, senal: rnB.retirados > rnA.retirados ? 'mejora' : rnB.retirados < rnA.retirados ? 'deterioro' : 'estable' }
-                const diffTasa = { A: rnA.tasaRenovacion, B: rnB.tasaRenovacion, delta: rnB.tasaRenovacion - rnA.tasaRenovacion, senal: 'neutro' }
-                return (
-                  <div>
-                    {/* Estado actual — mismo para ambos períodos */}
-                    <div className="rounded-xl p-4 mb-4" style={{ background: 'rgba(0,230,118,0.04)', border: '1px solid rgba(0,230,118,0.15)' }}>
-                      <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: '#00e676' }}>Estado actual de reproductores</div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {[
-                          { label: 'Total activos', val: rnA.totalActivos, color: '#c9d4e0' },
-                          { label: '♂ Machos',      val: rnA.machos,       color: '#40c4ff' },
-                          { label: '♀ Hembras',     val: rnA.hembras,      color: '#ce93d8' },
-                          { label: 'Edad media',    val: rnA.edadMedia ? Math.round(rnA.edadMedia) + 'd' : '—', color: '#ffb300' },
-                        ].map(({ label, val, color }) => (
-                          <div key={label} className="rounded-lg p-3 text-center" style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${tema.bgCardBorde}` }}>
-                            <div className="text-lg font-bold font-mono" style={{ color }}>{val}</div>
-                            <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>{label}</div>
-                          </div>
-                        ))}
-                      </div>
-                      {/* Alertas de edad */}
-                      {(rnA.proximosLimite > 0 || rnA.excedidos > 0) && (
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          {rnA.proximosLimite > 0 && (
-                            <span className="px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: 'rgba(255,179,0,0.12)', border: '1px solid rgba(255,179,0,0.3)', color: '#ffb300' }}>
-                              ⚠️ {rnA.proximosLimite} próximo{rnA.proximosLimite > 1 ? 's' : ''} al límite de edad (≥240d)
-                            </span>
-                          )}
-                          {rnA.excedidos > 0 && (
-                            <span className="px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: 'rgba(255,61,87,0.12)', border: '1px solid rgba(255,61,87,0.3)', color: '#ff6b80' }}>
-                              🔴 {rnA.excedidos} excedido{rnA.excedidos > 1 ? 's' : ''} el límite (≥270d)
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    {/* Comparación por período */}
-                    <MetricaRow label="Reproductores retirados/sacrificados" comp={diffRet} formato={v => v?.toFixed(0) ?? '—'} />
-                    <MetricaRow label="Tasa de renovación (retirados/activos)" comp={diffTasa} formato={v => v?.toFixed(1) + '%'} />
-                    <div className="mt-5">
-                      <div className="text-xs font-semibold mb-3" style={{ color: tema.textMuted }}>Retirados por período</div>
-                      <ResponsiveContainer width="100%" height={180}>
-                        <BarChart data={[{ name: 'Retirados', A: rnA.retirados, B: rnB.retirados }]} barGap={8} barCategoryGap="50%">
-                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                          <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#4a5f7a' }} />
-                          <YAxis tick={{ fontSize: 10, fill: '#4a5f7a' }} />
-                          <Tooltip contentStyle={{ background: '#0d1528', border: '1px solid rgba(0,230,118,0.2)', borderRadius: 10, fontSize: 12 }} />
-                          <Bar dataKey="A" fill="#4a5f7a" radius={[4, 4, 0, 0]} name="Período A" />
-                          <Bar dataKey="B" fill="#00e676" radius={[4, 4, 0, 0]} name="Período B" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                )
-              })()}
-
-              {/* TAB 6: Híbridos F1 */}
-              {tab === 6 && (() => {
-                const hA = mA.hibridos
-                const hB = mB.hibridos
-                const diffNac  = { A: hA.nacidos,    B: hB.nacidos,    delta: hB.nacidos - hA.nacidos,       senal: hB.nacidos > hA.nacidos ? 'mejora' : hB.nacidos < hA.nacidos ? 'deterioro' : 'estable' }
-                const diffDest = { A: hA.destetados, B: hB.destetados, delta: hB.destetados - hA.destetados, senal: hB.destetados > hA.destetados ? 'mejora' : 'estable' }
-                const diffExit = { A: hA.exitosos,   B: hB.exitosos,   delta: hB.exitosos - hA.exitosos,     senal: hB.exitosos > hA.exitosos ? 'mejora' : 'estable' }
-                const diffEfi  = { A: hA.eficiencia, B: hB.eficiencia, delta: hB.eficiencia - hA.eficiencia, senal: hB.eficiencia > hA.eficiencia ? 'mejora' : hB.eficiencia < hA.eficiencia ? 'deterioro' : 'estable' }
-                const diffTam  = { A: hA.tamanoCamadaMedio, B: hB.tamanoCamadaMedio, delta: hB.tamanoCamadaMedio - hA.tamanoCamadaMedio, senal: hB.tamanoCamadaMedio > hA.tamanoCamadaMedio ? 'mejora' : 'estable' }
-                const sinDatos = hA.total === 0 && hB.total === 0
-                return (
-                  <div>
-                    {bioterio !== 'ratones_hibridos' && (
-                      <div className="rounded-xl px-4 py-3 mb-4 text-xs" style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.18)', color: '#00e676' }}>
-                        🧬 Mostrando producción F1 (Bioterio Híbridos) independientemente del bioterio seleccionado para auditoría.
-                      </div>
-                    )}
-                    {sinDatos ? (
-                      <p className="text-xs text-center py-8" style={{ color: tema.textMuted }}>Sin camadas F1 registradas en los períodos seleccionados.</p>
-                    ) : (
-                      <>
-                        <MetricaRow label="Emparejamientos F1 totales" comp={{ A: hA.total, B: hB.total, delta: hB.total - hA.total, senal: 'neutro' }} formato={v => v?.toFixed(0) ?? '—'} />
-                        <MetricaRow label="Cruces exitosos" comp={diffExit} formato={v => v?.toFixed(0) ?? '—'} />
-                        <MetricaRow label="Cruces fallidos" comp={{ A: hA.fallidos, B: hB.fallidos, delta: hB.fallidos - hA.fallidos, senal: hB.fallidos > hA.fallidos ? 'deterioro' : 'mejora' }} formato={v => v?.toFixed(0) ?? '—'} />
-                        <MetricaRow label="Nacidos F1" comp={diffNac} formato={v => v?.toFixed(0) ?? '—'} />
-                        <MetricaRow label="Destetados F1" comp={diffDest} formato={v => v?.toFixed(0) ?? '—'} />
-                        <MetricaRow label="Tamaño de camada F1 (media)" comp={diffTam} formato={v => v?.toFixed(1) ?? '—'} />
-                        <MetricaRow label="Eficiencia F1 (destetados/nacidos)" comp={diffEfi} formato={v => v?.toFixed(1) + '%'} />
-                        {(hA.tiempoMedioDestete || hB.tiempoMedioDestete) && (
-                          <MetricaRow
-                            label="Tiempo medio al destete (días)"
-                            comp={{ A: hA.tiempoMedioDestete ?? 0, B: hB.tiempoMedioDestete ?? 0, delta: (hB.tiempoMedioDestete ?? 0) - (hA.tiempoMedioDestete ?? 0), senal: 'neutro' }}
-                            formato={v => v?.toFixed(0) + 'd'}
-                          />
-                        )}
-                        <div className="mt-5">
-                          <div className="text-xs font-semibold mb-3" style={{ color: tema.textMuted }}>Producción F1 comparada</div>
-                          <ResponsiveContainer width="100%" height={180}>
-                            <BarChart data={[
-                              { name: 'Nacidos', A: hA.nacidos, B: hB.nacidos },
-                              { name: 'Destetados', A: hA.destetados, B: hB.destetados },
-                              { name: 'Exitosos', A: hA.exitosos, B: hB.exitosos },
-                            ]} barGap={4} barCategoryGap="35%">
-                              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                              <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#4a5f7a' }} />
-                              <YAxis tick={{ fontSize: 10, fill: '#4a5f7a' }} />
-                              <Tooltip contentStyle={{ background: '#0d1528', border: '1px solid rgba(0,230,118,0.2)', borderRadius: 10, fontSize: 12 }} />
-                              <Bar dataKey="A" fill="#4a5f7a" radius={[4, 4, 0, 0]} name="Período A" />
-                              <Bar dataKey="B" fill="#00e676" radius={[4, 4, 0, 0]} name="Período B" />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )
-              })()}
-            </div>
-
-            {/* ── Tendencias históricas ─────────────────────────────────────── */}
-            {resultado.tendencias?.length > 0 && (() => {
-              const horizontes = [
-                { val: 3,  label: '3 meses' },
-                { val: 6,  label: '6 meses' },
-                { val: 12, label: '12 meses' },
-                { val: 24, label: '24 meses' },
-              ]
-              const datosHorizonte = resultado.tendencias.slice(-horizonteTendencias)
-              const tooltipStyle = { background: '#0d1528', border: '1px solid rgba(0,230,118,0.2)', borderRadius: 10, fontSize: 11 }
-              const xTickStyle   = { fontSize: 9, fill: '#4a5f7a' }
-              const yTickStyle   = { fontSize: 9, fill: '#4a5f7a' }
-              return (
-                <div className="rounded-2xl overflow-hidden" style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}>
-                  <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: `1px solid ${tema.bgCardBorde}`, background: 'rgba(0,230,118,0.03)' }}>
-                    <span className="text-sm font-bold" style={{ color: tema.textPrimary }}>📈 Tendencias históricas</span>
-                    <div className="flex gap-1">
-                      {horizontes.map(h => (
-                        <button key={h.val} onClick={() => setHorizonte(h.val)}
-                          className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
-                          style={horizonteTendencias === h.val
-                            ? { background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.35)', color: '#00e676' }
-                            : { background: 'rgba(255,255,255,0.04)', border: `1px solid ${tema.bgCardBorde}`, color: tema.textMuted }
-                          }
-                        >{h.label}</button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Fertilidad */}
-                    <div>
-                      <div className="text-xs font-semibold mb-2" style={{ color: tema.textMuted }}>Fertilidad (%)</div>
-                      <ResponsiveContainer width="100%" height={140}>
-                        <LineChart data={datosHorizonte}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                          <XAxis dataKey="mes" tick={xTickStyle} />
-                          <YAxis domain={[0, 100]} tick={yTickStyle} />
-                          <Tooltip contentStyle={tooltipStyle} formatter={v => [v + '%', 'Fertilidad']} />
-                          <Line type="monotone" dataKey="fertilidad" stroke="#00e676" strokeWidth={2} dot={{ r: 3, fill: '#00e676' }} connectNulls />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                    {/* Nacidos y destetados */}
-                    <div>
-                      <div className="text-xs font-semibold mb-2" style={{ color: tema.textMuted }}>Producción (nacidos / destetados)</div>
-                      <ResponsiveContainer width="100%" height={140}>
-                        <LineChart data={datosHorizonte}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                          <XAxis dataKey="mes" tick={xTickStyle} />
-                          <YAxis tick={yTickStyle} />
-                          <Tooltip contentStyle={tooltipStyle} />
-                          <Line type="monotone" dataKey="nacidos"    stroke="#40c4ff" strokeWidth={2} dot={{ r: 2 }} name="Nacidos" connectNulls />
-                          <Line type="monotone" dataKey="destetados" stroke="#a78bfa" strokeWidth={2} dot={{ r: 2 }} name="Destetados" connectNulls />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                    {/* Supervivencia */}
-                    <div>
-                      <div className="text-xs font-semibold mb-2" style={{ color: tema.textMuted }}>Supervivencia al destete (%)</div>
-                      <ResponsiveContainer width="100%" height={140}>
-                        <LineChart data={datosHorizonte}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                          <XAxis dataKey="mes" tick={xTickStyle} />
-                          <YAxis domain={[0, 100]} tick={yTickStyle} />
-                          <Tooltip contentStyle={tooltipStyle} formatter={v => [v + '%', 'Supervivencia']} />
-                          <Line type="monotone" dataKey="supervivencia" stroke="#ffb300" strokeWidth={2} dot={{ r: 3, fill: '#ffb300' }} connectNulls />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                    {/* Incidentes */}
-                    <div>
-                      <div className="text-xs font-semibold mb-2" style={{ color: tema.textMuted }}>Incidentes (total / graves)</div>
-                      <ResponsiveContainer width="100%" height={140}>
-                        <LineChart data={datosHorizonte}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                          <XAxis dataKey="mes" tick={xTickStyle} />
-                          <YAxis tick={yTickStyle} />
-                          <Tooltip contentStyle={tooltipStyle} />
-                          <Line type="monotone" dataKey="incidentes" stroke="#ff9800" strokeWidth={2} dot={{ r: 2 }} name="Total" connectNulls />
-                          <Line type="monotone" dataKey="graves"     stroke="#ff6b80" strokeWidth={2} dot={{ r: 2 }} name="Graves" connectNulls />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                    {/* Temperatura — solo si hay datos */}
-                    {datosHorizonte.some(d => d.tempMedia !== null) && (
-                      <div className="md:col-span-2">
-                        <div className="text-xs font-semibold mb-2" style={{ color: tema.textMuted }}>Temperatura media mensual (°C)</div>
-                        <ResponsiveContainer width="100%" height={140}>
-                          <LineChart data={datosHorizonte}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                            <XAxis dataKey="mes" tick={xTickStyle} />
-                            <YAxis domain={[16, 28]} tick={yTickStyle} />
-                            <Tooltip contentStyle={tooltipStyle} formatter={v => [v + ' °C', 'Temperatura']} />
-                            <Line type="monotone" dataKey="tempMedia" stroke="#40c4ff" strokeWidth={2} dot={{ r: 3, fill: '#40c4ff' }} connectNulls name="Temp media" />
-                          </LineChart>
-                        </ResponsiveContainer>
-                        <div className="flex gap-3 mt-1 text-xs" style={{ color: tema.textMuted }}>
-                          <span style={{ color: '#4ade80' }}>✓ Rango ideal: 20–24 °C</span>
-                          <span style={{ color: '#ff6b80' }}>⚠️ Riesgo: &lt;18 °C o &gt;26 °C</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* ── Proyección futura ──────────────────────────────────── */}
-                  {(() => {
-                    const todosLosDatos = resultado.tendencias
-                    const metricas = [
-                      { key: 'fertilidad',   label: 'Fertilidad',    fmt: v => v.toFixed(0) + '%',  min: 0, max: 100 },
-                      { key: 'supervivencia',label: 'Supervivencia',  fmt: v => v.toFixed(0) + '%',  min: 0, max: 100 },
-                      { key: 'nacidos',      label: 'Nacidos/mes',   fmt: v => v.toFixed(0),         min: 0 },
-                      { key: 'incidentes',   label: 'Incidentes',    fmt: v => v.toFixed(0),         min: 0 },
-                    ]
-                    const horizontesProy = [3, 6, 12]
-                    const proyecciones = metricas.map(m => ({
-                      ...m,
-                      puntos: horizontesProy.map(h => {
-                        const ps = proyectarTendenciaLineal(todosLosDatos, m.key, h, m.min ?? 0, m.max ?? Infinity)
-                        return ps.length > 0 ? ps[ps.length - 1].valor : null
-                      }),
-                      slope: proyectarTendenciaLineal(todosLosDatos, m.key, 1, m.min ?? 0, m.max ?? Infinity)[0]?.slope ?? 0,
-                    }))
-                    const thStyle = { color: '#4a5f7a', fontSize: '11px', fontWeight: 600, padding: '6px 10px', textAlign: 'right' }
-                    const tdStyle = { fontSize: '11px', padding: '5px 10px', textAlign: 'right', fontFamily: 'monospace' }
-                    return (
-                      <div className="px-5 pb-5 mt-2">
-                        <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: tema.textMuted }}>
-                          Proyección futura — regresión lineal (últimos {Math.min(6, todosLosDatos.length)} meses)
-                        </div>
-                        <div className="overflow-x-auto">
-                          <table className="w-full rounded-xl overflow-hidden" style={{ borderCollapse: 'collapse', background: 'rgba(255,255,255,0.02)', border: `1px solid ${tema.bgCardBorde}` }}>
-                            <thead>
-                              <tr style={{ borderBottom: `1px solid ${tema.bgCardBorde}` }}>
-                                <th style={{ ...thStyle, textAlign: 'left', color: tema.textMuted }}>Métrica</th>
-                                <th style={thStyle}>Actual</th>
-                                {horizontesProy.map(h => <th key={h} style={{ ...thStyle, color: '#00e676' }}>+{h}m</th>)}
-                                <th style={thStyle}>Tendencia</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {proyecciones.map(({ key, label, fmt, puntos, slope }) => {
-                                const last = todosLosDatos.length > 0 ? todosLosDatos[todosLosDatos.length - 1][key] : null
-                                const trendColor = slope > 0.3 ? '#00e676' : slope < -0.3 ? '#ff6b80' : '#8a9bb0'
-                                const trendIcon  = slope > 0.3 ? '↑' : slope < -0.3 ? '↓' : '→'
-                                return (
-                                  <tr key={key} style={{ borderBottom: `1px solid ${tema.bgCardBorde}30` }}>
-                                    <td style={{ ...tdStyle, textAlign: 'left', color: '#8a9bb0' }}>{label}</td>
-                                    <td style={{ ...tdStyle, color: '#c9d4e0' }}>{last != null ? fmt(last) : '—'}</td>
-                                    {puntos.map((v, i) => (
-                                      <td key={i} style={{ ...tdStyle, color: v != null ? '#00e676' : '#4a5f7a' }}>
-                                        {v != null ? fmt(v) : '—'}
-                                      </td>
-                                    ))}
-                                    <td style={{ ...tdStyle, color: trendColor, fontWeight: 700 }}>
-                                      {trendIcon} {slope >= 0 ? '+' : ''}{slope.toFixed(1)}/mes
-                                    </td>
-                                  </tr>
-                                )
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                        <p className="text-xs mt-2" style={{ color: tema.textMuted }}>
-                          ⚠️ Proyección estimada basada en tendencia reciente. No considera eventos externos ni cambios de manejo.
-                        </p>
-                      </div>
-                    )
-                  })()}
-                </div>
-              )
-            })()}
-
-            {/* ── Motor causal ─────────────────────────────────────────────── */}
-            {hipotesis.length > 0 && (
-              <Seccion titulo="🔬 Motor causal — ¿Por qué cambiaron los indicadores?">
-                <div className="space-y-3">
-                  {hipotesis.map((h, i) => {
-                    const color = h.nivel === 'critico' ? '#ff6b80' : h.nivel === 'alerta' ? '#ffb300' : h.nivel === 'positivo' ? '#00e676' : '#8a9bb0'
-                    return (
-                      <div key={i} className="rounded-xl p-4 space-y-2" style={{ background: `${color}08`, border: `1px solid ${color}25` }}>
-                        <div className="font-semibold text-sm" style={{ color }}>{h.problema}</div>
-                        <ul className="text-xs space-y-0.5" style={{ color: tema.textMuted }}>
-                          {h.factores.map((f, j) => <li key={j}>• {f}</li>)}
-                        </ul>
-                        <div className="text-xs font-semibold mt-1" style={{ color: '#c9d4e0' }}>→ {h.recomendacion}</div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </Seccion>
-            )}
-
-            {/* ── Resumen automático ───────────────────────────────────────── */}
-            <Seccion titulo="📋 Resumen automático">
-              <div className="rounded-xl px-4 py-4" style={{ background: 'rgba(0,230,118,0.04)', border: '1px solid rgba(0,230,118,0.12)' }}>
-                <pre className="text-xs whitespace-pre-wrap" style={{ color: '#c9d4e0', fontFamily: 'inherit', lineHeight: 1.8 }}>
-                  {resumen}
-                </pre>
-              </div>
-            </Seccion>
-
-            {/* ── Recomendaciones ──────────────────────────────────────────── */}
-            {recomendaciones.length > 0 && (
-              <Seccion titulo="✅ Recomendaciones">
-                <div className="space-y-2">
-                  {recomendaciones.map((r, i) => (
-                    <div key={i} className="flex items-start gap-3 px-4 py-3 rounded-xl"
-                      style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${tema.bgCardBorde}` }}>
-                      <span className="text-lg shrink-0">{r.icono}</span>
-                      <span className="text-sm" style={{ color: '#c9d4e0' }}>{r.texto}</span>
-                    </div>
-                  ))}
-                </div>
-              </Seccion>
-            )}
-
-            {/* Botón imprimir */}
+            {/* Imprimir */}
             <div className="flex justify-end pb-2">
-              <button
-                onClick={() => window.print()}
-                className="px-4 py-2 rounded-xl text-xs font-semibold transition-all"
-                style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${tema.bgCardBorde}`, color: tema.textSecondary }}
-              >
+              <button onClick={() => window.print()}
+                className="px-4 py-2 rounded-xl text-xs font-semibold"
+                style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${tema.bgCardBorde}`, color: tema.textSecondary }}>
                 🖨️ Imprimir informe
               </button>
             </div>
@@ -1024,14 +791,16 @@ export default function Auditoria() {
         )
       })()}
 
-      {/* Estado inicial */}
+      {/* ── Estado inicial ────────────────────────────────────────────────── */}
       {!resultado && !analizando && !error && (
         <div className="text-center py-16" style={{ color: tema.textMuted }}>
           <div className="text-5xl mb-4">📊</div>
-          <div className="text-base font-semibold mb-1" style={{ color: tema.textSecondary }}>
-            Seleccioná el período y hacé clic en "Analizar"
+          <div className="text-base font-semibold mb-2" style={{ color: tema.textSecondary }}>
+            Seleccioná la colonia y el período
           </div>
-          <div className="text-sm">Compará la colonia en dos momentos diferentes y detectá patrones automáticamente.</div>
+          <div className="text-sm max-w-xs mx-auto">
+            El sistema interpreta automáticamente qué ocurrió, si es esperado y qué hacer.
+          </div>
         </div>
       )}
     </div>
