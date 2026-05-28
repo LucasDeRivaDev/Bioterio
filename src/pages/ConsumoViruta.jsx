@@ -100,6 +100,106 @@ function calcUnidades(conteos, especie) {
   return conteos.totalJaulas * PESOS.raton_std * CAMBIOS_SEM
 }
 
+// ── Proyección de colonia ─────────────────────────────────────────────────────
+
+function addDias(fechaStr, n) {
+  if (!fechaStr) return null
+  const [y, m, d] = fechaStr.split('-').map(Number)
+  const dt = new Date(y, m - 1, d)
+  dt.setDate(dt.getDate() + n)
+  return dt.toISOString().slice(0, 10)
+}
+
+/**
+ * Proyecta el estado de jaulas del bioterio a `diasHorizonte` días desde hoy.
+ * Considera: partos esperados, destetes esperados y envejecimiento de stock.
+ * La frecuencia de cambios (2/semana) NO varía — solo cambia el n° de jaulas.
+ */
+function proyectarConteos(diasHorizonte, animales, camadas, jaulas, sacrificios, entregas, bio, especie) {
+  if (diasHorizonte <= 0) return contarJaulas(especie, bio, animales, camadas, jaulas, sacrificios, entregas)
+
+  const base    = contarJaulas(especie, bio, animales, camadas, jaulas, sacrificios, entregas)
+  const hoyStr  = hoy()
+  const horizStr = addDias(hoyStr, diasHorizonte)
+
+  let dL = 0, dHR = 0, dC = 0, dJ = 0, dA = 0
+
+  function acumularCria(fechaNacStr) {
+    const edad = difDias(parseDate(fechaNacStr), parseDate(horizStr))
+    const cat  = catStock(edad, bio)
+    if      (cat === 'crias')   dC++
+    else if (cat === 'jovenes') dJ++
+    else                        dA++
+  }
+
+  // 1. Partos futuros (cópula sin nacimiento, no fallidas)
+  camadas
+    .filter(c => c.fecha_copula && !c.fecha_nacimiento && !c.failure_flag)
+    .forEach(c => {
+      const fechaParto = addDias(c.fecha_copula, bio.GESTACION_DIAS)
+      if (!fechaParto || fechaParto <= hoyStr || fechaParto > horizStr) return
+
+      const fechaDestete = addDias(fechaParto, bio.DESTETE_DIAS)
+      if (fechaDestete <= horizStr) {
+        // Parto Y destete dentro del horizonte: madre termina como hembrasRepro + crías en jaula propia
+        dHR++
+        acumularCria(fechaParto)
+      } else {
+        // Solo parto dentro del horizonte: madre es lactante al corte
+        dL++
+      }
+    })
+
+  // 2. Destetes pendientes (nacimiento sin destete, no fallidas)
+  camadas
+    .filter(c => c.fecha_nacimiento && !c.fecha_destete && !c.failure_flag)
+    .forEach(c => {
+      const fechaDestete = addDias(c.fecha_nacimiento, bio.DESTETE_DIAS)
+      if (!fechaDestete || fechaDestete <= hoyStr || fechaDestete > horizStr) return
+
+      dL--     // madre sale de lactante
+      dHR++    // madre vuelve a reproductoras
+      acumularCria(c.fecha_nacimiento)  // crías obtienen su propia jaula
+    })
+
+  // 3. Envejecimiento de stock existente (crías→jóvenes→adultos cambian PESOS)
+  const jaulasSet = new Set(jaulas.map(j => j.camada_id))
+
+  function envejecerJaula(fechaNacimiento) {
+    if (!fechaNacimiento) return
+    const edadHoy    = edadDias(fechaNacimiento)
+    if (edadHoy === null) return
+    const edadFutura = edadHoy + diasHorizonte
+    const catHoy     = catStock(edadHoy, bio)
+    const catFutura  = catStock(edadFutura, bio)
+    if (catHoy === catFutura) return
+    if      (catHoy === 'crias')   dC--; else if (catHoy === 'jovenes') dJ--; else dA--
+    if      (catFutura === 'crias') dC++; else if (catFutura === 'jovenes') dJ++; else dA++
+  }
+
+  jaulas.forEach(j => {
+    const c = camadas.find(x => x.id === j.camada_id)
+    if (!c || c.incluir_en_stock === false || j.total <= 0) return
+    envejecerJaula(c.fecha_nacimiento)
+  })
+  camadas.forEach(c => {
+    if (!c.fecha_destete || c.incluir_en_stock === false || jaulasSet.has(c.id)) return
+    if (stockCamada(c, sacrificios, entregas) <= 0) return
+    envejecerJaula(c.fecha_nacimiento)
+  })
+
+  const machos     = Math.max(0, base.machos)          // machos no cambian solos
+  const lactantes  = Math.max(0, base.lactantes  + dL)
+  const hembrasRepro = Math.max(0, base.hembrasRepro + dHR)
+  const jCrias     = Math.max(0, base.jCrias     + dC)
+  const jJovenes   = Math.max(0, base.jJovenes   + dJ)
+  const jAdultos   = Math.max(0, base.jAdultos   + dA)
+  return {
+    machos, lactantes, hembrasRepro, jCrias, jJovenes, jAdultos,
+    totalJaulas: machos + lactantes + hembrasRepro + jCrias + jJovenes + jAdultos,
+  }
+}
+
 // ── Ciclo de cambios de cama ──────────────────────────────────────────────────
 
 const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
@@ -297,9 +397,14 @@ export default function ConsumoViruta() {
       const nd = {}
       TODOS.forEach(({ id, especie, bio }, i) => {
         const [{ data: an }, { data: ca }, { data: ja }, { data: sa }, { data: en }] = resAnimales[i]
-        const conteos  = contarJaulas(especie, bio, an ?? [], ca ?? [], ja ?? [], sa ?? [], en ?? [])
+        const animales_   = an ?? []
+        const camadas_    = ca ?? []
+        const jaulas_     = ja ?? []
+        const sacrificios_= sa ?? []
+        const entregas_   = en ?? []
+        const conteos  = contarJaulas(especie, bio, animales_, camadas_, jaulas_, sacrificios_, entregas_)
         const unidades = calcUnidades(conteos, especie)
-        nd[id] = { conteos, unidades }
+        nd[id] = { conteos, unidades, animales: animales_, camadas: camadas_, jaulas: jaulas_, sacrificios: sacrificios_, entregas: entregas_ }
       })
       setDatos(nd)
 
@@ -384,8 +489,94 @@ export default function ConsumoViruta() {
     ? ultimoCenso.bolsas + comprasPostCenso.reduce((s, c) => s + c.bolsas, 0)
     : null
 
-  const duracionSem = (stockActual !== null && bolsasPorSem > 0)
-    ? stockActual / bolsasPorSem : null
+  // ── Proyección futura de consumo (30 / 60 / 90 / 180 días) ──────────────────
+  const proyecciones = useMemo(() => {
+    if (!datos || !tasa) return null
+    const hoyStr  = hoy()
+
+    return [30, 60, 90, 180].map(dias => {
+      let jaulasTotal  = 0
+      let unidadesTotal = 0
+      const causas     = []
+      const horizStr   = addDias(hoyStr, dias)
+
+      TODOS.forEach(({ id, especie, bio, label, icon }) => {
+        const bd = datos[id]
+        if (!bd) return
+        const cf = proyectarConteos(dias, bd.animales, bd.camadas, bd.jaulas, bd.sacrificios, bd.entregas, bio, especie)
+        jaulasTotal   += cf.totalJaulas
+        unidadesTotal += calcUnidades(cf, especie)
+
+        // Causas de cambio: partos y destetes dentro del período
+        const partos = bd.camadas.filter(c =>
+          c.fecha_copula && !c.fecha_nacimiento && !c.failure_flag &&
+          (() => { const f = addDias(c.fecha_copula, bio.GESTACION_DIAS); return f && f > hoyStr && f <= horizStr })()
+        ).length
+        const destetes = bd.camadas.filter(c =>
+          c.fecha_nacimiento && !c.fecha_destete && !c.failure_flag &&
+          (() => { const f = addDias(c.fecha_nacimiento, bio.DESTETE_DIAS); return f && f > hoyStr && f <= horizStr })()
+        ).length
+
+        if (partos  > 0) causas.push({ icono: '🐣', label: `+${partos} parto${partos > 1 ? 's' : ''}`,   color: '#00e676', bio: (icon ?? '') + ' ' + (label?.split(' ')[0] ?? id) })
+        if (destetes> 0) causas.push({ icono: '📦', label: `+${destetes} destete${destetes>1?'s':''}`, color: '#40c4ff', bio: (icon ?? '') + ' ' + (label?.split(' ')[0] ?? id) })
+      })
+
+      const jaulasHoy   = TODOS.reduce((s, { id }) => s + (datos[id]?.conteos.totalJaulas ?? 0), 0)
+      const unidadesHoy = TODOS.reduce((s, { id }) => s + (datos[id]?.unidades ?? 0), 0)
+      const consumoSem  = unidadesTotal * tasa
+      const consumoHoy  = unidadesHoy   * tasa
+      const deltaJaulas = jaulasTotal   - jaulasHoy
+      const deltaConsumo= consumoSem    - consumoHoy
+      const deltaPct    = consumoHoy > 0 ? Math.round((deltaConsumo / consumoHoy) * 100) : 0
+
+      return { dias, horizStr, jaulasTotal, deltaJaulas, consumoSem, deltaConsumo, deltaPct, causas }
+    })
+  }, [datos, tasa])
+
+  // ── Duración real (stock ÷ consumo proyectado, no histórico) ─────────────────
+  // Usa las 4 proyecciones como waypoints y hace aritmética piecewise.
+  // El resultado es en SEMANAS. La frecuencia de cambio (2/sem) no varía.
+  const duracionReal = useMemo(() => {
+    if (stockActual === null || !proyecciones || !totales) return null
+    const consumoHoy = totales.totalUnidades * tasa
+    if (consumoHoy <= 0) return null
+
+    // Waypoints [desde_día, hasta_día, consumo_sem_en_este_tramo]
+    const waypoints = [
+      [0,   30,  consumoHoy],
+      [30,  60,  proyecciones[0].consumoSem],
+      [60,  90,  proyecciones[1].consumoSem],
+      [90,  180, proyecciones[2].consumoSem],
+      [180, Infinity, proyecciones[3].consumoSem],
+    ]
+
+    let stock = stockActual
+    let semanasTotal = 0
+
+    for (const [dInicio, dFin, consumoSem] of waypoints) {
+      if (consumoSem <= 0) { semanasTotal += (dFin - dInicio) / 7; continue }
+      const semanasEtapa = (dFin === Infinity ? 52 * 3 : (dFin - dInicio)) / 7
+      const consumoEtapa = consumoSem * semanasEtapa
+
+      if (stock <= consumoEtapa || dFin === Infinity) {
+        semanasTotal += stock / consumoSem
+        stock = 0
+        break
+      }
+      stock        -= consumoEtapa
+      semanasTotal += semanasEtapa
+    }
+
+    return Math.max(0, semanasTotal)
+  }, [stockActual, proyecciones, totales, tasa])
+
+  const SEMANAS_BUFFER = 4  // comprar con 4 semanas de anticipación
+
+  const fechaAgotamiento = duracionReal !== null
+    ? addDias(hoy(), Math.round(duracionReal * 7)) : null
+
+  const fechaCompra = duracionReal !== null
+    ? addDias(hoy(), Math.max(0, Math.round((duracionReal - SEMANAS_BUFFER) * 7))) : null
 
   // ── Ciclo de cambios de cama ──────────────────────────────────────────────
   const proximoCambioHoy = proximoCambioDesde(hoy(), horaActual())
@@ -423,13 +614,20 @@ export default function ConsumoViruta() {
   }, [ultimoCenso])
 
   // ── Alertas ───────────────────────────────────────────────────────────────
-  const nivelAlerta = duracionSem === null ? null
-    : duracionSem < 2 ? 'critico'
-    : duracionSem < 4 ? 'bajo'
-    : duracionSem < 8 ? 'ok'
-    : 'bien'
+  const nivelAlerta = duracionReal === null ? null
+    : duracionReal <  3 ? 'urgente'   // ⚫
+    : duracionReal <  6 ? 'critico'   // 🔴
+    : duracionReal < 12 ? 'bajo'      // 🟡
+    : 'ok'                            // 🟢
 
-  const colorAlerta = { critico: '#ff6b80', bajo: '#ffb300', ok: '#00e676', bien: '#00e676' }[nivelAlerta] ?? '#c49a6a'
+  const colorAlerta = {
+    urgente: '#ff1744',
+    critico: '#ff6b80',
+    bajo:    '#ffb300',
+    ok:      '#00e676',
+  }[nivelAlerta] ?? '#c49a6a'
+
+  const iconoAlerta = { urgente: '⚫', critico: '🔴', bajo: '🟡', ok: '🟢' }[nivelAlerta] ?? ''
 
   // ── CRUD (Supabase) ───────────────────────────────────────────────────────
   async function registrarCenso(fecha, hora, bolsas, cambioCama) {
@@ -650,17 +848,17 @@ export default function ConsumoViruta() {
                   </div>
                 </div>
 
-                {/* Duración */}
+                {/* Duración real según evolución futura */}
                 <div className="px-5 py-5 text-center flex flex-col items-center gap-1">
-                  <div className="text-xs font-mono uppercase tracking-wider" style={{ color: '#4a5f7a' }}>Duración estimada</div>
-                  {duracionSem !== null ? (
+                  <div className="text-xs font-mono uppercase tracking-wider" style={{ color: '#4a5f7a' }}>Duración real</div>
+                  {duracionReal !== null ? (
                     <>
                       <div className="text-3xl font-bold font-mono leading-none" style={{ color: colorAlerta }}>
-                        {duracionSem.toFixed(1)}
+                        {iconoAlerta} {duracionReal.toFixed(1)}
                       </div>
                       <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>semanas</div>
                       <div className="text-xs font-mono mt-1" style={{ color: '#3d5068' }}>
-                        ≈ {Math.floor(duracionSem * 7)} días
+                        según jaulas proyectadas
                       </div>
                     </>
                   ) : (
@@ -669,19 +867,56 @@ export default function ConsumoViruta() {
                 </div>
               </div>
 
-              {/* Alertas */}
+              {/* Agotamiento + Compra sugerida */}
+              {duracionReal !== null && (
+                <div className="grid grid-cols-2 divide-x text-xs font-mono"
+                  style={{ borderTop: '1px solid rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.05)' }}>
+                  <div className="px-5 py-3 flex items-center gap-2">
+                    <span style={{ color: colorAlerta }}>📅</span>
+                    <div>
+                      <div style={{ color: '#4a5f7a' }}>Agotamiento estimado</div>
+                      <div className="font-bold" style={{ color: colorAlerta }}>
+                        {fechaAgotamiento
+                          ? formatFecha(fechaAgotamiento, { day: '2-digit', month: '2-digit', year: '2-digit' })
+                          : '—'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="px-5 py-3 flex items-center gap-2">
+                    <ShoppingCart size={12} style={{ color: '#ffb300' }} />
+                    <div>
+                      <div style={{ color: '#4a5f7a' }}>Comprar antes de</div>
+                      <div className="font-bold" style={{ color: '#ffb300' }}>
+                        {fechaCompra
+                          ? formatFecha(fechaCompra, { day: '2-digit', month: '2-digit', year: '2-digit' })
+                          : '—'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Alertas con nuevos umbrales ⚫🔴🟡🟢 */}
+              {nivelAlerta === 'urgente' && (
+                <div className="mx-4 mb-4 px-4 py-3 rounded-xl flex items-center gap-3 text-sm font-mono"
+                  style={{ background: 'rgba(255,23,68,0.12)', border: '1px solid rgba(255,23,68,0.4)', color: '#ff1744' }}>
+                  <AlertTriangle size={16} />
+                  <span>⚫ URGENTE — menos de 3 semanas. Reponer inmediatamente.</span>
+                </div>
+              )}
               {nivelAlerta === 'critico' && (
                 <div className="mx-4 mb-4 px-4 py-3 rounded-xl flex items-center gap-3 text-sm font-mono"
                   style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.3)', color: '#ff6b80' }}>
                   <AlertTriangle size={16} />
-                  <span>⚠ Stock crítico — menos de 2 semanas. Reponer con urgencia.</span>
+                  <span>🔴 Stock crítico — menos de 6 semanas. Planificá la compra ahora.</span>
                 </div>
               )}
               {nivelAlerta === 'bajo' && (
                 <div className="mx-4 mb-4 px-4 py-3 rounded-xl flex items-center gap-3 text-sm font-mono"
                   style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.25)', color: '#ffb300' }}>
                   <AlertTriangle size={16} />
-                  <span>Stock bajo — menos de 4 semanas. Planificá la compra.</span>
+                  <span>🟡 Stock moderado — 6–12 semanas. Comprar antes de {fechaCompra
+                    ? formatFecha(fechaCompra, { day: '2-digit', month: '2-digit' }) : '—'}.</span>
                 </div>
               )}
 
@@ -729,6 +964,106 @@ export default function ConsumoViruta() {
                 </div>
               )}
             </div>
+
+            {/* ── Proyecciones futuras (30/60/90/180d) ── */}
+            {proyecciones && stockActual !== null && (
+              <div className="rounded-2xl overflow-hidden"
+                style={{ background: 'rgba(13,21,40,0.85)', border: '1.5px solid rgba(64,196,255,0.25)' }}>
+                <div className="px-6 py-3 flex items-center gap-2"
+                  style={{ borderBottom: '1px solid rgba(64,196,255,0.12)', background: 'rgba(64,196,255,0.04)' }}>
+                  <TrendingDown size={14} style={{ color: '#40c4ff' }} />
+                  <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#40c4ff' }}>
+                    Proyección futura · evolución de jaulas y consumo
+                  </span>
+                  <span className="ml-auto text-xs font-mono px-2 py-0.5 rounded-full"
+                    style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.2)', color: '#40c4ff' }}>
+                    2 cambios/sem fijos
+                  </span>
+                </div>
+
+                {/* 4 tarjetas horizonte */}
+                <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0"
+                  style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                  {proyecciones.map(p => {
+                    const signo  = p.deltaJaulas >= 0 ? '+' : ''
+                    const colorD = p.deltaPct > 0 ? '#ff9800' : p.deltaPct < 0 ? '#00e676' : '#4a5f7a'
+                    const colJ   = p.deltaJaulas > 0 ? '#40c4ff' : p.deltaJaulas < 0 ? '#00e676' : '#4a5f7a'
+                    return (
+                      <div key={p.dias} className="px-4 py-4 flex flex-col gap-1.5">
+                        <div className="text-xs font-semibold font-mono uppercase tracking-widest" style={{ color: '#4a5f7a' }}>
+                          +{p.dias}d
+                        </div>
+                        {/* Jaulas */}
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-xl font-bold font-mono text-white">{p.jaulasTotal}</span>
+                          <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>jaulas</span>
+                          {p.deltaJaulas !== 0 && (
+                            <span className="text-xs font-mono font-semibold ml-auto" style={{ color: colJ }}>
+                              {signo}{p.deltaJaulas}
+                            </span>
+                          )}
+                        </div>
+                        {/* Consumo */}
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-sm font-bold font-mono" style={{ color: '#40c4ff' }}>
+                            {p.consumoSem.toFixed(2)}
+                          </span>
+                          <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>bol/sem</span>
+                        </div>
+                        {/* Delta % */}
+                        {p.deltaPct !== 0 && (
+                          <div className="text-xs font-mono font-semibold" style={{ color: colorD }}>
+                            {p.deltaPct > 0 ? '↑' : '↓'} {Math.abs(p.deltaPct)}%
+                          </div>
+                        )}
+                        {/* Causas */}
+                        {p.causas.length > 0 && (
+                          <div className="mt-0.5 flex flex-wrap gap-1">
+                            {p.causas.map((ca, ci) => (
+                              <span key={ci} className="text-xs font-mono px-1.5 py-0.5 rounded-full"
+                                style={{ background: ca.color + '12', border: `1px solid ${ca.color}30`, color: ca.color }}>
+                                {ca.icono} {ca.label}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Resumen impacto: hoy vs 90d */}
+                {(() => {
+                  const p90 = proyecciones[2]
+                  const consumoHoy = totales.totalUnidades * tasa
+                  if (!p90 || p90.deltaPct === 0) return null
+                  const jaulasHoy = TODOS.reduce((s, { id }) => s + (datos[id]?.conteos.totalJaulas ?? 0), 0)
+                  const todasCausas = [...new Map(p90.causas.map(c => [c.label, c])).values()]
+                  return (
+                    <div className="mx-4 mb-4 mt-1 px-4 py-3 rounded-xl text-xs font-mono"
+                      style={{ background: 'rgba(255,152,0,0.06)', border: '1px solid rgba(255,152,0,0.2)', color: '#ff9800' }}>
+                      <div className="font-semibold mb-1">📈 Impacto futuro a 90 días</div>
+                      <div style={{ color: '#8a9bb0' }}>
+                        Hoy: <strong style={{ color: 'white' }}>{consumoHoy.toFixed(2)} bol/sem</strong>
+                        {' · '}{jaulasHoy} jaulas
+                        {' → '}
+                        90d: <strong style={{ color: '#40c4ff' }}>{p90.consumoSem.toFixed(2)} bol/sem</strong>
+                        {' · '}{p90.jaulasTotal} jaulas
+                        {' ('}
+                        <span style={{ color: p90.deltaPct > 0 ? '#ff9800' : '#00e676' }}>
+                          {p90.deltaPct > 0 ? '+' : ''}{p90.deltaPct}%
+                        </span>)
+                      </div>
+                      {todasCausas.length > 0 && (
+                        <div className="mt-1" style={{ color: '#6a8099' }}>
+                          Motivos: {todasCausas.map(c => c.icono + ' ' + c.label).join(' · ')}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+              </div>
+            )}
 
             {/* ── Ciclo de cambios de cama ── */}
             <div className="rounded-2xl overflow-hidden"
