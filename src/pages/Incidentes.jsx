@@ -8,7 +8,7 @@ import {
   getCategoriaInfo, getTipoLabel, getSeveridadInfo,
   labelBioterio, colorBioterio,
   calcularIndiceSanitario, nivelIndice,
-  calcularIndiceAmbiental, nivelAmbiental, statsTemperatura, clasificarTemperatura,
+  calcularIndiceAmbiental, nivelAmbiental, statsTemperatura, clasificarTemperatura, calcularExposicionTermica,
   calcularIndiceRiesgoGenetico, nivelRiesgoGenetico,
   calcularIndiceEstabilidadGlobal,
   detectarPatrones, detectarCorrelaciones, detectarCorrelacionesMultiventana,
@@ -314,6 +314,102 @@ export default function Incidentes() {
           <div className="text-xs font-mono" style={{ color: '#3d5068' }}>0=bajo · 100=alto</div>
         </div>
       </div>
+
+      {/* ── DISTRIBUCIÓN TÉRMICA — TIEMPO EN RANGO ── */}
+      {(() => {
+        const exp = calcularExposicionTermica(temperaturas, bioterioActivo, 30)
+        if (!exp) return null
+        const nvA = nivelAmbiental(indiceAmbiental)
+        const rangos = [
+          { key: 'frio_extremo', label: '<18°C',   sub: 'Frío extremo',  color: '#40c4ff', umbralAlerta: 5  },
+          { key: 'frio',         label: '18–20°C', sub: 'Frío leve',     color: '#a78bfa', umbralAlerta: 15 },
+          { key: 'normal',       label: '20–24°C', sub: '✓ Óptimo',      color: '#00e676', umbralAlerta: null },
+          { key: 'calor',        label: '24–26°C', sub: 'Calor leve',    color: '#ffb300', umbralAlerta: 20 },
+          { key: 'calor_extremo',label: '>26°C',   sub: 'Calor extremo', color: '#ff6b80', umbralAlerta: 5  },
+        ]
+        return (
+          <div className="rounded-2xl overflow-hidden"
+            style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(255,179,0,0.2)' }}>
+            <div className="px-5 py-3 flex items-center gap-3"
+              style={{ borderBottom: '1px solid rgba(255,179,0,0.1)', background: 'rgba(255,179,0,0.04)' }}>
+              <Thermometer size={13} style={{ color: '#ffb300' }} />
+              <div className="flex-1">
+                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#ffb300' }}>
+                  Exposición térmica real — tiempo en cada rango
+                </span>
+                <span className="ml-2 text-xs font-mono" style={{ color: '#3d5068' }}>
+                  Últimos 30 días · {exp.totalRegistros} registros
+                </span>
+              </div>
+              <span className="text-xs font-mono px-2 py-1 rounded-lg"
+                style={{ background: nvA.bg, border: `1px solid ${nvA.border}`, color: nvA.color }}>
+                {nvA.emoji} {nvA.label}
+              </span>
+              {exp.confianza === 'baja' && (
+                <span className="text-xs font-mono px-2 py-1 rounded-lg"
+                  style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.25)', color: '#ffb300' }}>
+                  ⚠ Baja confianza — pocos datos de min/máx
+                </span>
+              )}
+            </div>
+
+            <div className="px-5 py-4 space-y-2.5">
+              {rangos.map(r => {
+                const pct = exp[r.key] ?? 0
+                const esProblema = r.umbralAlerta !== null && pct >= r.umbralAlerta
+                return (
+                  <div key={r.key} className="flex items-center gap-3">
+                    {/* Etiqueta */}
+                    <div className="w-16 shrink-0 text-right">
+                      <div className="text-xs font-mono font-bold" style={{ color: r.color }}>{r.label}</div>
+                    </div>
+                    {/* Barra */}
+                    <div className="flex-1 h-5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${Math.max(pct, pct > 0 ? 0.5 : 0)}%`,
+                          background: r.color,
+                          opacity: 0.85,
+                        }}
+                      />
+                    </div>
+                    {/* Porcentaje */}
+                    <div className="w-12 shrink-0 text-right">
+                      <span className="text-xs font-mono font-bold" style={{ color: pct > 0 ? r.color : '#3d5068' }}>
+                        {pct.toFixed(1)}%
+                      </span>
+                    </div>
+                    {/* Sub-label + alerta */}
+                    <div className="w-28 shrink-0">
+                      <span className="text-xs font-mono" style={{ color: esProblema ? r.color : '#4a5f7a' }}>
+                        {r.sub}
+                        {esProblema && ' ⚠'}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Nota explicativa */}
+            <div className="px-5 py-2.5 text-xs font-mono space-y-0.5"
+              style={{ borderTop: '1px solid rgba(255,255,255,0.05)', color: '#3d5068', background: 'rgba(255,255,255,0.01)' }}>
+              <div>
+                <span style={{ color: '#4a5f7a' }}>Temperatura predominante (70%)</span> = medición del día.
+                <span style={{ color: '#4a5f7a' }}> Mínima (15%) y máxima (15%)</span> = excursiones breves del termostato.
+              </div>
+              <div>
+                Picos de 5–15 min (min/máx) pesan poco. Lo que importa es dónde está{' '}
+                <span style={{ color: '#c9d4e0' }}>la mayor parte del tiempo</span>.
+                {exp.conDatosMinMax < exp.totalRegistros && (
+                  <span style={{ color: '#4a5f7a' }}> · {exp.conDatosMinMax}/{exp.totalRegistros} registros con min/máx</span>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── ÏNDICE SANITARIO POR COLONIA ── */}
       <div className="rounded-2xl overflow-hidden"

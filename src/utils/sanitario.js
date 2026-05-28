@@ -231,17 +231,33 @@ export function generarTendencias(incidentes, meses = 6) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ÍNDICE DE ESTABILIDAD AMBIENTAL (0–100)
+// MOTOR TÉRMICO — EXPOSICIÓN REAL POR TIEMPO EN RANGO
 // ─────────────────────────────────────────────────────────────────────────────
 // Temperatura ideal: 20–24°C | Óptimo: 22 ±2°C
-// Penalizaciones:
-//   Días en riesgo (<18°C o >26°C) últimos 30d: −8/día (máx −40)
-//   Días en atención (18-20°C o 24-26°C):        −3/día (máx −15)
-//   Oscilaciones bruscas (>4°C entre días):      −5/evento (máx −20)
-//   Sin datos en últimos 7 días:                 −25
+//
+// MODELO DE DISTRIBUCIÓN DIARIA:
+//   current_temp = temperatura predominante (70% del día)
+//   min_temp     = excursión fría breve, ej: 5-15 min antes de que encienda calefacción (15%)
+//   max_temp     = pico cálido breve por inercia térmica / altura del sensor (15%)
+//
+// CLASIFICACIÓN DE ZONAS:
+//   < 18°C  → frío extremo
+//   18-20°C → frío leve
+//   20-24°C → normal (óptimo)
+//   24-26°C → calor leve
+//   > 26°C  → calor extremo
+//
+// PENALIZACIÓN EN ÍNDICE AMBIENTAL:
+//   Exposición sostenida en zona riesgo (>10%): −20 (máx −35)
+//   Exposición sostenida en zona atención (>15%): −10 (máx −15)
+//   Picos breves (<5% en zona riesgo): penalización mínima (−2)
+//   Oscilaciones bruscas en current_temp entre días (>4°C): −5/evento (máx −15)
+//   Sin datos en últimos 7 días: −25
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const TEMP_RANGO = { idealMin: 20, idealMax: 24, optimo: 22 }
 
+// Clasificación de un punto de temperatura (para display)
 export function clasificarTemperatura(temp) {
   if (temp === null || temp === undefined) return { nivel: 'sin_dato', color: '#4a5f7a', label: 'Sin dato' }
   const n = Number(temp)
@@ -250,42 +266,139 @@ export function clasificarTemperatura(temp) {
   return                                                  { nivel: 'riesgo',   color: '#ff6b80', label: `${n}°C — Riesgo`   }
 }
 
+// Zona de temperatura (5 categorías)
+function zonaTemp(t) {
+  if (t == null) return null
+  const n = Number(t)
+  if (n < 18)  return 'frio_extremo'
+  if (n < 20)  return 'frio'
+  if (n <= 24) return 'normal'
+  if (n <= 26) return 'calor'
+  return 'calor_extremo'
+}
+
+// ── calcularExposicionTermica ─────────────────────────────────────────────────
+// Calcula el tiempo acumulado estimado en cada zona térmica.
+// Usa el modelo de pesos: current=70%, min=15%, max=15%.
+// Si min o max son null, su peso se redistribuye a current.
+//
+// Retorna:
+//   frio_extremo, frio, normal, calor, calor_extremo  → porcentajes (0-100)
+//   totalRegistros, conDatosMinMax, confianza, zonaPredominate
+
+export function calcularExposicionTermica(temperaturas, bioterioId, dias = 30) {
+  const temps = (bioterioId && bioterioId !== 'todos'
+    ? temperaturas.filter(t => t.bioterio_id === bioterioId)
+    : temperaturas
+  ).filter(t => t.current_temp != null)
+
+  if (temps.length === 0) return null
+
+  const fechaCorte = new Date(Date.now() - dias * 86400000).toISOString().slice(0, 10)
+  const recientes  = temps.filter(t => t.date >= fechaCorte)
+  if (recientes.length === 0) return null
+
+  const acum = { frio_extremo: 0, frio: 0, normal: 0, calor: 0, calor_extremo: 0 }
+  let conDatosMinMax = 0
+
+  recientes.forEach(t => {
+    const tieneMin = t.min_temp != null
+    const tieneMax = t.max_temp != null
+
+    const wCurrent = tieneMin && tieneMax ? 0.70 : tieneMin || tieneMax ? 0.80 : 1.00
+    const wMin     = tieneMin ? 0.15 : 0
+    const wMax     = tieneMax ? 0.15 : 0
+
+    const zCurrent = zonaTemp(t.current_temp)
+    const zMin     = tieneMin ? zonaTemp(t.min_temp)  : null
+    const zMax     = tieneMax ? zonaTemp(t.max_temp)  : null
+
+    if (zCurrent) acum[zCurrent] += wCurrent
+    if (zMin)     acum[zMin]     += wMin
+    if (zMax)     acum[zMax]     += wMax
+
+    if (tieneMin && tieneMax) conDatosMinMax++
+  })
+
+  const total = Object.values(acum).reduce((s, v) => s + v, 0)
+  if (total === 0) return null
+
+  // Convertir a porcentajes redondeados a 1 decimal
+  const pct = {}
+  Object.keys(acum).forEach(k => { pct[k] = +((acum[k] / total) * 100).toFixed(1) })
+
+  // Zona predominante
+  const zonaPred = Object.entries(pct).reduce((a, b) => b[1] > a[1] ? b : a)[0]
+
+  // Confianza según % de registros con min+max
+  const pctMinMax = recientes.length > 0 ? conDatosMinMax / recientes.length : 0
+  const confianza = pctMinMax >= 0.7 ? 'alta' : pctMinMax >= 0.3 ? 'media' : 'baja'
+
+  return {
+    ...pct,
+    totalRegistros: recientes.length,
+    conDatosMinMax,
+    confianza,
+    zonaPredominante: zonaPred,
+    // Grupos agrupados para display
+    enRangoOptimo:   pct.normal,
+    enAtencion:      +(pct.frio + pct.calor).toFixed(1),
+    enRiesgo:        +(pct.frio_extremo + pct.calor_extremo).toFixed(1),
+  }
+}
+
+// ── calcularIndiceAmbiental ───────────────────────────────────────────────────
+// Índice 0-100 basado en EXPOSICIÓN TÉRMICA SOSTENIDA, no en picos aislados.
+// Un registro con current=22°C, min=19°C, max=25°C se clasifica como:
+//   70% normal + 15% atención (fría) + 15% atención (cálida) = 88% en normal/atención
+//   → penalización mínima (pico breve, no exposición sostenida)
+
 export function calcularIndiceAmbiental(temperaturas, bioterioId) {
   let score = 100
 
-  const temps = bioterioId && bioterioId !== 'todos'
+  const temps = (bioterioId && bioterioId !== 'todos'
     ? temperaturas.filter(t => t.bioterio_id === bioterioId)
     : temperaturas
+  ).filter(t => t.current_temp != null)
 
-  if (temps.length === 0) return 60 // Sin datos: índice moderado por default
+  if (temps.length === 0) return 60
 
-  const hace30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
   const hace7  = new Date(Date.now() - 7  * 86400000).toISOString().slice(0, 10)
-  const recientes = temps.filter(t => t.date >= hace30)
+  const hace30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
 
   // Sin datos recientes
-  const tempsSemana = temps.filter(t => t.date >= hace7)
-  if (tempsSemana.length === 0) score -= 25
+  if (!temps.some(t => t.date >= hace7)) score -= 25
 
-  // Días fuera de rango
-  let diasRiesgo = 0, diasAtencion = 0
-  recientes.forEach(t => {
-    const cl = clasificarTemperatura(t.current_temp)
-    if (cl.nivel === 'riesgo')   diasRiesgo++
-    else if (cl.nivel === 'atencion') diasAtencion++
-  })
-  score -= Math.min(40, diasRiesgo   * 8)
-  score -= Math.min(15, diasAtencion * 3)
+  // Calcular exposición térmica en los últimos 30 días
+  const exp = calcularExposicionTermica(temperaturas, bioterioId, 30)
 
-  // Oscilaciones bruscas entre días consecutivos
-  const ordenadas = [...recientes].sort((a, b) => a.date.localeCompare(b.date))
-  let oscilaciones = 0
-  for (let i = 1; i < ordenadas.length; i++) {
-    const t1 = ordenadas[i - 1].current_temp ?? 0
-    const t2 = ordenadas[i].current_temp ?? 0
-    if (Math.abs(t2 - t1) > 4) oscilaciones++
+  if (exp) {
+    // Exposición en zona de RIESGO (frio_extremo + calor_extremo)
+    const pctRiesgo = exp.enRiesgo
+    if (pctRiesgo > 25) score -= 35         // exposición muy sostenida → crítico
+    else if (pctRiesgo > 10) score -= 20    // exposición notable → importante
+    else if (pctRiesgo > 5)  score -= 10    // exposición moderada
+    else if (pctRiesgo > 2)  score -= 4     // picos frecuentes pero breves
+    else if (pctRiesgo > 0)  score -= 2     // pico aislado → casi no penaliza
+
+    // Exposición en zona de ATENCIÓN (frio + calor leve)
+    const pctAtencion = exp.enAtencion
+    if (pctAtencion > 30)    score -= 15    // muy común → preocupante
+    else if (pctAtencion > 15) score -= 8   // frecuente
+    else if (pctAtencion > 5)  score -= 3   // normal dado thermostat cycling
+    // <5% → no penaliza (variación normal)
   }
-  score -= Math.min(20, oscilaciones * 5)
+
+  // Oscilaciones bruscas en temperatura PREDOMINANTE (current_temp) entre días consecutivos
+  // Solo considera current_temp, no min/max, para evitar penalizar cycling del termostato
+  const recientes = [...temps.filter(t => t.date >= hace30)].sort((a, b) => a.date.localeCompare(b.date))
+  let oscilaciones = 0
+  for (let i = 1; i < recientes.length; i++) {
+    const t1 = Number(recientes[i - 1].current_temp)
+    const t2 = Number(recientes[i].current_temp)
+    if (Math.abs(t2 - t1) > 3) oscilaciones++   // umbral 3°C entre días (era 4°C)
+  }
+  score -= Math.min(15, oscilaciones * 4)
 
   return Math.max(0, Math.min(100, Math.round(score)))
 }
@@ -296,29 +409,47 @@ export function nivelAmbiental(score) {
   return                  { label: 'Riesgo',   emoji: '🔴', color: '#ff6b80', bg: 'rgba(255,107,128,0.08)', border: 'rgba(255,107,128,0.25)' }
 }
 
-// Stats rápidos de temperatura para un bioterio
+// Stats rápidos de temperatura + distribución de exposición térmica
 export function statsTemperatura(temperaturas, bioterioId) {
-  const temps = bioterioId && bioterioId !== 'todos'
+  const temps = (bioterioId && bioterioId !== 'todos'
     ? temperaturas.filter(t => t.bioterio_id === bioterioId)
     : temperaturas
+  ).filter(t => t.current_temp != null)
 
-  if (temps.length === 0) return { promedio: null, min: null, max: null, diasRiesgo: 0, diasAtencion: 0, total: 0 }
+  if (temps.length === 0) return { promedio: null, min: null, max: null, diasRiesgo: 0, diasAtencion: 0, total: 0, exposicion: null }
 
   const hace30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
-  const recientes = temps.filter(t => t.date >= hace30 && t.current_temp != null)
-  if (recientes.length === 0) return { promedio: null, min: null, max: null, diasRiesgo: 0, diasAtencion: 0, total: 0 }
+  const recientes = temps.filter(t => t.date >= hace30)
+  if (recientes.length === 0) return { promedio: null, min: null, max: null, diasRiesgo: 0, diasAtencion: 0, total: 0, exposicion: null }
 
+  // Promedio de current_temp (temperatura predominante)
   const vals = recientes.map(t => Number(t.current_temp))
   const promedio = vals.reduce((s, v) => s + v, 0) / vals.length
-  const min = Math.min(...vals)
-  const max = Math.max(...vals)
+
+  // Min/max de current_temp (para mostrar el rango de mediciones del día)
+  const minActual = Math.min(...vals)
+  const maxActual = Math.max(...vals)
+
+  // Días donde la current_temp (predominante) estaba fuera de rango
   let diasRiesgo = 0, diasAtencion = 0
   recientes.forEach(t => {
     const cl = clasificarTemperatura(t.current_temp)
-    if (cl.nivel === 'riesgo')   diasRiesgo++
+    if (cl.nivel === 'riesgo')        diasRiesgo++
     else if (cl.nivel === 'atencion') diasAtencion++
   })
-  return { promedio: +promedio.toFixed(1), min, max, diasRiesgo, diasAtencion, total: recientes.length }
+
+  // Exposición térmica por tiempo (modelo ponderado)
+  const exposicion = calcularExposicionTermica(temperaturas, bioterioId, 30)
+
+  return {
+    promedio:  +promedio.toFixed(1),
+    min:       minActual,
+    max:       maxActual,
+    diasRiesgo,
+    diasAtencion,
+    total:     recientes.length,
+    exposicion,
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -335,17 +466,29 @@ export function detectarCorrelaciones(temperaturas, incidentes, camadas, ventana
 
   if (tempsOrdenadas.length < 3) return correlaciones
 
-  // ── Detectar períodos de temperatura alta (>25°C por ≥2 días) ────────────
+  // ── Detectar períodos de calor SOSTENIDO (current_temp >24°C por ≥3 días) ──
+  // Solo usa current_temp (temperatura predominante del día), NO min/max.
+  // Un pico máximo aislado (inercia térmica, diferencia de altura del sensor)
+  // no genera un período de calor — debe ser la temperatura predominante.
+  // Se requieren ≥3 días consecutivos para considerar "período sostenido".
   const periodosCalor = []
   let inicioCalor = null
   tempsOrdenadas.forEach((t, i) => {
-    if (Number(t.current_temp) > 25) {
+    if (Number(t.current_temp) > 24) {
       if (!inicioCalor) inicioCalor = t.date
     } else {
       if (inicioCalor) {
         const fin = tempsOrdenadas[i - 1].date
         const dias = Math.ceil((new Date(fin) - new Date(inicioCalor)) / 86400000) + 1
-        if (dias >= 2) periodosCalor.push({ inicio: inicioCalor, fin, dias, tipo: 'calor', maxTemp: Math.max(...tempsOrdenadas.filter(x => x.date >= inicioCalor && x.date <= fin).map(x => Number(x.current_temp))) })
+        // Mínimo 3 días sostenidos para generar correlación
+        if (dias >= 3) {
+          const segmento = tempsOrdenadas.filter(x => x.date >= inicioCalor && x.date <= fin)
+          periodosCalor.push({
+            inicio: inicioCalor, fin, dias, tipo: 'calor',
+            maxTemp:  Math.max(...segmento.map(x => Number(x.current_temp))),
+            maxPico:  Math.max(...segmento.map(x => x.max_temp != null ? Number(x.max_temp) : Number(x.current_temp))),
+          })
+        }
         inicioCalor = null
       }
     }
@@ -353,20 +496,29 @@ export function detectarCorrelaciones(temperaturas, incidentes, camadas, ventana
   if (inicioCalor) {
     const fin = tempsOrdenadas[tempsOrdenadas.length - 1].date
     const dias = Math.ceil((new Date(fin) - new Date(inicioCalor)) / 86400000) + 1
-    if (dias >= 2) periodosCalor.push({ inicio: inicioCalor, fin, dias, tipo: 'calor', maxTemp: Math.max(...tempsOrdenadas.filter(x => x.date >= inicioCalor && x.date <= fin).map(x => Number(x.current_temp))) })
+    if (dias >= 3) {
+      const segmento = tempsOrdenadas.filter(x => x.date >= inicioCalor && x.date <= fin)
+      periodosCalor.push({
+        inicio: inicioCalor, fin, dias, tipo: 'calor',
+        maxTemp: Math.max(...segmento.map(x => Number(x.current_temp))),
+        maxPico: Math.max(...segmento.map(x => x.max_temp != null ? Number(x.max_temp) : Number(x.current_temp))),
+      })
+    }
   }
 
-  // ── Detectar períodos de frío (<18°C) ────────────────────────────────────
+  // ── Detectar períodos de frío SOSTENIDO (current_temp <19°C por ≥3 días) ──
+  // Igual lógica: solo current_temp, ≥3 días.
+  // Un mínimo breve de 19°C (antes de que encienda calefacción) no cuenta.
   const periodosFrio = []
   let inicioFrio = null
   tempsOrdenadas.forEach((t, i) => {
-    if (Number(t.current_temp) < 18) {
+    if (Number(t.current_temp) < 19) {
       if (!inicioFrio) inicioFrio = t.date
     } else {
       if (inicioFrio) {
         const fin = tempsOrdenadas[i - 1].date
         const dias = Math.ceil((new Date(fin) - new Date(inicioFrio)) / 86400000) + 1
-        if (dias >= 2) periodosFrio.push({ inicio: inicioFrio, fin, dias, tipo: 'frio' })
+        if (dias >= 3) periodosFrio.push({ inicio: inicioFrio, fin, dias, tipo: 'frio' })
         inicioFrio = null
       }
     }
@@ -384,8 +536,8 @@ export function detectarCorrelaciones(temperaturas, incidentes, camadas, ventana
       correlaciones.push({
         tipo: 'calor_mortalidad',
         icono: '🌡️→💀',
-        label: `Temperatura >25°C (${periodo.dias}d) → ↑ mortalidad`,
-        descripcion: `${muertes.length} muerte(s) registrada(s) en los ${ventanaDias} días siguientes al período de calor (${periodo.inicio} – ${periodo.fin}, máx ${periodo.maxTemp}°C)`,
+        label: `Temperatura sostenida >24°C (${periodo.dias}d) → ↑ mortalidad`,
+        descripcion: `${muertes.length} muerte(s) en los ${ventanaDias}d siguientes al período de calor sostenido (${periodo.inicio} – ${periodo.fin}, temp. predominante máx ${periodo.maxTemp}°C)`,
         nivel: muertes.length >= 3 ? 'critico' : 'alerta',
         fuerza: muertes.length >= 3 ? 'fuerte' : 'probable',
         evidencia: `${muertes.length} inc · ${periodo.dias}d calor`,
@@ -399,11 +551,11 @@ export function detectarCorrelaciones(temperaturas, incidentes, camadas, ventana
       correlaciones.push({
         tipo: 'calor_infertilidad',
         icono: '🌡️→🧬',
-        label: `Temperatura alta → ↑ fallos reproductivos`,
-        descripcion: `${fallos.length} fallo(s) reproductivo(s) en los ${ventanaDias} días siguientes al período de calor`,
+        label: `Calor sostenido (${periodo.dias}d) → ↑ fallos reproductivos`,
+        descripcion: `${fallos.length} fallo(s) reproductivo(s) en los ${ventanaDias}d siguientes al período de calor sostenido (${periodo.dias}d consecutivos con temp. predominante >24°C)`,
         nivel: fallos.length >= 2 ? 'critico' : 'alerta',
         fuerza: fallos.length >= 2 ? 'fuerte' : 'posible',
-        evidencia: `${fallos.length} fallos · max ${periodo.maxTemp}°C`,
+        evidencia: `${fallos.length} fallos · ${periodo.dias}d >24°C · max pico ${periodo.maxPico ?? periodo.maxTemp}°C`,
         fecha: periodo.inicio,
       })
     }
@@ -437,8 +589,8 @@ export function detectarCorrelaciones(temperaturas, incidentes, camadas, ventana
       correlaciones.push({
         tipo: 'frio_infertilidad',
         icono: '❄️→🧬',
-        label: `Temperatura baja → ↑ fallos reproductivos`,
-        descripcion: `${fallos.length} fallo(s) en los ${ventanaDias} días siguientes a temperatura <18°C (${periodo.inicio} – ${periodo.fin})`,
+        label: `Frío sostenido (${periodo.dias}d) → ↑ fallos reproductivos`,
+        descripcion: `${fallos.length} fallo(s) en los ${ventanaDias}d siguientes a temperatura predominante <19°C durante ${periodo.dias} días consecutivos (${periodo.inicio} – ${periodo.fin})`,
         nivel: 'alerta',
         fuerza: 'posible',
         evidencia: `${fallos.length} fallos`,
@@ -495,8 +647,9 @@ export function generarMotorCausal(incidentes, temperaturas, camadas, animales, 
   const supervBaja = conDestete.filter(c => (c.total_destetados / c.total_crias) < 0.7)
   if (supervBaja.length >= 2) {
     const factores = []
-    const tempsAltas90 = tempsBio.filter(t => t.date >= hace90 && (Number(t.current_temp) > 25))
-    if (tempsAltas90.length >= 3) factores.push(`temperatura >25°C (${tempsAltas90.length}d)`)
+    // Solo cuenta días donde la temp. PREDOMINANTE supera el umbral (no picos aislados)
+    const tempsAltas90 = tempsBio.filter(t => t.date >= hace90 && (Number(t.current_temp) > 24))
+    if (tempsAltas90.length >= 5) factores.push(`calor sostenido >24°C (${tempsAltas90.length}d temp. predominante)`)
     const cani = incBio.filter(i => i.tipo_incidente === 'canibalismo' && i.fecha >= hace90)
     if (cani.length > 0) factores.push(`canibalismo (${cani.length} registros)`)
     const camadasAct = camBio.filter(c => c.fecha_nacimiento && !c.fecha_destete && !c.failure_flag)
@@ -655,20 +808,23 @@ export function generarAlertasSanitarias(incidentes, temperaturas, camadas, anim
   const tempsBio = bioterioId && bioterioId !== 'todos' ? temperaturas.filter(t => t.bioterio_id === bioterioId) : temperaturas
   const camBio   = bioterioId && bioterioId !== 'todos' ? camadas.filter(c => c.bioterio_id === bioterioId) : camadas
 
-  // ── Temperatura alta prolongada ───────────────────────────────────────────
-  const tempsAltas7 = tempsBio.filter(t => t.date >= hace7 && Number(t.current_temp) > 25)
+  // ── Temperatura alta SOSTENIDA (current_temp = temperatura predominante) ──
+  // Solo current_temp — no se alertan picos máximos aislados de 5-15 min.
+  // Se requieren ≥3 días con temp. predominante >24°C para generar alerta real.
+  const tempsAltas7 = tempsBio.filter(t => t.date >= hace7 && Number(t.current_temp) > 24)
   if (tempsAltas7.length >= 5) {
-    alertas.push({ nivel: 'urgente',   icon: '🌡️', titulo: 'Temperatura crítica prolongada', descripcion: `${tempsAltas7.length} días con >25°C esta semana. Riesgo alto de mortalidad neonatal e infertilidad.`, accion: 'Intervención inmediata en sistema de climatización' })
+    alertas.push({ nivel: 'urgente',    icon: '🌡️', titulo: 'Temperatura predominante crítica (semana)', descripcion: `${tempsAltas7.length}d con temperatura predominante >24°C. Exposición térmica sostenida — riesgo de mortalidad neonatal e infertilidad.`, accion: 'Intervención inmediata en climatización' })
   } else if (tempsAltas7.length >= 3) {
-    alertas.push({ nivel: 'critico',   icon: '🌡️', titulo: 'Temperatura elevada esta semana',  descripcion: `${tempsAltas7.length} días con temperatura >25°C. Monitorear reproducción y supervivencia.`, accion: 'Revisar ventilación y control térmico' })
-  } else if (tempsAltas7.length >= 1) {
-    alertas.push({ nivel: 'importante', icon: '🌡️', titulo: 'Temperatura fuera de rango',        descripcion: `${tempsAltas7.length} día(s) con temperatura >25°C en los últimos 7 días.`, accion: 'Monitorear temperatura de cerca' })
+    alertas.push({ nivel: 'critico',    icon: '🌡️', titulo: 'Calor sostenido esta semana',              descripcion: `${tempsAltas7.length}d con temperatura predominante >24°C. Monitorear reproducción y supervivencia.`, accion: 'Revisar ventilación y control térmico' })
   }
+  // 1-2 días → no se alerta (puede ser variabilidad normal sin impacto real)
 
-  // ── Frío extremo ──────────────────────────────────────────────────────────
+  // ── Frío extremo SOSTENIDO (<18°C en temperatura predominante) ────────────
   const tempsFrias7 = tempsBio.filter(t => t.date >= hace7 && Number(t.current_temp) < 18)
-  if (tempsFrias7.length >= 2) {
-    alertas.push({ nivel: 'critico', icon: '❄️', titulo: 'Temperatura baja', descripcion: `${tempsFrias7.length} días con <18°C. Puede afectar reproducción y bienestar.`, accion: 'Revisar calefacción' })
+  if (tempsFrias7.length >= 3) {
+    alertas.push({ nivel: 'critico', icon: '❄️', titulo: 'Frío sostenido (temp. predominante <18°C)', descripcion: `${tempsFrias7.length}d con temperatura predominante <18°C. Exposición prolongada — puede afectar reproducción.`, accion: 'Revisar calefacción' })
+  } else if (tempsFrias7.length >= 1) {
+    alertas.push({ nivel: 'importante', icon: '❄️', titulo: 'Temperatura baja detectada', descripcion: `${tempsFrias7.length}d con temperatura predominante <18°C. Si se repite, revisar calefacción.`, accion: 'Monitorear' })
   }
 
   // ── Incidentes graves sin resolver ────────────────────────────────────────
@@ -742,10 +898,10 @@ export function generarRecomendacionesHoy(incidentes, temperaturas, camadas, ani
     recomendaciones.push({ prioridad: 'alta', icono: '🌡️', accion: 'Registrar temperatura del bioterio hoy', motivo: 'Sin registro de temperatura en el día actual' })
   }
 
-  // 3. Temperatura alta esta semana
-  const tempsAltas = tempsBio.filter(t => t.date >= hace7 && Number(t.current_temp) > 25)
-  if (tempsAltas.length >= 2) {
-    recomendaciones.push({ prioridad: 'alta', icono: '❄️', accion: 'Verificar y ajustar sistema de ventilación/refrigeración', motivo: `${tempsAltas.length} días con temperatura >25°C esta semana` })
+  // 3. Calor sostenido esta semana (≥3 días con temp. predominante >24°C)
+  const tempsAltas = tempsBio.filter(t => t.date >= hace7 && Number(t.current_temp) > 24)
+  if (tempsAltas.length >= 3) {
+    recomendaciones.push({ prioridad: 'alta', icono: '🌡️', accion: 'Verificar y ajustar sistema de ventilación/refrigeración', motivo: `${tempsAltas.length}d con temperatura predominante >24°C esta semana (exposición sostenida)` })
   }
 
   // 4. Camadas vencidas (>28d sin destetar)
@@ -1341,11 +1497,12 @@ export function generarDecisionesHoy(
   }
 
   // 2. CRÍTICO: temperatura fuera de rango prolongada
-  const tempsAltas7 = tempBio.filter(t => t.date >= hace7 && Number(t.current_temp) > 25)
+  // Usa current_temp (temp. predominante) — no picos breves de max_temp
+  const tempsAltas7 = tempBio.filter(t => t.date >= hace7 && Number(t.current_temp) > 24)
   if (tempsAltas7.length >= 3) {
     decisiones.push({ prioridad: 1, nivel: 'critico', icono: '🌡️', tipo: 'ambiental',
-      accion: 'Intervenir en climatización — temperatura >25°C varios días',
-      motivo: `${tempsAltas7.length} días con temperatura >25°C esta semana`,
+      accion: `Intervenir en climatización — temperatura sostenida >24°C (${tempsAltas7.length}d)`,
+      motivo: `${tempsAltas7.length}d esta semana con temperatura predominante >24°C (exposición sostenida, no picos breves)`,
     })
   } else if (!tempBio.find(t => t.date === hoy)) {
     decisiones.push({ prioridad: 3, nivel: 'atencion', icono: '🌡️', tipo: 'ambiental',
