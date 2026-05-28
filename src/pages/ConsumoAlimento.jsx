@@ -877,8 +877,7 @@ export default function ConsumoAlimento() {
     const { error: e } = await supabase.from('alimento_censos').insert(censoAlimToDB(nuevo))
     if (e) {
       console.error('Error al guardar censo alimento:', e)
-      setError('No se pudo guardar el censo. Verificá la conexión con Supabase.\n' + (e.message ?? e.code ?? ''))
-      return
+      return e.message ?? e.code ?? 'Error al guardar. Verificá la conexión.'
     }
     setCensos(prev => [...prev, nuevo].sort((a, b) => a.fecha.localeCompare(b.fecha)))
     setModalCenso(false)
@@ -1967,6 +1966,8 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCo
   const [repBioterios,    setRepBioterios]    = useState(OPCIONES_BIOTERIOS.map(b => b.id))
   const [repCategorias,   setRepCategorias]   = useState([])
   const [repKg,           setRepKg]           = useState('')
+  const [errorGuardar,    setErrorGuardar]    = useState(null)
+  const [guardando,       setGuardando]       = useState(false)
 
   const kgNum      = parseFloat(kg)      || 0
   const rellenoNum = parseFloat(rellenoKg) || 0
@@ -1992,17 +1993,24 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCo
     setRepCategorias(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id])
   }
 
-  function confirmar(e) {
+  async function confirmar(e) {
     e.preventDefault()
     const v = parseFloat(kg)
     if (isNaN(v) || v < 0) return
+    setErrorGuardar(null)
+    setGuardando(true)
 
     // Si declaró relleno en la sección clásica, usar eso como rellenoKg del censo
     const finalRellenoKg = rellenoNum > 0 ? rellenoNum
       : (respReposicion === 'si' || respReposicion === 'parcial') ? repKgNum
       : 0
 
-    onConfirmar(fecha, v, hora || null, finalRellenoKg)
+    const err = await onConfirmar(fecha, v, hora || null, finalRellenoKg)
+    if (err) {
+      setErrorGuardar(err)
+      setGuardando(false)
+      return
+    }
 
     // Si confirmó reposición en el prompt, también guardar entrada independiente
     if ((respReposicion === 'si' || respReposicion === 'parcial') && repKgNum > 0) {
@@ -2261,16 +2269,23 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCo
             </div>
           )}
 
+          {errorGuardar && (
+            <div className="rounded-xl px-4 py-3 text-xs font-mono"
+              style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.35)', color: '#ff6b80' }}>
+              ⚠️ {errorGuardar}
+            </div>
+          )}
+
           <div className="flex gap-3 pt-1">
-            <button type="button" onClick={onCerrar}
+            <button type="button" onClick={onCerrar} disabled={guardando}
               className="flex-1 py-2.5 rounded-xl text-sm font-mono"
               style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a' }}>
               Cancelar
             </button>
-            <button type="submit"
+            <button type="submit" disabled={guardando}
               className="flex-1 py-2.5 rounded-xl text-sm font-bold"
-              style={{ background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.4)', color: '#a78bfa' }}>
-              Guardar censo
+              style={{ background: guardando ? 'rgba(167,139,250,0.05)' : 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.4)', color: '#a78bfa', cursor: guardando ? 'not-allowed' : 'pointer' }}>
+              {guardando ? 'Guardando...' : 'Guardar censo'}
             </button>
           </div>
         </form>
