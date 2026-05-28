@@ -1432,3 +1432,677 @@ export function calcularPedidoEscalonado(pedido) {
     tandasTotal:      Number(tandasTotal),
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 21 — CAPACIDAD REPRODUCTIVA DINÁMICA
+// Clasifica animales en categorías y determina qué generación llega
+// a la edad requerida en la fecha de entrega.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function calcularCapacidadReproductivaDinamica(pedido, animales, camadas, jaulas, sacrificios, entregas) {
+  const { bioterioId, fechaEntrega, edadSemanas } = pedido
+  const bio    = getBio(bioterioId)
+  const hist   = calcularProduccionHistorica(camadas, bioterioId)
+  const minimos = getMinimosCriticos(bioterioId)
+
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+  const estadosActivos = ['activo', 'en_apareamiento', 'en_cria']
+
+  const LIMITE_DIAS  = 270
+  const MADUREZ_MIN  = Math.round(bio.MADUREZ_DIAS * 0.85)
+  const MADUREZ_PROX = Math.round(bio.MADUREZ_DIAS * 0.60)
+
+  const todosAnimalesBio = (animales ?? []).filter(a =>
+    a.bioterio_id === bioterioId && !a.exportado_hibridos
+  )
+
+  // ── Clasificar reproductores ───────────────────────────────────────────────
+  const minimoH = minimos.hembras_colonia ?? 0
+  const minimoM = minimos.machos_colonia  ?? 0
+  let hembrasProtegidas = 0
+  let machosProtegidos  = 0
+
+  const protegidos         = []
+  const disponiblesRepro   = []
+  const futurosReproductores = []
+  const noAptos            = []
+
+  const hembrasActivas = todosAnimalesBio.filter(a => a.sexo === 'hembra' && estadosActivos.includes(a.estado)).length
+  const machosActivos  = todosAnimalesBio.filter(a => a.sexo === 'macho'  && estadosActivos.includes(a.estado)).length
+
+  for (const a of todosAnimalesBio) {
+    if (!estadosActivos.includes(a.estado)) continue
+    const diasVida = a.fecha_nacimiento ? difDias(a.fecha_nacimiento, hoy) : bio.MADUREZ_DIAS + 30
+
+    if (diasVida > LIMITE_DIAS) {
+      noAptos.push({ animal: a, razon: 'Superó límite de edad', diasVida }); continue
+    }
+    if (diasVida >= MADUREZ_PROX && diasVida < MADUREZ_MIN) {
+      futurosReproductores.push({ animal: a, diasVida, diasParaMadurar: MADUREZ_MIN - diasVida }); continue
+    }
+    if (diasVida < MADUREZ_PROX) continue
+
+    // Maduro — ¿es parte de los mínimos protegidos?
+    if (a.sexo === 'hembra' && hembrasProtegidas < minimoH) {
+      hembrasProtegidas++; protegidos.push({ animal: a, diasVida })
+    } else if (a.sexo === 'macho' && machosProtegidos < minimoM) {
+      machosProtegidos++;  protegidos.push({ animal: a, diasVida })
+    } else {
+      disponiblesRepro.push({ animal: a, diasVida })
+    }
+  }
+
+  // ── Clasificar stock (crías en jaulas) ────────────────────────────────────
+  const bajasPor = {}
+  for (const s of (sacrificios ?? [])) {
+    if (s.camada_id) bajasPor[s.camada_id] = (bajasPor[s.camada_id] || 0) + (s.cantidad || 0)
+  }
+  for (const e of (entregas ?? [])) {
+    if (e.camada_id) bajasPor[e.camada_id] = (bajasPor[e.camada_id] || 0) + (e.cantidad || 0)
+  }
+
+  const entregaDate = fechaEntrega ? parseDate(fechaEntrega) : null
+  const edadDias    = edadSemanas  ? Number(edadSemanas) * 7 : 0
+
+  let stockLibre       = 0
+  let futurosEntregables = 0
+
+  for (const jaula of (jaulas ?? [])) {
+    const camada = camadas.find(c => c.id === jaula.camada_id)
+    if (!camada || camada.bioterio_id !== bioterioId || camada.failure_flag || !camada.fecha_nacimiento) continue
+
+    const bajas = bajasPor[jaula.camada_id] || 0
+    const total = Math.max(0, (jaula.total || 0) - bajas)
+    if (total <= 0) continue
+
+    const diasVida = difDias(camada.fecha_nacimiento, hoy)
+
+    if (entregaDate && edadDias > 0) {
+      const edadAlEntrega = Math.round((entregaDate - new Date(camada.fecha_nacimiento)) / 86400000)
+      if (edadAlEntrega >= edadDias - 14 && edadAlEntrega <= edadDias + 42) {
+        if (diasVida >= edadDias) stockLibre += total
+        else futurosEntregables += Math.round(total * hist.tasaSupervivencia)
+        continue
+      }
+    }
+    if (diasVida >= MADUREZ_MIN) stockLibre += total
+    else futurosEntregables += Math.round(total * hist.tasaSupervivencia)
+  }
+
+  // ── Análisis de generaciones ──────────────────────────────────────────────
+  const diasHastaEntrega = entregaDate ? Math.round((entregaDate - hoy) / 86400000) : null
+  const cicloGen1 = bio.DURACION_APAREAMIENTO_DIAS + bio.GESTACION_DIAS + bio.VENTANA_CONCEPCION_MAX + bio.DESTETE_DIAS + edadDias
+  const cicloGen2 = cicloGen1 + bio.MADUREZ_DIAS + bio.DURACION_APAREAMIENTO_DIAS + bio.GESTACION_DIAS + bio.VENTANA_CONCEPCION_MAX + bio.DESTETE_DIAS
+
+  let generacionRequerida    = 'Gen0'
+  let descripcionGeneracion  = 'Solo el stock actual llega a tiempo'
+  let emoji                  = '0️⃣'
+
+  if (diasHastaEntrega !== null) {
+    if (diasHastaEntrega < edadDias) {
+      generacionRequerida   = 'Sin tiempo'; emoji = '⛔'
+      descripcionGeneracion = 'Tiempo insuficiente — el stock actual tampoco llega a la edad requerida'
+    } else if (diasHastaEntrega >= cicloGen2) {
+      generacionRequerida   = 'Gen2'; emoji = '🧬'
+      descripcionGeneracion = `Hay tiempo para 2 generaciones — los nietos de los reproductores actuales llegarán a ${edadSemanas} semanas el día de la entrega`
+    } else if (diasHastaEntrega >= cicloGen1) {
+      generacionRequerida   = 'Gen1'; emoji = '🐀'
+      descripcionGeneracion = `Los hijos de los reproductores actuales llegarán exactamente a ${edadSemanas} semanas en la fecha de entrega`
+    } else {
+      generacionRequerida   = 'Gen0'; emoji = '📦'
+      descripcionGeneracion = `Solo el stock actual llega a tiempo — no hay margen para producir una nueva generación completa`
+    }
+  }
+
+  return {
+    protegidos, disponiblesRepro, futurosReproductores, noAptos,
+    hembrasProtegidas, machosProtegidos,
+    hembrasDisponiblesRepro: disponiblesRepro.filter(r => r.animal.sexo === 'hembra').length,
+    machosDisponiblesRepro:  disponiblesRepro.filter(r => r.animal.sexo === 'macho').length,
+    hembrasActivas, machosActivos, minimoH, minimoM,
+    stockLibre, futurosEntregables,
+    totalEntregable: stockLibre + futurosEntregables,
+    generacionRequerida, descripcionGeneracion, emoji,
+    diasHastaEntrega,
+    cicloGen1, cicloGen2,
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 22 — CRECIMIENTO COLATERAL
+// Calcula los excedentes que genera el pedido: hembras sobrantes,
+// machos sobrantes, futuros reproductores, buffer para la colonia.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function calcularCrecimientoColateral(pedido, parejasInfo, hist) {
+  const criasTotal       = parejasInfo.animalesEstimados
+  const criasDelSexo     = parejasInfo.animalesDelSexo ?? Math.round(criasTotal * 0.5)
+  const excedente        = Math.max(0, criasDelSexo - pedido.cantidad)
+  const totalExcedente   = Math.max(0, criasTotal - pedido.cantidad)
+
+  const hembrasSobrantes = Math.round(totalExcedente * hist.propHembras)
+  const machosSobrantes  = Math.round(totalExcedente * (1 - hist.propHembras))
+
+  const futuraReproductorasH = Math.round(hembrasSobrantes * 0.55)
+  const futuraReproductoresM = Math.round(machosSobrantes  * 0.30)
+
+  return {
+    criasTotal, excedente, totalExcedente,
+    hembrasSobrantes, machosSobrantes,
+    futuraReproductorasH, futuraReproductoresM,
+    potencialRenovacion: futuraReproductorasH > 0 || futuraReproductoresM > 0,
+    descripcion: totalExcedente > 0
+      ? `El pedido genera ~${totalExcedente} animales extra: ${hembrasSobrantes}♀ + ${machosSobrantes}♂ sobrantes.${futuraReproductorasH > 0 ? ` ~${futuraReproductorasH} hembras pueden convertirse en futuras reproductoras.` : ''}`
+      : 'El pedido usa exactamente los animales necesarios — sin excedente reproductivo.',
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 23 — ESTRATEGIAS BIOLÓGICAS (7 tipos)
+// Cada estrategia modifica realmente el comportamiento reproductivo:
+// parejas, timing, generaciones, saturación, buffer, riesgos.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function _scoreEstrategiaBio({ probabilidad, riesgoBiologico, riesgoGenetico, rompeMinimos, saturacion, viable = true }) {
+  if (!viable || rompeMinimos) return 0
+  return probabilidad - riesgoBiologico * 0.25 - riesgoGenetico * 0.2 - (saturacion ? 10 : 0)
+}
+
+function _optimalBio(estrategias, indiceSanitario) {
+  const viables = estrategias.filter(e => e.viable !== false && !e.rompeMinimos)
+  const candidatos = viables.length > 0 ? viables : estrategias.filter(e => e.viable !== false)
+  const sinSaturar = candidatos.filter(e => !e.saturacion)
+  const final = sinSaturar.length > 0 ? sinSaturar : candidatos
+
+  // Penalizar estrategia bajo_impacto si el índice sanitario es bueno (no hace falta)
+  final.sort((a, b) => {
+    const sA = _scoreEstrategiaBio(a) + (indiceSanitario < 70 && a.id === 'bajo_impacto' ? 8 : 0)
+    const sB = _scoreEstrategiaBio(b) + (indiceSanitario < 70 && b.id === 'bajo_impacto' ? 8 : 0)
+    return sB - sA
+  })
+
+  const elegida = final[0]
+  if (!elegida) return null
+
+  const razones = []
+  if (!elegida.rompeMinimos)    razones.push('respeta los mínimos de la colonia')
+  if (!elegida.saturacion)      razones.push('no satura instalaciones')
+  razones.push(`${elegida.probabilidad}% de probabilidad de cumplimiento`)
+  if (elegida.crecimientoColateral?.totalExcedente > 0)
+    razones.push(`genera ${elegida.crecimientoColateral.totalExcedente} animales extra de buffer`)
+
+  return { id: elegida.id, nombre: elegida.nombre, emoji: elegida.emoji, razon: razones.join(' · '), estrategia: elegida }
+}
+
+export function generarEstrategiasBiologicas(pedido, camadas, animales, jaulas, indiceSanitario) {
+  const bio    = getBio(pedido.bioterioId)
+  const hist   = calcularProduccionHistorica(camadas, pedido.bioterioId)
+  const minimos = getMinimosCriticos(pedido.bioterioId)
+  const fechasBase = calcularFechasOptimas(pedido, bio)
+
+  const estadosActivos = ['activo', 'en_apareamiento', 'en_cria']
+  const hembrasTotal = (animales ?? []).filter(a =>
+    a.bioterio_id === pedido.bioterioId && a.sexo === 'hembra' &&
+    estadosActivos.includes(a.estado) && !a.exportado_hibridos
+  ).length
+  const machosTotal = (animales ?? []).filter(a =>
+    a.bioterio_id === pedido.bioterioId && a.sexo === 'macho' &&
+    estadosActivos.includes(a.estado) && !a.exportado_hibridos
+  ).length
+  const jaulasCount = (jaulas ?? []).filter(j => {
+    const c = camadas.find(c2 => c2.id === j.camada_id)
+    return c?.bioterio_id === pedido.bioterioId && !c?.failure_flag
+  }).length
+
+  const propSexo   = pedido.sexo === 'hembras' ? hist.propHembras
+    : pedido.sexo === 'machos' ? (1 - hist.propHembras) : 1
+  const utilPorPareja = hist.promedioTamano * hist.tasaSupervivencia * propSexo
+
+  const parejasBase   = utilPorPareja > 0 ? Math.ceil(pedido.cantidad / utilPorPareja) : pedido.cantidad
+  const parejasBuffer = Math.ceil(parejasBase / hist.tasaExito)
+  const parejasMax    = Math.ceil(parejasBuffer * 1.5)
+
+  const machosBase   = Math.max(1, Math.ceil(parejasBase   / 3))
+  const machosBuffer = Math.max(1, Math.ceil(parejasBuffer / 3))
+  const machosMax    = Math.max(1, Math.ceil(parejasMax    / 3))
+
+  const diasHastaEntrega = fechasBase?.diasHastaEntrega ?? 999
+
+  function calcProb(parejas, factor) {
+    return Math.min(97, Math.max(20, Math.round(
+      hist.tasaExito * hist.tasaSupervivencia * 100 * Math.min(1.7, factor) * (hist.conDatos ? 1.1 : 0.85)
+    )))
+  }
+  function rompeMin(h, m) {
+    return (hembrasTotal - h) < (minimos.hembras_colonia ?? 0) ||
+           (machosTotal  - m) < (minimos.machos_colonia  ?? 0)
+  }
+  function colateral(parejas) {
+    const p = calcularParejasNecesarias({ ...pedido, _parejas: parejas }, camadas, bio)
+    return calcularCrecimientoColateral(pedido, p, hist)
+  }
+
+  // Helpers de fechas modificadas
+  const toISO = d => d.toISOString().split('T')[0]
+  function fechasConRetraso(diasExtra) {
+    if (!fechasBase) return null
+    const f = { ...fechasBase }
+    const campos = ['fechaCopula','fechaSeparacion','fechaNacimiento','fechaDestete']
+    for (const k of campos) {
+      if (f[k]) {
+        const d = new Date(f[k]); d.setDate(d.getDate() + diasExtra)
+        f[k] = toISO(d)
+      }
+    }
+    f.diasHastaCopula = (f.diasHastaCopula ?? 0) + diasExtra
+    return f
+  }
+
+  // Reproductores mayores (cerca del límite)
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+  const ALERTA_DIAS = 240
+  const viejos = (animales ?? []).filter(a =>
+    a.bioterio_id === pedido.bioterioId && estadosActivos.includes(a.estado) &&
+    !a.exportado_hibridos && a.fecha_nacimiento &&
+    difDias(a.fecha_nacimiento, hoy) >= ALERTA_DIAS
+  ).length
+
+  // Ciclo para estrategia generacional
+  const cicloCompleto = bio.DURACION_APAREAMIENTO_DIAS + bio.GESTACION_DIAS +
+    bio.VENTANA_CONCEPCION_MAX + bio.DESTETE_DIAS + bio.MADUREZ_DIAS
+  const esViableMultigen = diasHastaEntrega >= cicloCompleto * 1.5 + (Number(pedido.edadSemanas ?? 8) * 7)
+
+  const parejasGen1 = Math.ceil(parejasBuffer * 0.65)
+  const machosGen1  = Math.max(1, Math.ceil(parejasGen1 / 3))
+
+  const estrategias = [
+
+    // ── 1. Conservadora ───────────────────────────────────────────────────────
+    {
+      id: 'conservadora', nombre: 'Conservadora', emoji: '🛡️',
+      descripcion: 'Mínimas parejas, menor impacto en la colonia, riesgo de quedar corto',
+      hembrasNecesarias: parejasBase, machosNecesarios: machosBase,
+      parejasTotal: parejasBase, jaulasNuevas: parejasBase,
+      jaulasTotal: jaulasCount + parejasBase,
+      tiempoExtra: 0, usaGeneracion: 'actual', usaF1: false,
+      necesitaExpansion: false,
+      riesgoBiologico: 38, riesgoGenetico: 20,
+      impactoColonia: 'bajo',
+      probabilidad: calcProb(parejasBase, 1.0),
+      crecimientoColateral: colateral(parejasBase),
+      rompeMinimos: rompeMin(parejasBase, machosBase),
+      saturacion: (jaulasCount + parejasBase) > 20,
+      viable: true,
+      porQueElegir: 'Cuando la colonia está al mínimo o el espacio de jaulas es limitado',
+      riesgos: ['Sin buffer — un fallo reproductivo puede comprometer la entrega completa'],
+      fechasModificadas: fechasBase,
+    },
+
+    // ── 2. Balanceada ─────────────────────────────────────────────────────────
+    {
+      id: 'balanceada', nombre: 'Balanceada', emoji: '⚖️',
+      descripcion: 'Buffer estándar, alta probabilidad de cumplimiento, impacto moderado',
+      hembrasNecesarias: parejasBuffer, machosNecesarios: machosBuffer,
+      parejasTotal: parejasBuffer, jaulasNuevas: parejasBuffer,
+      jaulasTotal: jaulasCount + parejasBuffer,
+      tiempoExtra: 0, usaGeneracion: 'actual', usaF1: false,
+      necesitaExpansion: false,
+      riesgoBiologico: 18, riesgoGenetico: 18,
+      impactoColonia: 'moderado',
+      probabilidad: calcProb(parejasBuffer, 1 / hist.tasaExito),
+      crecimientoColateral: colateral(parejasBuffer),
+      rompeMinimos: rompeMin(parejasBuffer, machosBuffer),
+      saturacion: (jaulasCount + parejasBuffer) > 20,
+      viable: true,
+      porQueElegir: 'Estrategia general — equilibra seguridad con uso razonable de la colonia',
+      riesgos: [],
+      fechasModificadas: fechasBase,
+    },
+
+    // ── 3. Expansiva ──────────────────────────────────────────────────────────
+    {
+      id: 'expansiva', nombre: 'Expansiva', emoji: '📈',
+      descripcion: 'Máximo buffer, mayor probabilidad, genera excedentes para stock y futuros reproductores',
+      hembrasNecesarias: parejasMax, machosNecesarios: machosMax,
+      parejasTotal: parejasMax, jaulasNuevas: parejasMax,
+      jaulasTotal: jaulasCount + parejasMax,
+      tiempoExtra: 0, usaGeneracion: 'actual', usaF1: false,
+      necesitaExpansion: true,
+      riesgoBiologico: 10, riesgoGenetico: 22,
+      impactoColonia: 'alto',
+      probabilidad: calcProb(parejasMax, 1.5),
+      crecimientoColateral: colateral(parejasMax),
+      rompeMinimos: rompeMin(parejasMax, machosMax),
+      saturacion: (jaulasCount + parejasMax) > 20,
+      viable: true,
+      porQueElegir: `Genera ~${Math.max(0, Math.round(parejasMax * hist.promedioTamano * hist.tasaSupervivencia) - pedido.cantidad)} animales extra — ideal para pedidos recurrentes o renovar la colonia`,
+      riesgos: ['Mayor uso de reproductores activos', 'Puede saturar jaulas temporalmente'],
+      fechasModificadas: fechasBase,
+    },
+
+    // ── 4. Escalonada (2 ondas) ───────────────────────────────────────────────
+    {
+      id: 'escalonada', nombre: 'Escalonada (2 ondas)', emoji: '📅',
+      descripcion: 'Divide el pedido en 2 grupos separados — menor pico de saturación, menor estrés reproductivo',
+      hembrasNecesarias: parejasBuffer, machosNecesarios: machosBuffer,
+      parejasTotal: parejasBuffer,
+      jaulasNuevas: Math.ceil(parejasBuffer / 2), // pico simultáneo
+      jaulasTotal: jaulasCount + Math.ceil(parejasBuffer / 2),
+      tiempoExtra: 14, usaGeneracion: 'actual', usaF1: false,
+      necesitaExpansion: false,
+      riesgoBiologico: 16, riesgoGenetico: 14,
+      impactoColonia: 'moderado',
+      probabilidad: Math.min(96, calcProb(parejasBuffer, 1 / hist.tasaExito) + 4),
+      crecimientoColateral: colateral(parejasBuffer),
+      rompeMinimos: rompeMin(parejasBuffer, machosBuffer),
+      saturacion: (jaulasCount + Math.ceil(parejasBuffer / 2)) > 20,
+      viable: true,
+      porQueElegir: 'Menor pico simultáneo de jaulas — ideal cuando el espacio es el mayor limitante',
+      riesgos: ['La segunda onda requiere planificación cuidadosa para coincidir con la entrega'],
+      fechasModificadas: fechasBase,
+      esCronogramaEscalonado: true,
+      cantidadPorOla: Math.ceil(pedido.cantidad / 2),
+      frecuenciaOlas: 14,
+    },
+
+    // ── 5. Renovación automática ──────────────────────────────────────────────
+    {
+      id: 'renovacion', nombre: 'Renovación automática', emoji: '🔄',
+      descripcion: `Usa los ${viejos} reproductores de mayor edad primero — el pedido impulsa el ciclo de renovación natural`,
+      hembrasNecesarias: parejasBuffer, machosNecesarios: machosBuffer,
+      parejasTotal: parejasBuffer, jaulasNuevas: parejasBuffer,
+      jaulasTotal: jaulasCount + parejasBuffer,
+      tiempoExtra: 0, usaGeneracion: 'actual', usaF1: false,
+      necesitaExpansion: false,
+      riesgoBiologico: 25, riesgoGenetico: 12,
+      impactoColonia: 'bajo',
+      probabilidad: Math.max(25, calcProb(parejasBuffer, 1 / hist.tasaExito) - (viejos > 0 ? 5 : 0)),
+      crecimientoColateral: colateral(parejasBuffer),
+      rompeMinimos: rompeMin(parejasBuffer, machosBuffer),
+      saturacion: (jaulasCount + parejasBuffer) > 20,
+      viable: true,
+      porQueElegir: viejos > 0
+        ? `${viejos} reproductores cerca del límite de edad — el pedido los aprovecha antes de retiro obligatorio`
+        : 'Útil cuando hay reproductores de alta edad que deben usarse prioritariamente',
+      riesgos: viejos > 0
+        ? ['Reproductores mayores pueden tener menor tasa de fertilización', 'Monitorear performance más de cerca']
+        : [],
+      reproductooresViejos: viejos,
+      fechasModificadas: fechasBase,
+    },
+
+    // ── 6. Bajo impacto sanitario ─────────────────────────────────────────────
+    {
+      id: 'bajo_impacto', nombre: 'Bajo impacto sanitario', emoji: '🌿',
+      descripcion: 'Mismas parejas pero con 2 semanas extra de preparación — menor estrés, mayor calidad reproductiva',
+      hembrasNecesarias: parejasBuffer, machosNecesarios: machosBuffer,
+      parejasTotal: parejasBuffer, jaulasNuevas: parejasBuffer,
+      jaulasTotal: jaulasCount + parejasBuffer,
+      tiempoExtra: 14, usaGeneracion: 'actual', usaF1: false,
+      necesitaExpansion: false,
+      riesgoBiologico: 12, riesgoGenetico: 16,
+      impactoColonia: 'moderado',
+      probabilidad: Math.min(97, calcProb(parejasBuffer, 1 / hist.tasaExito) + 5),
+      crecimientoColateral: colateral(parejasBuffer),
+      rompeMinimos: rompeMin(parejasBuffer, machosBuffer),
+      saturacion: (jaulasCount + parejasBuffer) > 20,
+      viable: diasHastaEntrega > (fechasBase?.diasMinimos ?? 0) + 14,
+      porQueElegir: 'Recomendada cuando el índice sanitario está reducido o los reproductores necesitan acondicionamiento',
+      riesgos: ['Requiere 14 días extra en el cronograma — verificar que la fecha de entrega lo permite'],
+      fechasModificadas: fechasConRetraso(14),
+    },
+
+    // ── 7. Crecimiento progresivo (bi-generacional) ───────────────────────────
+    {
+      id: 'progresivo', nombre: 'Crecimiento progresivo', emoji: '🧬',
+      descripcion: esViableMultigen
+        ? 'Gen0 → Gen1 → entrega: menos reproductores iniciales, máxima diversidad genética'
+        : `Requiere más tiempo del disponible — se aplica con datos bibliográficos`,
+      hembrasNecesarias: parejasGen1, machosNecesarios: machosGen1,
+      parejasTotal: parejasGen1, jaulasNuevas: parejasGen1,
+      jaulasTotal: jaulasCount + parejasGen1,
+      tiempoExtra: 0, usaGeneracion: esViableMultigen ? 'gen1' : 'actual',
+      usaF1: false, necesitaExpansion: false,
+      riesgoBiologico: esViableMultigen ? 18 : 28,
+      riesgoGenetico: 5,
+      impactoColonia: 'bajo',
+      probabilidad: esViableMultigen
+        ? Math.min(96, calcProb(parejasBuffer, 1.2))
+        : calcProb(parejasBuffer, 1 / hist.tasaExito),
+      crecimientoColateral: colateral(parejasBuffer),
+      rompeMinimos: rompeMin(parejasGen1, machosGen1),
+      saturacion: (jaulasCount + parejasGen1) > 20,
+      viable: esViableMultigen,
+      porQueElegir: esViableMultigen
+        ? `Para pedidos grandes a largo plazo — mínimo impacto inicial, máxima diversidad genética de las crías`
+        : `No viable con el tiempo actual — se necesitan al menos ${Math.round((cicloCompleto * 1.5 + Number(pedido.edadSemanas ?? 8) * 7) / 30)} meses`,
+      riesgos: esViableMultigen
+        ? ['Requiere seguimiento de 2 generaciones', 'La calidad de Gen1 es crítica para el resultado final']
+        : ['Tiempo insuficiente para ciclo bi-generacional completo'],
+      fechasModificadas: fechasBase,
+    },
+  ]
+
+  const optima = _optimalBio(estrategias, indiceSanitario)
+  return { estrategias, optima }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 24 — PLAN OPERATIVO GPS
+// Convierte la estrategia óptima en una lista de pasos concretos con
+// fechas, acciones y descripciones en lenguaje claro.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function generarPlanOperativo(pedido, estrategia, fechasOptimas, parejasInfo, bio) {
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+  const toISO = d => d.toISOString().split('T')[0]
+  const sumar = (fecha, dias) => {
+    if (!fecha) return null
+    const d = new Date(fecha); d.setDate(d.getDate() + dias); return toISO(d)
+  }
+  const diasDesdeHoy = fecha => {
+    if (!fecha) return null
+    const d = parseDate(fecha); return d ? Math.round((d - hoy) / 86400000) : null
+  }
+
+  const fechas = estrategia?.fechasModificadas ?? fechasOptimas
+  if (!fechas) return []
+
+  const tiempoExtra = estrategia?.tiempoExtra ?? 0
+  const hembras     = estrategia?.hembrasNecesarias ?? parejasInfo?.hembrasNecesarias ?? '?'
+  const machos      = estrategia?.machosNecesarios  ?? parejasInfo?.machosNecesarios  ?? '?'
+  const criasEst    = estrategia?.crecimientoColateral?.criasTotal ?? parejasInfo?.animalesEstimados ?? '?'
+
+  const pasos = []
+
+  // ── Paso 0: preparación (si hay tiempo extra o es su primera acción) ───────
+  const diasParaPrep = Math.max(0, (fechas.diasHastaCopula ?? 0) - 3)
+  const fechaPrep    = diasParaPrep === 0 ? toISO(hoy) : sumar(toISO(hoy), diasParaPrep)
+  pasos.push({
+    numero: pasos.length + 1,
+    fecha: fechaPrep,
+    diasRestantes: diasParaPrep,
+    tipo: 'preparacion',
+    emoji: '✅',
+    accion: `Seleccionar ${hembras} hembras y ${machos} machos`,
+    descripcion: `Elegir los reproductores de mayor score reproductivo. ${estrategia?.id === 'renovacion' ? 'Priorizar los de mayor edad.' : 'Priorizar los con menor consanguinidad (F < 12.5%).'} Verificar salud y condición corporal antes de iniciar.`,
+    urgente: diasParaPrep <= 3,
+    importante: false,
+  })
+
+  // ── Paso 1: inicio de cópulas ─────────────────────────────────────────────
+  if (fechas.fechaCopula) {
+    pasos.push({
+      numero: pasos.length + 1,
+      fecha: fechas.fechaCopula,
+      diasRestantes: fechas.diasHastaCopula ?? diasDesdeHoy(fechas.fechaCopula),
+      tipo: 'copula',
+      emoji: '🔗',
+      accion: `Iniciar ${hembras} apareamientos`,
+      descripcion: `Unir ${hembras}♀ con ${machos}♂${estrategia?.esCronogramaEscalonado ? ` (primera onda: ${estrategia.cantidadPorOla} animales)` : ''}. Registrar fecha de cópula en el sistema para calcular la fecha de parto automáticamente.`,
+      urgente: (fechas.diasHastaCopula ?? 0) <= 7 && (fechas.diasHastaCopula ?? 0) >= 0,
+      importante: false,
+    })
+  }
+
+  // ── Segunda onda si es escalonada ─────────────────────────────────────────
+  if (estrategia?.esCronogramaEscalonado && fechas.fechaCopula) {
+    const fechaCopula2 = sumar(fechas.fechaCopula, estrategia.frecuenciaOlas ?? 14)
+    pasos.push({
+      numero: pasos.length + 1,
+      fecha: fechaCopula2,
+      diasRestantes: diasDesdeHoy(fechaCopula2),
+      tipo: 'copula',
+      emoji: '🔗',
+      accion: `Iniciar segunda onda — ${estrategia.cantidadPorOla} animales`,
+      descripcion: `${estrategia.frecuenciaOlas ?? 14} días después de la primera onda. Repartir la carga reproductiva reduce el pico de jaulas necesarias.`,
+      urgente: false,
+      importante: false,
+    })
+  }
+
+  // ── Paso 2: separación de parejas ─────────────────────────────────────────
+  if (fechas.fechaSeparacion) {
+    pasos.push({
+      numero: pasos.length + 1,
+      fecha: fechas.fechaSeparacion,
+      diasRestantes: diasDesdeHoy(fechas.fechaSeparacion),
+      tipo: 'separacion',
+      emoji: '↗️',
+      accion: 'Separar los machos',
+      descripcion: `Retirar los machos después de ${bio?.DURACION_APAREAMIENTO_DIAS ?? 15} días de apareamiento. Las hembras quedan en jaulas individuales para la gestación.`,
+      urgente: false,
+      importante: false,
+    })
+  }
+
+  // ── Paso 3: verificación de gestación ────────────────────────────────────
+  if (fechas.fechaNacimiento) {
+    const fechaVerif = sumar(fechas.fechaNacimiento, -7)
+    pasos.push({
+      numero: pasos.length + 1,
+      fecha: fechaVerif,
+      diasRestantes: diasDesdeHoy(fechaVerif),
+      tipo: 'verificacion',
+      emoji: '🔍',
+      accion: 'Verificar signos de gestación',
+      descripcion: 'Revisar aumento de peso y tamaño abdominal. Registrar hembras con confirmación positiva. Preparar jaulas de parto.',
+      urgente: false,
+      importante: false,
+    })
+
+    // ── Paso 4: partos ────────────────────────────────────────────────────
+    pasos.push({
+      numero: pasos.length + 1,
+      fecha: fechas.fechaNacimiento,
+      diasRestantes: diasDesdeHoy(fechas.fechaNacimiento),
+      tipo: 'parto',
+      emoji: '🐣',
+      accion: `Partos esperados — ~${criasEst} crías`,
+      descripcion: `Revisar diariamente. Registrar cada camada en el sistema apenas nazca. Anotar total de crías, sexo y cualquier anomalía.`,
+      urgente: false,
+      importante: false,
+    })
+  }
+
+  // ── Paso 5: destete ───────────────────────────────────────────────────────
+  if (fechas.fechaDestete) {
+    pasos.push({
+      numero: pasos.length + 1,
+      fecha: fechas.fechaDestete,
+      diasRestantes: diasDesdeHoy(fechas.fechaDestete),
+      tipo: 'destete',
+      emoji: '🧬',
+      accion: 'Destete y separación por sexo',
+      descripcion: `Separar crías a los ${bio?.DESTETE_DIAS ?? 21} días. Organizar jaulas separando machos y hembras. Registrar en stock para seguimiento.`,
+      urgente: false,
+      importante: false,
+    })
+  }
+
+  // ── Paso extra: selección de F1 (estrategia generacional) ────────────────
+  if (estrategia?.usaGeneracion === 'gen1' && estrategia.viable && fechas.fechaDestete) {
+    const fechaSelF1 = sumar(fechas.fechaDestete, bio?.MADUREZ_DIAS ?? 75)
+    pasos.push({
+      numero: pasos.length + 1,
+      fecha: fechaSelF1,
+      diasRestantes: diasDesdeHoy(fechaSelF1),
+      tipo: 'seleccion',
+      emoji: '🎯',
+      accion: `Seleccionar reproductores F1 — ${hembras}♀ y ${machos}♂`,
+      descripcion: 'Los mejores animales de esta camada se convierten en reproductores para la siguiente generación. Mayor diversidad genética garantizada.',
+      urgente: false,
+      importante: false,
+    })
+  }
+
+  // ── Paso final: entrega ───────────────────────────────────────────────────
+  if (fechas.fechaEntrega) {
+    const diasEntrega = diasDesdeHoy(fechas.fechaEntrega)
+    pasos.push({
+      numero: pasos.length + 1,
+      fecha: fechas.fechaEntrega,
+      diasRestantes: diasEntrega,
+      tipo: 'entrega',
+      emoji: '📦',
+      accion: `Entrega — ${pedido.cantidad} ${pedido.sexo === 'ambos' ? 'animales (♂+♀)' : pedido.sexo} de ${pedido.edadSemanas} semanas`,
+      descripcion: pedido.solicitante
+        ? `Entregar a ${pedido.solicitante}. Verificar edad y cantidad antes de la entrega. Registrar la entrega en el módulo de Entregas.`
+        : `Verificar edad (${pedido.edadSemanas} semanas) y cantidad (${pedido.cantidad}). Registrar en el módulo de Entregas.`,
+      urgente: (diasEntrega ?? 0) <= 14 && (diasEntrega ?? 0) >= 0,
+      importante: true,
+    })
+  }
+
+  return pasos
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 25 — PRÓXIMA ACCIÓN
+// Determina el paso más urgente del plan operativo para mostrarlo
+// de forma prominente en la vista principal.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function determinarProximaAccion(planOperativo) {
+  if (!planOperativo || planOperativo.length === 0) {
+    return {
+      existe: false,
+      emoji: '📋',
+      accion: 'Completar datos del pedido',
+      descripcion: 'Ingresá la fecha de entrega y la edad requerida para generar el plan operativo',
+      urgente: false,
+      diasRestantes: null,
+      tipo: null,
+    }
+  }
+
+  // El primer paso pendiente con fecha futura o inminente
+  const pendientes = planOperativo
+    .filter(p => p.diasRestantes !== null && p.diasRestantes >= -7)
+    .sort((a, b) => (a.diasRestantes ?? 9999) - (b.diasRestantes ?? 9999))
+
+  const siguiente = pendientes[0]
+  if (!siguiente) {
+    return {
+      existe: true,
+      emoji: '✅',
+      accion: 'Pedido en ejecución',
+      descripcion: 'Todas las acciones inmediatas están completadas. Monitorear el progreso hasta la entrega.',
+      urgente: false,
+      diasRestantes: 0,
+      tipo: 'info',
+    }
+  }
+
+  return {
+    existe: true,
+    emoji: siguiente.emoji,
+    accion: siguiente.accion,
+    descripcion: siguiente.descripcion,
+    urgente: siguiente.urgente || (siguiente.diasRestantes ?? 0) <= 3,
+    diasRestantes: siguiente.diasRestantes,
+    fecha: siguiente.fecha,
+    tipo: siguiente.tipo,
+    importante: siguiente.importante,
+  }
+}

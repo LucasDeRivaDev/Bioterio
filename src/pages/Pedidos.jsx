@@ -1,5 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Pedidos.jsx — Gestión estratégica de pedidos de producción
+// Pedidos.jsx — GPS biológico de producción
+// Vista principal: qué hacer y cuándo.
+// Detalles técnicos: solapas secundarias opcionales.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, useMemo } from 'react'
@@ -12,16 +14,19 @@ import {
   calcularParejasNecesarias, calcularFechasOptimas,
   seleccionarReproductoresOptimos, detectarAnimalesListos,
   evaluarCapacidadFutura, evaluarImpactoColonia, calcularIndiceViabilidad,
-  generarCalendarioPedido,
-  evaluarImpactoEstrategico, calcularIndiceImpactoFuturo, simularEscenariosEstrategicos,
+  evaluarImpactoEstrategico, calcularIndiceImpactoFuturo,
   detectarSuperavit, detectarReproductoresProximos,
   calcularProduccionEnCurso, calcularPedidoEscalonado,
+  evaluarRiesgoMultifactorialPedido,
+  // Nuevas funciones biológicas
+  calcularCapacidadReproductivaDinamica, calcularCrecimientoColateral,
+  generarEstrategiasBiologicas, generarPlanOperativo, determinarProximaAccion,
   nivelViabilidad, labelBioterio, labelSexo, labelUso, colorEstadoPedido,
 } from '../utils/motorPedidos'
 import { reservarAnimal } from '../utils/motorDecisiones'
 import { calcularIndiceSanitario } from '../utils/sanitario'
 
-// ─── Constantes ────────────────────────────────────────────────────────────
+// ─── Constantes ──────────────────────────────────────────────────────────────
 const BIOTERIOS_OPCIONES = [
   { id: 'ratas',            label: '🐀 Ratas (Rattus norvegicus)' },
   { id: 'ratones_balbc',    label: '🐭 BALB/C' },
@@ -29,13 +34,13 @@ const BIOTERIOS_OPCIONES = [
   { id: 'ratones_hibridos', label: '🧬 Híbridos F1' },
 ]
 const ESTADOS_PEDIDO = [
-  { id: 'pendiente',   label: 'Pendiente',   color: '#ffb300' },
-  { id: 'en_proceso',  label: 'En proceso',  color: '#40c4ff' },
-  { id: 'completado',  label: 'Completado',  color: '#00e676' },
-  { id: 'cancelado',   label: 'Cancelado',   color: '#ff6b80' },
+  { id: 'pendiente',  label: 'Pendiente',  color: '#ffb300' },
+  { id: 'en_proceso', label: 'En proceso', color: '#40c4ff' },
+  { id: 'completado', label: 'Completado', color: '#00e676' },
+  { id: 'cancelado',  label: 'Cancelado',  color: '#ff6b80' },
 ]
 
-// ─── Estilos inline compartidos ────────────────────────────────────────────
+// ─── Estilos compartidos ──────────────────────────────────────────────────────
 const INPUT_STYLE = {
   width: '100%', background: 'rgba(8,13,26,0.9)',
   border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0',
@@ -46,25 +51,909 @@ const LABEL_STYLE = {
   textTransform: 'uppercase', letterSpacing: '0.08em', color: '#4a5f7a', marginBottom: '6px',
 }
 
-// ─── Badge de viabilidad ────────────────────────────────────────────────────
+// ─── Badge viabilidad ─────────────────────────────────────────────────────────
 function ViabilidadBadge({ score, small = false }) {
-  const nivel = nivelViabilidad(score)
+  const n = nivelViabilidad(score)
   return (
     <span className="inline-flex items-center gap-1 font-bold rounded-lg"
-      style={{
-        background: nivel.bg, border: `1px solid ${nivel.borde}`, color: nivel.color,
-        padding: small ? '2px 8px' : '4px 10px',
-        fontSize: small ? '11px' : '12px',
-      }}
-    >
-      <span>{nivel.emoji}</span>
-      <span>{score}</span>
-      {!small && <span style={{ fontWeight: 400, opacity: 0.8 }}>{nivel.label}</span>}
+      style={{ background: n.bg, border: `1px solid ${n.borde}`, color: n.color,
+        padding: small ? '2px 8px' : '4px 10px', fontSize: small ? '11px' : '12px' }}>
+      <span>{n.emoji}</span><span>{score}</span>
+      {!small && <span style={{ fontWeight: 400, opacity: 0.8 }}>{n.label}</span>}
     </span>
   )
 }
 
-// ─── Modal formulario ───────────────────────────────────────────────────────
+// ─── PRÓXIMA ACCIÓN ───────────────────────────────────────────────────────────
+function ProximaAccionCard({ proximaAccion, tema }) {
+  if (!proximaAccion?.existe) {
+    return (
+      <div className="rounded-2xl p-4" style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}>
+        <div className="text-xs font-bold uppercase mb-1.5" style={{ color: '#4a5f7a', letterSpacing: '0.08em' }}>
+          Próxima acción
+        </div>
+        <div className="text-sm" style={{ color: tema.textMuted }}>
+          Completá la fecha de entrega y la edad requerida para generar el plan
+        </div>
+      </div>
+    )
+  }
+
+  const urgente = proximaAccion.urgente
+  const esEntrega = proximaAccion.tipo === 'entrega'
+  const color = urgente ? '#ff6b80' : esEntrega ? '#00e676' : '#40c4ff'
+  const bg    = urgente ? 'rgba(255,61,87,0.08)'   : esEntrega ? 'rgba(0,230,118,0.07)'  : 'rgba(64,196,255,0.07)'
+  const borde = urgente ? 'rgba(255,61,87,0.35)'   : esEntrega ? 'rgba(0,230,118,0.3)'   : 'rgba(64,196,255,0.3)'
+
+  const labelDias = (() => {
+    const d = proximaAccion.diasRestantes
+    if (d === null) return null
+    if (d < 0)  return `hace ${Math.abs(d)} día${Math.abs(d) > 1 ? 's' : ''}`
+    if (d === 0) return 'HOY'
+    if (d === 1) return 'mañana'
+    return `en ${d} días`
+  })()
+
+  return (
+    <div className="rounded-2xl p-5" style={{ background: bg, border: `2px solid ${borde}` }}>
+      <div className="flex items-start gap-4">
+        <div className="text-3xl flex-shrink-0 mt-0.5">{proximaAccion.emoji}</div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-2">
+            <span className="text-xs font-bold uppercase tracking-widest" style={{ color }}>
+              {urgente ? '⚡ ACCIÓN URGENTE' : 'PRÓXIMA ACCIÓN'}
+            </span>
+            {labelDias && (
+              <span className="text-xs font-bold px-2 py-0.5 rounded-lg"
+                style={{ background: urgente ? 'rgba(255,61,87,0.15)' : 'rgba(64,196,255,0.12)', color }}>
+                {labelDias}
+              </span>
+            )}
+            {proximaAccion.fecha && (
+              <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                {formatFecha(proximaAccion.fecha)}
+              </span>
+            )}
+          </div>
+          <div className="font-bold text-lg leading-tight mb-1.5" style={{ color: tema.textPrimary }}>
+            {proximaAccion.accion}
+          </div>
+          <div className="text-xs leading-relaxed" style={{ color: tema.textMuted }}>
+            {proximaAccion.descripcion}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── CRONOGRAMA GPS ───────────────────────────────────────────────────────────
+function CronogramaGPS({ planOperativo, tema }) {
+  if (!planOperativo || planOperativo.length === 0) return null
+
+  return (
+    <div className="rounded-2xl p-4" style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}>
+      <div className="text-xs font-bold uppercase mb-3" style={{ color: '#4a5f7a', letterSpacing: '0.08em' }}>
+        Cronograma
+      </div>
+      <div className="space-y-0">
+        {planOperativo.map((paso, i) => {
+          const d = paso.diasRestantes
+          const labelD = d === null ? '' : d < 0 ? `hace ${Math.abs(d)}d` : d === 0 ? 'HOY' : `en ${d}d`
+          const color = paso.importante ? '#00e676'
+            : paso.urgente ? '#ff6b80'
+            : d !== null && d <= 14 && d >= 0 ? '#ffb300'
+            : tema.textSecondary
+          const colorD = d !== null && d < 0 ? '#ff6b80' : d === 0 ? '#00e676' : d !== null && d <= 14 ? '#ffb300' : '#4a5f7a'
+
+          return (
+            <div key={i}
+              className="flex items-center gap-3 py-2"
+              style={{ borderBottom: i < planOperativo.length - 1 ? `1px solid ${tema.bgCardBorde}` : 'none' }}>
+              <div className="text-base w-6 text-center flex-shrink-0">{paso.emoji}</div>
+              <div className="flex-1 text-xs font-semibold truncate" style={{ color }}>{paso.accion}</div>
+              {labelD && (
+                <div className="text-xs font-mono font-semibold flex-shrink-0" style={{ color: colorD }}>
+                  {labelD}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── ESTRATEGIA ELEGIDA ───────────────────────────────────────────────────────
+function EstrategiaElegidaBanner({ optima, tema }) {
+  if (!optima) return null
+  return (
+    <div className="rounded-2xl px-4 py-3"
+      style={{ background: 'rgba(64,196,255,0.07)', border: '1.5px solid rgba(64,196,255,0.25)' }}>
+      <div className="flex items-start gap-3">
+        <span className="text-lg flex-shrink-0">{optima.emoji}</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+            <span className="text-xs font-bold uppercase" style={{ color: '#40c4ff', letterSpacing: '0.07em' }}>
+              Estrategia óptima
+            </span>
+            <span className="text-xs font-bold" style={{ color: '#c9d4e0' }}>{optima.nombre}</span>
+          </div>
+          <div className="text-xs" style={{ color: '#4a5f7a' }}>{optima.razon}</div>
+          {optima.estrategia?.porQueElegir && (
+            <div className="text-xs mt-0.5" style={{ color: '#3a5068' }}>{optima.estrategia.porQueElegir}</div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── ALERTAS CRÍTICAS ─────────────────────────────────────────────────────────
+function AlertasCriticas({ analisis, tema }) {
+  const alertas = []
+  const { impactoColonia, capacidadReproductiva, viabilidad, indiceSanitario, riesgoMultifactorial } = analisis
+
+  if (impactoColonia?.riesgoNivel === 'critico')
+    alertas.push({ nivel: 'critico', msg: impactoColonia.impactos[0]?.mensaje ?? 'Rompe mínimos de la colonia' })
+
+  if (capacidadReproductiva?.generacionRequerida === 'Sin tiempo')
+    alertas.push({ nivel: 'critico', msg: 'Tiempo insuficiente — incluso el stock actual no llega a la edad requerida' })
+
+  if (riesgoMultifactorial?.nivel === 'critico')
+    alertas.push({ nivel: 'critico', msg: riesgoMultifactorial.factores[0]?.desc ?? 'Riesgo multifactorial crítico' })
+
+  if (indiceSanitario < 50)
+    alertas.push({ nivel: 'critico', msg: `Índice sanitario crítico (${indiceSanitario}/100) — no recomendable iniciar nuevas camadas` })
+
+  if (alertas.length === 0) return null
+
+  return (
+    <div className="space-y-2">
+      {alertas.map((a, i) => (
+        <div key={i} className="rounded-xl px-4 py-2.5 text-xs font-semibold"
+          style={{ background: 'rgba(255,61,87,0.09)', border: '1px solid rgba(255,61,87,0.3)', color: '#ff6b80' }}>
+          🔴 {a.msg}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── ACCIONES DEL PEDIDO ──────────────────────────────────────────────────────
+function AccionesPedido({ pedido, analisis, onCambiarEstado, onReservarReproductores, tema }) {
+  const { reproductoresSeleccionados } = analisis
+  return (
+    <div className="flex gap-2 flex-wrap">
+      {pedido.estado === 'pendiente' && (
+        <>
+          <button onClick={() => onCambiarEstado(pedido.id, 'en_proceso')}
+            className="px-3 py-1.5 rounded-lg text-xs font-bold"
+            style={{ background: 'rgba(64,196,255,0.1)', border: '1px solid rgba(64,196,255,0.3)', color: '#40c4ff', cursor: 'pointer' }}>
+            ▶ Iniciar pedido
+          </button>
+          {reproductoresSeleccionados?.suficientesHembras && (
+            <button onClick={() => onReservarReproductores(pedido)}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold"
+              style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.25)', color: '#ffb300', cursor: 'pointer' }}>
+              🔒 Reservar reproductores
+            </button>
+          )}
+        </>
+      )}
+      {pedido.estado === 'en_proceso' && (
+        <button onClick={() => onCambiarEstado(pedido.id, 'completado')}
+          className="px-3 py-1.5 rounded-lg text-xs font-bold"
+          style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.3)', color: '#00e676', cursor: 'pointer' }}>
+          ✓ Marcar completado
+        </button>
+      )}
+      {!['cancelado', 'completado'].includes(pedido.estado) && (
+        <button onClick={() => onCambiarEstado(pedido.id, 'cancelado')}
+          className="px-3 py-1.5 rounded-lg text-xs font-bold"
+          style={{ background: 'rgba(255,61,87,0.06)', border: '1px solid rgba(255,61,87,0.2)', color: '#ff6b80', cursor: 'pointer' }}>
+          ✕ Cancelar
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ─── TAB ESTRATEGIAS ──────────────────────────────────────────────────────────
+function TabEstrategias({ estrategiasBiologicas, tema }) {
+  const { estrategias, optima } = estrategiasBiologicas
+  return (
+    <div className="space-y-3">
+      {optima && (
+        <div className="rounded-xl px-3 py-2"
+          style={{ background: 'rgba(64,196,255,0.07)', border: '1px solid rgba(64,196,255,0.2)' }}>
+          <span className="text-xs font-bold" style={{ color: '#40c4ff' }}>
+            🏆 Óptima: {optima.emoji} {optima.nombre}
+          </span>
+          <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>{optima.razon}</div>
+        </div>
+      )}
+      <div className="space-y-2">
+        {estrategias.map(esc => {
+          const esOptima = esc.id === optima?.id
+          const noViable = esc.viable === false
+          return (
+            <div key={esc.id} className="rounded-xl p-3"
+              style={{
+                background: noViable ? 'rgba(8,13,26,0.2)' : esOptima ? 'rgba(0,230,118,0.05)' : 'rgba(8,13,26,0.3)',
+                border: `1.5px solid ${noViable ? tema.bgCardBorde : esOptima ? 'rgba(0,230,118,0.25)' : tema.bgCardBorde}`,
+                opacity: noViable ? 0.6 : 1,
+              }}>
+              <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">{esc.emoji}</span>
+                  <span className="text-sm font-bold" style={{ color: tema.textPrimary }}>{esc.nombre}</span>
+                  {esOptima && (
+                    <span className="text-xs px-1.5 py-0.5 rounded"
+                      style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676' }}>
+                      ✦ óptima
+                    </span>
+                  )}
+                  {noViable && (
+                    <span className="text-xs px-1.5 py-0.5 rounded"
+                      style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.2)', color: '#ff6b80' }}>
+                      No viable
+                    </span>
+                  )}
+                </div>
+                <span className="text-sm font-bold"
+                  style={{ color: esc.probabilidad >= 85 ? '#00e676' : esc.probabilidad >= 70 ? '#ffb300' : '#ff6b80' }}>
+                  {esc.probabilidad}%
+                </span>
+              </div>
+
+              <div className="text-xs mb-2" style={{ color: '#4a5f7a' }}>{esc.descripcion}</div>
+
+              <div className="flex items-center gap-3 text-xs flex-wrap mb-2">
+                <span style={{ color: '#ce93d8' }}>♀ {esc.hembrasNecesarias} hembras</span>
+                <span style={{ color: '#40c4ff' }}>♂ {esc.machosNecesarios} machos</span>
+                <span style={{ color: '#c9d4e0' }}>📦 {esc.jaulasNuevas} jaulas nuevas</span>
+                {esc.tiempoExtra > 0 && <span style={{ color: '#ffb300' }}>⏳ +{esc.tiempoExtra}d</span>}
+                {esc.crecimientoColateral?.totalExcedente > 0 && (
+                  <span style={{ color: '#00e676' }}>+{esc.crecimientoColateral.totalExcedente} excedente</span>
+                )}
+              </div>
+
+              <div className="flex gap-2 flex-wrap mb-2">
+                <span className="text-xs px-1.5 py-0.5 rounded"
+                  style={{
+                    background: esc.rompeMinimos ? 'rgba(255,61,87,0.08)' : 'rgba(0,230,118,0.06)',
+                    border: `1px solid ${esc.rompeMinimos ? 'rgba(255,61,87,0.25)' : 'rgba(0,230,118,0.2)'}`,
+                    color: esc.rompeMinimos ? '#ff6b80' : '#00e676',
+                  }}>
+                  {esc.rompeMinimos ? '🔴 rompe mínimos' : '🟢 colonia segura'}
+                </span>
+                <span className="text-xs px-1.5 py-0.5 rounded"
+                  style={{
+                    background: esc.saturacion ? 'rgba(255,179,0,0.07)' : 'rgba(8,13,26,0.3)',
+                    border: `1px solid ${esc.saturacion ? 'rgba(255,179,0,0.2)' : tema.bgCardBorde}`,
+                    color: esc.saturacion ? '#ffb300' : '#4a5f7a',
+                  }}>
+                  {esc.saturacion ? '⚠ saturación' : 'Sin saturación'}
+                </span>
+                <span className="text-xs px-1.5 py-0.5 rounded"
+                  style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}`, color: '#4a5f7a' }}>
+                  Impacto: {esc.impactoColonia}
+                </span>
+              </div>
+
+              {esc.porQueElegir && (
+                <div className="text-xs mb-1" style={{ color: '#4a5f7a' }}>
+                  💡 {esc.porQueElegir}
+                </div>
+              )}
+              {esc.riesgos?.length > 0 && (
+                <div className="space-y-0.5">
+                  {esc.riesgos.map((r, i) => (
+                    <div key={i} className="text-xs" style={{ color: '#ff6b80' }}>⚠ {r}</div>
+                  ))}
+                </div>
+              )}
+
+              {/* Barra de probabilidad */}
+              <div className="mt-2 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(30,51,82,0.6)' }}>
+                <div className="h-full rounded-full"
+                  style={{
+                    width: `${esc.probabilidad}%`,
+                    background: esc.probabilidad >= 85 ? '#00e676' : esc.probabilidad >= 70 ? '#ffb300' : '#ff6b80',
+                  }} />
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── TAB MOTOR REPRODUCTIVO ───────────────────────────────────────────────────
+function TabMotorReproductivo({ capacidadReproductiva, pedido, tema }) {
+  if (!capacidadReproductiva) return (
+    <div className="text-xs text-center py-4" style={{ color: tema.textMuted }}>
+      Completá la fecha de entrega para ver el análisis generacional
+    </div>
+  )
+
+  const { protegidos, disponiblesRepro, futurosReproductores, noAptos,
+    hembrasProtegidas, machosProtegidos, hembrasDisponiblesRepro, machosDisponiblesRepro,
+    stockLibre, futurosEntregables, totalEntregable,
+    generacionRequerida, descripcionGeneracion, emoji,
+    hembrasActivas, machosActivos, minimoH, minimoM } = capacidadReproductiva
+
+  const seccion = (titulo, items, color, emptyMsg) => (
+    <div className="mb-3">
+      <div className="text-xs font-bold mb-1.5" style={{ color }}>{titulo} ({items.length})</div>
+      {items.length === 0
+        ? <div className="text-xs" style={{ color: '#3a5068' }}>{emptyMsg}</div>
+        : items.slice(0, 5).map(({ animal, diasVida, razon, diasParaMadurar }, i) => (
+          <div key={i} className="flex items-center justify-between rounded px-2 py-1 mb-0.5"
+            style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}` }}>
+            <span className="text-xs font-mono" style={{ color }}>
+              {animal.sexo === 'hembra' ? '♀' : '♂'} {animal.codigo}
+            </span>
+            <span className="text-xs" style={{ color: '#4a5f7a' }}>
+              {razon ?? (diasParaMadurar ? `madura en ${diasParaMadurar}d` : `${diasVida}d`)}
+            </span>
+          </div>
+        ))
+      }
+    </div>
+  )
+
+  return (
+    <div className="space-y-4">
+
+      {/* Generación requerida */}
+      <div className="rounded-xl p-3"
+        style={{ background: 'rgba(64,196,255,0.07)', border: '1px solid rgba(64,196,255,0.2)' }}>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-lg">{emoji}</span>
+          <span className="text-sm font-bold" style={{ color: '#40c4ff' }}>
+            Generación requerida: {generacionRequerida}
+          </span>
+        </div>
+        <div className="text-xs" style={{ color: '#4a5f7a' }}>{descripcionGeneracion}</div>
+        <div className="grid grid-cols-3 gap-2 mt-2 text-xs text-center">
+          {[
+            { label: 'Stock libre', val: stockLibre, color: '#00e676' },
+            { label: 'En camino', val: futurosEntregables, color: '#40c4ff' },
+            { label: 'Total posible', val: totalEntregable, color: '#c9d4e0' },
+          ].map(({ label, val, color }) => (
+            <div key={label} className="rounded-lg py-1.5"
+              style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}` }}>
+              <div className="font-bold" style={{ color }}>{val}</div>
+              <div style={{ color: '#4a5f7a' }}>{label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Clasificación de reproductores */}
+      <div>
+        <div className="text-xs font-bold mb-2 uppercase" style={{ color: '#4a5f7a', letterSpacing: '0.07em' }}>
+          Clasificación de reproductores
+        </div>
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          {[
+            { label: '🔒 Protegidos (mínimos)', h: hembrasProtegidas, m: machosProtegidos, color: '#ce93d8', desc: 'Nunca entregables' },
+            { label: '✅ Disponibles', h: hembrasDisponiblesRepro, m: machosDisponiblesRepro, color: '#00e676', desc: 'Para este pedido' },
+          ].map(({ label, h, m, color, desc }) => (
+            <div key={label} className="rounded-xl p-2.5"
+              style={{ background: 'rgba(8,13,26,0.35)', border: `1px solid ${tema.bgCardBorde}` }}>
+              <div className="text-xs font-bold mb-1" style={{ color }}>{label}</div>
+              <div className="text-xs" style={{ color: '#c9d4e0' }}>♀ {h} hembras · ♂ {m} machos</div>
+              <div className="text-xs mt-0.5" style={{ color: '#3a5068' }}>{desc}</div>
+            </div>
+          ))}
+        </div>
+        {seccion('🟡 Próximos a madurar', futurosReproductores, '#ffb300', 'Ninguno')}
+        {noAptos.length > 0 && seccion('⛔ No aptos', noAptos, '#ff6b80', '')}
+      </div>
+
+      {/* Total activos */}
+      <div className="rounded-xl p-3 text-xs"
+        style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}` }}>
+        <div className="font-semibold mb-1" style={{ color: tema.textSecondary }}>Colonia activa total</div>
+        <div className="flex gap-4">
+          <span style={{ color: '#ce93d8' }}>♀ {hembrasActivas} hembras (mín: {minimoH})</span>
+          <span style={{ color: '#40c4ff' }}>♂ {machosActivos} machos (mín: {minimoM})</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── TAB REPRODUCTORES ────────────────────────────────────────────────────────
+function TabReproductores({ reproductoresSeleccionados, reproductoresProximos, tema }) {
+  const { hembrasSugeridas, machosSugeridos, hembrasDisponibles, machosDisponibles,
+    hembrasNecesarias, machosNecesarios, suficientesHembras, suficientesMachos } = reproductoresSeleccionados
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          { sexo: '♀ Hembras', disp: hembrasDisponibles, nec: hembrasNecesarias,
+            ok: suficientesHembras, proximos: reproductoresProximos?.hembrasProximas ?? [], color: '#ce93d8' },
+          { sexo: '♂ Machos', disp: machosDisponibles, nec: machosNecesarios,
+            ok: suficientesMachos, proximos: reproductoresProximos?.machosProximos ?? [], color: '#40c4ff' },
+        ].map(({ sexo, disp, nec, ok, proximos, color }) => (
+          <div key={sexo} className="rounded-lg p-2.5"
+            style={{
+              background: ok ? 'rgba(0,230,118,0.05)' : 'rgba(255,61,87,0.05)',
+              border: `1px solid ${ok ? 'rgba(0,230,118,0.2)' : 'rgba(255,61,87,0.2)'}`,
+            }}>
+            <div className="text-xs font-bold mb-0.5" style={{ color }}>{sexo}: {disp}/{nec}</div>
+            {!ok && proximos.length > 0 ? (
+              <div className="text-xs" style={{ color: '#ffb300' }}>
+                🟡 {proximos.length} en {proximos[0].diasParaMadurar}d
+              </div>
+            ) : !ok ? (
+              <div className="text-xs" style={{ color: '#ff6b80' }}>Sin candidatos</div>
+            ) : (
+              <div className="text-xs" style={{ color: '#00e676' }}>✓ Suficientes</div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {(hembrasSugeridas.length > 0 || machosSugeridos.length > 0) && (
+        <div className="space-y-1">
+          <div className="text-xs font-bold mb-1" style={{ color: '#4a5f7a' }}>Sugeridos</div>
+          {hembrasSugeridas.map(({ animal, scoreRepro, nivelF, fPorc }) => (
+            <div key={animal.id} className="flex items-center justify-between rounded px-2 py-1.5"
+              style={{ background: 'rgba(8,13,26,0.35)', border: `1px solid ${tema.bgCardBorde}` }}>
+              <span className="text-xs font-mono font-semibold" style={{ color: '#ce93d8' }}>♀ {animal.codigo}</span>
+              <div className="flex gap-3 text-xs">
+                <span style={{ color: '#c9d4e0' }}>Score {scoreRepro}</span>
+                <span style={{ color: nivelF === 'alto' ? '#ff6b80' : nivelF === 'moderado' ? '#ffb300' : '#4a5f7a' }}>
+                  F {fPorc}
+                </span>
+              </div>
+            </div>
+          ))}
+          {machosSugeridos.map(({ animal, scoreRepro, nivelF, fPorc }) => (
+            <div key={animal.id} className="flex items-center justify-between rounded px-2 py-1.5"
+              style={{ background: 'rgba(8,13,26,0.35)', border: `1px solid ${tema.bgCardBorde}` }}>
+              <span className="text-xs font-mono font-semibold" style={{ color: '#40c4ff' }}>♂ {animal.codigo}</span>
+              <div className="flex gap-3 text-xs">
+                <span style={{ color: '#c9d4e0' }}>Score {scoreRepro}</span>
+                <span style={{ color: nivelF === 'alto' ? '#ff6b80' : nivelF === 'moderado' ? '#ffb300' : '#4a5f7a' }}>
+                  F {fPorc}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── TAB COLONIA ──────────────────────────────────────────────────────────────
+function TabColonia({ impactoColonia, impactoEstrategico, crecimientoColateral, indiceSanitario, tema }) {
+  return (
+    <div className="space-y-3">
+      {/* Antes/después */}
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          { label: 'Antes del pedido', h: impactoColonia.hembrasActivas, m: impactoColonia.machosActivos, color: tema.textSecondary },
+          { label: 'Después del pedido', h: impactoColonia.hembrasDespues, m: impactoColonia.machosDespues,
+            color: impactoColonia.riesgoNivel === 'critico' ? '#ff6b80' : impactoColonia.riesgoNivel === 'advertencia' ? '#ffb300' : '#00e676' },
+        ].map(({ label, h, m, color }) => (
+          <div key={label} className="rounded-xl p-2.5 text-xs"
+            style={{ background: 'rgba(8,13,26,0.35)', border: `1px solid ${tema.bgCardBorde}` }}>
+            <div className="font-semibold mb-1" style={{ color: '#4a5f7a' }}>{label}</div>
+            <div style={{ color }}>♀ {h} hembras</div>
+            <div style={{ color }}>♂ {m} machos</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Mínimos */}
+      <div className="rounded-xl px-3 py-2 text-xs"
+        style={{
+          background: impactoColonia.riesgoNivel === 'critico' ? 'rgba(255,61,87,0.07)' : impactoColonia.riesgoNivel === 'advertencia' ? 'rgba(255,179,0,0.06)' : 'rgba(0,230,118,0.05)',
+          border: `1px solid ${impactoColonia.riesgoNivel === 'critico' ? 'rgba(255,61,87,0.25)' : impactoColonia.riesgoNivel === 'advertencia' ? 'rgba(255,179,0,0.2)' : 'rgba(0,230,118,0.2)'}`,
+          color: impactoColonia.riesgoNivel === 'critico' ? '#ff6b80' : impactoColonia.riesgoNivel === 'advertencia' ? '#ffb300' : '#00e676',
+        }}>
+        {impactoColonia.etiquetaRiesgo} · Mínimos: ♀ {impactoColonia.minimoHembras} / ♂ {impactoColonia.minimoMachos}
+      </div>
+
+      {/* Crecimiento colateral */}
+      {crecimientoColateral && crecimientoColateral.totalExcedente > 0 && (
+        <div className="rounded-xl p-3"
+          style={{ background: 'rgba(0,230,118,0.05)', border: '1px solid rgba(0,230,118,0.18)' }}>
+          <div className="text-xs font-bold mb-1.5" style={{ color: '#00e676' }}>
+            🌱 Crecimiento colateral del pedido
+          </div>
+          <div className="text-xs" style={{ color: '#4a5f7a' }}>{crecimientoColateral.descripcion}</div>
+          <div className="grid grid-cols-3 gap-2 mt-2 text-xs text-center">
+            {[
+              { label: '♀ sobrantes', val: crecimientoColateral.hembrasSobrantes, color: '#ce93d8' },
+              { label: '♂ sobrantes', val: crecimientoColateral.machosSobrantes, color: '#40c4ff' },
+              { label: 'Futuras repro.', val: crecimientoColateral.futuraReproductorasH, color: '#00e676' },
+            ].map(({ label, val, color }) => (
+              <div key={label} className="rounded-lg py-1.5"
+                style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}` }}>
+                <div className="font-bold" style={{ color }}>{val}</div>
+                <div style={{ color: '#4a5f7a' }}>{label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Sanitario */}
+      <div className="rounded-xl px-3 py-2 text-xs"
+        style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}` }}>
+        <span style={{ color: '#4a5f7a' }}>Índice sanitario: </span>
+        <span style={{ color: indiceSanitario >= 75 ? '#00e676' : indiceSanitario >= 50 ? '#ffb300' : '#ff6b80' }}>
+          {indiceSanitario}/100
+        </span>
+      </div>
+
+      {/* Riesgos estratégicos */}
+      {impactoEstrategico?.riesgos?.length > 0 && (
+        <div className="space-y-1.5">
+          <div className="text-xs font-bold" style={{ color: '#4a5f7a' }}>Riesgos estratégicos</div>
+          {impactoEstrategico.riesgos.map((r, i) => (
+            <div key={i} className="rounded-lg px-3 py-2 text-xs"
+              style={{
+                background: r.nivel === 'critico' ? 'rgba(255,61,87,0.07)' : 'rgba(255,179,0,0.05)',
+                border: `1px solid ${r.nivel === 'critico' ? 'rgba(255,61,87,0.22)' : 'rgba(255,179,0,0.18)'}`,
+                color: r.nivel === 'critico' ? '#ff6b80' : '#ffb300',
+              }}>
+              {r.nivel === 'critico' ? '🔴' : '⚠️'} <strong>{r.dimension.replace(/_/g, ' ')}:</strong> {r.mensaje}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── TAB PRODUCCIÓN ───────────────────────────────────────────────────────────
+function TabProduccion({ parejasNecesarias, animalesListos, produccionEnCurso, impactoColonia, pedido, tema }) {
+  return (
+    <div className="space-y-3">
+      {/* Colonia base vs Producción */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-lg p-2.5"
+          style={{ background: 'rgba(156,39,176,0.07)', border: '1px solid rgba(156,39,176,0.2)' }}>
+          <div className="text-xs font-bold mb-1" style={{ color: '#ce93d8' }}>🧬 Colonia base</div>
+          <div className="text-xs" style={{ color: '#4a5f7a' }}>
+            <div>♀ {impactoColonia.hembrasActivas} reproductoras</div>
+            <div>♂ {impactoColonia.machosActivos} reproductores</div>
+            <div className="mt-1" style={{ color: '#3a5068' }}>Protegidos — nunca entregables</div>
+          </div>
+        </div>
+        <div className="rounded-lg p-2.5"
+          style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.18)' }}>
+          <div className="text-xs font-bold mb-1" style={{ color: '#00e676' }}>📦 Producción</div>
+          <div className="text-xs" style={{ color: '#4a5f7a' }}>
+            <div>Stock ahora: <span style={{ color: '#c9d4e0' }}>{animalesListos.disponibles}</span></div>
+            <div>En camino: <span style={{ color: '#c9d4e0' }}>{produccionEnCurso.totalProyectado}</span></div>
+            <div className="mt-1 font-semibold" style={{
+              color: (animalesListos.disponibles + produccionEnCurso.totalProyectado) >= (pedido.cantidad ?? 0) ? '#00e676' : '#ffb300',
+            }}>
+              Total: {animalesListos.disponibles + produccionEnCurso.totalProyectado}/{pedido.cantidad ?? 0}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Stock actual */}
+      <div className="rounded-lg px-3 py-2"
+        style={{
+          background: animalesListos.cubiertoConStock ? 'rgba(0,230,118,0.05)' : 'rgba(8,13,26,0.3)',
+          border: `1px solid ${animalesListos.cubiertoConStock ? 'rgba(0,230,118,0.2)' : tema.bgCardBorde}`,
+        }}>
+        <div className="flex items-center justify-between text-xs">
+          <span style={{ color: '#4a5f7a' }}>📦 Stock disponible ahora</span>
+          <span style={{ color: animalesListos.cubiertoConStock ? '#00e676' : animalesListos.porcentajeCubierto > 50 ? '#ffb300' : '#ff6b80' }}>
+            {animalesListos.cubiertoConStock
+              ? `✅ Cubierto (${animalesListos.disponibles})`
+              : `${animalesListos.disponibles}/${animalesListos.necesarios} (${animalesListos.porcentajeCubierto}%)`}
+          </span>
+        </div>
+      </div>
+
+      {/* Camadas en curso */}
+      {produccionEnCurso.tandas.length > 0 ? (
+        <div className="rounded-lg p-2.5"
+          style={{ background: 'rgba(64,196,255,0.05)', border: '1px solid rgba(64,196,255,0.2)' }}>
+          <div className="text-xs font-semibold mb-1.5" style={{ color: '#40c4ff' }}>
+            🔄 En camino — {produccionEnCurso.totalProyectado} animales proyectados
+          </div>
+          {produccionEnCurso.tandas.map(t => (
+            <div key={t.camadaId} className="flex items-center justify-between text-xs mb-0.5"
+              style={{ color: '#4a5f7a' }}>
+              <span>{t.estado === 'en_gestacion' ? '🤰 Gestación' : t.estado === 'en_cria' ? '🐣 En cría' : '✅ Destetada'}</span>
+              <span style={{ color: '#c9d4e0' }}>{t.dispDelSexo} animales</span>
+              <span style={{ color: t.diasHastaDisponible <= 0 ? '#00e676' : t.diasHastaDisponible <= 30 ? '#ffb300' : '#4a5f7a' }}>
+                {t.diasHastaDisponible <= 0 ? 'Listo' : `en ${t.diasHastaDisponible}d`}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-xs px-3 py-2 rounded-lg"
+          style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}`, color: '#3a5068' }}>
+          Sin camadas activas que produzcan animales en el rango de edad requerido
+        </div>
+      )}
+
+      {/* Parejas necesarias */}
+      <div className="grid grid-cols-4 gap-2">
+        {[
+          { label: '♀ Hembras', val: parejasNecesarias.hembrasNecesarias, color: '#ce93d8' },
+          { label: '♂ Machos',  val: parejasNecesarias.machosNecesarios,  color: '#40c4ff' },
+          { label: '~Crías',    val: parejasNecesarias.animalesEstimados,  color: '#c9d4e0' },
+          { label: 'Prob.',     val: `${parejasNecesarias.probabilidad}%`, color: '#00e676' },
+        ].map(({ label, val, color }) => (
+          <div key={label} className="rounded-lg p-2 text-center"
+            style={{ background: 'rgba(8,13,26,0.35)', border: `1px solid ${tema.bgCardBorde}` }}>
+            <div className="font-mono font-bold" style={{ color }}>{val}</div>
+            <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>{label}</div>
+          </div>
+        ))}
+      </div>
+
+      {!parejasNecesarias.hist.conDatos && (
+        <div className="rounded-lg px-3 py-1.5 text-xs"
+          style={{ background: 'rgba(255,179,0,0.05)', border: '1px solid rgba(255,179,0,0.18)', color: '#ffb300' }}>
+          ⚠ Valores bibliográficos — registrá más camadas para mayor precisión
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── TAB ESCALONADO ───────────────────────────────────────────────────────────
+function TabEscalonado({ pedidoEscalonado, tema }) {
+  if (!pedidoEscalonado) return (
+    <div className="text-xs text-center py-4" style={{ color: tema.textMuted }}>
+      Este pedido no es escalonado. Cambiá la modalidad para activar esta vista.
+    </div>
+  )
+
+  return (
+    <div className="space-y-2">
+      <div className="text-xs mb-2" style={{ color: '#4a5f7a' }}>
+        Cada {pedidoEscalonado.frecuenciaDias} días · {pedidoEscalonado.totalAnimales} animales totales
+      </div>
+      {pedidoEscalonado.tandas.map(tanda => {
+        const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+        const diasHasta = tanda.fechas ? Math.round((new Date(tanda.fechaEntrega) - hoy) / 86400000) : null
+        return (
+          <div key={tanda.numero} className="rounded-xl p-3"
+            style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}` }}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold" style={{ color: '#40c4ff' }}>
+                📦 Tanda {tanda.numero} — {tanda.cantidad} animales
+              </span>
+              <span className="text-xs font-mono" style={{ color: '#c9d4e0' }}>
+                {formatFecha(tanda.fechaEntrega)}
+                {diasHasta != null && (
+                  <span style={{ color: diasHasta < 0 ? '#ff6b80' : diasHasta <= 14 ? '#ffb300' : '#4a5f7a', marginLeft: '6px' }}>
+                    {diasHasta < 0 ? `vencida` : diasHasta === 0 ? 'hoy' : `en ${diasHasta}d`}
+                  </span>
+                )}
+              </span>
+            </div>
+            {tanda.fechas && (
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs" style={{ color: '#3a5068' }}>
+                <span>🔗 Cópulas: <span style={{ color: '#c9d4e0' }}>{formatFecha(tanda.fechas.fechaCopula)}</span></span>
+                <span>🐣 Parto: <span style={{ color: '#c9d4e0' }}>{formatFecha(tanda.fechas.fechaNacimiento)}</span></span>
+                {!tanda.fechas.viable && (
+                  <span className="col-span-2" style={{ color: '#ff6b80' }}>⚠ Tiempo insuficiente para esta tanda</span>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── PANEL DE ANÁLISIS ────────────────────────────────────────────────────────
+function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproductores, tema }) {
+  const [tabAbierta, setTabAbierta] = useState(null)
+
+  const {
+    parejasNecesarias, fechasOptimas, reproductoresSeleccionados,
+    animalesListos, impactoColonia, indiceSanitario, viabilidad,
+    impactoEstrategico, indiceImpactoFuturo,
+    reproductoresProximos, produccionEnCurso, pedidoEscalonado,
+    riesgoMultifactorial,
+    // Nuevas
+    capacidadReproductiva, crecimientoColateral,
+    estrategiasBiologicas, planOperativo, proximaAccion,
+  } = analisis
+
+  const nivel    = nivelViabilidad(viabilidad.score)
+  const colorEst = colorEstadoPedido(pedido.estado)
+
+  const TABS = [
+    { id: 'plan',        label: '📋 Plan completo' },
+    { id: 'estrategias', label: '⚡ Estrategias' },
+    { id: 'motor',       label: '🧬 Motor' },
+    { id: 'repros',      label: '🔬 Reproductores' },
+    { id: 'colonia',     label: '🌿 Colonia' },
+    { id: 'produccion',  label: '📦 Producción' },
+    ...(pedidoEscalonado ? [{ id: 'escalonado', label: '📅 Escalonado' }] : []),
+  ]
+
+  function toggleTab(id) {
+    setTabAbierta(prev => prev === id ? null : id)
+  }
+
+  return (
+    <div className="space-y-3">
+
+      {/* ── Header: nombre + estado + viabilidad ──────────────────────────────── */}
+      <div className="rounded-2xl p-4" style={{ background: tema.bgCard, border: `1.5px solid ${nivel.borde}`, boxShadow: `0 0 24px ${nivel.bg}` }}>
+        <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span className="font-bold text-base" style={{ color: tema.textPrimary }}>
+                {pedido.cantidad} {labelSexo(pedido.sexo)} · {pedido.edadSemanas} sem
+              </span>
+              <span className="text-xs px-2 py-0.5 rounded-lg"
+                style={{ background: colorEst.bg, border: `1px solid ${colorEst.borde}`, color: colorEst.color }}>
+                {ESTADOS_PEDIDO.find(e => e.id === pedido.estado)?.label}
+              </span>
+              {pedido.modalidad && pedido.modalidad !== 'unica' && (
+                <span className="text-xs px-2 py-0.5 rounded-lg font-semibold"
+                  style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.2)', color: '#40c4ff' }}>
+                  {pedido.modalidad === 'escalonada' ? '📅 Escalonada' : '🔄 Flexible'}
+                </span>
+              )}
+              {pedido.soloVirgenes && (
+                <span className="text-xs px-2 py-0.5 rounded-lg font-semibold"
+                  style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.2)', color: '#00e676' }}>
+                  🧬 Solo vírgenes
+                </span>
+              )}
+            </div>
+            <div className="flex gap-3 flex-wrap text-xs" style={{ color: tema.textMuted }}>
+              <span>{labelBioterio(pedido.bioterioId)}</span>
+              <span>📅 {formatFecha(pedido.fechaEntrega)}</span>
+              <span>{labelUso(pedido.uso)}</span>
+              {pedido.solicitante && <span>👤 {pedido.solicitante}</span>}
+            </div>
+          </div>
+          <div className="text-center px-4 py-2.5 rounded-xl flex-shrink-0"
+            style={{ background: nivel.bg, border: `1.5px solid ${nivel.borde}` }}>
+            <div className="font-mono font-bold text-2xl" style={{ color: nivel.color }}>{viabilidad.score}</div>
+            <div className="text-xs font-semibold" style={{ color: nivel.color }}>{nivel.emoji} Viabilidad</div>
+          </div>
+        </div>
+        <AccionesPedido pedido={pedido} analisis={analisis} onCambiarEstado={onCambiarEstado}
+          onReservarReproductores={onReservarReproductores} tema={tema} />
+      </div>
+
+      {/* ── Próxima acción ─────────────────────────────────────────────────────── */}
+      <ProximaAccionCard proximaAccion={proximaAccion} tema={tema} />
+
+      {/* ── Cronograma GPS ─────────────────────────────────────────────────────── */}
+      <CronogramaGPS planOperativo={planOperativo} tema={tema} />
+
+      {/* ── Estrategia elegida ─────────────────────────────────────────────────── */}
+      <EstrategiaElegidaBanner optima={estrategiasBiologicas?.optima} tema={tema} />
+
+      {/* ── Alertas críticas ───────────────────────────────────────────────────── */}
+      <AlertasCriticas analisis={analisis} tema={tema} />
+
+      {/* ── Tabs secundarias ───────────────────────────────────────────────────── */}
+      <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${tema.bgCardBorde}` }}>
+        {/* Fila de tabs */}
+        <div className="flex overflow-x-auto" style={{ background: tema.bgCard, borderBottom: `1px solid ${tema.bgCardBorde}` }}>
+          {TABS.map(tab => (
+            <button key={tab.id}
+              onClick={() => toggleTab(tab.id)}
+              className="flex-shrink-0 px-3 py-2.5 text-xs font-semibold whitespace-nowrap"
+              style={{
+                background: tabAbierta === tab.id ? 'rgba(0,230,118,0.06)' : 'transparent',
+                color: tabAbierta === tab.id ? '#00e676' : '#4a5f7a',
+                borderBottom: tabAbierta === tab.id ? '2px solid #00e676' : '2px solid transparent',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Contenido del tab */}
+        {tabAbierta && (
+          <div className="p-4" style={{ background: tema.bgCard }}>
+            {tabAbierta === 'plan' && (
+              <div className="space-y-2">
+                <div className="text-xs font-bold mb-3 uppercase" style={{ color: '#4a5f7a', letterSpacing: '0.07em' }}>
+                  Plan operativo detallado
+                </div>
+                {(planOperativo ?? []).length === 0 ? (
+                  <div className="text-xs text-center py-4" style={{ color: tema.textMuted }}>
+                    Sin datos para generar el plan — completá la fecha de entrega y edad
+                  </div>
+                ) : (
+                  planOperativo.map((paso, i) => {
+                    const d = paso.diasRestantes
+                    const colorD = d === null ? '#4a5f7a' : d < 0 ? '#ff6b80' : d === 0 ? '#00e676' : d <= 7 ? '#ffb300' : '#4a5f7a'
+                    const labelD = d === null ? '' : d < 0 ? `hace ${Math.abs(d)}d` : d === 0 ? 'HOY' : `en ${d}d`
+                    return (
+                      <div key={i} className="rounded-xl p-3"
+                        style={{
+                          background: paso.importante ? 'rgba(0,230,118,0.05)' : 'rgba(8,13,26,0.3)',
+                          border: `1px solid ${paso.importante ? 'rgba(0,230,118,0.2)' : tema.bgCardBorde}`,
+                        }}>
+                        <div className="flex items-start gap-3">
+                          <div className="text-lg flex-shrink-0">{paso.emoji}</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                              <span className="text-xs font-bold"
+                                style={{ color: paso.importante ? '#00e676' : paso.urgente ? '#ff6b80' : tema.textSecondary }}>
+                                Paso {paso.numero} · {paso.accion}
+                              </span>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                {labelD && <span className="text-xs font-mono font-bold" style={{ color: colorD }}>{labelD}</span>}
+                                <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{formatFecha(paso.fecha)}</span>
+                              </div>
+                            </div>
+                            <div className="text-xs" style={{ color: tema.textMuted }}>{paso.descripcion}</div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            )}
+
+            {tabAbierta === 'estrategias' && estrategiasBiologicas && (
+              <TabEstrategias estrategiasBiologicas={estrategiasBiologicas} tema={tema} />
+            )}
+
+            {tabAbierta === 'motor' && (
+              <TabMotorReproductivo capacidadReproductiva={capacidadReproductiva} pedido={pedido} tema={tema} />
+            )}
+
+            {tabAbierta === 'repros' && (
+              <TabReproductores reproductoresSeleccionados={reproductoresSeleccionados}
+                reproductoresProximos={reproductoresProximos} tema={tema} />
+            )}
+
+            {tabAbierta === 'colonia' && (
+              <TabColonia impactoColonia={impactoColonia} impactoEstrategico={impactoEstrategico}
+                crecimientoColateral={crecimientoColateral} indiceSanitario={indiceSanitario} tema={tema} />
+            )}
+
+            {tabAbierta === 'produccion' && (
+              <TabProduccion parejasNecesarias={parejasNecesarias} animalesListos={animalesListos}
+                produccionEnCurso={produccionEnCurso} impactoColonia={impactoColonia} pedido={pedido} tema={tema} />
+            )}
+
+            {tabAbierta === 'escalonado' && (
+              <TabEscalonado pedidoEscalonado={pedidoEscalonado} tema={tema} />
+            )}
+          </div>
+        )}
+      </div>
+
+    </div>
+  )
+}
+
+// ─── MODAL FORMULARIO ────────────────────────────────────────────────────────
 function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
   const [form, setForm] = useState({
     bioterioId:       pedido?.bioterioId        ?? 'ratas',
@@ -112,7 +1001,7 @@ function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
               {form.id ? '✏️ Editar pedido' : '📦 Nuevo pedido'}
             </div>
             <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>
-              Completá los datos para calcular la estrategia automática
+              El GPS biológico se genera automáticamente
             </div>
           </div>
           <button onClick={onCerrar}
@@ -134,9 +1023,9 @@ function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
             <label style={LABEL_STYLE}>Modalidad del pedido</label>
             <div className="flex gap-2">
               {[
-                { id: 'unica',     label: '📦 Única',     desc: 'Una entrega total' },
-                { id: 'escalonada',label: '📅 Escalonada', desc: 'Varias tandas' },
-                { id: 'flexible',  label: '🔄 Flexible',   desc: 'Fecha aproximada' },
+                { id: 'unica',      label: '📦 Única',     desc: 'Una entrega total' },
+                { id: 'escalonada', label: '📅 Escalonada', desc: 'Varias tandas' },
+                { id: 'flexible',   label: '🔄 Flexible',   desc: 'Fecha aproximada' },
               ].map(m => (
                 <button key={m.id} type="button"
                   onClick={() => setForm(f => ({ ...f, modalidad: m.id }))}
@@ -207,9 +1096,9 @@ function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
             <label style={LABEL_STYLE}>Sexo requerido</label>
             <div className="flex gap-2">
               {[
-                { id: 'machos', label: '♂ Machos' },
+                { id: 'machos',  label: '♂ Machos' },
                 { id: 'hembras', label: '♀ Hembras' },
-                { id: 'ambos', label: '♂♀ Ambos' },
+                { id: 'ambos',   label: '♂♀ Ambos' },
               ].map(s => (
                 <button key={s.id} type="button"
                   onClick={() => setForm(f => ({ ...f, sexo: s.id }))}
@@ -231,11 +1120,7 @@ function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
               className="w-10 h-5 rounded-full relative flex-shrink-0"
               style={{ background: form.soloVirgenes ? '#00e676' : 'rgba(30,51,82,0.8)', transition: 'background 0.2s' }}>
               <span className="absolute top-0.5 rounded-full w-4 h-4"
-                style={{
-                  background: '#fff',
-                  left: form.soloVirgenes ? '22px' : '2px',
-                  transition: 'left 0.2s',
-                }} />
+                style={{ background: '#fff', left: form.soloVirgenes ? '22px' : '2px', transition: 'left 0.2s' }} />
             </button>
             <div>
               <div className="text-xs font-bold" style={{ color: form.soloVirgenes ? '#00e676' : '#4a5f7a' }}>
@@ -290,7 +1175,6 @@ function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
               style={{ ...INPUT_STYLE, resize: 'none' }} />
           </div>
 
-          {/* Botones */}
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onCerrar}
               className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
@@ -312,7 +1196,7 @@ function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
   )
 }
 
-// ─── Tarjeta de pedido en la lista ─────────────────────────────────────────
+// ─── TARJETA EN LA LISTA ──────────────────────────────────────────────────────
 function TarjetaPedido({ pedido, seleccionado, onSeleccionar, onEditar, onEliminar, score, tema }) {
   const nivel    = nivelViabilidad(score ?? 0)
   const colorEst = colorEstadoPedido(pedido.estado)
@@ -327,9 +1211,7 @@ function TarjetaPedido({ pedido, seleccionado, onSeleccionar, onEditar, onElimin
         boxShadow: seleccionado ? '0 0 16px rgba(0,230,118,0.08)' : 'none',
       }}>
       <div className="flex items-start justify-between gap-2 mb-2">
-        <span className="text-xs font-semibold" style={{ color: tema.textMuted }}>
-          {labelBioterio(pedido.bioterioId)}
-        </span>
+        <span className="text-xs font-semibold" style={{ color: tema.textMuted }}>{labelBioterio(pedido.bioterioId)}</span>
         <ViabilidadBadge score={score ?? '—'} small />
       </div>
       <div className="font-bold text-sm mb-1" style={{ color: tema.textPrimary }}>
@@ -340,9 +1222,7 @@ function TarjetaPedido({ pedido, seleccionado, onSeleccionar, onEditar, onElimin
         <span className="text-xs" style={{ color: tema.textMuted }}>📅 {formatFecha(pedido.fechaEntrega)}</span>
         <span className="text-xs" style={{ color: tema.textMuted }}>· {labelUso(pedido.uso)}</span>
       </div>
-      {pedido.solicitante && (
-        <div className="text-xs mb-2" style={{ color: tema.textMuted }}>👤 {pedido.solicitante}</div>
-      )}
+      {pedido.solicitante && <div className="text-xs mb-2" style={{ color: tema.textMuted }}>👤 {pedido.solicitante}</div>}
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-semibold px-2 py-0.5 rounded-lg"
           style={{ background: colorEst.bg, border: `1px solid ${colorEst.borde}`, color: colorEst.color }}>
@@ -361,672 +1241,7 @@ function TarjetaPedido({ pedido, seleccionado, onSeleccionar, onEditar, onElimin
   )
 }
 
-// ─── Panel de análisis unificado ───────────────────────────────────────────
-function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproductores, modoSostenible, tema }) {
-  const [secAbierta, setSecAbierta] = useState('cronograma')
-
-  const {
-    parejasNecesarias, fechasOptimas, reproductoresSeleccionados, animalesListos,
-    capacidadFutura, impactoColonia, indiceSanitario, viabilidad,
-    escenariosEstrategicos, impactoEstrategico, indiceImpactoFuturo,
-    reproductoresProximos, produccionEnCurso, pedidoEscalonado,
-  } = analisis
-
-  const nivel    = nivelViabilidad(viabilidad.score)
-  const colorEst = colorEstadoPedido(pedido.estado)
-
-  // ── Respuestas a las 4 preguntas clave ────────────────────────────────────
-  const sinHembras = reproductoresSeleccionados.hembrasDisponibles === 0
-  const hayProximas = (reproductoresProximos?.hembrasProximas?.length ?? 0) > 0
-  const diasProxima = reproductoresProximos?.hembrasProximas?.[0]?.diasParaMadurar
-
-  const respuestas = [
-    {
-      q: '¿Se puede hacer?',
-      ok: fechasOptimas?.viable && (!sinHembras || hayProximas),
-      warn: fechasOptimas?.urgente || (sinHembras && hayProximas),
-      txt: !fechasOptimas
-        ? 'Sin datos de entrega'
-        : !fechasOptimas.viable
-        ? `No — faltan ${fechasOptimas.diasMinimos - fechasOptimas.diasHastaEntrega}d para el ciclo`
-        : sinHembras && hayProximas
-        ? `Sí — hembras disponibles en ${diasProxima}d`
-        : sinHembras
-        ? 'Sin reproductoras disponibles'
-        : fechasOptimas.urgente
-        ? `Urgente — iniciar en ${fechasOptimas.diasHastaCopula}d`
-        : `Sí — cópulas en ${fechasOptimas.diasHastaCopula}d`,
-    },
-    {
-      q: '¿Conviene hacerlo?',
-      ok: impactoEstrategico.nCriticos === 0,
-      warn: impactoEstrategico.nCriticos === 0 && impactoEstrategico.nAdvertencias > 0,
-      txt: impactoEstrategico.nCriticos > 0
-        ? `${impactoEstrategico.nCriticos} riesgo(s) crítico(s) detectados`
-        : impactoEstrategico.nAdvertencias > 0
-        ? `Con ${impactoEstrategico.nAdvertencias} advertencia(s)`
-        : 'Sin riesgos detectados',
-    },
-    {
-      q: '¿Qué estrategia usar?',
-      ok: true,
-      warn: false,
-      txt: `${escenariosEstrategicos.optima.emoji} ${escenariosEstrategicos.optima.label}`,
-    },
-    {
-      q: '¿La colonia seguirá estable?',
-      ok: impactoColonia.riesgoNivel === 'ok',
-      warn: impactoColonia.riesgoNivel === 'advertencia',
-      txt: impactoColonia.riesgoNivel === 'ok'
-        ? 'Sí — mínimos respetados'
-        : impactoColonia.riesgoNivel === 'advertencia'
-        ? 'Al límite mínimo'
-        : impactoColonia.impactos[0]?.mensaje ?? 'Rompe mínimos',
-    },
-  ]
-
-  function Sec({ id, titulo, children, defaultOpen = false }) {
-    const open = secAbierta === id
-    return (
-      <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${tema.bgCardBorde}` }}>
-        <button onClick={() => setSecAbierta(open ? null : id)}
-          className="w-full flex items-center justify-between px-4 py-3"
-          style={{ background: open ? 'rgba(0,230,118,0.04)' : tema.bgCard, cursor: 'pointer', border: 'none' }}>
-          <span className="text-sm font-semibold" style={{ color: open ? '#00e676' : tema.textSecondary }}>{titulo}</span>
-          <span style={{ color: open ? '#00e676' : tema.textMuted }}>{open ? '▲' : '▼'}</span>
-        </button>
-        {open && (
-          <div className="px-4 pb-4 pt-2" style={{ background: tema.bgCard, borderTop: `1px solid ${tema.bgCardBorde}` }}>
-            {children}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-3">
-
-      {/* ── Header: score + estado + acciones ─────────────────────────────── */}
-      <div className="rounded-2xl p-4" style={{ background: tema.bgCard, border: `1px solid ${nivel.borde}`, boxShadow: `0 0 20px ${nivel.bg}` }}>
-        {/* Fila superior */}
-        <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
-          <div>
-            <div className="flex items-center gap-2 flex-wrap mb-1">
-              <span className="font-bold text-base" style={{ color: tema.textPrimary }}>
-                {pedido.cantidad} {labelSexo(pedido.sexo)} · {pedido.edadSemanas} sem
-              </span>
-              <span className="text-xs px-2 py-0.5 rounded-lg"
-                style={{ background: colorEst.bg, border: `1px solid ${colorEst.borde}`, color: colorEst.color }}>
-                {ESTADOS_PEDIDO.find(e => e.id === pedido.estado)?.label}
-              </span>
-            </div>
-            <div className="flex gap-3 flex-wrap">
-              <span className="text-xs" style={{ color: tema.textMuted }}>{labelBioterio(pedido.bioterioId)}</span>
-              <span className="text-xs" style={{ color: tema.textMuted }}>📅 {formatFecha(pedido.fechaEntrega)}</span>
-              <span className="text-xs" style={{ color: tema.textMuted }}>{labelUso(pedido.uso)}</span>
-              {pedido.solicitante && <span className="text-xs" style={{ color: tema.textMuted }}>👤 {pedido.solicitante}</span>}
-            </div>
-            <div className="flex gap-2 flex-wrap mt-1">
-              {pedido.modalidad && pedido.modalidad !== 'unica' && (
-                <span className="text-xs px-2 py-0.5 rounded-lg font-semibold"
-                  style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.2)', color: '#40c4ff' }}>
-                  {pedido.modalidad === 'escalonada' ? '📅 Escalonada' : '🔄 Flexible'}
-                </span>
-              )}
-              {pedido.soloVirgenes && (
-                <span className="text-xs px-2 py-0.5 rounded-lg font-semibold"
-                  style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.2)', color: '#00e676' }}>
-                  🧬 Solo vírgenes
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="text-center px-4 py-2 rounded-xl"
-            style={{ background: nivel.bg, border: `1.5px solid ${nivel.borde}` }}>
-            <div className="font-mono font-bold text-2xl" style={{ color: nivel.color }}>{viabilidad.score}</div>
-            <div className="text-xs font-semibold" style={{ color: nivel.color }}>{nivel.emoji} Viabilidad</div>
-          </div>
-        </div>
-
-        {/* Modo sostenible banner */}
-        {modoSostenible && (
-          <div className="rounded-lg px-3 py-1.5 text-xs mb-3"
-            style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.2)', color: '#00e676' }}>
-            🌱 Modo sostenible activo — estrategia prioriza estabilidad de la colonia sobre producción máxima
-          </div>
-        )}
-
-        {/* Alerta sanitaria */}
-        {indiceSanitario < 80 && (
-          <div className="rounded-lg px-3 py-1.5 text-xs mb-3"
-            style={{
-              background: indiceSanitario < 50 ? 'rgba(255,61,87,0.07)' : 'rgba(255,179,0,0.06)',
-              border: `1px solid ${indiceSanitario < 50 ? 'rgba(255,61,87,0.2)' : 'rgba(255,179,0,0.18)'}`,
-              color: indiceSanitario < 50 ? '#ff6b80' : '#ffb300',
-            }}>
-            {indiceSanitario < 50 ? '🔴' : '🟡'} Índice sanitario: <strong>{indiceSanitario}/100</strong> — penaliza la viabilidad
-          </div>
-        )}
-
-        {/* 4 respuestas rápidas */}
-        <div className="rounded-xl overflow-hidden mb-3" style={{ border: `1px solid ${tema.bgCardBorde}` }}>
-          {respuestas.map((r, i) => (
-            <div key={i}
-              className="flex items-center justify-between px-3 py-2 text-xs"
-              style={{
-                borderBottom: i < respuestas.length - 1 ? `1px solid ${tema.bgCardBorde}` : 'none',
-                background: 'rgba(8,13,26,0.25)',
-              }}>
-              <span style={{ color: '#4a5f7a' }}>{r.q}</span>
-              <span className="font-semibold" style={{ color: r.ok ? '#00e676' : r.warn ? '#ffb300' : '#ff6b80' }}>
-                {r.ok ? '✅' : r.warn ? '⚠️' : '🔴'} {r.txt}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Acciones de estado */}
-        <div className="flex gap-2 flex-wrap">
-          {pedido.estado === 'pendiente' && (
-            <>
-              <button onClick={() => onCambiarEstado(pedido.id, 'en_proceso')}
-                className="px-3 py-1.5 rounded-lg text-xs font-bold"
-                style={{ background: 'rgba(64,196,255,0.1)', border: '1px solid rgba(64,196,255,0.3)', color: '#40c4ff', cursor: 'pointer' }}>
-                ▶ Iniciar pedido
-              </button>
-              {reproductoresSeleccionados.suficientesHembras && (
-                <button onClick={() => onReservarReproductores(pedido)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold"
-                  style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.25)', color: '#ffb300', cursor: 'pointer' }}>
-                  🔒 Reservar reproductores
-                </button>
-              )}
-            </>
-          )}
-          {pedido.estado === 'en_proceso' && (
-            <button onClick={() => onCambiarEstado(pedido.id, 'completado')}
-              className="px-3 py-1.5 rounded-lg text-xs font-bold"
-              style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.3)', color: '#00e676', cursor: 'pointer' }}>
-              ✓ Marcar completado
-            </button>
-          )}
-          {!['cancelado', 'completado'].includes(pedido.estado) && (
-            <button onClick={() => onCambiarEstado(pedido.id, 'cancelado')}
-              className="px-3 py-1.5 rounded-lg text-xs font-bold"
-              style={{ background: 'rgba(255,61,87,0.06)', border: '1px solid rgba(255,61,87,0.2)', color: '#ff6b80', cursor: 'pointer' }}>
-              ✕ Cancelar
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* ── 1: Estado estratégico (unificado) ─────────────────────────────── */}
-      <Sec id="estrategico" titulo={`🧠 Estado estratégico${impactoEstrategico.nCriticos > 0 ? ' 🔴' : impactoEstrategico.nAdvertencias > 0 ? ' ⚠️' : ' ✅'}`}>
-        {/* Grid 6 indicadores */}
-        <div className="grid grid-cols-3 gap-2 mb-3">
-          {[
-            {
-              label: 'Sustentabilidad',
-              val: indiceImpactoFuturo.emoji + ' ' + indiceImpactoFuturo.label,
-              color: indiceImpactoFuturo.color,
-              bg: indiceImpactoFuturo.bg,
-              borde: indiceImpactoFuturo.borde,
-            },
-            {
-              label: 'Saturación',
-              val: capacidadFutura.saturada
-                ? `🔴 ${capacidadFutura.porcentajeUso}%`
-                : capacidadFutura.porcentajeUso > 75
-                ? `⚠️ ${capacidadFutura.porcentajeUso}%`
-                : `🟢 ${capacidadFutura.porcentajeUso}%`,
-              color: capacidadFutura.saturada ? '#ff6b80' : capacidadFutura.porcentajeUso > 75 ? '#ffb300' : '#00e676',
-              bg: 'rgba(8,13,26,0.35)', borde: tema.bgCardBorde,
-            },
-            {
-              label: 'Mínimos',
-              val: impactoColonia.riesgoNivel === 'critico'
-                ? `🔴 ♀${impactoColonia.hembrasDespues} ♂${impactoColonia.machosDespues}`
-                : impactoColonia.riesgoNivel === 'advertencia'
-                ? `⚠️ ♀${impactoColonia.hembrasDespues} ♂${impactoColonia.machosDespues}`
-                : `🟢 ♀${impactoColonia.hembrasDespues} ♂${impactoColonia.machosDespues}`,
-              color: impactoColonia.riesgoNivel === 'critico' ? '#ff6b80' : impactoColonia.riesgoNivel === 'advertencia' ? '#ffb300' : '#00e676',
-              bg: 'rgba(8,13,26,0.35)', borde: tema.bgCardBorde,
-            },
-            {
-              label: 'Genética',
-              val: impactoEstrategico.dimensiones.genetica === 'critico'
-                ? '🔴 Alta consanguinidad'
-                : impactoEstrategico.dimensiones.genetica === 'advertencia'
-                ? '⚠️ Consang. moderada'
-                : '🟢 OK',
-              color: impactoEstrategico.dimensiones.genetica === 'critico' ? '#ff6b80' : impactoEstrategico.dimensiones.genetica === 'advertencia' ? '#ffb300' : '#00e676',
-              bg: 'rgba(8,13,26,0.35)', borde: tema.bgCardBorde,
-            },
-            {
-              label: 'Sanitario',
-              val: indiceSanitario < 50 ? `🔴 ${indiceSanitario}/100` : indiceSanitario < 75 ? `⚠️ ${indiceSanitario}/100` : `🟢 ${indiceSanitario}/100`,
-              color: indiceSanitario < 50 ? '#ff6b80' : indiceSanitario < 75 ? '#ffb300' : '#00e676',
-              bg: 'rgba(8,13,26,0.35)', borde: tema.bgCardBorde,
-            },
-            {
-              label: 'Tiempo',
-              val: !fechasOptimas ? '— Sin datos'
-                : !fechasOptimas.viable ? '🔴 Inviable'
-                : fechasOptimas.urgente ? `⚠️ Urgente`
-                : `🟢 ${fechasOptimas.diasHastaCopula}d para cópula`,
-              color: !fechasOptimas ? '#4a5f7a' : !fechasOptimas.viable ? '#ff6b80' : fechasOptimas.urgente ? '#ffb300' : '#00e676',
-              bg: 'rgba(8,13,26,0.35)', borde: tema.bgCardBorde,
-            },
-          ].map(({ label, val, color, bg, borde }) => (
-            <div key={label} className="rounded-lg p-2 text-center"
-              style={{ background: bg, border: `1px solid ${borde}` }}>
-              <div className="text-xs font-semibold" style={{ color }}>{val}</div>
-              <div style={{ color: '#4a5f7a', fontSize: '10px', marginTop: '2px' }}>{label}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Riesgos detectados */}
-        {impactoEstrategico.riesgos.length > 0 && (
-          <div className="space-y-1.5">
-            {impactoEstrategico.riesgos.map((r, i) => (
-              <div key={i} className="rounded-lg px-3 py-2 text-xs"
-                style={{
-                  background: r.nivel === 'critico' ? 'rgba(255,61,87,0.07)' : 'rgba(255,179,0,0.05)',
-                  border: `1px solid ${r.nivel === 'critico' ? 'rgba(255,61,87,0.22)' : 'rgba(255,179,0,0.18)'}`,
-                  color: r.nivel === 'critico' ? '#ff6b80' : '#ffb300',
-                }}>
-                {r.nivel === 'critico' ? '🔴' : '⚠️'} <strong>{r.dimension.replace(/_/g, ' ')}:</strong> {r.mensaje}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {impactoEstrategico.riesgos.length === 0 && (
-          <div className="rounded-lg px-3 py-2 text-xs text-center"
-            style={{ background: 'rgba(0,230,118,0.05)', border: '1px solid rgba(0,230,118,0.2)', color: '#00e676' }}>
-            ✅ Ningún riesgo estratégico detectado — el pedido es compatible con la estabilidad de la colonia
-          </div>
-        )}
-      </Sec>
-
-      {/* ── 2: Cronograma biológico (unificado) ───────────────────────────── */}
-      <Sec id="cronograma" titulo="📅 Cronograma biológico">
-        {fechasOptimas ? (
-          <>
-            {!fechasOptimas.viable && (
-              <div className="rounded-lg px-3 py-2 text-xs mb-3"
-                style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)', color: '#ff6b80' }}>
-                ⚠ Tiempo insuficiente — mínimo {fechasOptimas.diasMinimos}d, disponibles {fechasOptimas.diasHastaEntrega}d
-              </div>
-            )}
-            {fechasOptimas.urgente && (
-              <div className="rounded-lg px-3 py-2 text-xs mb-3"
-                style={{ background: 'rgba(255,179,0,0.06)', border: '1px solid rgba(255,179,0,0.2)', color: '#ffb300' }}>
-                ⚡ Cópula urgente — quedan {fechasOptimas.diasHastaCopula} días para iniciar
-              </div>
-            )}
-            <div className="space-y-1">
-              {[
-                { label: '🔗 Iniciar cópulas', fecha: fechasOptimas.fechaCopula, dias: fechasOptimas.diasHastaCopula, desc: `${parejasNecesarias.hembrasNecesarias}♀ + ${parejasNecesarias.machosNecesarios}♂` },
-                { label: '↗️ Separar parejas', fecha: fechasOptimas.fechaSeparacion, dias: null, desc: 'Inicio de gestación' },
-                { label: '🐣 Partos esperados', fecha: fechasOptimas.fechaNacimiento, dias: null, desc: `~${parejasNecesarias.animalesEstimados} crías estimadas` },
-                { label: '🧬 Destete', fecha: fechasOptimas.fechaDestete, dias: null, desc: 'Separar crías → stock' },
-                { label: '📦 Entrega', fecha: fechasOptimas.fechaEntrega, dias: fechasOptimas.diasHastaEntrega, desc: `${pedido.cantidad} ${labelSexo(pedido.sexo)}`, importante: true },
-              ].map((ev, i) => (
-                <div key={i}
-                  className="flex items-center justify-between rounded-lg px-3 py-2"
-                  style={{
-                    background: ev.importante ? 'rgba(0,230,118,0.05)' : 'rgba(8,13,26,0.3)',
-                    border: `1px solid ${ev.importante ? 'rgba(0,230,118,0.2)' : tema.bgCardBorde}`,
-                  }}>
-                  <div>
-                    <span className="text-xs font-semibold" style={{ color: ev.importante ? '#00e676' : tema.textSecondary }}>
-                      {ev.label}
-                    </span>
-                    <span className="text-xs ml-2" style={{ color: '#3a5068' }}>{ev.desc}</span>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-xs font-mono" style={{ color: '#c9d4e0' }}>{formatFecha(ev.fecha)}</div>
-                    {ev.dias != null && (
-                      <div className="text-xs" style={{
-                        color: ev.dias < 0 ? '#ff6b80' : ev.dias <= 14 ? '#ffb300' : '#4a5f7a',
-                      }}>
-                        {ev.dias < 0 ? `vencido ${Math.abs(ev.dias)}d` : ev.dias === 0 ? 'hoy' : `en ${ev.dias}d`}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="text-xs text-center py-4" style={{ color: tema.textMuted }}>
-            Completá fecha de entrega y edad para generar el cronograma
-          </div>
-        )}
-      </Sec>
-
-      {/* ── 3: Estrategias posibles (unificado) ───────────────────────────── */}
-      <Sec id="estrategias" titulo="⚡ Estrategias posibles">
-        {/* Estrategia recomendada */}
-        <div className="rounded-xl px-3 py-2 mb-3"
-          style={{ background: 'rgba(64,196,255,0.07)', border: '1px solid rgba(64,196,255,0.2)' }}>
-          <span className="text-xs font-bold" style={{ color: '#40c4ff' }}>
-            🏆 Óptima: {escenariosEstrategicos.optima.emoji} {escenariosEstrategicos.optima.label}
-            {modoSostenible && ' (modo sostenible)'}
-          </span>
-          <span className="text-xs ml-2" style={{ color: '#4a5f7a' }}>{escenariosEstrategicos.optima.razon}</span>
-        </div>
-
-        <div className="space-y-2">
-          {escenariosEstrategicos.escenarios.map((esc) => {
-            const esOptimo = esc.id === escenariosEstrategicos.optima.id
-            const esModoSost = modoSostenible && esc.id === 'b' // modo sostenible prefiere el mínimo
-            const resaltado = modoSostenible ? esModoSost : esOptimo
-            return (
-              <div key={esc.id} className="rounded-xl p-3"
-                style={{
-                  background: resaltado ? 'rgba(0,230,118,0.05)' : 'rgba(8,13,26,0.3)',
-                  border: `1.5px solid ${resaltado ? 'rgba(0,230,118,0.25)' : tema.bgCardBorde}`,
-                }}>
-                <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">{esc.emoji}</span>
-                    <span className="text-sm font-bold" style={{ color: tema.textPrimary }}>{esc.label}</span>
-                    {resaltado && (
-                      <span className="text-xs px-1.5 py-0.5 rounded"
-                        style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676' }}>
-                        {modoSostenible ? '🌱 sostenible' : '✦ óptimo'}
-                      </span>
-                    )}
-                    {esc.retraso > 0 && (
-                      <span className="text-xs px-1.5 py-0.5 rounded"
-                        style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.2)', color: '#40c4ff' }}>
-                        +{esc.retraso}d
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-sm font-bold" style={{ color: esc.probabilidad >= 85 ? '#00e676' : esc.probabilidad >= 70 ? '#ffb300' : '#ff6b80' }}>
-                    {esc.probabilidad}%
-                  </span>
-                </div>
-                <div className="flex items-center gap-3 text-xs flex-wrap">
-                  <span style={{ color: '#ce93d8' }}>♀ {esc.hembras}</span>
-                  <span style={{ color: '#40c4ff' }}>♂ {esc.machos}</span>
-                  <span style={{ color: '#c9d4e0' }}>📦 {esc.jaulasNuevas} jaulas</span>
-                  <span style={{ color: '#c9d4e0' }}>~{esc.animalesEstimados} crías</span>
-                  {esc.rompeMinimo && <span style={{ color: '#ff6b80' }}>🔴 rompe mínimos</span>}
-                  {esc.saturada && !esc.rompeMinimo && <span style={{ color: '#ffb300' }}>⚠ saturación</span>}
-                  {!esc.rompeMinimo && !esc.saturada && <span style={{ color: '#00e676' }}>🟢 colonia segura</span>}
-                </div>
-                <div className="mt-1.5">
-                  <div className="h-1 rounded-full overflow-hidden" style={{ background: 'rgba(30,51,82,0.6)' }}>
-                    <div className="h-full rounded-full"
-                      style={{ width: `${esc.probabilidad}%`, background: esc.probabilidad >= 85 ? '#00e676' : esc.probabilidad >= 70 ? '#ffb300' : '#ff6b80' }} />
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Stock disponible + aviso bibliográfico */}
-        <div className="mt-3 space-y-1.5">
-          <div className="rounded-lg px-3 py-2"
-            style={{
-              background: animalesListos.cubiertoConStock ? 'rgba(0,230,118,0.05)' : 'rgba(8,13,26,0.3)',
-              border: `1px solid ${animalesListos.cubiertoConStock ? 'rgba(0,230,118,0.2)' : tema.bgCardBorde}`,
-            }}>
-            <div className="flex items-center justify-between text-xs">
-              <span style={{ color: '#4a5f7a' }}>📦 Stock ya disponible</span>
-              <span style={{ color: animalesListos.cubiertoConStock ? '#00e676' : animalesListos.porcentajeCubierto > 50 ? '#ffb300' : '#ff6b80' }}>
-                {animalesListos.cubiertoConStock
-                  ? `✅ Cubierto (${animalesListos.disponibles} animales)`
-                  : `${animalesListos.disponibles}/${animalesListos.necesarios} disponibles · ${animalesListos.porcentajeCubierto}%`}
-              </span>
-            </div>
-          </div>
-          {!parejasNecesarias.hist.conDatos && (
-            <div className="rounded-lg px-3 py-1.5 text-xs"
-              style={{ background: 'rgba(255,179,0,0.05)', border: '1px solid rgba(255,179,0,0.18)', color: '#ffb300' }}>
-              ⚠ Valores bibliográficos — registrá más camadas para mayor precisión
-            </div>
-          )}
-        </div>
-      </Sec>
-
-      {/* ── 4: Reproductores ─────────────────────────────────────────────── */}
-      <Sec id="reproductores" titulo="🔬 Reproductores">
-        {/* Disponibilidad */}
-        <div className="grid grid-cols-2 gap-2 mb-3">
-          {[
-            {
-              sexo: '♀ Hembras', disp: reproductoresSeleccionados.hembrasDisponibles,
-              nec: reproductoresSeleccionados.hembrasNecesarias,
-              ok: reproductoresSeleccionados.suficientesHembras,
-              proximos: reproductoresProximos?.hembrasProximas ?? [],
-              color: '#ce93d8',
-            },
-            {
-              sexo: '♂ Machos', disp: reproductoresSeleccionados.machosDisponibles,
-              nec: reproductoresSeleccionados.machosNecesarios,
-              ok: reproductoresSeleccionados.suficientesMachos,
-              proximos: reproductoresProximos?.machosProximos ?? [],
-              color: '#40c4ff',
-            },
-          ].map(({ sexo, disp, nec, ok, proximos, color }) => (
-            <div key={sexo} className="rounded-lg p-2"
-              style={{
-                background: ok ? 'rgba(0,230,118,0.05)' : 'rgba(255,61,87,0.05)',
-                border: `1px solid ${ok ? 'rgba(0,230,118,0.2)' : 'rgba(255,61,87,0.2)'}`,
-              }}>
-              <div className="text-xs font-bold mb-0.5" style={{ color }}>
-                {sexo}: {disp}/{nec}
-              </div>
-              {!ok && proximos.length > 0 ? (
-                <div className="text-xs" style={{ color: '#ffb300' }}>
-                  🟡 {proximos.length} disponible{proximos.length > 1 ? 's' : ''} en {proximos[0].diasParaMadurar}d
-                </div>
-              ) : !ok ? (
-                <div className="text-xs" style={{ color: '#ff6b80' }}>Sin candidatos</div>
-              ) : (
-                <div className="text-xs" style={{ color: '#00e676' }}>✓ Suficientes</div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Listas compactas */}
-        {(reproductoresSeleccionados.hembrasSugeridas.length > 0 || reproductoresSeleccionados.machosSugeridos.length > 0) && (
-          <div className="mt-2 space-y-1">
-            {reproductoresSeleccionados.hembrasSugeridas.map(({ animal, scoreRepro, nivelF }) => (
-              <div key={animal.id} className="flex items-center justify-between rounded px-2 py-1"
-                style={{ background: 'rgba(8,13,26,0.35)', border: `1px solid ${tema.bgCardBorde}` }}>
-                <span className="text-xs font-mono font-semibold" style={{ color: '#ce93d8' }}>♀ {animal.codigo}</span>
-                <div className="flex gap-2 text-xs">
-                  <span style={{ color: '#c9d4e0' }}>Score {scoreRepro}</span>
-                  {nivelF !== 'ok' && (
-                    <span style={{ color: nivelF === 'alto' ? '#ff6b80' : '#ffb300' }}>
-                      {nivelF === 'alto' ? '🔴 F alto' : '⚠ F mod.'}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-            {reproductoresSeleccionados.machosSugeridos.map(({ animal, scoreRepro, nivelF }) => (
-              <div key={animal.id} className="flex items-center justify-between rounded px-2 py-1"
-                style={{ background: 'rgba(8,13,26,0.35)', border: `1px solid ${tema.bgCardBorde}` }}>
-                <span className="text-xs font-mono font-semibold" style={{ color: '#40c4ff' }}>♂ {animal.codigo}</span>
-                <div className="flex gap-2 text-xs">
-                  <span style={{ color: '#c9d4e0' }}>Score {scoreRepro}</span>
-                  {nivelF !== 'ok' && (
-                    <span style={{ color: nivelF === 'alto' ? '#ff6b80' : '#ffb300' }}>
-                      {nivelF === 'alto' ? '🔴 F alto' : '⚠ F mod.'}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        {reproductoresSeleccionados.hembrasDisponibles === 0 && !hayProximas && (
-          <div className="text-xs text-center py-2" style={{ color: tema.textMuted }}>
-            Sin reproductoras libres — revisá estados o cambiá de bioterio
-          </div>
-        )}
-      </Sec>
-
-      {/* ── 5: Producción disponible (stock actual + en camino) ───────────── */}
-      <Sec id="produccion" titulo="📦 Producción disponible">
-        {/* Separación visual: Colonia Base vs Producción */}
-        <div className="grid grid-cols-2 gap-2 mb-3">
-          <div className="rounded-lg p-2.5"
-            style={{ background: 'rgba(156,39,176,0.07)', border: '1px solid rgba(156,39,176,0.2)' }}>
-            <div className="text-xs font-bold mb-1" style={{ color: '#ce93d8' }}>🧬 Colonia base</div>
-            <div className="text-xs" style={{ color: '#4a5f7a' }}>
-              <div>♀ {impactoColonia.hembrasActivas} reproductoras</div>
-              <div>♂ {impactoColonia.machosActivos} reproductores</div>
-              <div className="mt-1 text-xs" style={{ color: '#3a5068' }}>Protegidos — nunca entregables</div>
-            </div>
-          </div>
-          <div className="rounded-lg p-2.5"
-            style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.18)' }}>
-            <div className="text-xs font-bold mb-1" style={{ color: '#00e676' }}>📦 Producción</div>
-            <div className="text-xs" style={{ color: '#4a5f7a' }}>
-              <div>Stock ahora: <span style={{ color: '#c9d4e0' }}>{animalesListos.disponibles}</span></div>
-              <div>En camino: <span style={{ color: '#c9d4e0' }}>{produccionEnCurso.totalProyectado}</span></div>
-              <div className="mt-1 text-xs font-semibold" style={{ color: (animalesListos.disponibles + produccionEnCurso.totalProyectado) >= (pedido.cantidad ?? 0) ? '#00e676' : '#ffb300' }}>
-                Total: {animalesListos.disponibles + produccionEnCurso.totalProyectado}/{pedido.cantidad ?? 0}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Stock actual */}
-        <div className="rounded-lg p-2 mb-2"
-          style={{
-            background: animalesListos.cubiertoConStock ? 'rgba(0,230,118,0.05)' : 'rgba(8,13,26,0.3)',
-            border: `1px solid ${animalesListos.cubiertoConStock ? 'rgba(0,230,118,0.2)' : tema.bgCardBorde}`,
-          }}>
-          <div className="flex items-center justify-between text-xs">
-            <span style={{ color: '#4a5f7a' }}>
-              📦 Stock actual {pedido.soloVirgenes ? <span style={{ color: '#00e676' }}>· 🧬 vírgenes ✓</span> : ''}
-            </span>
-            <span style={{ color: animalesListos.cubiertoConStock ? '#00e676' : animalesListos.porcentajeCubierto > 50 ? '#ffb300' : '#ff6b80' }}>
-              {animalesListos.cubiertoConStock
-                ? '✅ Cubierto con stock actual'
-                : `${animalesListos.disponibles}/${animalesListos.necesarios} disponibles (${animalesListos.porcentajeCubierto}%)`}
-            </span>
-          </div>
-        </div>
-
-        {/* Producción en curso */}
-        {produccionEnCurso.tandas.length > 0 ? (
-          <div className="rounded-lg p-2 mb-2"
-            style={{ background: 'rgba(64,196,255,0.05)', border: '1px solid rgba(64,196,255,0.2)' }}>
-            <div className="text-xs font-semibold mb-1.5" style={{ color: '#40c4ff' }}>
-              🔄 En camino — {produccionEnCurso.tandas.length} camada{produccionEnCurso.tandas.length > 1 ? 's' : ''} producirán {produccionEnCurso.totalProyectado} animales
-            </div>
-            <div className="space-y-1">
-              {produccionEnCurso.tandas.map((t) => (
-                <div key={t.camadaId} className="flex items-center justify-between text-xs"
-                  style={{ color: '#4a5f7a' }}>
-                  <span>
-                    {t.estado === 'en_gestacion' ? '🤰' : t.estado === 'en_cria' ? '🐣' : '✅'}
-                    {' '}{t.estado === 'en_gestacion' ? 'En gestación' : t.estado === 'en_cria' ? 'En cría' : 'Destetada'}
-                  </span>
-                  <span style={{ color: '#c9d4e0' }}>{t.dispDelSexo} animales</span>
-                  <span style={{ color: t.diasHastaDisponible <= 0 ? '#00e676' : t.diasHastaDisponible <= 30 ? '#ffb300' : '#4a5f7a' }}>
-                    {t.diasHastaDisponible <= 0 ? 'Disponibles hoy' : `en ${t.diasHastaDisponible}d`}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-lg px-3 py-1.5 text-xs mb-2"
-            style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}`, color: '#3a5068' }}>
-            Sin camadas activas que produzcan animales en el rango de edad requerido
-          </div>
-        )}
-
-        {/* Parejas necesarias */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
-          {[
-            { label: '♀ Hembras', val: parejasNecesarias.hembrasNecesarias, color: '#ce93d8' },
-            { label: '♂ Machos',  val: parejasNecesarias.machosNecesarios,  color: '#40c4ff' },
-            { label: '~Crías',    val: parejasNecesarias.animalesEstimados, color: '#c9d4e0' },
-            { label: 'Prob.',     val: `${parejasNecesarias.probabilidad}%`, color: '#00e676' },
-          ].map(({ label, val, color }) => (
-            <div key={label} className="rounded-lg p-2 text-center"
-              style={{ background: 'rgba(8,13,26,0.35)', border: `1px solid ${tema.bgCardBorde}` }}>
-              <div className="font-mono font-bold text-base" style={{ color }}>{val}</div>
-              <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>{label}</div>
-            </div>
-          ))}
-        </div>
-
-        {!parejasNecesarias.hist.conDatos && (
-          <div className="rounded-lg px-3 py-1.5 text-xs"
-            style={{ background: 'rgba(255,179,0,0.05)', border: '1px solid rgba(255,179,0,0.18)', color: '#ffb300' }}>
-            ⚠ Valores bibliográficos — registrá más camadas para mayor precisión
-          </div>
-        )}
-      </Sec>
-
-      {/* ── 6: Entregas escalonadas ──────────────────────────────────────── */}
-      {pedidoEscalonado && (
-        <Sec id="escalonado" titulo={`📅 Entregas escalonadas — ${pedidoEscalonado.tandasTotal} tandas de ${pedidoEscalonado.cantidadPorTanda}`}>
-          <div className="text-xs mb-3 px-1" style={{ color: '#4a5f7a' }}>
-            Cada {pedidoEscalonado.frecuenciaDias} días · {pedidoEscalonado.totalAnimales} animales totales
-          </div>
-          <div className="space-y-2">
-            {pedidoEscalonado.tandas.map((tanda) => {
-              const hoy = new Date(); hoy.setHours(0,0,0,0)
-              const diasHasta = tanda.fechas
-                ? Math.round((new Date(tanda.fechaEntrega) - hoy) / 86400000)
-                : null
-              return (
-                <div key={tanda.numero} className="rounded-xl p-3"
-                  style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}` }}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold" style={{ color: '#40c4ff' }}>
-                      📦 Tanda {tanda.numero} — {tanda.cantidad} animales
-                    </span>
-                    <span className="text-xs font-mono" style={{ color: '#c9d4e0' }}>
-                      {formatFecha(tanda.fechaEntrega)}
-                      {diasHasta != null && (
-                        <span style={{ color: diasHasta < 0 ? '#ff6b80' : diasHasta <= 14 ? '#ffb300' : '#4a5f7a', marginLeft: '6px' }}>
-                          {diasHasta < 0 ? `vencida ${Math.abs(diasHasta)}d` : diasHasta === 0 ? 'hoy' : `en ${diasHasta}d`}
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                  {tanda.fechas && (
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs" style={{ color: '#3a5068' }}>
-                      <span>🔗 Iniciar cópulas: <span style={{ color: '#c9d4e0' }}>{formatFecha(tanda.fechas.fechaCopula)}</span></span>
-                      <span>🐣 Parto: <span style={{ color: '#c9d4e0' }}>{formatFecha(tanda.fechas.fechaNacimiento)}</span></span>
-                      {!tanda.fechas.viable && (
-                        <span className="col-span-2" style={{ color: '#ff6b80' }}>
-                          ⚠ Tiempo insuficiente para esta tanda
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </Sec>
-      )}
-
-    </div>
-  )
-}
-
-// ─── Componente principal: Pedidos ─────────────────────────────────────────
+// ─── COMPONENTE PRINCIPAL ─────────────────────────────────────────────────────
 export default function Pedidos() {
   const { animales, camadas, jaulas, sacrificios, entregas, incidentes,
           pedidos, agregarPedido, editarPedido, eliminarPedido: eliminarPedidoCtx,
@@ -1039,7 +1254,6 @@ export default function Pedidos() {
   const [pedidoEditando,    setPedidoEditando]    = useState(null)
   const [confirmEliminarId, setConfirmEliminarId] = useState(null)
   const [filtroEstado,      setFiltroEstado]      = useState('todos')
-  const [modoSostenible,    setModoSostenible]    = useState(false)
 
   const pedidoSeleccionado = pedidos.find(p => p.id === pedidoSelId) ?? null
 
@@ -1071,25 +1285,44 @@ export default function Pedidos() {
     const indiceImpactoFuturo        = calcularIndiceImpactoFuturo(
       impactoEstrategico, indiceSanitario, detectarSuperavit(animales, pedidoSeleccionado.bioterioId)
     )
-    const escenariosEstrategicos     = simularEscenariosEstrategicos(
+    const reproductoresProximos      = detectarReproductoresProximos(pedidoSeleccionado, animales)
+    const produccionEnCurso          = calcularProduccionEnCurso(pedidoSeleccionado, camadas, sacrificios, entregas)
+    const pedidoEscalonado           = calcularPedidoEscalonado(pedidoSeleccionado)
+    const riesgoMultifactorial       = evaluarRiesgoMultifactorialPedido({
+      reproductoresSeleccionados, camadas, temperaturas: [], incidentes,
+      bioterioId: pedidoSeleccionado.bioterioId,
+    })
+
+    // ── Nuevas funciones ──────────────────────────────────────────────────
+    const capacidadReproductiva = calcularCapacidadReproductivaDinamica(
+      pedidoSeleccionado, animales, camadas, jaulas, sacrificios, entregas
+    )
+    const crecimientoColateral = calcularCrecimientoColateral(
+      pedidoSeleccionado, parejasNecesarias, parejasNecesarias.hist
+    )
+    const estrategiasBiologicas = generarEstrategiasBiologicas(
       pedidoSeleccionado, camadas, animales, jaulas, indiceSanitario
     )
-    const reproductoresProximos      = detectarReproductoresProximos(pedidoSeleccionado, animales)
-    const produccionEnCurso          = calcularProduccionEnCurso(
-      pedidoSeleccionado, camadas, sacrificios, entregas
+    const estrategiaOptima = estrategiasBiologicas?.optima?.estrategia ?? null
+    const planOperativo = generarPlanOperativo(
+      pedidoSeleccionado, estrategiaOptima, fechasOptimas, parejasNecesarias, bioPedido
     )
-    const pedidoEscalonado           = calcularPedidoEscalonado(pedidoSeleccionado)
+    const proximaAccion = determinarProximaAccion(planOperativo)
 
     return {
       bio: bioPedido, parejasNecesarias, fechasOptimas,
       reproductoresSeleccionados, animalesListos, capacidadFutura,
       impactoColonia, indiceSanitario, viabilidad,
-      impactoEstrategico, indiceImpactoFuturo, escenariosEstrategicos,
+      impactoEstrategico, indiceImpactoFuturo,
       reproductoresProximos, produccionEnCurso, pedidoEscalonado,
+      riesgoMultifactorial,
+      // Nuevas
+      capacidadReproductiva, crecimientoColateral,
+      estrategiasBiologicas, planOperativo, proximaAccion,
     }
   }, [pedidoSeleccionado, animales, camadas, jaulas, sacrificios, entregas, incidentes, pedidos])
 
-  // ── Scores de viabilidad para todas las tarjetas ──────────────────────────
+  // ── Scores para tarjetas ──────────────────────────────────────────────────
   const scoresPorId = useMemo(() => {
     const result = {}
     for (const p of pedidos) {
@@ -1160,37 +1393,23 @@ export default function Pedidos() {
   return (
     <div className="p-4 md:p-6 max-w-[1400px] mx-auto">
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
         <div>
           <h1 className="text-xl font-bold" style={{ color: tema.textPrimary }}>📦 Pedidos de producción</h1>
           <p className="text-xs mt-0.5" style={{ color: tema.textMuted }}>
-            Estrategia automática · Cronograma reproductivo · Análisis de impacto
+            GPS biológico · Plan operativo automático · 7 estrategias
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Toggle modo sostenible */}
-          <button
-            onClick={() => setModoSostenible(v => !v)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold"
-            style={{
-              background: modoSostenible ? 'rgba(0,230,118,0.1)' : 'rgba(8,13,26,0.4)',
-              border: `1px solid ${modoSostenible ? 'rgba(0,230,118,0.3)' : 'rgba(30,51,82,0.7)'}`,
-              color: modoSostenible ? '#00e676' : '#4a5f7a',
-              cursor: 'pointer',
-            }}>
-            🌱 {modoSostenible ? 'Sostenible ✓' : 'Modo sostenible'}
-          </button>
-          <button
-            onClick={() => { setPedidoEditando(null); setModalFormAbierto(true) }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold"
-            style={{ background: 'rgba(0,230,118,0.12)', border: '1.5px solid rgba(0,230,118,0.35)', color: '#00e676', cursor: 'pointer' }}>
-            + Nuevo pedido
-          </button>
-        </div>
+        <button
+          onClick={() => { setPedidoEditando(null); setModalFormAbierto(true) }}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold"
+          style={{ background: 'rgba(0,230,118,0.12)', border: '1.5px solid rgba(0,230,118,0.35)', color: '#00e676', cursor: 'pointer' }}>
+          + Nuevo pedido
+        </button>
       </div>
 
-      {/* ── Stats ──────────────────────────────────────────────────────────── */}
+      {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         {[
           { label: 'Total',       valor: stats.total,       color: '#c9d4e0' },
@@ -1205,11 +1424,11 @@ export default function Pedidos() {
         ))}
       </div>
 
-      {/* ── Layout: lista + análisis ───────────────────────────────────────── */}
+      {/* Layout: lista + análisis */}
       <div className="flex gap-4 items-start">
 
-        {/* Lista de pedidos */}
-        <div className="shrink-0" style={{ width: pedidoSeleccionado ? '300px' : '100%' }}>
+        {/* Lista */}
+        <div className="shrink-0" style={{ width: pedidoSeleccionado ? '280px' : '100%' }}>
           <div className="flex gap-1.5 mb-3 flex-wrap">
             {[{ id: 'todos', label: 'Todos' }, ...ESTADOS_PEDIDO].map(f => (
               <button key={f.id} onClick={() => setFiltroEstado(f.id)}
@@ -1232,7 +1451,7 @@ export default function Pedidos() {
               <div className="text-xs mb-4" style={{ color: tema.textMuted }}>
                 {filtroEstado !== 'todos'
                   ? 'No hay pedidos con este estado.'
-                  : 'Creá el primer pedido para generar la estrategia de producción automáticamente.'}
+                  : 'Creá el primer pedido para generar el plan operativo automáticamente.'}
               </div>
               {filtroEstado === 'todos' && (
                 <button onClick={() => setModalFormAbierto(true)}
@@ -1246,8 +1465,7 @@ export default function Pedidos() {
             <div className="space-y-2">
               {pedidosFiltrados.map(p => (
                 <TarjetaPedido
-                  key={p.id}
-                  pedido={p}
+                  key={p.id} pedido={p}
                   seleccionado={pedidoSelId === p.id}
                   onSeleccionar={id => setPedidoSelId(prev => prev === id ? null : id)}
                   onEditar={ped => { setPedidoEditando(ped); setModalFormAbierto(true) }}
@@ -1268,14 +1486,13 @@ export default function Pedidos() {
               analisis={analisis}
               onCambiarEstado={handleCambiarEstado}
               onReservarReproductores={handleReservarReproductores}
-              modoSostenible={modoSostenible}
               tema={tema}
             />
           </div>
         )}
       </div>
 
-      {/* ── Modal formulario ─────────────────────────────────────────────── */}
+      {/* Modal formulario */}
       {modalFormAbierto && (
         <ModalFormPedido
           pedido={pedidoEditando}
@@ -1285,7 +1502,7 @@ export default function Pedidos() {
         />
       )}
 
-      {/* ── Confirmar eliminación ────────────────────────────────────────── */}
+      {/* Confirmar eliminación */}
       {confirmEliminarId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }}>
