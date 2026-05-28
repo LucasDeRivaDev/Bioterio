@@ -42,7 +42,6 @@ const CAT_KEYS = ['lactantes', 'repro', 'crias', 'jovenes', 'adultos']
 const LS_CENSOS       = 'appMosca_alimento_censos'
 const LS_INGRESOS     = 'appMosca_alimento_ingresos'
 const LS_REPOSICIONES  = 'appMosca_alimento_reposiciones'
-const LS_ESTIMACIONES  = 'appMosca_alimento_estimaciones'
 const KG_POR_BOLSA     = 15   // kg estándar de una bolsa
 
 // Bioterios disponibles para selección en reposición parcial
@@ -301,9 +300,7 @@ export default function ConsumoAlimento() {
   const [reposiciones, setReposiciones] = useState([])
 
   const [todasCamadasRaw,     setTodasCamadasRaw]     = useState([])
-  const [estimacionesRapidas, setEstimacionesRapidas] = useState(
-    () => JSON.parse(localStorage.getItem(LS_ESTIMACIONES) || '[]')
-  )
+  const [estimacionesRapidas, setEstimacionesRapidas] = useState([])
 
   const [modalCenso,        setModalCenso]        = useState(false)
   const [modalIngreso,      setModalIngreso]      = useState(false)
@@ -319,7 +316,7 @@ export default function ConsumoAlimento() {
       // Migrar localStorage → Supabase si es primera vez
       await migrarAlimentoDesdeLS()
 
-      const [resultados, resCensos, resIngresos, resReposiciones] = await Promise.all([
+      const [resultados, resCensos, resIngresos, resReposiciones, resEstimaciones] = await Promise.all([
         Promise.all(
           TODOS_BIOTERIOS.map(({ id }) =>
             Promise.all([
@@ -334,6 +331,7 @@ export default function ConsumoAlimento() {
         supabase.from('alimento_censos').select('*').order('fecha', { ascending: true }),
         supabase.from('alimento_ingresos').select('*').order('fecha', { ascending: true }),
         supabase.from('alimento_reposiciones').select('*').order('fecha', { ascending: true }),
+        supabase.from('alimento_estimaciones').select('*').order('fecha', { ascending: true }),
       ])
 
       const datos = {}
@@ -350,6 +348,13 @@ export default function ConsumoAlimento() {
       setCensos((resCensos.data ?? []).map(censoAlimFromDB))
       setIngresos((resIngresos.data ?? []).map(r => ({ id: r.id, fecha: typeof r.fecha === 'string' ? r.fecha : r.fecha?.slice?.(0,10), kg: r.kg ?? 0, notas: r.notas ?? null })))
       setReposiciones((resReposiciones.data ?? []).map(reposicionFromDB))
+      setEstimacionesRapidas((resEstimaciones.data ?? []).map(r => ({
+        id:    r.id,
+        fecha: typeof r.fecha === 'string' ? r.fecha : r.fecha?.slice?.(0, 10) ?? r.fecha,
+        tipo:  r.tipo  ?? 'ajuste',
+        kg:    r.kg    ?? 0,
+        notas: r.notas ?? '',
+      })))
     } catch (e) {
       console.error('Error al cargar consumo:', e)
       setError('No se pudo cargar la información. Verificá la conexión.')
@@ -840,23 +845,20 @@ export default function ConsumoAlimento() {
     }
   }
 
-  // ── Estimaciones rápidas (localStorage) ──
-  function registrarEstimacion({ tipo, kg, notas }) {
-    const nuevo = { id: generarId(), fecha: hoy(), tipo, kg, notas: notas || '' }
-    setEstimacionesRapidas(prev => {
-      const arr = [...prev, nuevo]
-      localStorage.setItem(LS_ESTIMACIONES, JSON.stringify(arr))
-      return arr
-    })
+  // ── Estimaciones rápidas (Supabase) ──
+  async function registrarEstimacion({ tipo, kg, notas }) {
+    const nuevo = { id: generarId(), fecha: hoy(), tipo, kg, notas: notas || null }
+    const { error: e } = await supabase.from('alimento_estimaciones').insert(nuevo)
+    if (e) { console.error('Error al guardar estimación:', e); return }
+    setEstimacionesRapidas(prev => [...prev, { ...nuevo, notas: nuevo.notas ?? '' }]
+      .sort((a, b) => a.fecha.localeCompare(b.fecha)))
     setModalEstimRapida(false)
   }
 
-  function eliminarEstimacion(id) {
-    setEstimacionesRapidas(prev => {
-      const arr = prev.filter(e => e.id !== id)
-      localStorage.setItem(LS_ESTIMACIONES, JSON.stringify(arr))
-      return arr
-    })
+  async function eliminarEstimacion(id) {
+    const { error: e } = await supabase.from('alimento_estimaciones').delete().eq('id', id)
+    if (e) { console.error('Error al eliminar estimación:', e); return }
+    setEstimacionesRapidas(prev => prev.filter(est => est.id !== id))
   }
 
   // ── Registrar censo ──
