@@ -593,7 +593,7 @@ function SimuladorImpacto({ animales, stockReal, bioterioId, motorUnificado }) {
 // ── Componente principal ────────────────────────────────────────────────────
 
 export default function PlanificacionColonia() {
-  const { animales, camadas, jaulas, sacrificios, entregas, incidentes, animalesExportados, camadasF1 } = useBioterio()
+  const { animales, camadas, jaulas, sacrificios, entregas, incidentes, animalesExportados, camadasF1, pedidos } = useBioterio()
   const { bioterioActivo, bio } = useBioterioActivo()
   const { tema } = useTheme()
 
@@ -714,9 +714,9 @@ export default function PlanificacionColonia() {
     () => calcularIndiceSostenibilidad({
       stockReal, motorRenovacion: motorUnificado,
       indiceSanitario, indiceGenetico: indiceGeneticoEnriquecido,
-      proyeccionAvanzada, pedidos: [], bioterioId: bioterioActivo,
+      proyeccionAvanzada, pedidos, bioterioId: bioterioActivo,
     }),
-    [stockReal, motorUnificado, indiceSanitario, indiceGeneticoEnriquecido, proyeccionAvanzada, bioterioActivo]
+    [stockReal, motorUnificado, indiceSanitario, indiceGeneticoEnriquecido, proyeccionAvanzada, pedidos, bioterioActivo]
   )
 
   // Modo estrategia — recomendaciones ajustadas según el objetivo elegido
@@ -725,9 +725,9 @@ export default function PlanificacionColonia() {
       stockReal, motorRenovacion: motorUnificado,
       candidatos, proyeccionAvanzada,
       animales: todosAnimales, camadas: todasCamadas,
-      bioterioId: bioterioActivo, pedidos: [],
+      bioterioId: bioterioActivo, pedidos,
     }),
-    [objetivoEstrategia, stockReal, motorUnificado, candidatos, proyeccionAvanzada, todosAnimales, todasCamadas, bioterioActivo]
+    [objetivoEstrategia, stockReal, motorUnificado, candidatos, proyeccionAvanzada, todosAnimales, todasCamadas, bioterioActivo, pedidos]
   )
 
   const minimosCfg = getMinimosCriticos(bioterioActivo)
@@ -751,9 +751,9 @@ export default function PlanificacionColonia() {
       stockReal, animales: todosAnimales, camadas: todasCamadas,
       bio, bioterioId: bioterioActivo,
       proyeccionAvanzada, candidatos, incidentes,
-      lineasProblematicas, pedidos: [], reservas,
+      lineasProblematicas, pedidos, reservas,
     }),
-    [stockReal, todosAnimales, todasCamadas, bio, bioterioActivo, proyeccionAvanzada, candidatos, incidentes, lineasProblematicas, reservas]
+    [stockReal, todosAnimales, todasCamadas, bio, bioterioActivo, proyeccionAvanzada, candidatos, incidentes, lineasProblematicas, pedidos, reservas]
   )
 
   // ¿Qué reducir hoy?
