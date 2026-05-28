@@ -302,6 +302,19 @@ Perfil reproductivo por animal (4 scores + confiabilidad), sacrificio parcial de
   - **NUEVA `OBJETIVOS_ESTRATEGIA` + `generarModoEstrategia(objetivo, contexto)`:** 6 modos — mantener/expandir/reducir/hibridos/pedidos/diversidad. Cada modo ajusta recomendaciones, restricciones y parámetros (maxSacrificiosPorPeriodo, umbralSaturacion, prioridadApareamientos).
   - **PlanificacionColonia.jsx:** 2 nuevas secciones — "Índice de Sostenibilidad" (gauge 0-100 + desglose por factor) y "Modo Estrategia" (selector de objetivo + KPIs + recomendaciones dinámicas + restricciones activas).
 
+### Mayo/Junio 2026
+
+- **Motor de pedidos biológico sostenible (28/05):** Reestructuración completa del motor de pedidos:
+  - **`calcularProduccionEnCurso`:** detecta camadas activas (en gestación / cría / destetadas) cuyos animales estarán en el rango de edad correcto al momento de entrega. Proyecta partos futuros con promedios históricos. El sistema ahora piensa en flujo, no en foto estática.
+  - **`calcularPedidoEscalonado`:** divide un pedido en N tandas periódicas con cronograma biológico individual por tanda (cópula → separación → parto → destete → entrega).
+  - **Modalidad de pedido:** selector Única / Escalonada / Flexible en el formulario.
+  - **Configuración escalonada:** campos por tanda / frecuencia (días) / cantidad de tandas con preview en tiempo real.
+  - **Toggle "Solo vírgenes":** flag para pedidos experimentales (animales sin uso reproductivo previo). Badge visible en el análisis.
+  - **Separación visual Colonia Base vs Producción:** panel que muestra reproductores protegidos (nunca entregables) separado del stock entregable + producción en camino.
+  - **Sección "Producción disponible":** stock actual + camadas en curso + total cubierto vs necesario con progress visual.
+  - **Sección "Entregas escalonadas":** cronograma de tandas con fecha de entrega, fecha de cópula y alerta de tiempo por tanda.
+  - **BiotheriumContext:** campo `meta` jsonb en `_pedidoToDb`/`_pedidoFromDb` para persistir los campos extendidos. Requiere `ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS meta jsonb DEFAULT '{}';`
+
 ---
 
 ## ⚠️ PENDIENTE CRÍTICO: Migración localStorage → Supabase
@@ -323,6 +336,12 @@ Las siguientes features aún guardan en localStorage y requieren tablas en Supab
 | Reposiciones de alimento | `appMosca_alimento_reposiciones` | `reposiciones_alimento` |
 
 SQL completo para crear estas tablas está en `src/utils/sanitario.js` al final del archivo (sección SQL — Referencia para Supabase).
+
+**SQL pendiente para pedidos (campo meta):**
+```sql
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS meta jsonb DEFAULT '{}';
+```
+Necesario para que funcionen los campos: modalidad, soloVirgenes, cantidadPorTanda, frecuenciaDias, tandasTotal.
 
 ---
 
