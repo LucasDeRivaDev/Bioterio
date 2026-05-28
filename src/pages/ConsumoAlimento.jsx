@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useBioterioActivo, BIOTERIOS_CONFIG } from '../context/BioterioActivoContext'
-import { BIO_RATAS, BIO_RATONES } from '../utils/constants'
+import { BIO_RATAS, BIO_RATONES, getBio } from '../utils/constants'
 import { difDias, parseDate, hoy, formatFecha } from '../utils/calculos'
 import { generarId } from '../utils/storage'
 import {
@@ -41,7 +41,9 @@ const CAT_KEYS = ['lactantes', 'repro', 'crias', 'jovenes', 'adultos']
 // ── localStorage ──────────────────────────────────────────────────────────────
 const LS_CENSOS       = 'appMosca_alimento_censos'
 const LS_INGRESOS     = 'appMosca_alimento_ingresos'
-const LS_REPOSICIONES = 'appMosca_alimento_reposiciones'
+const LS_REPOSICIONES  = 'appMosca_alimento_reposiciones'
+const LS_ESTIMACIONES  = 'appMosca_alimento_estimaciones'
+const KG_POR_BOLSA     = 15   // kg estándar de una bolsa
 
 // Bioterios disponibles para selección en reposición parcial
 const OPCIONES_BIOTERIOS = [
@@ -298,10 +300,16 @@ export default function ConsumoAlimento() {
   const [ingresos,     setIngresos]     = useState([])
   const [reposiciones, setReposiciones] = useState([])
 
-  const [modalCenso,       setModalCenso]       = useState(false)
-  const [modalIngreso,     setModalIngreso]     = useState(false)
-  const [modalReposicion,  setModalReposicion]  = useState(false)  // standalone confirm
-  const [reposPreCenso,    setReposPreCenso]    = useState(null)   // reposición desde census modal
+  const [todasCamadasRaw,     setTodasCamadasRaw]     = useState([])
+  const [estimacionesRapidas, setEstimacionesRapidas] = useState(
+    () => JSON.parse(localStorage.getItem(LS_ESTIMACIONES) || '[]')
+  )
+
+  const [modalCenso,        setModalCenso]        = useState(false)
+  const [modalIngreso,      setModalIngreso]      = useState(false)
+  const [modalReposicion,   setModalReposicion]   = useState(false)
+  const [reposPreCenso,     setReposPreCenso]     = useState(null)
+  const [modalEstimRapida,  setModalEstimRapida]  = useState(false)
 
   // ── Fetch paralelo de los 4 bioterios + tablas propias ──
   const cargarDatos = useCallback(async () => {
@@ -337,6 +345,8 @@ export default function ConsumoAlimento() {
         )
       })
       setDatosBioterios(datos)
+      // Guardar camadas raw para el cruce con producción futura
+      setTodasCamadasRaw(TODOS_BIOTERIOS.flatMap((_, i) => resultados[i][1].data ?? []))
       setCensos((resCensos.data ?? []).map(censoAlimFromDB))
       setIngresos((resIngresos.data ?? []).map(r => ({ id: r.id, fecha: typeof r.fecha === 'string' ? r.fecha : r.fecha?.slice?.(0,10), kg: r.kg ?? 0, notas: r.notas ?? null })))
       setReposiciones((resReposiciones.data ?? []).map(reposicionFromDB))
@@ -542,18 +552,87 @@ export default function ConsumoAlimento() {
     return total
   })()
 
-  // ── Predicción de duración basada en stock actual ──
-  const diasEstimados = useMemo(() => {
-    if (stockActualKg === null || stockActualKg <= 0 || consumoBase <= 0) return null
-    return Math.floor((stockActualKg * 1000) / consumoAjustado)
-  }, [stockActualKg, consumoBase, consumoAjustado])
+  // ── Stock estimado en tiempo real ─────────────────────────────────────────────
+  // Se actualiza continuamente sin exigir un nuevo censo completo.
+  // = último censo + ingresos - consumo adaptativo × días - estimaciones rápidas
 
-  const fechaAgotamiento = useMemo(() => {
+  const diasDesdeCenso = ultimoCenso
+    ? Math.max(0, difDias(parseDate(ultimoCenso.fecha), parseDate(hoy())))
+    : 0
+
+  const consumoDesdeUltimoCensoKg = consumoAjustado > 0
+    ? (consumoAjustado / 1000) * diasDesdeCenso
+    : 0
+
+  // Estimaciones rápidas acumuladas desde el último censo
+  const estimacionesDesdeCenso = ultimoCenso
+    ? estimacionesRapidas.filter(e => e.fecha >= ultimoCenso.fecha)
+    : estimacionesRapidas
+  const estimacionesDeltaKg = estimacionesDesdeCenso.reduce((s, e) => s + (e.kg ?? 0), 0)
+
+  const stockEstimadoActual = stockActualKg !== null
+    ? Math.max(0, stockActualKg - consumoDesdeUltimoCensoKg + estimacionesDeltaKg)
+    : null
+
+  // Confianza de la estimación según tiempo desde el último censo
+  const confianzaEstimacion = (() => {
+    if (!ultimoCenso) return { nivel: 'sin_datos', label: 'Sin datos', emoji: '⚫', color: '#3d5068' }
+    const nEst = estimacionesDesdeCenso.length
+    if (diasDesdeCenso <= 5 && nEst <= 3)  return { nivel: 'alta',  label: 'Alta',  emoji: '🟢', color: '#00e676' }
+    if (diasDesdeCenso <= 14 || nEst <= 6) return { nivel: 'media', label: 'Media', emoji: '🟡', color: '#ffb300' }
+    return { nivel: 'baja', label: 'Baja', emoji: '🔴', color: '#ff6b80' }
+  })()
+
+  // ── Predicción de duración basada en stock estimado ──
+  const diasEstimados = stockEstimadoActual !== null && consumoAjustado > 0
+    ? Math.floor((stockEstimadoActual * 1000) / consumoAjustado)
+    : null
+
+  // Alerta de stock según días restantes
+  const alertaStock = diasEstimados !== null
+    ? diasEstimados < 7  ? { nivel: 'critico',  emoji: '⚫', label: 'Stock crítico',   color: '#ff3d57', bg: 'rgba(255,61,87,0.15)',  border: 'rgba(255,61,87,0.4)'   }
+    : diasEstimados < 15 ? { nivel: 'urgente',  emoji: '🔴', label: 'Comprar urgente', color: '#ff6b80', bg: 'rgba(255,61,87,0.08)',  border: 'rgba(255,61,87,0.3)'   }
+    : diasEstimados < 30 ? { nivel: 'atencion', emoji: '🟡', label: 'Comprar pronto',  color: '#ffb300', bg: 'rgba(255,179,0,0.07)',  border: 'rgba(255,179,0,0.3)'   }
+    : { nivel: 'ok', emoji: '🟢', label: 'Stock OK', color: '#00e676', bg: 'rgba(0,230,118,0.06)', border: 'rgba(0,230,118,0.25)' }
+    : null
+
+  // Fecha recomendada para comprar (cuando queden 14 días)
+  const prediccionCompra = (() => {
+    if (!diasEstimados || diasEstimados <= 0) return null
+    const diasParaComprar = Math.max(0, diasEstimados - 14)
+    const d = new Date()
+    d.setDate(d.getDate() + diasParaComprar)
+    return { diasParaComprar, fechaCompra: formatFecha(d), diasRestantes: diasEstimados }
+  })()
+
+  // ── Cruce con producción futura (partos en próximos 30 días) ──
+  const partosProximos30 = useMemo(() => {
+    if (!todasCamadasRaw.length) return 0
+    return todasCamadasRaw.filter(c => {
+      if (c.fecha_nacimiento || c.failure_flag || !c.fecha_copula) return false
+      const bio = getBio(c.bioterio_id)
+      const proyParto = parseDate(c.fecha_copula)
+      proyParto.setDate(proyParto.getDate() + bio.GESTACION_DIAS)
+      const diasHastaParto = difDias(parseDate(hoy()), proyParto)
+      return diasHastaParto >= 0 && diasHastaParto <= 30
+    }).length
+  }, [todasCamadasRaw])
+
+  // Consumo proyectado con el impacto de los partos (cada parto = +~15% consumo)
+  const consumoConPartos = partosProximos30 > 0
+    ? consumoAjustado * (1 + Math.min(0.5, partosProximos30 * 0.12))
+    : consumoAjustado
+
+  const diasConProduccion = stockEstimadoActual !== null && consumoConPartos > 0
+    ? Math.floor((stockEstimadoActual * 1000) / consumoConPartos)
+    : null
+
+  const fechaAgotamiento = (() => {
     if (!diasEstimados) return null
     const d = new Date()
     d.setDate(d.getDate() + diasEstimados)
     return formatFecha(d)
-  }, [diasEstimados])
+  })()
 
   // ── Insights por categoría — usa factor propio de cada una ──
   const categoryInsights = useMemo(() => {
@@ -761,6 +840,25 @@ export default function ConsumoAlimento() {
     }
   }
 
+  // ── Estimaciones rápidas (localStorage) ──
+  function registrarEstimacion({ tipo, kg, notas }) {
+    const nuevo = { id: generarId(), fecha: hoy(), tipo, kg, notas: notas || '' }
+    setEstimacionesRapidas(prev => {
+      const arr = [...prev, nuevo]
+      localStorage.setItem(LS_ESTIMACIONES, JSON.stringify(arr))
+      return arr
+    })
+    setModalEstimRapida(false)
+  }
+
+  function eliminarEstimacion(id) {
+    setEstimacionesRapidas(prev => {
+      const arr = prev.filter(e => e.id !== id)
+      localStorage.setItem(LS_ESTIMACIONES, JSON.stringify(arr))
+      return arr
+    })
+  }
+
   // ── Registrar censo ──
   async function registrarCenso(fecha, kg, hora, rellenoKg) {
     const consumoEstimadoGDia = Math.round(consumoAjustado)
@@ -873,6 +971,249 @@ export default function ConsumoAlimento() {
 
         {global && (
           <>
+            {/* ═══════════════════════════════════════════════════════════
+                HERO: ALIMENTO DISPONIBLE
+            ════════════════════════════════════════════════════════════ */}
+            <div className="rounded-2xl overflow-hidden"
+              style={{
+                background: 'rgba(13,21,40,0.95)',
+                border: `2px solid ${alertaStock?.border ?? 'rgba(0,230,118,0.4)'}`,
+                boxShadow: `0 0 40px ${alertaStock?.bg ?? 'rgba(0,230,118,0.06)'}`,
+              }}>
+
+              {/* Cabecera */}
+              <div className="px-6 py-4 flex items-center gap-3"
+                style={{ borderBottom: `1px solid ${alertaStock?.border ?? 'rgba(0,230,118,0.2)'}`, background: alertaStock?.bg ?? 'rgba(0,230,118,0.04)' }}>
+                <span className="text-xl">🌾</span>
+                <div className="flex-1">
+                  <div className="font-bold text-white text-base">Alimento disponible</div>
+                  <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                    Estimación continua · {confianzaEstimacion.emoji} Confianza {confianzaEstimacion.label}
+                    {diasDesdeCenso > 0 && <span> · Censo hace {diasDesdeCenso}d</span>}
+                  </div>
+                </div>
+                {alertaStock && (
+                  <span className="text-xs font-bold px-3 py-1.5 rounded-xl"
+                    style={{ background: alertaStock.bg, border: `1px solid ${alertaStock.border}`, color: alertaStock.color }}>
+                    {alertaStock.emoji} {alertaStock.label}
+                  </span>
+                )}
+              </div>
+
+              {/* Fila principal: Stock · Duración · Comprar */}
+              <div className="grid grid-cols-3 divide-x" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+
+                {/* Stock estimado */}
+                <div className="px-5 py-5 flex flex-col items-center justify-center gap-1">
+                  <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>Stock estimado</div>
+                  {stockEstimadoActual !== null ? (
+                    <>
+                      <div className="text-4xl font-black font-mono" style={{ color: alertaStock?.color ?? '#00e676' }}>
+                        {stockEstimadoActual.toFixed(1)}
+                      </div>
+                      <div className="text-sm font-mono" style={{ color: '#4a5f7a' }}>kg</div>
+                    </>
+                  ) : (
+                    <div className="text-2xl font-bold font-mono" style={{ color: '#3d5068' }}>—</div>
+                  )}
+                </div>
+
+                {/* Duración estimada */}
+                <div className="px-5 py-5 flex flex-col items-center justify-center gap-1">
+                  <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>Duración estimada</div>
+                  {diasEstimados !== null ? (
+                    <>
+                      <div className="text-4xl font-black font-mono" style={{ color: alertaStock?.color ?? '#00e676' }}>
+                        {diasEstimados}
+                      </div>
+                      <div className="text-sm font-mono" style={{ color: '#4a5f7a' }}>días · hasta {fechaAgotamiento}</div>
+                    </>
+                  ) : (
+                    <div className="text-sm font-mono" style={{ color: '#3d5068' }}>Registrá un censo</div>
+                  )}
+                </div>
+
+                {/* Predicción de compra */}
+                <div className="px-5 py-5 flex flex-col items-center justify-center gap-1">
+                  <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>
+                    {prediccionCompra?.diasParaComprar === 0 ? '⚠ Comprar ahora' : 'Comprar antes de'}
+                  </div>
+                  {prediccionCompra ? (
+                    <>
+                      <div className="text-2xl font-black font-mono" style={{
+                        color: prediccionCompra.diasParaComprar === 0 ? '#ff3d57'
+                          : prediccionCompra.diasParaComprar <= 7 ? '#ff6b80' : '#ffb300',
+                      }}>
+                        {prediccionCompra.fechaCompra}
+                      </div>
+                      <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
+                        {prediccionCompra.diasParaComprar === 0
+                          ? 'Stock bajo para 14 días'
+                          : `en ${prediccionCompra.diasParaComprar}d · para tener margen`}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-sm font-mono" style={{ color: '#3d5068' }}>—</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Fila secundaria: Último censo · Consumido · Ingresos */}
+              <div className="grid grid-cols-3 divide-x"
+                style={{ borderColor: 'rgba(255,255,255,0.05)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                <div className="px-5 py-3 text-center">
+                  <div className="text-xs font-mono mb-0.5" style={{ color: '#4a5f7a' }}>Último censo</div>
+                  {ultimoCenso ? (
+                    <>
+                      <div className="font-bold font-mono text-sm" style={{ color: '#a78bfa' }}>{ultimoCenso.kg.toFixed(1)} kg</div>
+                      <div className="text-xs font-mono" style={{ color: '#3d5068' }}>{formatFecha(ultimoCenso.fecha)}</div>
+                    </>
+                  ) : <div className="text-xs font-mono" style={{ color: '#3d5068' }}>Sin censos</div>}
+                </div>
+                <div className="px-5 py-3 text-center">
+                  <div className="text-xs font-mono mb-0.5" style={{ color: '#4a5f7a' }}>Consumido desde censo</div>
+                  {ultimoCenso ? (
+                    <>
+                      <div className="font-bold font-mono text-sm" style={{ color: '#ff6b80' }}>
+                        ~{consumoDesdeUltimoCensoKg.toFixed(1)} kg
+                      </div>
+                      <div className="text-xs font-mono" style={{ color: '#3d5068' }}>en {diasDesdeCenso}d</div>
+                    </>
+                  ) : <div className="text-xs font-mono" style={{ color: '#3d5068' }}>—</div>}
+                </div>
+                <div className="px-5 py-3 text-center">
+                  <div className="text-xs font-mono mb-0.5" style={{ color: '#4a5f7a' }}>Ingresos desde censo</div>
+                  {ingresosPostCenso.length > 0 ? (
+                    <>
+                      <div className="font-bold font-mono text-sm" style={{ color: '#00e676' }}>
+                        +{ingresosPostCenso.reduce((s, i) => s + i.kg, 0).toFixed(1)} kg
+                      </div>
+                      <div className="text-xs font-mono" style={{ color: '#3d5068' }}>
+                        {ingresosPostCenso.length} ingreso{ingresosPostCenso.length !== 1 ? 's' : ''}
+                      </div>
+                    </>
+                  ) : <div className="text-xs font-mono" style={{ color: '#3d5068' }}>Sin ingresos</div>}
+                </div>
+              </div>
+
+              {/* Cruce con producción futura */}
+              {partosProximos30 > 0 && diasConProduccion !== null && diasConProduccion !== diasEstimados && (
+                <div className="px-5 py-3 flex items-center gap-3"
+                  style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,179,0,0.04)' }}>
+                  <span className="text-base shrink-0">🐣</span>
+                  <div className="text-xs font-mono flex-1" style={{ color: '#ffb300' }}>
+                    <span className="font-bold">{partosProximos30} parto{partosProximos30 !== 1 ? 's' : ''} esperados en 30d</span>
+                    {' '}— consumo +{Math.round((consumoConPartos / consumoAjustado - 1) * 100)}% →{' '}
+                    duración real: <span className="font-bold">{diasEstimados} → {diasConProduccion} días</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Estimaciones rápidas desde último censo */}
+              {estimacionesDesdeCenso.length > 0 && (
+                <div className="px-5 py-2 flex items-center gap-2 flex-wrap"
+                  style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.01)' }}>
+                  <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Ajustes manuales:</span>
+                  {estimacionesDesdeCenso.slice(-5).map(e => (
+                    <span key={e.id} className="text-xs font-mono px-2 py-0.5 rounded-lg"
+                      style={{
+                        background: e.kg >= 0 ? 'rgba(0,230,118,0.08)' : 'rgba(255,107,128,0.08)',
+                        border: `1px solid ${e.kg >= 0 ? 'rgba(0,230,118,0.25)' : 'rgba(255,107,128,0.25)'}`,
+                        color: e.kg >= 0 ? '#00e676' : '#ff6b80',
+                      }}>
+                      {e.kg >= 0 ? '+' : ''}{e.kg.toFixed(1)} kg
+                    </span>
+                  ))}
+                  <span className="text-xs font-mono font-bold"
+                    style={{ color: estimacionesDeltaKg >= 0 ? '#00e676' : '#ff6b80' }}>
+                    = {estimacionesDeltaKg >= 0 ? '+' : ''}{estimacionesDeltaKg.toFixed(1)} kg neto
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* ── Estimación rápida: ajuste de stock sin censo completo ── */}
+            <div className="rounded-2xl overflow-hidden"
+              style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(64,196,255,0.2)' }}>
+              <div className="px-5 py-3 flex items-center gap-3"
+                style={{ borderBottom: '1px solid rgba(64,196,255,0.12)', background: 'rgba(64,196,255,0.04)' }}>
+                <span className="text-base">⚡</span>
+                <div className="flex-1">
+                  <div className="font-bold text-sm text-white">Estimación rápida</div>
+                  <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                    Ajustá el stock sin hacer un censo completo — se combina con el consumo estimado
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-5 py-4">
+                {/* Quick-action buttons */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                  {[
+                    { tipo: 'bolsa_abierta',   kg: +KG_POR_BOLSA,      label: `📦 Abrí bolsa nueva`,    sub: `+${KG_POR_BOLSA} kg`, color: '#00e676', bg: 'rgba(0,230,118,0.08)',   border: 'rgba(0,230,118,0.3)'   },
+                    { tipo: 'bolsa_terminada',  kg: -KG_POR_BOLSA,      label: `✅ Bolsa terminada`,     sub: `-${KG_POR_BOLSA} kg`, color: '#ff6b80', bg: 'rgba(255,107,128,0.08)', border: 'rgba(255,107,128,0.3)' },
+                    { tipo: 'media_bolsa',      kg: -KG_POR_BOLSA / 2,  label: `📐 Queda media bolsa`,   sub: `-${KG_POR_BOLSA / 2} kg`, color: '#ffb300', bg: 'rgba(255,179,0,0.07)', border: 'rgba(255,179,0,0.3)' },
+                    { tipo: 'cuarto_bolsa',     kg: -KG_POR_BOLSA / 4,  label: `📐 Queda cuarto`,        sub: `-${KG_POR_BOLSA / 4} kg`, color: '#ffb300', bg: 'rgba(255,179,0,0.07)', border: 'rgba(255,179,0,0.3)' },
+                  ].map(op => (
+                    <button key={op.tipo}
+                      onClick={() => registrarEstimacion({ tipo: op.tipo, kg: op.kg })}
+                      className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl text-xs font-semibold transition-all"
+                      style={{ background: op.bg, border: `1px solid ${op.border}`, color: op.color }}
+                      onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.15)' }}
+                      onMouseLeave={e => { e.currentTarget.style.filter = 'brightness(1)' }}
+                    >
+                      <span>{op.label}</span>
+                      <span className="font-mono font-bold text-sm">{op.sub}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setModalEstimRapida(true)}
+                  className="w-full py-2 rounded-xl text-xs font-semibold"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
+                >
+                  ✏️ Ajuste manual (kg personalizado)
+                </button>
+
+                {/* Últimas 3 estimaciones */}
+                {estimacionesRapidas.length > 0 && (
+                  <div className="mt-3 space-y-1.5">
+                    <div className="text-xs font-mono" style={{ color: '#3d5068' }}>Últimos ajustes:</div>
+                    {[...estimacionesRapidas]
+                      .sort((a, b) => b.fecha.localeCompare(a.fecha))
+                      .slice(0, 3)
+                      .map(e => {
+                        const labels = {
+                          bolsa_abierta: '📦 Bolsa abierta', bolsa_terminada: '✅ Bolsa terminada',
+                          media_bolsa: '📐 Media bolsa', cuarto_bolsa: '📐 Cuarto bolsa', ajuste: '✏️ Ajuste manual',
+                        }
+                        return (
+                          <div key={e.id}
+                            className="flex items-center gap-2 px-3 py-2 rounded-xl"
+                            style={{
+                              background: e.kg >= 0 ? 'rgba(0,230,118,0.05)' : 'rgba(255,107,128,0.05)',
+                              border: `1px solid ${e.kg >= 0 ? 'rgba(0,230,118,0.15)' : 'rgba(255,107,128,0.15)'}`,
+                            }}>
+                            <span className="text-xs" style={{ color: '#6a8099', flex: 1 }}>
+                              {labels[e.tipo] ?? e.tipo}
+                            </span>
+                            <span className="text-xs font-mono font-bold" style={{ color: e.kg >= 0 ? '#00e676' : '#ff6b80' }}>
+                              {e.kg >= 0 ? '+' : ''}{e.kg.toFixed(1)} kg
+                            </span>
+                            <span className="text-xs font-mono" style={{ color: '#3d5068' }}>{formatFecha(e.fecha)}</span>
+                            <button onClick={() => eliminarEstimacion(e.id)}
+                              className="text-xs shrink-0" style={{ color: '#2a3a50' }} title="Eliminar">✕</button>
+                          </div>
+                        )
+                      })}
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* ── Tarjeta resumen global ── */}
             <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.8)', border: '1.5px solid rgba(255,179,0,0.3)', boxShadow: '0 0 30px rgba(255,179,0,0.06)' }}>
               <div className="px-6 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(255,179,0,0.15)', background: 'rgba(255,179,0,0.05)' }}>
@@ -974,157 +1315,61 @@ export default function ConsumoAlimento() {
               </div>
             </div>
 
-            {/* ── Panel de stock y predicción ── */}
-            <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(0,230,118,0.2)' }}>
-              <div className="px-6 py-4 flex items-center gap-3 flex-wrap" style={{ borderBottom: '1px solid rgba(0,230,118,0.12)', background: 'rgba(0,230,118,0.04)' }}>
-                <div className="flex-1">
-                  <div className="font-bold text-sm text-white">Stock y predicción de duración</div>
-                  <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
-                    Basado en el último censo más los ingresos registrados
+            {/* ── Detalle de consumo observado (última ventana inter-censos) ── */}
+            {(() => {
+              const idx = censosOrdenados.length - 1
+              if (idx < 1) return null
+              const ultimo = censosOrdenados[idx]
+              const cp = consumoPorCenso(ultimo, idx)
+              if (!cp) return null
+              const colorFuente = cp.fuenteRelleno === 'confirmado' ? '#00e676'
+                : cp.fuenteRelleno === 'declarado' ? '#ffb300' : '#4a5f7a'
+              const labelFuente = cp.fuenteRelleno === 'confirmado' ? '✅ Reposición confirmada'
+                : cp.fuenteRelleno === 'declarado' ? '⚠️ Relleno declarado' : '— Sin corrección'
+              return (
+                <div className="rounded-xl px-5 py-4"
+                  style={{ background: 'rgba(13,21,40,0.6)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                  <div className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#4a5f7a' }}>
+                    Consumo observado — última ventana entre censos
                   </div>
-                </div>
-                <button
-                  onClick={() => setModalReposicion(true)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all shrink-0"
-                  style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.3)', color: '#00e676' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,230,118,0.16)' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,230,118,0.08)' }}
-                >
-                  ✅ Confirmar reposición
-                </button>
-              </div>
-
-              {stockActualKg === null ? (
-                <div className="px-6 py-8 text-center text-sm font-mono" style={{ color: '#3d5068' }}>
-                  Registrá el primer censo para ver la predicción de duración
-                </div>
-              ) : (
-                <div className="px-6 py-5">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {/* Stock actual */}
-                    <div className="rounded-xl px-4 py-3 text-center" style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.2)' }}>
-                      <div className="text-xs font-mono mb-1" style={{ color: '#4a5f7a' }}>Stock actual</div>
-                      <div className="text-xl font-bold font-mono" style={{ color: '#00e676' }}>
-                        {stockActualKg.toFixed(1)} kg
+                  <div className="flex flex-wrap gap-x-6 gap-y-2 items-center">
+                    <div>
+                      <div className="text-xs font-mono mb-0.5" style={{ color: '#4a5f7a' }}>Observado</div>
+                      <div className="font-bold font-mono text-sm" style={{ color: '#c9d4e0' }}>
+                        {Math.round(cp.consumidoObservadoG / cp.dias)} g/día
                       </div>
                     </div>
-
-                    {/* Último censo */}
-                    <div className="rounded-xl px-4 py-3 text-center" style={{ background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.2)' }}>
-                      <div className="text-xs font-mono mb-1" style={{ color: '#4a5f7a' }}>Último censo</div>
-                      <div className="font-bold font-mono text-sm" style={{ color: '#a78bfa' }}>
-                        {ultimoCenso.kg.toFixed(1)} kg
-                      </div>
-                      <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
-                        {formatFecha(ultimoCenso.fecha)}
-                      </div>
-                    </div>
-
-                    {/* Último ingreso */}
-                    <div className="rounded-xl px-4 py-3 text-center" style={{ background: 'rgba(0,230,118,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                      <div className="text-xs font-mono mb-1" style={{ color: '#4a5f7a' }}>Último ingreso</div>
-                      {ingresos.length > 0 ? (() => {
-                        const ult = [...ingresos].sort((a, b) => b.fecha.localeCompare(a.fecha))[0]
-                        return (
-                          <>
-                            <div className="font-bold font-mono text-sm" style={{ color: '#00e676' }}>+{ult.kg.toFixed(1)} kg</div>
-                            <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>{formatFecha(ult.fecha)}</div>
-                          </>
-                        )
-                      })() : (
-                        <div className="text-xs font-mono mt-1" style={{ color: '#3d5068' }}>Sin ingresos</div>
-                      )}
-                    </div>
-
-                    {/* Duración estimada */}
-                    <div
-                      className="rounded-xl px-4 py-3 text-center"
-                      style={{
-                        background: diasEstimados < 7 ? 'rgba(255,61,87,0.08)' : diasEstimados < 14 ? 'rgba(255,179,0,0.07)' : 'rgba(0,230,118,0.06)',
-                        border: `1px solid ${diasEstimados < 7 ? 'rgba(255,61,87,0.3)' : diasEstimados < 14 ? 'rgba(255,179,0,0.25)' : 'rgba(0,230,118,0.2)'}`,
-                      }}
-                    >
-                      <div className="text-xs font-mono mb-1" style={{ color: '#4a5f7a' }}>Duración estimada</div>
-                      {diasEstimados ? (
-                        <>
-                          <div
-                            className="text-xl font-bold font-mono"
-                            style={{ color: diasEstimados < 7 ? '#ff6b80' : diasEstimados < 14 ? '#ffb300' : '#00e676' }}
-                          >
-                            {diasEstimados} días
-                          </div>
-                          <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
-                            {fechaAgotamiento}
-                          </div>
-                        </>
-                      ) : (
-                        <div className="text-xs font-mono mt-1" style={{ color: '#3d5068' }}>—</div>
-                      )}
-                    </div>
-                  </div>
-
-                  {ingresosPostCenso.length > 0 && (
-                    <div className="mt-3 text-xs font-mono" style={{ color: '#4a5f7a' }}>
-                      {ingresosPostCenso.length} ingreso{ingresosPostCenso.length > 1 ? 's' : ''} post-censo: +{ingresosPostCenso.reduce((s, i) => s + i.kg, 0).toFixed(1)} kg sumados al stock
-                    </div>
-                  )}
-
-                  {/* Fila consumo real vs corregido (basado en el último par de censos) */}
-                  {(() => {
-                    const idx = censosOrdenados.length - 1
-                    if (idx < 1) return null
-                    const ultimo = censosOrdenados[idx]
-                    const cp = consumoPorCenso(ultimo, idx)
-                    if (!cp) return null
-                    const colorFuente = cp.fuenteRelleno === 'confirmado' ? '#00e676'
-                      : cp.fuenteRelleno === 'declarado' ? '#ffb300' : '#4a5f7a'
-                    const labelFuente = cp.fuenteRelleno === 'confirmado' ? '✅ Reposición confirmada'
-                      : cp.fuenteRelleno === 'declarado' ? '⚠️ Relleno declarado'
-                      : '— Sin corrección'
-                    return (
-                      <div className="mt-4 rounded-xl px-4 py-3"
-                        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                        <div className="flex flex-wrap gap-x-6 gap-y-2 items-center">
-                          <div>
-                            <div className="text-xs font-mono mb-0.5" style={{ color: '#4a5f7a' }}>Observado (última ventana)</div>
-                            <div className="font-bold font-mono text-sm" style={{ color: '#c9d4e0' }}>
-                              {Math.round(cp.consumidoObservadoG / cp.dias)} g/día
-                            </div>
-                          </div>
-                          {cp.rellenoG > 0 && (
-                            <>
-                              <div style={{ color: '#3a5068', fontSize: 18 }}>−</div>
-                              <div>
-                                <div className="text-xs font-mono mb-0.5" style={{ color: '#4a5f7a' }}>Alimento en jaulas</div>
-                                <div className="font-bold font-mono text-sm" style={{ color: '#ffb300' }}>
-                                  {(cp.rellenoG / cp.dias / 1000).toFixed(2)} kg/día
-                                </div>
-                              </div>
-                              <div style={{ color: '#3a5068', fontSize: 18 }}>=</div>
-                            </>
-                          )}
-                          <div>
-                            <div className="text-xs font-mono mb-0.5" style={{ color: '#4a5f7a' }}>Consumo real estimado</div>
-                            <div className="font-bold font-mono text-sm" style={{ color: '#00e676' }}>
-                              {Math.round(cp.consumidoG / cp.dias)} g/día
-                              <span className="font-normal ml-1" style={{ color: '#4a5f7a' }}>
-                                ({(cp.consumidoG / 1000).toFixed(2)} kg en {cp.dias}d)
-                              </span>
-                            </div>
-                          </div>
-                          <div className="ml-auto shrink-0">
-                            <span className="text-xs font-mono px-2 py-1 rounded-lg"
-                              style={{ background: `${colorFuente}12`, border: `1px solid ${colorFuente}35`, color: colorFuente }}>
-                              {labelFuente}
-                            </span>
+                    {cp.rellenoG > 0 && (
+                      <>
+                        <div style={{ color: '#3a5068', fontSize: 18 }}>−</div>
+                        <div>
+                          <div className="text-xs font-mono mb-0.5" style={{ color: '#4a5f7a' }}>Relleno en jaulas</div>
+                          <div className="font-bold font-mono text-sm" style={{ color: '#ffb300' }}>
+                            {(cp.rellenoG / cp.dias / 1000).toFixed(2)} kg/día
                           </div>
                         </div>
+                        <div style={{ color: '#3a5068', fontSize: 18 }}>=</div>
+                      </>
+                    )}
+                    <div>
+                      <div className="text-xs font-mono mb-0.5" style={{ color: '#4a5f7a' }}>Consumo real</div>
+                      <div className="font-bold font-mono text-sm" style={{ color: '#00e676' }}>
+                        {Math.round(cp.consumidoG / cp.dias)} g/día
+                        <span className="font-normal ml-1" style={{ color: '#4a5f7a' }}>
+                          ({(cp.consumidoG / 1000).toFixed(2)} kg en {cp.dias}d)
+                        </span>
                       </div>
-                    )
-                  })()}
+                    </div>
+                    <div className="ml-auto shrink-0">
+                      <span className="text-xs font-mono px-2 py-1 rounded-lg"
+                        style={{ background: `${colorFuente}12`, border: `1px solid ${colorFuente}35`, color: colorFuente }}>
+                        {labelFuente}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
+              )
+            })()}
 
             {/* ── Aviso de posible relleno en el último censo ── */}
             {avisoRelleno && (
@@ -1633,6 +1878,13 @@ export default function ConsumoAlimento() {
       </div>
 
       {/* Modales */}
+      {modalEstimRapida && (
+        <ModalEstimacionRapida
+          stockEstimadoActual={stockEstimadoActual}
+          onConfirmar={registrarEstimacion}
+          onCerrar={() => setModalEstimRapida(false)}
+        />
+      )}
       {modalCenso && (
         <ModalCensoAlimento
           stockActualKg={stockActualKg}
@@ -2306,6 +2558,156 @@ function ModalIngreso({ stockActualKg, onConfirmar, onCerrar }) {
               style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.4)', color: '#00e676' }}
             >
               Guardar ingreso
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ── Modal de estimación rápida ────────────────────────────────────────────────
+
+function ModalEstimacionRapida({ stockEstimadoActual, onConfirmar, onCerrar }) {
+  const [kg,    setKg]    = useState('')
+  const [signo, setSigno] = useState(-1)   // -1 = resta, +1 = suma
+  const [notas, setNotas] = useState('')
+  const [tipo,  setTipo]  = useState('ajuste')
+
+  const kgNum   = (parseFloat(kg) || 0) * signo
+  const valido  = Math.abs(kgNum) > 0
+  const nuevaEst = stockEstimadoActual !== null ? Math.max(0, stockEstimadoActual + kgNum) : null
+
+  const PRESETS = [
+    { label: '📦 Bolsa nueva',    kg: +KG_POR_BOLSA,      tipo: 'bolsa_abierta',  color: '#00e676', signo: +1 },
+    { label: '✅ Bolsa terminada', kg: -KG_POR_BOLSA,      tipo: 'bolsa_terminada',color: '#ff6b80', signo: -1 },
+    { label: '📐 Media bolsa',     kg: -KG_POR_BOLSA / 2,  tipo: 'media_bolsa',    color: '#ffb300', signo: -1 },
+    { label: '📐 Cuarto bolsa',    kg: -KG_POR_BOLSA / 4,  tipo: 'cuarto_bolsa',   color: '#ffb300', signo: -1 },
+  ]
+
+  function aplicarPreset(p) {
+    setKg(Math.abs(p.kg).toString())
+    setSigno(p.signo)
+    setTipo(p.tipo)
+  }
+
+  function confirmar(e) {
+    e.preventDefault()
+    if (!valido) return
+    onConfirmar({ tipo, kg: kgNum, notas: notas.trim() })
+  }
+
+  const inputSt = { background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(5,8,16,0.85)', backdropFilter: 'blur(4px)' }}>
+      <div className="w-full max-w-sm rounded-2xl overflow-hidden"
+        style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(64,196,255,0.25)', boxShadow: '0 0 60px rgba(64,196,255,0.1)' }}>
+
+        <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(64,196,255,0.12)', background: 'rgba(64,196,255,0.04)' }}>
+          <div className="font-bold text-white text-sm">⚡ Ajuste de stock estimado</div>
+          <div className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
+            Registrá un cambio sin hacer un censo completo
+          </div>
+        </div>
+
+        <form onSubmit={confirmar} className="px-6 py-5 space-y-4">
+
+          {/* Presets */}
+          <div className="grid grid-cols-2 gap-2">
+            {PRESETS.map(p => (
+              <button key={p.tipo} type="button"
+                onClick={() => aplicarPreset(p)}
+                className="flex flex-col items-start px-3 py-2.5 rounded-xl text-xs font-semibold transition-all"
+                style={{
+                  background: tipo === p.tipo ? `${p.color}15` : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${tipo === p.tipo ? `${p.color}50` : 'rgba(30,51,82,0.6)'}`,
+                  color: tipo === p.tipo ? p.color : '#4a5f7a',
+                }}>
+                <span>{p.label}</span>
+                <span className="font-mono font-bold mt-0.5">
+                  {p.kg > 0 ? '+' : ''}{p.kg.toFixed(1)} kg
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Ajuste manual */}
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
+              O ingresá un valor propio
+            </div>
+            <div className="flex gap-2">
+              {/* Signo */}
+              <div className="flex rounded-xl overflow-hidden shrink-0" style={{ border: '1px solid rgba(30,51,82,0.9)' }}>
+                {[-1, +1].map(s => (
+                  <button key={s} type="button"
+                    onClick={() => { setSigno(s); setTipo('ajuste') }}
+                    className="px-4 py-2.5 text-sm font-bold"
+                    style={{
+                      background: signo === s
+                        ? (s === -1 ? 'rgba(255,107,128,0.2)' : 'rgba(0,230,118,0.2)')
+                        : 'rgba(8,13,26,0.9)',
+                      color: signo === s ? (s === -1 ? '#ff6b80' : '#00e676') : '#3d5068',
+                    }}>
+                    {s === -1 ? '−' : '+'}
+                  </button>
+                ))}
+              </div>
+              {/* Valor */}
+              <input type="number" min="0" step="0.5" value={kg}
+                onChange={e => { setKg(e.target.value); setTipo('ajuste') }}
+                placeholder="kg"
+                className="flex-1 px-3 py-2.5 rounded-xl text-sm font-mono" style={inputSt} />
+              <span className="flex items-center text-sm font-mono" style={{ color: '#4a5f7a' }}>kg</span>
+            </div>
+          </div>
+
+          {/* Notas */}
+          <div>
+            <input type="text" value={notas} onChange={e => setNotas(e.target.value)}
+              placeholder="Nota opcional (ej: bolsa de maíz, depósito nuevo...)"
+              className="w-full px-3 py-2.5 rounded-xl text-xs font-mono" style={inputSt} />
+          </div>
+
+          {/* Preview */}
+          {valido && (
+            <div className="rounded-xl px-4 py-3 text-xs font-mono space-y-1"
+              style={{
+                background: kgNum >= 0 ? 'rgba(0,230,118,0.06)' : 'rgba(255,107,128,0.06)',
+                border: `1px solid ${kgNum >= 0 ? 'rgba(0,230,118,0.2)' : 'rgba(255,107,128,0.2)'}`,
+              }}>
+              <div style={{ color: '#6a8099' }}>
+                Ajuste: <span style={{ color: kgNum >= 0 ? '#00e676' : '#ff6b80', fontWeight: 'bold' }}>
+                  {kgNum >= 0 ? '+' : ''}{kgNum.toFixed(1)} kg
+                </span>
+              </div>
+              {nuevaEst !== null && (
+                <div style={{ color: '#8a9bb0' }}>
+                  Stock estimado: <span style={{ color: '#c9d4e0', fontWeight: 'bold' }}>
+                    {stockEstimadoActual?.toFixed(1)} → {nuevaEst.toFixed(1)} kg
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onCerrar}
+              className="flex-1 py-2.5 rounded-xl text-sm font-mono"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a' }}>
+              Cancelar
+            </button>
+            <button type="submit" disabled={!valido}
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+              style={{
+                background: valido ? 'rgba(64,196,255,0.12)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${valido ? 'rgba(64,196,255,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                color: valido ? '#40c4ff' : '#3d5068',
+                cursor: valido ? 'pointer' : 'not-allowed',
+              }}>
+              Registrar ajuste
             </button>
           </div>
         </form>
