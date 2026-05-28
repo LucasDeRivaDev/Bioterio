@@ -345,6 +345,10 @@ export default function ConsumoAlimento() {
       setDatosBioterios(datos)
       // Guardar camadas raw para el cruce con producción futura
       setTodasCamadasRaw(TODOS_BIOTERIOS.flatMap((_, i) => resultados[i][1].data ?? []))
+      // Detectar tablas de alimento faltantes (migración SQL no ejecutada aún)
+      if (resCensos.error?.code === '42P01') {
+        setError('Las tablas de alimento no existen en Supabase. Ejecutá el archivo supabase_migration_alimento.sql en el SQL Editor de Supabase para habilitarlas.')
+      }
       setCensos((resCensos.data ?? []).map(censoAlimFromDB))
       setIngresos((resIngresos.data ?? []).map(r => ({ id: r.id, fecha: typeof r.fecha === 'string' ? r.fecha : r.fecha?.slice?.(0,10), kg: r.kg ?? 0, notas: r.notas ?? null })))
       setReposiciones((resReposiciones.data ?? []).map(reposicionFromDB))
@@ -2017,8 +2021,7 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCo
   const inputSt = { background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(5,8,16,0.85)', backdropFilter: 'blur(4px)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(5,8,16,0.85)', backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-md rounded-2xl overflow-hidden max-h-[92vh] overflow-y-auto"
         style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(167,139,250,0.3)', boxShadow: '0 0 60px rgba(167,139,250,0.12)' }}>
 
@@ -2319,7 +2322,7 @@ function ModalReposicion({ fechaInicial, horaInicial, onConfirmar, onCerrar }) {
   const inputSt = { background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(5,8,16,0.85)', backdropFilter: 'blur(4px)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(5,8,16,0.85)', backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(64,196,255,0.25)', boxShadow: '0 0 60px rgba(64,196,255,0.08)' }}>
 
         {/* Header */}
@@ -2517,7 +2520,7 @@ function ModalIngreso({ stockActualKg, onConfirmar, onCerrar }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(5,8,16,0.85)', backdropFilter: 'blur(4px)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(5,8,16,0.85)', backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(0,230,118,0.25)', boxShadow: '0 0 60px rgba(0,230,118,0.08)' }}>
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(0,230,118,0.12)', background: 'rgba(0,230,118,0.04)' }}>
           <div className="font-bold text-white text-sm">📦 Registrar ingreso de alimento</div>
@@ -2618,8 +2621,7 @@ function ModalEstimacionRapida({ stockEstimadoActual, onConfirmar, onCerrar }) {
   const inputSt = { background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(5,8,16,0.85)', backdropFilter: 'blur(4px)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(5,8,16,0.85)', backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-sm rounded-2xl overflow-hidden"
         style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(64,196,255,0.25)', boxShadow: '0 0 60px rgba(64,196,255,0.1)' }}>
 
