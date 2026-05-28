@@ -25,13 +25,9 @@ const TODOS = [
   { id: 'ratones_hibridos', bio: BIO_RATONES, color: '#ffb300', label: 'Ratones Híbridos',   icon: '🐭', short: 'Híbridos' },
 ]
 
-// ── Config localStorage ────────────────────────────────────────────────────────
+// ── Config (Supabase) ──────────────────────────────────────────────────────────
 
-const LS = id => `appMosca_capacidad_${id}`
 const CFG0 = { maxAnimales: 0, maxJaulas: 0, diasProyeccion: 60 }
-
-function leerCfg(id)    { try { return { ...CFG0, ...JSON.parse(localStorage.getItem(LS(id)) || '{}') } } catch { return CFG0 } }
-function guardarCfg(id, c) { localStorage.setItem(LS(id), JSON.stringify(c)) }
 
 // ── Helpers puros ─────────────────────────────────────────────────────────────
 
@@ -209,7 +205,7 @@ export default function CapacidadGlobal() {
   const [datos,     setDatos]     = useState(null)
   const [cargando,  setCargando]  = useState(true)
   const [error,     setError]     = useState(null)
-  const [configs,   setConfigs]   = useState(() => Object.fromEntries(TODOS.map(b => [b.id, leerCfg(b.id)])))
+  const [configs,   setConfigs]   = useState(() => Object.fromEntries(TODOS.map(b => [b.id, { ...CFG0 }])))
   const [excluidos, setExcluidos] = useState(() => Object.fromEntries(TODOS.map(b => [b.id, new Set()])))
   const [cfgOpen,   setCfgOpen]   = useState(false)
 
@@ -239,6 +235,25 @@ export default function CapacidadGlobal() {
 
   useEffect(() => { cargar() }, [cargar])
 
+  // Cargar configuración desde Supabase al montar
+  useEffect(() => {
+    async function cargarConfigs() {
+      const claves = TODOS.map(b => `capacidad_${b.id}`)
+      const { data } = await supabase.from('configuracion').select('clave, valor').in('clave', claves)
+      if (data?.length) {
+        setConfigs(prev => {
+          const m = { ...prev }
+          data.forEach(row => {
+            const bioId = row.clave.replace('capacidad_', '')
+            m[bioId] = { ...CFG0, ...row.valor }
+          })
+          return m
+        })
+      }
+    }
+    cargarConfigs()
+  }, [])
+
   const bioTab = TODOS.find(b => b.id === tab)
   const cfg    = configs[tab]
 
@@ -262,7 +277,10 @@ export default function CapacidadGlobal() {
   function setCfg(key, val) {
     const nuevo = { ...cfg, [key]: val }
     setConfigs(prev => ({ ...prev, [tab]: nuevo }))
-    guardarCfg(tab, nuevo)
+    supabase.from('configuracion').upsert(
+      { clave: `capacidad_${tab}`, valor: nuevo, updated_at: new Date().toISOString() },
+      { onConflict: 'clave' }
+    )
   }
 
   function toggleExcluido(id) {

@@ -4,6 +4,7 @@ import { useBioterio } from '../context/BiotheriumContext'
 import { generarTareas, formatFecha, calcularRangoParto, difDias, parseDate, hoy, generarAlertasEstrales, generarAlertasMachos } from '../utils/calculos'
 import { INTERVALO_RENOVACION_DIAS } from '../utils/constants'
 import { getPlanes, completarPlan as completarPlanDB, eliminarPlan, getNotas, actualizarNota, eliminarNota as eliminarNotaDB } from '../utils/db'
+import { supabase } from '../lib/supabase'
 import Badge from '../components/Badge'
 import {
   Scissors, Baby, Package, Activity, FlaskConical, AlertCircle, RefreshCcw,
@@ -223,16 +224,7 @@ function StatCard({ valor, label, icono, color }) {
 // Clave de localStorage para las tareas descartadas (permanente)
 const LS_KEY = 'appMosca_tareas_descartadas'
 
-// Clave para el recordatorio periódico de renovación de machos
-const LS_RENO_KEY = 'appMosca_machos_reno_ts'
-
-function debesMostrarRenovacion() {
-  try {
-    const last = localStorage.getItem(LS_RENO_KEY)
-    if (!last) return true
-    return difDias(parseDate(last), parseDate(hoy())) >= INTERVALO_RENOVACION_DIAS
-  } catch { return false }
-}
+// Renovación de machos — en Supabase para sincronizar entre usuarios
 
 function cargarDescartadas() {
   try {
@@ -261,7 +253,21 @@ export default function Dashboard() {
     })
   }
 
-  const [mostrarRenovacion, setMostrarRenovacion] = useState(() => debesMostrarRenovacion())
+  const [mostrarRenovacion, setMostrarRenovacion] = useState(false)
+
+  useEffect(() => {
+    async function cargarRenovacion() {
+      const { data } = await supabase
+        .from('configuracion')
+        .select('valor')
+        .eq('clave', 'machos_reno_ts')
+        .maybeSingle()
+      const last = data?.valor?.fecha ?? null
+      if (!last) { setMostrarRenovacion(true); return }
+      setMostrarRenovacion(difDias(parseDate(last), parseDate(hoy())) >= INTERVALO_RENOVACION_DIAS)
+    }
+    cargarRenovacion()
+  }, [])
 
   // ── Planes de apareamiento ────────────────────────────────────────────────
   const [planesApareamiento, setPlanesApareamiento] = useState([])
@@ -321,9 +327,12 @@ export default function Dashboard() {
     setNotasDash((prev) => prev.filter((n) => n.id !== id))
   }
 
-  function descartarRenovacion() {
-    localStorage.setItem(LS_RENO_KEY, hoy())
+  async function descartarRenovacion() {
     setMostrarRenovacion(false)
+    await supabase.from('configuracion').upsert(
+      { clave: 'machos_reno_ts', valor: { fecha: hoy() }, updated_at: new Date().toISOString() },
+      { onConflict: 'clave' }
+    )
   }
 
   const todasTareas = useMemo(() => generarTareas(camadas, animales, bio), [camadas, animales, bio])
