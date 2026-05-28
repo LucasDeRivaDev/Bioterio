@@ -1261,3 +1261,174 @@ function _determinarEstrategiaOptima(escenarios) {
 
   return { id: elegido.id, label: elegido.label, emoji: elegido.emoji, razon }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 19 — PRODUCCIÓN EN CURSO
+// Detecta camadas activas (en gestación / cría) cuyos animales estarán
+// disponibles en el rango de edad requerido al momento de la entrega.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Proyecta cuántos animales del tipo/sexo/edad requeridos por el pedido
+ * ya están "en camino" a partir de camadas activas del bioterio.
+ *
+ * Consideraciones:
+ *   - Camadas con fecha_nacimiento: usa datos reales de la camada
+ *   - Camadas con fecha_copula sin parto: proyecta nacimiento (cópula + gestación + ventana/2)
+ *   - Ventana de edad aceptable: [edadRequerida−14d, edadRequerida+42d]
+ */
+export function calcularProduccionEnCurso(pedido, camadas, sacrificios, entregas) {
+  const { bioterioId, cantidad, sexo, edadSemanas, fechaEntrega } = pedido
+  const necesarios = Number(cantidad) || 0
+  const vacío = { tandas: [], totalProyectado: 0, necesarios, cubiertoConProduccion: false, porcentajeCubierto: 0 }
+
+  if (!edadSemanas || !fechaEntrega) return vacío
+
+  const bio = getBio(bioterioId)
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+  const entregaDate = parseDate(fechaEntrega)
+  if (!entregaDate) return vacío
+
+  const edadDias   = Number(edadSemanas) * 7
+  const MARGEN_MIN = 14   // hasta 2 semanas más joven que lo requerido
+  const MARGEN_MAX = 42   // hasta 6 semanas más viejo
+
+  const hist = calcularProduccionHistorica(camadas, bioterioId)
+  const propSexo = sexo === 'hembras' ? hist.propHembras
+    : sexo === 'machos' ? (1 - hist.propHembras)
+    : 1
+
+  // Bajas acumuladas por camada (sacrificios + entregas)
+  const bajasPor = {}
+  for (const s of (sacrificios ?? [])) {
+    if (s.camada_id) bajasPor[s.camada_id] = (bajasPor[s.camada_id] || 0) + (s.cantidad || 0)
+  }
+  for (const e of (entregas ?? [])) {
+    if (e.camada_id) bajasPor[e.camada_id] = (bajasPor[e.camada_id] || 0) + (e.cantidad || 0)
+  }
+
+  const toISO = d => d.toISOString().split('T')[0]
+  const tandas = []
+
+  for (const c of camadas) {
+    if (c.bioterio_id !== bioterioId || c.failure_flag) continue
+
+    let nacimiento = null
+    let esFutura   = false
+    let estado     = ''
+
+    if (c.fecha_nacimiento) {
+      nacimiento = parseDate(c.fecha_nacimiento)
+      estado     = c.fecha_destete ? 'destetada' : 'en_cria'
+    } else if (c.fecha_copula) {
+      const copula = parseDate(c.fecha_copula)
+      if (!copula) continue
+      nacimiento = new Date(copula)
+      nacimiento.setDate(nacimiento.getDate() + bio.GESTACION_DIAS + Math.round(bio.VENTANA_CONCEPCION_MAX / 2))
+      estado   = 'en_gestacion'
+      esFutura = true
+    } else continue
+
+    if (!nacimiento) continue
+
+    // ¿Los animales tendrán la edad correcta en la fecha de entrega?
+    const edadAlEntrega = Math.round((entregaDate - nacimiento) / 86400000)
+    if (edadAlEntrega < edadDias - MARGEN_MIN) continue  // nacerán demasiado tarde
+    if (edadAlEntrega > edadDias + MARGEN_MAX) continue  // ya serán muy viejos
+    if (nacimiento > entregaDate) continue               // nacen después de la entrega
+
+    // Cantidad disponible del sexo requerido
+    let dispDelSexo = 0
+    if (!esFutura && c.total_crias) {
+      const bajas    = bajasPor[c.id] || 0
+      const total    = Math.max(0, (c.total_destetados ?? Math.round(c.total_crias * hist.tasaSupervivencia)) - bajas)
+      if (c.crias_hembras != null && c.crias_machos != null && c.total_crias > 0) {
+        const propH = c.crias_hembras / c.total_crias
+        dispDelSexo = sexo === 'hembras' ? Math.round(total * propH)
+          : sexo === 'machos' ? Math.round(total * (1 - propH))
+          : total
+      } else {
+        dispDelSexo = Math.round(total * propSexo)
+      }
+    } else {
+      // Gestación en curso → usar promedios históricos
+      dispDelSexo = Math.round(hist.promedioTamano * hist.tasaSupervivencia * propSexo)
+    }
+
+    if (dispDelSexo <= 0) continue
+
+    // Fecha en que alcanzarán la edad requerida
+    const fechaDisponible = new Date(nacimiento)
+    fechaDisponible.setDate(fechaDisponible.getDate() + bio.DESTETE_DIAS + edadDias)
+
+    tandas.push({
+      camadaId:            c.id,
+      fechaNacimiento:     toISO(nacimiento),
+      fechaDisponible:     toISO(fechaDisponible),
+      diasHastaDisponible: Math.round((fechaDisponible - hoy) / 86400000),
+      dispDelSexo,
+      esFutura,
+      estado,
+    })
+  }
+
+  tandas.sort((a, b) => a.fechaDisponible.localeCompare(b.fechaDisponible))
+
+  const totalProyectado = tandas.reduce((a, t) => a + t.dispDelSexo, 0)
+  return {
+    tandas,
+    totalProyectado,
+    necesarios,
+    cubiertoConProduccion:   totalProyectado >= necesarios,
+    porcentajeCubierto: Math.min(100, Math.round((totalProyectado / Math.max(1, necesarios)) * 100)),
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECCIÓN 20 — PEDIDO ESCALONADO
+// Divide un pedido en N tandas con fechas de entrega periódicas y
+// calcula el cronograma reproductivo de cada una.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Genera las N tandas de un pedido escalonado.
+ * Cada tanda tiene su propio cronograma biológico (cópula → entrega).
+ * Retorna null si el pedido no es escalonado o le faltan datos.
+ */
+export function calcularPedidoEscalonado(pedido) {
+  if (pedido.modalidad !== 'escalonada') return null
+  const { fechaEntrega, cantidadPorTanda, frecuenciaDias, tandasTotal, bioterioId, edadSemanas, sexo } = pedido
+  if (!fechaEntrega || !cantidadPorTanda || !frecuenciaDias || !tandasTotal) return null
+
+  const bio  = getBio(bioterioId)
+  const base = parseDate(fechaEntrega)
+  if (!base) return null
+
+  const toISO = d => d.toISOString().split('T')[0]
+  const tandas = []
+
+  for (let i = 0; i < Number(tandasTotal); i++) {
+    const fechaEsta = new Date(base)
+    fechaEsta.setDate(fechaEsta.getDate() + i * Number(frecuenciaDias))
+    const pedidoTanda = {
+      ...pedido,
+      cantidad:     Number(cantidadPorTanda),
+      fechaEntrega: toISO(fechaEsta),
+    }
+    const fechas = calcularFechasOptimas(pedidoTanda, bio)
+    tandas.push({
+      numero:       i + 1,
+      cantidad:     Number(cantidadPorTanda),
+      fechaEntrega: toISO(fechaEsta),
+      fechas,
+    })
+  }
+
+  return {
+    tandas,
+    totalAnimales:    Number(cantidadPorTanda) * Number(tandasTotal),
+    cantidadPorTanda: Number(cantidadPorTanda),
+    frecuenciaDias:   Number(frecuenciaDias),
+    tandasTotal:      Number(tandasTotal),
+  }
+}

@@ -15,6 +15,7 @@ import {
   generarCalendarioPedido,
   evaluarImpactoEstrategico, calcularIndiceImpactoFuturo, simularEscenariosEstrategicos,
   detectarSuperavit, detectarReproductoresProximos,
+  calcularProduccionEnCurso, calcularPedidoEscalonado,
   nivelViabilidad, labelBioterio, labelSexo, labelUso, colorEstadoPedido,
 } from '../utils/motorPedidos'
 import { reservarAnimal } from '../utils/motorDecisiones'
@@ -66,23 +67,37 @@ function ViabilidadBadge({ score, small = false }) {
 // ─── Modal formulario ───────────────────────────────────────────────────────
 function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
   const [form, setForm] = useState({
-    bioterioId:   pedido?.bioterioId   ?? 'ratas',
-    cantidad:     pedido?.cantidad     ?? '',
-    sexo:         pedido?.sexo         ?? 'ambos',
-    edadSemanas:  pedido?.edadSemanas  ?? '',
-    fechaEntrega: pedido?.fechaEntrega ?? '',
-    uso:          pedido?.uso          ?? 'investigacion',
-    solicitante:  pedido?.solicitante  ?? '',
-    notas:        pedido?.notas        ?? '',
+    bioterioId:       pedido?.bioterioId        ?? 'ratas',
+    cantidad:         pedido?.cantidad          ?? '',
+    sexo:             pedido?.sexo              ?? 'ambos',
+    edadSemanas:      pedido?.edadSemanas       ?? '',
+    fechaEntrega:     pedido?.fechaEntrega       ?? '',
+    uso:              pedido?.uso               ?? 'investigacion',
+    solicitante:      pedido?.solicitante        ?? '',
+    notas:            pedido?.notas             ?? '',
+    modalidad:        pedido?.modalidad          ?? 'unica',
+    soloVirgenes:     pedido?.soloVirgenes       ?? false,
+    cantidadPorTanda: pedido?.cantidadPorTanda   ?? '',
+    frecuenciaDias:   pedido?.frecuenciaDias     ?? '',
+    tandasTotal:      pedido?.tandasTotal        ?? '',
     ...(pedido?.id ? { id: pedido.id, estado: pedido.estado } : {}),
   })
 
-  const esValido = form.cantidad > 0 && form.edadSemanas > 0 && form.fechaEntrega
+  const esEscalonada = form.modalidad === 'escalonada'
+  const esValido = form.cantidad > 0 && form.edadSemanas > 0 && form.fechaEntrega &&
+    (!esEscalonada || (form.cantidadPorTanda > 0 && form.frecuenciaDias > 0 && form.tandasTotal > 0))
 
   function guardar(e) {
     e.preventDefault()
     if (!esValido) return
-    onGuardar({ ...form, cantidad: Number(form.cantidad), edadSemanas: Number(form.edadSemanas) })
+    onGuardar({
+      ...form,
+      cantidad:         Number(form.cantidad),
+      edadSemanas:      Number(form.edadSemanas),
+      cantidadPorTanda: form.cantidadPorTanda ? Number(form.cantidadPorTanda) : null,
+      frecuenciaDias:   form.frecuenciaDias   ? Number(form.frecuenciaDias)   : null,
+      tandasTotal:      form.tandasTotal      ? Number(form.tandasTotal)      : null,
+    })
   }
 
   return (
@@ -105,6 +120,7 @@ function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
         </div>
 
         <form onSubmit={guardar} className="px-6 py-5 space-y-4">
+          {/* Colonia */}
           <div>
             <label style={LABEL_STYLE}>Colonia / línea</label>
             <select value={form.bioterioId}
@@ -112,9 +128,34 @@ function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
               {BIOTERIOS_OPCIONES.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
             </select>
           </div>
+
+          {/* Modalidad */}
+          <div>
+            <label style={LABEL_STYLE}>Modalidad del pedido</label>
+            <div className="flex gap-2">
+              {[
+                { id: 'unica',     label: '📦 Única',     desc: 'Una entrega total' },
+                { id: 'escalonada',label: '📅 Escalonada', desc: 'Varias tandas' },
+                { id: 'flexible',  label: '🔄 Flexible',   desc: 'Fecha aproximada' },
+              ].map(m => (
+                <button key={m.id} type="button"
+                  onClick={() => setForm(f => ({ ...f, modalidad: m.id }))}
+                  className="flex-1 py-2 rounded-xl text-xs font-bold"
+                  style={{
+                    background: form.modalidad === m.id ? 'rgba(64,196,255,0.12)' : 'rgba(8,13,26,0.6)',
+                    border: form.modalidad === m.id ? '1.5px solid rgba(64,196,255,0.4)' : '1px solid rgba(30,51,82,0.8)',
+                    color: form.modalidad === m.id ? '#40c4ff' : '#4a5f7a', cursor: 'pointer',
+                  }}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Cantidad + Edad */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label style={LABEL_STYLE}>Cantidad requerida</label>
+              <label style={LABEL_STYLE}>{esEscalonada ? 'Total estimado' : 'Cantidad requerida'}</label>
               <input type="number" min="1" value={form.cantidad}
                 onChange={e => setForm(f => ({ ...f, cantidad: e.target.value }))}
                 placeholder="Ej: 40" style={INPUT_STYLE} />
@@ -126,6 +167,42 @@ function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
                 placeholder="Ej: 8" style={INPUT_STYLE} />
             </div>
           </div>
+
+          {/* Campos escalonado */}
+          {esEscalonada && (
+            <div className="rounded-xl p-3 space-y-3"
+              style={{ background: 'rgba(64,196,255,0.05)', border: '1px solid rgba(64,196,255,0.2)' }}>
+              <div className="text-xs font-bold" style={{ color: '#40c4ff' }}>📅 Configuración escalonada</div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label style={LABEL_STYLE}>Por tanda</label>
+                  <input type="number" min="1" value={form.cantidadPorTanda}
+                    onChange={e => setForm(f => ({ ...f, cantidadPorTanda: e.target.value }))}
+                    placeholder="20" style={INPUT_STYLE} />
+                </div>
+                <div>
+                  <label style={LABEL_STYLE}>Cada (días)</label>
+                  <input type="number" min="1" value={form.frecuenciaDias}
+                    onChange={e => setForm(f => ({ ...f, frecuenciaDias: e.target.value }))}
+                    placeholder="15" style={INPUT_STYLE} />
+                </div>
+                <div>
+                  <label style={LABEL_STYLE}>Tandas</label>
+                  <input type="number" min="2" max="12" value={form.tandasTotal}
+                    onChange={e => setForm(f => ({ ...f, tandasTotal: e.target.value }))}
+                    placeholder="3" style={INPUT_STYLE} />
+                </div>
+              </div>
+              {form.cantidadPorTanda && form.frecuenciaDias && form.tandasTotal && (
+                <div className="text-xs" style={{ color: '#40c4ff' }}>
+                  → {form.tandasTotal} entregas de {form.cantidadPorTanda} animales cada {form.frecuenciaDias} días
+                  ({Number(form.cantidadPorTanda) * Number(form.tandasTotal)} total)
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Sexo */}
           <div>
             <label style={LABEL_STYLE}>Sexo requerido</label>
             <div className="flex gap-2">
@@ -145,11 +222,39 @@ function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
               ))}
             </div>
           </div>
+
+          {/* Solo vírgenes */}
+          <div className="flex items-center gap-3 rounded-xl px-3 py-2.5"
+            style={{ background: form.soloVirgenes ? 'rgba(0,230,118,0.06)' : 'rgba(8,13,26,0.4)', border: `1px solid ${form.soloVirgenes ? 'rgba(0,230,118,0.25)' : 'rgba(30,51,82,0.7)'}` }}>
+            <button type="button"
+              onClick={() => setForm(f => ({ ...f, soloVirgenes: !f.soloVirgenes }))}
+              className="w-10 h-5 rounded-full relative flex-shrink-0"
+              style={{ background: form.soloVirgenes ? '#00e676' : 'rgba(30,51,82,0.8)', transition: 'background 0.2s' }}>
+              <span className="absolute top-0.5 rounded-full w-4 h-4"
+                style={{
+                  background: '#fff',
+                  left: form.soloVirgenes ? '22px' : '2px',
+                  transition: 'left 0.2s',
+                }} />
+            </button>
+            <div>
+              <div className="text-xs font-bold" style={{ color: form.soloVirgenes ? '#00e676' : '#4a5f7a' }}>
+                Solo animales vírgenes
+              </div>
+              <div className="text-xs" style={{ color: '#3a5068' }}>
+                Sin uso reproductivo previo — requerido para protocolos experimentales
+              </div>
+            </div>
+          </div>
+
+          {/* Fecha entrega */}
           <div>
-            <label style={LABEL_STYLE}>Fecha de entrega</label>
+            <label style={LABEL_STYLE}>{esEscalonada ? 'Fecha primera entrega' : 'Fecha de entrega'}</label>
             <input type="date" value={form.fechaEntrega}
               onChange={e => setForm(f => ({ ...f, fechaEntrega: e.target.value }))} style={INPUT_STYLE} />
           </div>
+
+          {/* Uso */}
           <div>
             <label style={LABEL_STYLE}>Uso destino</label>
             <div className="flex gap-2">
@@ -169,6 +274,8 @@ function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
               ))}
             </div>
           </div>
+
+          {/* Solicitante + Notas */}
           <div>
             <label style={LABEL_STYLE}>Solicitante (opcional)</label>
             <input type="text" value={form.solicitante}
@@ -182,6 +289,8 @@ function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
               placeholder="Observaciones adicionales..."
               style={{ ...INPUT_STYLE, resize: 'none' }} />
           </div>
+
+          {/* Botones */}
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onCerrar}
               className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
@@ -260,7 +369,7 @@ function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproduct
     parejasNecesarias, fechasOptimas, reproductoresSeleccionados, animalesListos,
     capacidadFutura, impactoColonia, indiceSanitario, viabilidad,
     escenariosEstrategicos, impactoEstrategico, indiceImpactoFuturo,
-    reproductoresProximos,
+    reproductoresProximos, produccionEnCurso, pedidoEscalonado,
   } = analisis
 
   const nivel    = nivelViabilidad(viabilidad.score)
@@ -357,6 +466,20 @@ function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproduct
               <span className="text-xs" style={{ color: tema.textMuted }}>📅 {formatFecha(pedido.fechaEntrega)}</span>
               <span className="text-xs" style={{ color: tema.textMuted }}>{labelUso(pedido.uso)}</span>
               {pedido.solicitante && <span className="text-xs" style={{ color: tema.textMuted }}>👤 {pedido.solicitante}</span>}
+            </div>
+            <div className="flex gap-2 flex-wrap mt-1">
+              {pedido.modalidad && pedido.modalidad !== 'unica' && (
+                <span className="text-xs px-2 py-0.5 rounded-lg font-semibold"
+                  style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.2)', color: '#40c4ff' }}>
+                  {pedido.modalidad === 'escalonada' ? '📅 Escalonada' : '🔄 Flexible'}
+                </span>
+              )}
+              {pedido.soloVirgenes && (
+                <span className="text-xs px-2 py-0.5 rounded-lg font-semibold"
+                  style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.2)', color: '#00e676' }}>
+                  🧬 Solo vírgenes
+                </span>
+              )}
             </div>
           </div>
           <div className="text-center px-4 py-2 rounded-xl"
@@ -755,6 +878,150 @@ function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproduct
         )}
       </Sec>
 
+      {/* ── 5: Producción disponible (stock actual + en camino) ───────────── */}
+      <Sec id="produccion" titulo="📦 Producción disponible">
+        {/* Separación visual: Colonia Base vs Producción */}
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <div className="rounded-lg p-2.5"
+            style={{ background: 'rgba(156,39,176,0.07)', border: '1px solid rgba(156,39,176,0.2)' }}>
+            <div className="text-xs font-bold mb-1" style={{ color: '#ce93d8' }}>🧬 Colonia base</div>
+            <div className="text-xs" style={{ color: '#4a5f7a' }}>
+              <div>♀ {impactoColonia.hembrasActivas} reproductoras</div>
+              <div>♂ {impactoColonia.machosActivos} reproductores</div>
+              <div className="mt-1 text-xs" style={{ color: '#3a5068' }}>Protegidos — nunca entregables</div>
+            </div>
+          </div>
+          <div className="rounded-lg p-2.5"
+            style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.18)' }}>
+            <div className="text-xs font-bold mb-1" style={{ color: '#00e676' }}>📦 Producción</div>
+            <div className="text-xs" style={{ color: '#4a5f7a' }}>
+              <div>Stock ahora: <span style={{ color: '#c9d4e0' }}>{animalesListos.disponibles}</span></div>
+              <div>En camino: <span style={{ color: '#c9d4e0' }}>{produccionEnCurso.totalProyectado}</span></div>
+              <div className="mt-1 text-xs font-semibold" style={{ color: (animalesListos.disponibles + produccionEnCurso.totalProyectado) >= (pedido.cantidad ?? 0) ? '#00e676' : '#ffb300' }}>
+                Total: {animalesListos.disponibles + produccionEnCurso.totalProyectado}/{pedido.cantidad ?? 0}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Stock actual */}
+        <div className="rounded-lg p-2 mb-2"
+          style={{
+            background: animalesListos.cubiertoConStock ? 'rgba(0,230,118,0.05)' : 'rgba(8,13,26,0.3)',
+            border: `1px solid ${animalesListos.cubiertoConStock ? 'rgba(0,230,118,0.2)' : tema.bgCardBorde}`,
+          }}>
+          <div className="flex items-center justify-between text-xs">
+            <span style={{ color: '#4a5f7a' }}>
+              📦 Stock actual {pedido.soloVirgenes ? <span style={{ color: '#00e676' }}>· 🧬 vírgenes ✓</span> : ''}
+            </span>
+            <span style={{ color: animalesListos.cubiertoConStock ? '#00e676' : animalesListos.porcentajeCubierto > 50 ? '#ffb300' : '#ff6b80' }}>
+              {animalesListos.cubiertoConStock
+                ? '✅ Cubierto con stock actual'
+                : `${animalesListos.disponibles}/${animalesListos.necesarios} disponibles (${animalesListos.porcentajeCubierto}%)`}
+            </span>
+          </div>
+        </div>
+
+        {/* Producción en curso */}
+        {produccionEnCurso.tandas.length > 0 ? (
+          <div className="rounded-lg p-2 mb-2"
+            style={{ background: 'rgba(64,196,255,0.05)', border: '1px solid rgba(64,196,255,0.2)' }}>
+            <div className="text-xs font-semibold mb-1.5" style={{ color: '#40c4ff' }}>
+              🔄 En camino — {produccionEnCurso.tandas.length} camada{produccionEnCurso.tandas.length > 1 ? 's' : ''} producirán {produccionEnCurso.totalProyectado} animales
+            </div>
+            <div className="space-y-1">
+              {produccionEnCurso.tandas.map((t) => (
+                <div key={t.camadaId} className="flex items-center justify-between text-xs"
+                  style={{ color: '#4a5f7a' }}>
+                  <span>
+                    {t.estado === 'en_gestacion' ? '🤰' : t.estado === 'en_cria' ? '🐣' : '✅'}
+                    {' '}{t.estado === 'en_gestacion' ? 'En gestación' : t.estado === 'en_cria' ? 'En cría' : 'Destetada'}
+                  </span>
+                  <span style={{ color: '#c9d4e0' }}>{t.dispDelSexo} animales</span>
+                  <span style={{ color: t.diasHastaDisponible <= 0 ? '#00e676' : t.diasHastaDisponible <= 30 ? '#ffb300' : '#4a5f7a' }}>
+                    {t.diasHastaDisponible <= 0 ? 'Disponibles hoy' : `en ${t.diasHastaDisponible}d`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-lg px-3 py-1.5 text-xs mb-2"
+            style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}`, color: '#3a5068' }}>
+            Sin camadas activas que produzcan animales en el rango de edad requerido
+          </div>
+        )}
+
+        {/* Parejas necesarias */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
+          {[
+            { label: '♀ Hembras', val: parejasNecesarias.hembrasNecesarias, color: '#ce93d8' },
+            { label: '♂ Machos',  val: parejasNecesarias.machosNecesarios,  color: '#40c4ff' },
+            { label: '~Crías',    val: parejasNecesarias.animalesEstimados, color: '#c9d4e0' },
+            { label: 'Prob.',     val: `${parejasNecesarias.probabilidad}%`, color: '#00e676' },
+          ].map(({ label, val, color }) => (
+            <div key={label} className="rounded-lg p-2 text-center"
+              style={{ background: 'rgba(8,13,26,0.35)', border: `1px solid ${tema.bgCardBorde}` }}>
+              <div className="font-mono font-bold text-base" style={{ color }}>{val}</div>
+              <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>{label}</div>
+            </div>
+          ))}
+        </div>
+
+        {!parejasNecesarias.hist.conDatos && (
+          <div className="rounded-lg px-3 py-1.5 text-xs"
+            style={{ background: 'rgba(255,179,0,0.05)', border: '1px solid rgba(255,179,0,0.18)', color: '#ffb300' }}>
+            ⚠ Valores bibliográficos — registrá más camadas para mayor precisión
+          </div>
+        )}
+      </Sec>
+
+      {/* ── 6: Entregas escalonadas ──────────────────────────────────────── */}
+      {pedidoEscalonado && (
+        <Sec id="escalonado" titulo={`📅 Entregas escalonadas — ${pedidoEscalonado.tandasTotal} tandas de ${pedidoEscalonado.cantidadPorTanda}`}>
+          <div className="text-xs mb-3 px-1" style={{ color: '#4a5f7a' }}>
+            Cada {pedidoEscalonado.frecuenciaDias} días · {pedidoEscalonado.totalAnimales} animales totales
+          </div>
+          <div className="space-y-2">
+            {pedidoEscalonado.tandas.map((tanda) => {
+              const hoy = new Date(); hoy.setHours(0,0,0,0)
+              const diasHasta = tanda.fechas
+                ? Math.round((new Date(tanda.fechaEntrega) - hoy) / 86400000)
+                : null
+              return (
+                <div key={tanda.numero} className="rounded-xl p-3"
+                  style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}` }}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold" style={{ color: '#40c4ff' }}>
+                      📦 Tanda {tanda.numero} — {tanda.cantidad} animales
+                    </span>
+                    <span className="text-xs font-mono" style={{ color: '#c9d4e0' }}>
+                      {formatFecha(tanda.fechaEntrega)}
+                      {diasHasta != null && (
+                        <span style={{ color: diasHasta < 0 ? '#ff6b80' : diasHasta <= 14 ? '#ffb300' : '#4a5f7a', marginLeft: '6px' }}>
+                          {diasHasta < 0 ? `vencida ${Math.abs(diasHasta)}d` : diasHasta === 0 ? 'hoy' : `en ${diasHasta}d`}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  {tanda.fechas && (
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs" style={{ color: '#3a5068' }}>
+                      <span>🔗 Iniciar cópulas: <span style={{ color: '#c9d4e0' }}>{formatFecha(tanda.fechas.fechaCopula)}</span></span>
+                      <span>🐣 Parto: <span style={{ color: '#c9d4e0' }}>{formatFecha(tanda.fechas.fechaNacimiento)}</span></span>
+                      {!tanda.fechas.viable && (
+                        <span className="col-span-2" style={{ color: '#ff6b80' }}>
+                          ⚠ Tiempo insuficiente para esta tanda
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </Sec>
+      )}
+
     </div>
   )
 }
@@ -808,13 +1075,17 @@ export default function Pedidos() {
       pedidoSeleccionado, camadas, animales, jaulas, indiceSanitario
     )
     const reproductoresProximos      = detectarReproductoresProximos(pedidoSeleccionado, animales)
+    const produccionEnCurso          = calcularProduccionEnCurso(
+      pedidoSeleccionado, camadas, sacrificios, entregas
+    )
+    const pedidoEscalonado           = calcularPedidoEscalonado(pedidoSeleccionado)
 
     return {
       bio: bioPedido, parejasNecesarias, fechasOptimas,
       reproductoresSeleccionados, animalesListos, capacidadFutura,
       impactoColonia, indiceSanitario, viabilidad,
       impactoEstrategico, indiceImpactoFuturo, escenariosEstrategicos,
-      reproductoresProximos,
+      reproductoresProximos, produccionEnCurso, pedidoEscalonado,
     }
   }, [pedidoSeleccionado, animales, camadas, jaulas, sacrificios, entregas, incidentes, pedidos])
 

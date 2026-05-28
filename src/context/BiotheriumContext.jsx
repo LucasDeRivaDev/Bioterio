@@ -727,11 +727,19 @@ export function BiotheriumProvider({ children }) {
       estado:       p.estado,
       created_at:   p.created_at,
       updated_at:   p.updated_at ?? null,
+      meta: {
+        modalidad:        p.modalidad         ?? 'unica',
+        soloVirgenes:     p.soloVirgenes       ?? false,
+        cantidadPorTanda: p.cantidadPorTanda   ?? null,
+        frecuenciaDias:   p.frecuenciaDias     ?? null,
+        tandasTotal:      p.tandasTotal        ?? null,
+      },
     }
   }
 
   // Convierte la fila snake_case de Supabase al objeto camelCase que usa la UI
   function _pedidoFromDb(row) {
+    const meta = (row.meta && typeof row.meta === 'object') ? row.meta : {}
     return {
       id:           row.id,
       bioterioId:   row.bioterio_id,
@@ -745,6 +753,11 @@ export function BiotheriumProvider({ children }) {
       estado:       row.estado,
       created_at:   row.created_at,
       updated_at:   row.updated_at,
+      modalidad:        meta.modalidad         ?? 'unica',
+      soloVirgenes:     meta.soloVirgenes       ?? false,
+      cantidadPorTanda: meta.cantidadPorTanda   ?? null,
+      frecuenciaDias:   meta.frecuenciaDias     ?? null,
+      tandasTotal:      meta.tandasTotal        ?? null,
     }
   }
 
