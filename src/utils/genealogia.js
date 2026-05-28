@@ -315,17 +315,139 @@ export const LABEL_PARENTESCO = {
 // ── Árbol genealógico ─────────────────────────────────────────────────────────
 /**
  * Construye un árbol de ancestros para un animal.
- * Retorna { id, codigo, sexo, madre: {...}, padre: {...} } hasta maxDepth generaciones.
+ * Retorna { id, codigo, sexo, madre, padre } hasta maxDepth generaciones.
+ * Con showUnknown=true, los slots vacíos devuelven { desconocido: true } en lugar de null.
  */
-export function getAncestores(id, pedigree, maxDepth = 3) {
-  if (!id || !pedigree[id] || maxDepth < 0) return null
+export function getAncestores(id, pedigree, maxDepth = 3, showUnknown = false) {
+  if (maxDepth < 0) return null
+
+  if (!id) {
+    if (!showUnknown) return null
+    return { id: null, codigo: null, sexo: null, desconocido: true, madre: null, padre: null }
+  }
+
   const node = pedigree[id]
+  if (!node) {
+    if (!showUnknown) return null
+    return { id, codigo: null, sexo: null, desconocido: true, madre: null, padre: null }
+  }
+
   return {
-    id:     node.id,
-    codigo: node.codigo,
-    sexo:   node.sexo,
-    madre:  node.madre_id ? getAncestores(node.madre_id, pedigree, maxDepth - 1) : null,
-    padre:  node.padre_id ? getAncestores(node.padre_id, pedigree, maxDepth - 1) : null,
+    id:          node.id,
+    codigo:      node.codigo,
+    sexo:        node.sexo,
+    estado:      node.estado ?? null,
+    desconocido: false,
+    madre: maxDepth > 0
+      ? getAncestores(node.madre_id || null, pedigree, maxDepth - 1, showUnknown)
+      : null,
+    padre: maxDepth > 0
+      ? getAncestores(node.padre_id || null, pedigree, maxDepth - 1, showUnknown)
+      : null,
+  }
+}
+
+// ── Confianza del cálculo de F ────────────────────────────────────────────────
+/**
+ * Estima la confianza del cálculo de F para un animal dado.
+ * Alta: tiene ambos padres + al menos 2 abuelos conocidos
+ * Media: tiene al menos un padre
+ * Baja: sin padres registrados (F casi seguro subestimada)
+ */
+export function calcularConfianzaPedigree(id, pedigree) {
+  const nodo = pedigree[id]
+  if (!nodo) return { nivel: 'baja', generaciones: 0, descripcion: 'Sin registros genealógicos' }
+
+  const madreNodo = nodo.madre_id ? pedigree[nodo.madre_id] : null
+  const padreNodo = nodo.padre_id ? pedigree[nodo.padre_id] : null
+  const tienePadres   = !!(madreNodo || padreNodo)
+  const tieneAmbos    = !!(madreNodo && padreNodo)
+
+  if (!tienePadres) {
+    return { nivel: 'baja', generaciones: 0, descripcion: 'Sin padres registrados — F puede ser subestimada' }
+  }
+
+  // Contar abuelos conocidos
+  const abuelos = [
+    madreNodo?.madre_id ? pedigree[madreNodo.madre_id] : null,
+    madreNodo?.padre_id ? pedigree[madreNodo.padre_id] : null,
+    padreNodo?.madre_id ? pedigree[padreNodo.madre_id] : null,
+    padreNodo?.padre_id ? pedigree[padreNodo.padre_id] : null,
+  ].filter(Boolean)
+
+  // Contar bisabuelos conocidos
+  const bisabuelos = abuelos.flatMap(a => [
+    a.madre_id ? pedigree[a.madre_id] : null,
+    a.padre_id ? pedigree[a.padre_id] : null,
+  ]).filter(Boolean)
+
+  // Contar tatarabuelos
+  const tatarabuelos = bisabuelos.flatMap(b => [
+    b.madre_id ? pedigree[b.madre_id] : null,
+    b.padre_id ? pedigree[b.padre_id] : null,
+  ]).filter(Boolean)
+
+  let nivel, generaciones, descripcion
+
+  if (tieneAmbos && abuelos.length >= 2) {
+    nivel = 'alta'
+    generaciones = bisabuelos.length > 0 ? (tatarabuelos.length > 0 ? 5 : 4) : 3
+    descripcion = 'Cálculo confiable — múltiples generaciones registradas'
+  } else if (tienePadres) {
+    nivel = 'media'
+    generaciones = 2 + (abuelos.length > 0 ? 1 : 0)
+    descripcion = tieneAmbos
+      ? 'Datos parciales — faltan abuelos, F real puede ser mayor'
+      : 'Solo un progenitor registrado — F subestimada'
+  } else {
+    nivel = 'baja'
+    generaciones = 0
+    descripcion = 'Sin datos — F no calculable'
+  }
+
+  return {
+    nivel,
+    generaciones,
+    descripcion,
+    cantAbuelos:     abuelos.length,
+    cantBisabuelos:  bisabuelos.length,
+    cantTatarabuelos: tatarabuelos.length,
+  }
+}
+
+// ── Explicación del F: ancestro común principal ───────────────────────────────
+/**
+ * Genera la explicación textual del F calculado para un apareamiento.
+ * Retorna el ancestro común más cercano con el motivo de la consanguinidad.
+ */
+export function generarExplicacionF(madreId, padreId, pedigree) {
+  if (!madreId || !padreId) return null
+  const comunes = ancestrosComunes(madreId, padreId, pedigree)
+  if (comunes.length === 0) return null
+
+  const LABEL_GEN = {
+    1: 'padre/madre',
+    2: 'abuelo/a',
+    3: 'bisabuelo/a',
+    4: 'tatarabuelo/a',
+  }
+  const labelGen = (n) => LABEL_GEN[n] ?? `generación ${n}`
+
+  const principal = comunes[0]
+  const nodo = pedigree[principal.id]
+  const sexoSimbolo = nodo?.sexo === 'hembra' ? '♀' : nodo?.sexo === 'macho' ? '♂' : '?'
+
+  return {
+    principal: {
+      codigo:    principal.codigo ?? '?',
+      sexo:      sexoSimbolo,
+      genMadre:  labelGen(principal.profMadre),
+      genPadre:  labelGen(principal.profPadre),
+      profMadre: principal.profMadre,
+      profPadre: principal.profPadre,
+    },
+    totalComunes: comunes.length,
+    comunes:      comunes.slice(0, 6),
   }
 }
 
