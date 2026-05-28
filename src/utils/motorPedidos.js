@@ -1159,7 +1159,7 @@ export function simularEscenariosEstrategicos(pedido, camadas, animales, jaulas,
 
   const escenarios = [
     {
-      id: 'a', label: 'Recomendado', emoji: '🟢',
+      id: 'a', label: 'Recomendada', emoji: '🟢',
       hembras: parejasA.hembrasNecesarias, machos: parejasA.machosNecesarios,
       jaulasNuevas: parejasA.parejasNecesarias, jaulasTotal: jaulasA,
       animalesEstimados: parejasA.animalesEstimados,
@@ -1170,7 +1170,7 @@ export function simularEscenariosEstrategicos(pedido, camadas, animales, jaulas,
       score: _scoreEscenario({ cumplimiento: parejasA.probabilidad, saturada: saturadaA, rompeMinimo: rompeA, indiceSanitario }),
     },
     {
-      id: 'b', label: 'Mínimo', emoji: '🟡',
+      id: 'b', label: 'Conservadora', emoji: '🟡',
       hembras: parejasBaseB, machos: machosBaseB,
       jaulasNuevas: parejasBaseB, jaulasTotal: jaulasB,
       animalesEstimados: Math.round(parejasBaseB * hist.promedioTamano * hist.tasaSupervivencia),
@@ -1181,7 +1181,7 @@ export function simularEscenariosEstrategicos(pedido, camadas, animales, jaulas,
       score: _scoreEscenario({ cumplimiento: probB, saturada: saturadaB, rompeMinimo: rompeB, indiceSanitario }),
     },
     {
-      id: 'c', label: 'Retrasar 2 sem', emoji: '🔵',
+      id: 'c', label: 'Con retraso (+2 sem)', emoji: '🔵',
       hembras: parejasA.hembrasNecesarias, machos: parejasA.machosNecesarios,
       jaulasNuevas: parejasA.parejasNecesarias, jaulasTotal: jaulasC,
       animalesEstimados: parejasA.animalesEstimados,

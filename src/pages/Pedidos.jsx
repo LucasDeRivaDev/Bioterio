@@ -648,10 +648,34 @@ function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproduct
             )
           })}
         </div>
+
+        {/* Stock disponible + aviso bibliográfico */}
+        <div className="mt-3 space-y-1.5">
+          <div className="rounded-lg px-3 py-2"
+            style={{
+              background: animalesListos.cubiertoConStock ? 'rgba(0,230,118,0.05)' : 'rgba(8,13,26,0.3)',
+              border: `1px solid ${animalesListos.cubiertoConStock ? 'rgba(0,230,118,0.2)' : tema.bgCardBorde}`,
+            }}>
+            <div className="flex items-center justify-between text-xs">
+              <span style={{ color: '#4a5f7a' }}>📦 Stock ya disponible</span>
+              <span style={{ color: animalesListos.cubiertoConStock ? '#00e676' : animalesListos.porcentajeCubierto > 50 ? '#ffb300' : '#ff6b80' }}>
+                {animalesListos.cubiertoConStock
+                  ? `✅ Cubierto (${animalesListos.disponibles} animales)`
+                  : `${animalesListos.disponibles}/${animalesListos.necesarios} disponibles · ${animalesListos.porcentajeCubierto}%`}
+              </span>
+            </div>
+          </div>
+          {!parejasNecesarias.hist.conDatos && (
+            <div className="rounded-lg px-3 py-1.5 text-xs"
+              style={{ background: 'rgba(255,179,0,0.05)', border: '1px solid rgba(255,179,0,0.18)', color: '#ffb300' }}>
+              ⚠ Valores bibliográficos — registrá más camadas para mayor precisión
+            </div>
+          )}
+        </div>
       </Sec>
 
-      {/* ── 4: Reproductores sugeridos ────────────────────────────────────── */}
-      <Sec id="reproductores" titulo="🔬 Reproductores sugeridos">
+      {/* ── 4: Reproductores ─────────────────────────────────────────────── */}
+      <Sec id="reproductores" titulo="🔬 Reproductores">
         {/* Disponibilidad */}
         <div className="grid grid-cols-2 gap-2 mb-3">
           {[
@@ -692,86 +716,41 @@ function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproduct
         </div>
 
         {/* Listas compactas */}
-        {reproductoresSeleccionados.hembrasSugeridas.length > 0 && (
-          <div className="mb-2">
-            <div className="text-xs font-semibold mb-1" style={{ color: '#ce93d8' }}>♀ Recomendadas</div>
-            <div className="space-y-1">
-              {reproductoresSeleccionados.hembrasSugeridas.map(({ animal, scoreRepro, fPorc, nivelF, score }) => (
-                <div key={animal.id} className="flex items-center justify-between rounded px-2 py-1"
-                  style={{ background: 'rgba(8,13,26,0.35)', border: `1px solid ${tema.bgCardBorde}` }}>
-                  <span className="text-xs font-mono font-semibold" style={{ color: '#ce93d8' }}>{animal.codigo}</span>
-                  <div className="flex gap-2 text-xs" style={{ color: '#4a5f7a' }}>
-                    <span>Score <span style={{ color: '#c9d4e0' }}>{scoreRepro}</span></span>
-                    <span>F <span style={{ color: nivelF === 'alto' ? '#ff6b80' : nivelF === 'moderado' ? '#ffb300' : '#4a5f7a' }}>{fPorc}</span></span>
-                    <span style={{ color: '#00e676' }}>{score}pts</span>
-                  </div>
+        {(reproductoresSeleccionados.hembrasSugeridas.length > 0 || reproductoresSeleccionados.machosSugeridos.length > 0) && (
+          <div className="mt-2 space-y-1">
+            {reproductoresSeleccionados.hembrasSugeridas.map(({ animal, scoreRepro, nivelF }) => (
+              <div key={animal.id} className="flex items-center justify-between rounded px-2 py-1"
+                style={{ background: 'rgba(8,13,26,0.35)', border: `1px solid ${tema.bgCardBorde}` }}>
+                <span className="text-xs font-mono font-semibold" style={{ color: '#ce93d8' }}>♀ {animal.codigo}</span>
+                <div className="flex gap-2 text-xs">
+                  <span style={{ color: '#c9d4e0' }}>Score {scoreRepro}</span>
+                  {nivelF !== 'ok' && (
+                    <span style={{ color: nivelF === 'alto' ? '#ff6b80' : '#ffb300' }}>
+                      {nivelF === 'alto' ? '🔴 F alto' : '⚠ F mod.'}
+                    </span>
+                  )}
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-        {reproductoresSeleccionados.machosSugeridos.length > 0 && (
-          <div>
-            <div className="text-xs font-semibold mb-1" style={{ color: '#40c4ff' }}>♂ Recomendados</div>
-            <div className="space-y-1">
-              {reproductoresSeleccionados.machosSugeridos.map(({ animal, scoreRepro, fPorc, nivelF, score }) => (
-                <div key={animal.id} className="flex items-center justify-between rounded px-2 py-1"
-                  style={{ background: 'rgba(8,13,26,0.35)', border: `1px solid ${tema.bgCardBorde}` }}>
-                  <span className="text-xs font-mono font-semibold" style={{ color: '#40c4ff' }}>{animal.codigo}</span>
-                  <div className="flex gap-2 text-xs" style={{ color: '#4a5f7a' }}>
-                    <span>Score <span style={{ color: '#c9d4e0' }}>{scoreRepro}</span></span>
-                    <span>F <span style={{ color: nivelF === 'alto' ? '#ff6b80' : nivelF === 'moderado' ? '#ffb300' : '#4a5f7a' }}>{fPorc}</span></span>
-                    <span style={{ color: '#00e676' }}>{score}pts</span>
-                  </div>
+              </div>
+            ))}
+            {reproductoresSeleccionados.machosSugeridos.map(({ animal, scoreRepro, nivelF }) => (
+              <div key={animal.id} className="flex items-center justify-between rounded px-2 py-1"
+                style={{ background: 'rgba(8,13,26,0.35)', border: `1px solid ${tema.bgCardBorde}` }}>
+                <span className="text-xs font-mono font-semibold" style={{ color: '#40c4ff' }}>♂ {animal.codigo}</span>
+                <div className="flex gap-2 text-xs">
+                  <span style={{ color: '#c9d4e0' }}>Score {scoreRepro}</span>
+                  {nivelF !== 'ok' && (
+                    <span style={{ color: nivelF === 'alto' ? '#ff6b80' : '#ffb300' }}>
+                      {nivelF === 'alto' ? '🔴 F alto' : '⚠ F mod.'}
+                    </span>
+                  )}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         )}
         {reproductoresSeleccionados.hembrasDisponibles === 0 && !hayProximas && (
           <div className="text-xs text-center py-2" style={{ color: tema.textMuted }}>
             Sin reproductoras libres — revisá estados o cambiá de bioterio
-          </div>
-        )}
-      </Sec>
-
-      {/* ── 5: Producción estimada (compact) ─────────────────────────────── */}
-      <Sec id="produccion" titulo="📊 Producción estimada">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-          {[
-            { label: '♀ Hembras', val: parejasNecesarias.hembrasNecesarias, color: '#ce93d8' },
-            { label: '♂ Machos',  val: parejasNecesarias.machosNecesarios,  color: '#40c4ff' },
-            { label: '~Crías',    val: parejasNecesarias.animalesEstimados, color: '#c9d4e0' },
-            { label: 'Prob.',     val: `${parejasNecesarias.probabilidad}%`, color: '#00e676' },
-          ].map(({ label, val, color }) => (
-            <div key={label} className="rounded-lg p-2 text-center"
-              style={{ background: 'rgba(8,13,26,0.35)', border: `1px solid ${tema.bgCardBorde}` }}>
-              <div className="font-mono font-bold text-base" style={{ color }}>{val}</div>
-              <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>{label}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Stock ya disponible */}
-        <div className="rounded-lg p-2"
-          style={{
-            background: animalesListos.cubiertoConStock ? 'rgba(0,230,118,0.05)' : 'rgba(8,13,26,0.3)',
-            border: `1px solid ${animalesListos.cubiertoConStock ? 'rgba(0,230,118,0.2)' : tema.bgCardBorde}`,
-          }}>
-          <div className="flex items-center justify-between text-xs">
-            <span style={{ color: '#4a5f7a' }}>📦 Stock disponible</span>
-            <span style={{ color: animalesListos.cubiertoConStock ? '#00e676' : animalesListos.porcentajeCubierto > 50 ? '#ffb300' : '#ff6b80' }}>
-              {animalesListos.cubiertoConStock
-                ? '✅ Cubierto con stock actual'
-                : `${animalesListos.disponibles}/${animalesListos.necesarios} disponibles (${animalesListos.porcentajeCubierto}%)`}
-            </span>
-          </div>
-        </div>
-
-        {!parejasNecesarias.hist.conDatos && (
-          <div className="rounded-lg px-3 py-1.5 text-xs mt-2"
-            style={{ background: 'rgba(255,179,0,0.05)', border: '1px solid rgba(255,179,0,0.18)', color: '#ffb300' }}>
-            ⚠ Valores bibliográficos — registrá más camadas para mayor precisión
           </div>
         )}
       </Sec>
