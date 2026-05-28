@@ -849,7 +849,11 @@ export default function ConsumoAlimento() {
   async function registrarEstimacion({ tipo, kg, notas }) {
     const nuevo = { id: generarId(), fecha: hoy(), tipo, kg, notas: notas || null }
     const { error: e } = await supabase.from('alimento_estimaciones').insert(nuevo)
-    if (e) { console.error('Error al guardar estimación:', e); return }
+    if (e) {
+      console.error('Error al guardar estimación:', e)
+      setError('No se pudo guardar la estimación. Verificá la conexión con Supabase.\n' + (e.message ?? e.code ?? ''))
+      return
+    }
     setEstimacionesRapidas(prev => [...prev, { ...nuevo, notas: nuevo.notas ?? '' }]
       .sort((a, b) => a.fecha.localeCompare(b.fecha)))
     setModalEstimRapida(false)
@@ -867,7 +871,11 @@ export default function ConsumoAlimento() {
     const comp = datosBioterios ? composicionActual(datosBioterios) : null
     const nuevo = { id: generarId(), fecha, hora: hora || null, kg, rellenoKg: rellenoKg || 0, consumoEstimadoGDia, composicion: comp }
     const { error: e } = await supabase.from('alimento_censos').insert(censoAlimToDB(nuevo))
-    if (e) { console.error('Error al guardar censo alimento:', e); return }
+    if (e) {
+      console.error('Error al guardar censo alimento:', e)
+      setError('No se pudo guardar el censo. Verificá la conexión con Supabase.\n' + (e.message ?? e.code ?? ''))
+      return
+    }
     setCensos(prev => [...prev, nuevo].sort((a, b) => a.fecha.localeCompare(b.fecha)))
     setModalCenso(false)
   }
@@ -882,7 +890,11 @@ export default function ConsumoAlimento() {
   async function registrarIngreso(fecha, kg) {
     const nuevo = { id: generarId(), fecha, kg }
     const { error: e } = await supabase.from('alimento_ingresos').insert(nuevo)
-    if (e) { console.error('Error al guardar ingreso alimento:', e); return }
+    if (e) {
+      console.error('Error al guardar ingreso alimento:', e)
+      setError('No se pudo guardar el ingreso. Verificá la conexión con Supabase.\n' + (e.message ?? e.code ?? ''))
+      return
+    }
     setIngresos(prev => [...prev, nuevo].sort((a, b) => a.fecha.localeCompare(b.fecha)))
     setModalIngreso(false)
   }
@@ -902,7 +914,11 @@ export default function ConsumoAlimento() {
       kg: nuevo.kg ?? 0, bioterios: nuevo.bioterios ?? [], categorias: nuevo.categorias ?? [],
       notas: nuevo.notas ?? null, confirmada: true,
     })
-    if (e) { console.error('Error al guardar reposición alimento:', e); return }
+    if (e) {
+      console.error('Error al guardar reposición alimento:', e)
+      setError('No se pudo guardar la reposición. Verificá la conexión con Supabase.\n' + (e.message ?? e.code ?? ''))
+      return
+    }
     setReposiciones(prev => [...prev, nuevo])
     setModalReposicion(false)
     setReposPreCenso(null)

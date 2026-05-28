@@ -277,7 +277,7 @@ function PantallaCrearPassword() {
 }
 
 // ── Botón de brillo — fijo abajo a la izquierda, fuera del div filtrado ─────
-function BotонBrillo() {
+function BotonBrillo() {
   const { modoBrillo, toggleBrillo } = useTheme()
   return (
     <button
@@ -349,7 +349,7 @@ function RutaRaiz() {
       {/* CSS global inyectado para modo claro */}
       {modoBrillo && <style dangerouslySetInnerHTML={{ __html: CSS_MODO_CLARO }} />}
       {renderContenido()}
-      <BotонBrillo />
+      <BotonBrillo />
     </>
   )
 }
