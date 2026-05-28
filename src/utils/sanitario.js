@@ -1,18 +1,43 @@
 // ── Categorías y tipos de incidente ──────────────────────────────────────────
 
 export const CATEGORIAS = {
+  ambiental: {
+    label: 'Ambiental',
+    icon: '🌡️',
+    color: '#ffb300',
+    tipos: [
+      { id: 'temperatura_alta',  label: 'Temperatura alta' },
+      { id: 'temperatura_baja',  label: 'Temperatura baja' },
+      { id: 'oscilacion',        label: 'Oscilación térmica' },
+      { id: 'aire',              label: 'Ventilación / Aire' },
+      { id: 'calefaccion',       label: 'Calefacción' },
+      { id: 'humedad',           label: 'Humedad' },
+      { id: 'corte_energia',     label: 'Corte de energía' },
+      { id: 'equipo',            label: 'Falla de equipo' },
+      { id: 'termostato',        label: 'Termostato' },
+      // backward compat — viejos registros
+      { id: 'temperatura',       label: 'Temperatura fuera de rango', hidden: true },
+      { id: 'ruido',             label: 'Ruido excesivo', hidden: true },
+      { id: 'falla_agua',        label: 'Falla en agua', hidden: true },
+      { id: 'falla_alimento',    label: 'Falla en alimento', hidden: true },
+      { id: 'incidente_manejo',  label: 'Incidente de manejo', hidden: true },
+      { id: 'otros',             label: 'Otros' },
+    ],
+  },
   sanitario: {
     label: 'Sanitario',
     icon: '🩺',
     color: '#ff6b80',
     tipos: [
+      { id: 'muerte_inesperada', label: 'Mortalidad' },
       { id: 'alopecia',          label: 'Alopecia' },
-      { id: 'hematuria',         label: 'Hematuria' },
-      { id: 'perdida_peso',      label: 'Pérdida de peso' },
+      { id: 'perdida_peso',      label: 'Pérdida / bajo peso' },
       { id: 'heridas',           label: 'Heridas / peleas' },
-      { id: 'muerte_inesperada', label: 'Muerte inesperada' },
+      { id: 'hematuria',         label: 'Hematuria' },
       { id: 'canibalismo',       label: 'Canibalismo' },
-      { id: 'bajo_peso',         label: 'Bajo peso corporal' },
+      // backward compat
+      { id: 'bajo_peso',         label: 'Bajo peso corporal', hidden: true },
+      { id: 'otros',             label: 'Otros' },
     ],
   },
   reproductivo: {
@@ -21,16 +46,37 @@ export const CATEGORIAS = {
     color: '#a78bfa',
     tipos: [
       { id: 'aborto',            label: 'Aborto' },
-      { id: 'reabsorcion',       label: 'Reabsorción' },
-      { id: 'infertilidad',      label: 'Infertilidad' },
-      { id: 'parto_fallido',     label: 'Parto fallido' },
+      { id: 'no_prenez',         label: 'No preñez' },
+      { id: 'malformacion',      label: 'Malformación' },
       { id: 'camada_pequeña',    label: 'Camada pequeña' },
+      { id: 'muerte_neonatal',   label: 'Mortalidad neonatal' },
+      { id: 'infertilidad',      label: 'Infertilidad' },
+      { id: 'reabsorcion',       label: 'Reabsorción' },
+      // backward compat
+      { id: 'parto_fallido',     label: 'Parto fallido', hidden: true },
+      { id: 'otros',             label: 'Otros' },
     ],
   },
+  manejo: {
+    label: 'Manejo',
+    icon: '🧤',
+    color: '#00e676',
+    tipos: [
+      { id: 'cambio_cama',       label: 'Cambio de cama' },
+      { id: 'alimento',          label: 'Alimento' },
+      { id: 'error_humano',      label: 'Error humano' },
+      { id: 'manipulacion',      label: 'Manipulación' },
+      { id: 'jaula_mal_armada',  label: 'Jaula mal armada' },
+      { id: 'escape_animales',   label: 'Escape de animales' },
+      { id: 'otros',             label: 'Otros' },
+    ],
+  },
+  // backward compat — categoría crías (oculta en formulario, visible en lista)
   crias: {
     label: 'Crías',
     icon: '🐣',
     color: '#40c4ff',
+    hidden: true,
     tipos: [
       { id: 'ausencia_cola',        label: 'Ausencia de cola' },
       { id: 'ausencia_extremidad',  label: 'Ausencia de extremidad' },
@@ -42,18 +88,6 @@ export const CATEGORIAS = {
       { id: 'tamaño_asimetrico',    label: 'Crías muy pequeñas vs hermanas' },
     ],
   },
-  ambiental: {
-    label: 'Ambiental',
-    icon: '🌡️',
-    color: '#ffb300',
-    tipos: [
-      { id: 'temperatura',       label: 'Temperatura fuera de rango' },
-      { id: 'ruido',             label: 'Ruido excesivo' },
-      { id: 'falla_agua',        label: 'Falla en agua' },
-      { id: 'falla_alimento',    label: 'Falla en alimento' },
-      { id: 'incidente_manejo',  label: 'Incidente de manejo' },
-    ],
-  },
   otro: {
     label: 'Otro',
     icon: '📝',
@@ -63,6 +97,21 @@ export const CATEGORIAS = {
     ],
   },
 }
+
+// Categorías visibles en el formulario (excluye las ocultas por backward compat)
+export const CATEGORIAS_FORM = Object.fromEntries(
+  Object.entries(CATEGORIAS).filter(([, cat]) => !cat.hidden)
+)
+
+// Tipos visibles en el formulario (excluye hidden dentro de cada categoría)
+export function getTiposForm(catId) {
+  const cat = CATEGORIAS[catId]
+  if (!cat) return []
+  return cat.tipos.filter(t => !t.hidden)
+}
+
+// Categorías que habilitan asociación genealógica (padre / madre)
+export const CATS_GENEALOGICAS = ['sanitario', 'reproductivo', 'crias']
 
 export const SEVERIDADES = [
   { id: 'leve',     label: 'Leve',     color: '#ffb300', bg: 'rgba(255,179,0,0.10)' },
@@ -1584,6 +1633,138 @@ export function generarDecisionesHoy(
   }
 
   return decisiones.sort((a, b) => a.prioridad - b.prioridad)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ALERTAS GENEALÓGICAS — incidentes repetidos en misma línea genética
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Detecta patrones de incidentes sanitarios/reproductivos vinculados a animales
+// específicos (padre/madre) o líneas genealógicas, y genera alertas persistentes
+// que reducen la prioridad reproductiva de los implicados.
+//
+// Retorna: array de alertas con { tipo, nivel, animal?, incidentes, mensaje, accion }
+
+export function detectarAlertasGenealógicas(incidentes, animales) {
+  const alertas = []
+  const hace180 = new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10)
+
+  // Solo incidentes genealógicos relevantes (no ambientales ni de manejo)
+  const relevantes = incidentes.filter(i =>
+    CATS_GENEALOGICAS.includes(i.tipo_categoria) &&
+    i.fecha >= hace180
+  )
+
+  if (relevantes.length === 0) return alertas
+
+  // ── Agrupar por padre_id ──────────────────────────────────────────────────
+  const porPadre = {}
+  const porMadre = {}
+  relevantes.forEach(i => {
+    if (i.padre_id) {
+      ;(porPadre[i.padre_id] = porPadre[i.padre_id] ?? []).push(i)
+    }
+    if (i.madre_id) {
+      ;(porMadre[i.madre_id] = porMadre[i.madre_id] ?? []).push(i)
+    }
+  })
+
+  Object.entries(porPadre).forEach(([padreId, incs]) => {
+    if (incs.length < 2) return
+    const animal = animales.find(a => a.id === padreId)
+    if (!animal) return
+    const nivel = incs.length >= 4 ? 'critico' : incs.length >= 3 ? 'alerta' : 'atencion'
+    alertas.push({
+      tipo: 'padre_implicado',
+      nivel,
+      animal,
+      incidentes: incs,
+      mensaje: `⚠️ Padre ${animal.codigo} implicado en ${incs.length} incidentes sanitarios/reproductivos (180d)`,
+      accion: nivel === 'critico'
+        ? 'Suspender reproducción inmediatamente — evaluar reemplazo'
+        : 'Reducir prioridad reproductiva — monitorear próximas camadas',
+    })
+  })
+
+  Object.entries(porMadre).forEach(([madreId, incs]) => {
+    if (incs.length < 2) return
+    const animal = animales.find(a => a.id === madreId)
+    if (!animal) return
+    const nivel = incs.length >= 4 ? 'critico' : incs.length >= 3 ? 'alerta' : 'atencion'
+    alertas.push({
+      tipo: 'madre_implicada',
+      nivel,
+      animal,
+      incidentes: incs,
+      mensaje: `⚠️ Madre ${animal.codigo} implicada en ${incs.length} incidentes sanitarios/reproductivos (180d)`,
+      accion: nivel === 'critico'
+        ? 'Suspender reproducción inmediatamente — evaluar retiro'
+        : 'Reducir prioridad reproductiva — vigilar próximo ciclo',
+    })
+  })
+
+  // ── Malformaciones repetidas en misma pareja ──────────────────────────────
+  const TIPOS_MALFORMACION = new Set([
+    'malformacion', 'ausencia_cola', 'ausencia_extremidad',
+    'tamaño_reducido', 'retraso_crecimiento', 'tamaño_asimetrico',
+  ])
+  const malformaciones = relevantes.filter(i => TIPOS_MALFORMACION.has(i.tipo_incidente))
+
+  if (malformaciones.length >= 2) {
+    const byPair = {}
+    malformaciones.forEach(i => {
+      const k = [i.padre_id ?? '', i.madre_id ?? ''].filter(Boolean).sort().join('|')
+      if (k) (byPair[k] = byPair[k] ?? []).push(i)
+    })
+    Object.values(byPair).forEach(incs => {
+      if (incs.length < 2) return
+      const padreAnimal = incs[0].padre_id ? animales.find(a => a.id === incs[0].padre_id) : null
+      const madreAnimal = incs[0].madre_id ? animales.find(a => a.id === incs[0].madre_id) : null
+      const lineaLabel = [padreAnimal?.codigo, madreAnimal?.codigo].filter(Boolean).join(' × ') || 'línea desconocida'
+      alertas.push({
+        tipo: 'malformacion_repetida',
+        nivel: incs.length >= 3 ? 'critico' : 'alerta',
+        animal: padreAnimal ?? madreAnimal,
+        incidentes: incs,
+        mensaje: `🧬 Malformación repetida (${incs.length}x) en línea ${lineaLabel}`,
+        accion: 'Calcular coeficiente F — posible consanguinidad. Suspender cruza y evaluar renovación de línea',
+      })
+    })
+  }
+
+  // ── Línea genética con alta incidencia por campo linea_genetica ────────────
+  const porLinea = {}
+  relevantes.filter(i => i.linea_genetica).forEach(i => {
+    ;(porLinea[i.linea_genetica] = porLinea[i.linea_genetica] ?? []).push(i)
+  })
+  Object.entries(porLinea).forEach(([linea, incs]) => {
+    if (incs.length < 3) return
+    const graves = incs.filter(i => i.severidad === 'grave').length
+    alertas.push({
+      tipo: 'linea_problematica',
+      nivel: graves >= 2 ? 'critico' : 'alerta',
+      incidentes: incs,
+      mensaje: `⚠️ Línea "${linea}" acumula ${incs.length} incidentes (${graves} graves) en 180d`,
+      accion: 'Revisar estado de reproductores de esta línea — considerar renovación',
+    })
+  })
+
+  return alertas.sort((a, b) => {
+    const ord = { critico: 0, alerta: 1, atencion: 2 }
+    return (ord[a.nivel] ?? 3) - (ord[b.nivel] ?? 3)
+  })
+}
+
+// Retorna Set de IDs de animales marcados como problemáticos por alertas genealógicas
+// Nivel 'critico' o 'alerta' — se usa para reducir score en candidatos a reproducción
+export function getAnimalesProblematicosGenea(alertasGenea) {
+  const set = new Set()
+  alertasGenea.forEach(a => {
+    if (['critico', 'alerta'].includes(a.nivel) && a.animal) {
+      set.add(a.animal.id)
+    }
+  })
+  return set
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

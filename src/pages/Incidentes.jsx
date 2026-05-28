@@ -4,7 +4,8 @@ import { useBioterioActivo } from '../context/BioterioActivoContext'
 import { hoy, formatFecha } from '../utils/calculos'
 import { buildPedigree, calcularFCoeficiente } from '../utils/genealogia'
 import {
-  CATEGORIAS, SEVERIDADES, LISTA_BIOTERIOS, NIVEL_ALERTA,
+  CATEGORIAS, CATEGORIAS_FORM, SEVERIDADES, LISTA_BIOTERIOS, NIVEL_ALERTA,
+  CATS_GENEALOGICAS, getTiposForm,
   getCategoriaInfo, getTipoLabel, getSeveridadInfo,
   labelBioterio, colorBioterio,
   calcularIndiceSanitario, nivelIndice,
@@ -15,6 +16,7 @@ import {
   generarMotorCausalCompleto, generarAlertasSanitarias, generarRecomendacionesHoy,
   generarTendencias, generarBloqueosSanitarios,
   detectarDeterioroProgresivo, generarDecisionesHoy,
+  detectarAlertasGenealógicas,
 } from '../utils/sanitario'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { AlertTriangle, CheckCircle, Plus, Activity, TrendingUp, TrendingDown, Thermometer, Dna, Zap, Eye, EyeOff } from 'lucide-react'
@@ -103,6 +105,12 @@ export default function Incidentes() {
       tasaSupervivencia: tasas.tasaSupervivencia,
     }),
     [indices.global, indiceAmbiental, indiceGenetico, tasas]
+  )
+
+  // ── Alertas genealógicas ───────────────────────────────────────────────────
+  const alertasGenea = useMemo(() =>
+    detectarAlertasGenealógicas(incidentes, animales),
+    [incidentes, animales]
   )
 
   // ── Patrones, correlaciones, motor causal, alertas, recomendaciones ────────
@@ -258,6 +266,65 @@ export default function Incidentes() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* ── ALERTAS GENEALÓGICAS ── */}
+      {alertasGenea.length > 0 && (
+        <div className="rounded-2xl overflow-hidden"
+          style={{ background: 'rgba(13,21,40,0.85)', border: '1px solid rgba(167,139,250,0.3)' }}>
+          <div className="px-5 py-3 flex items-center gap-2 justify-between"
+            style={{ borderBottom: '1px solid rgba(167,139,250,0.12)', background: 'rgba(167,139,250,0.05)' }}>
+            <div className="flex items-center gap-2">
+              <span className="text-sm">🧬</span>
+              <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#a78bfa' }}>
+                Alertas genealógicas ({alertasGenea.length})
+              </span>
+            </div>
+            <span className="text-xs font-mono px-2 py-0.5 rounded-full"
+              style={{ background: 'rgba(167,139,250,0.12)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.3)' }}>
+              {alertasGenea.filter(a => a.nivel === 'critico').length} crítica{alertasGenea.filter(a => a.nivel === 'critico').length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+            {alertasGenea.map((a, i) => {
+              const colores = {
+                critico:  { c: '#ff6b80', bg: 'rgba(255,107,128,0.06)', b: 'rgba(255,107,128,0.2)' },
+                alerta:   { c: '#ffb300', bg: 'rgba(255,179,0,0.05)',   b: 'rgba(255,179,0,0.2)' },
+                atencion: { c: '#a78bfa', bg: 'rgba(167,139,250,0.04)', b: 'rgba(167,139,250,0.15)' },
+              }
+              const cl = colores[a.nivel] ?? colores.atencion
+              const icon = a.tipo === 'malformacion_repetida' ? '🧬'
+                : a.tipo === 'linea_problematica' ? '⚠️'
+                : a.tipo === 'padre_implicado' ? '♂'
+                : '♀'
+              return (
+                <div key={i} className="px-5 py-3.5 flex items-start gap-3">
+                  <span className="text-base shrink-0 mt-0.5" style={{ color: cl.c }}>{icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold" style={{ color: cl.c }}>{a.mensaje}</div>
+                    <div className="text-xs font-mono mt-0.5" style={{ color: '#6a8099' }}>→ {a.accion}</div>
+                    {a.animal && (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className="text-xs font-mono px-1.5 py-0.5 rounded"
+                          style={{ background: a.animal.sexo === 'macho' ? 'rgba(64,196,255,0.1)' : 'rgba(167,139,250,0.1)', color: a.animal.sexo === 'macho' ? '#40c4ff' : '#a78bfa', border: `1px solid ${a.animal.sexo === 'macho' ? 'rgba(64,196,255,0.3)' : 'rgba(167,139,250,0.3)'}` }}>
+                          {a.animal.sexo === 'macho' ? '♂' : '♀'} {a.animal.codigo}
+                        </span>
+                        <span className="text-xs font-mono px-1.5 py-0.5 rounded"
+                          style={{ background: cl.bg, color: cl.c, border: `1px solid ${cl.b}` }}>
+                          {a.incidentes.length} incidente{a.incidentes.length !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <span className="shrink-0 text-xs font-mono px-2 py-0.5 rounded-full self-center"
+                    style={{ background: cl.bg, color: cl.c, border: `1px solid ${cl.b}` }}>
+                    {a.nivel}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
@@ -1268,6 +1335,9 @@ export default function Incidentes() {
                   const tipoLbl = getTipoLabel(inc.tipo_categoria, inc.tipo_incidente)
                   const animal  = animales.find(a => a.id === inc.animal_id)
                   const camada  = camadas.find(c => c.id === inc.camada_id)
+                  const padre   = inc.padre_id ? animales.find(a => a.id === inc.padre_id) : null
+                  const madre   = inc.madre_id ? animales.find(a => a.id === inc.madre_id) : null
+                  const tieneGenea = padre || madre || inc.linea_genetica
 
                   return (
                     <div key={inc.id}
@@ -1301,22 +1371,32 @@ export default function Incidentes() {
                         <div className="text-sm leading-relaxed" style={{ color: inc.resuelto ? '#4a5f7a' : '#c9d4e0' }}>
                           {inc.descripcion || <span style={{ color: '#3d5068' }}>Sin descripción</span>}
                         </div>
-                        {(animal || camada) && (
-                          <div className="flex flex-wrap gap-1.5">
-                            {animal && (
-                              <span className="text-xs font-mono px-1.5 py-0.5 rounded"
-                                style={{ background: animal.sexo === 'macho' ? 'rgba(64,196,255,0.08)' : 'rgba(167,139,250,0.08)', color: animal.sexo === 'macho' ? '#40c4ff' : '#a78bfa', border: `1px solid ${animal.sexo === 'macho' ? 'rgba(64,196,255,0.25)' : 'rgba(167,139,250,0.25)'}` }}>
-                                {animal.sexo === 'macho' ? '♂' : '♀'} {animal.codigo ?? `#${animal.id.slice(0,6)}`}
-                              </span>
-                            )}
-                            {camada && (
-                              <span className="text-xs font-mono px-1.5 py-0.5 rounded"
-                                style={{ background: 'rgba(255,179,0,0.08)', color: '#ffb300', border: '1px solid rgba(255,179,0,0.25)' }}>
-                                Camada {formatFecha(camada.fecha_copula, { day: '2-digit', month: '2-digit' })}
-                              </span>
-                            )}
-                          </div>
-                        )}
+                        <div className="flex flex-wrap gap-1.5 mt-1">
+                          {animal && (
+                            <span className="text-xs font-mono px-1.5 py-0.5 rounded"
+                              style={{ background: animal.sexo === 'macho' ? 'rgba(64,196,255,0.08)' : 'rgba(167,139,250,0.08)', color: animal.sexo === 'macho' ? '#40c4ff' : '#a78bfa', border: `1px solid ${animal.sexo === 'macho' ? 'rgba(64,196,255,0.25)' : 'rgba(167,139,250,0.25)'}` }}>
+                              {animal.sexo === 'macho' ? '♂' : '♀'} {animal.codigo ?? `#${animal.id.slice(0,6)}`}
+                            </span>
+                          )}
+                          {camada && (
+                            <span className="text-xs font-mono px-1.5 py-0.5 rounded"
+                              style={{ background: 'rgba(255,179,0,0.08)', color: '#ffb300', border: '1px solid rgba(255,179,0,0.25)' }}>
+                              Camada {formatFecha(camada.fecha_copula, { day: '2-digit', month: '2-digit' })}
+                            </span>
+                          )}
+                          {tieneGenea && (
+                            <span className="text-xs font-mono px-1.5 py-0.5 rounded"
+                              style={{ background: 'rgba(167,139,250,0.08)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.25)' }}>
+                              🧬 {[padre && `♂${padre.codigo}`, madre && `♀${madre.codigo}`, inc.linea_genetica].filter(Boolean).join(' · ')}
+                            </span>
+                          )}
+                          {inc.duracion_dias && (
+                            <span className="text-xs font-mono px-1.5 py-0.5 rounded"
+                              style={{ background: 'rgba(138,155,176,0.08)', color: '#8a9bb0', border: '1px solid rgba(138,155,176,0.2)' }}>
+                              {inc.duracion_dias}d
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <div className="flex items-center gap-1.5">
@@ -1405,19 +1485,26 @@ export default function Incidentes() {
 // ── Modal: Registrar / editar incidente ───────────────────────────────────────
 
 function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar, onCerrar }) {
-  const [fecha,       setFecha]       = useState(inicial?.fecha ?? hoy())
-  const [categoria,   setCategoria]   = useState(inicial?.tipo_categoria ?? '')
-  const [tipoInc,     setTipoInc]     = useState(inicial?.tipo_incidente ?? '')
-  const [severidad,   setSeveridad]   = useState(inicial?.severidad ?? 'leve')
-  const [descripcion, setDescripcion] = useState(inicial?.descripcion ?? '')
-  const [animalId,    setAnimalId]    = useState(inicial?.animal_id ?? '')
-  const [camadaId,    setCamadaId]    = useState(inicial?.camada_id ?? '')
-  const [guardando,   setGuardando]   = useState(false)
-  const [error,       setError]       = useState('')
+  const [fecha,          setFecha]          = useState(inicial?.fecha ?? hoy())
+  const [categoria,      setCategoria]      = useState(inicial?.tipo_categoria ?? '')
+  const [tipoInc,        setTipoInc]        = useState(inicial?.tipo_incidente ?? '')
+  const [severidad,      setSeveridad]      = useState(inicial?.severidad ?? 'leve')
+  const [descripcion,    setDescripcion]    = useState(inicial?.descripcion ?? '')
+  const [animalId,       setAnimalId]       = useState(inicial?.animal_id ?? '')
+  const [camadaId,       setCamadaId]       = useState(inicial?.camada_id ?? '')
+  const [padreId,        setPadreId]        = useState(inicial?.padre_id ?? '')
+  const [madreId,        setMadreId]        = useState(inicial?.madre_id ?? '')
+  const [duracionDias,   setDuracionDias]   = useState(inicial?.duracion_dias ?? '')
+  const [lineaGenetica,  setLineaGenetica]  = useState(inicial?.linea_genetica ?? '')
+  const [guardando,      setGuardando]      = useState(false)
+  const [error,          setError]          = useState('')
 
-  const tipos    = categoria ? CATEGORIAS[categoria]?.tipos ?? [] : []
+  const tipos    = categoria ? getTiposForm(categoria) : []
   const esEdicion = !!inicial
+  const esGenealogica = CATS_GENEALOGICAS.includes(categoria)
 
+  const machos     = animales.filter(a => a.sexo === 'macho' && ['activo','en_apareamiento','en_cria'].includes(a.estado))
+  const hembras    = animales.filter(a => a.sexo === 'hembra' && ['activo','en_apareamiento','en_cria'].includes(a.estado))
   const animalesDisp = animales.filter(a => ['activo','en_apareamiento','en_cria'].includes(a.estado))
   const camadasDisp  = camadas.filter(c => !c.failure_flag && c.fecha_nacimiento && !c.fecha_destete)
 
@@ -1432,10 +1519,14 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
         tipo_categoria: categoria,
         tipo_incidente: tipoInc,
         severidad,
-        descripcion: descripcion.trim() || null,
-        animal_id:  animalId  || null,
-        camada_id:  camadaId  || null,
-        resuelto:   inicial?.resuelto ?? false,
+        descripcion:    descripcion.trim() || null,
+        animal_id:      animalId      || null,
+        camada_id:      camadaId      || null,
+        padre_id:       padreId       || null,
+        madre_id:       madreId       || null,
+        duracion_dias:  duracionDias !== '' ? Number(duracionDias) : null,
+        linea_genetica: lineaGenetica.trim() || null,
+        resuelto:       inicial?.resuelto ?? false,
       })
     } catch {
       setError('No se pudo guardar. Verificá la conexión.')
@@ -1465,18 +1556,27 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
         </div>
 
         <form onSubmit={guardar} className="px-6 py-5 space-y-4">
-          {/* Fecha + Severidad */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
+
+          {/* Fecha + Severidad + Duración */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="col-span-1">
               <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>Fecha</label>
               <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} required style={inputBase} />
             </div>
-            <div>
+            <div className="col-span-1">
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
+                Duración <span style={{ color: '#3d5068' }}>(días, opc.)</span>
+              </label>
+              <input type="number" min="1" value={duracionDias}
+                onChange={e => setDuracionDias(e.target.value)}
+                placeholder="—" style={inputBase} />
+            </div>
+            <div className="col-span-1">
               <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>Severidad</label>
-              <div className="flex gap-1.5">
+              <div className="flex flex-col gap-1">
                 {SEVERIDADES.map(s => (
                   <button key={s.id} type="button" onClick={() => setSeveridad(s.id)}
-                    className="flex-1 py-2 rounded-lg text-xs font-semibold"
+                    className="py-1.5 rounded-lg text-xs font-semibold"
                     style={{ background: severidad === s.id ? s.bg : 'rgba(255,255,255,0.04)', border: `1px solid ${severidad === s.id ? s.color + '55' : 'rgba(255,255,255,0.1)'}`, color: severidad === s.id ? s.color : '#4a5f7a' }}>
                     {s.label}
                   </button>
@@ -1489,9 +1589,9 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
           <div>
             <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>Categoría</label>
             <div className="grid grid-cols-3 md:grid-cols-5 gap-1.5">
-              {Object.entries(CATEGORIAS).map(([catId, cat]) => (
+              {Object.entries(CATEGORIAS_FORM).map(([catId, cat]) => (
                 <button key={catId} type="button"
-                  onClick={() => { setCategoria(prev => prev === catId ? '' : catId); setTipoInc('') }}
+                  onClick={() => { setCategoria(prev => prev === catId ? '' : catId); setTipoInc(''); setPadreId(''); setMadreId('') }}
                   className="py-2 px-1.5 rounded-xl text-xs font-semibold text-center"
                   style={{ background: categoria === catId ? `${cat.color}22` : 'rgba(255,255,255,0.04)', border: `1px solid ${categoria === catId ? cat.color + '55' : 'rgba(255,255,255,0.1)'}`, color: categoria === catId ? cat.color : '#4a5f7a' }}>
                   <div className="text-base">{cat.icon}</div>
@@ -1505,7 +1605,7 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
           {categoria && tipos.length > 0 && (
             <div>
               <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>Tipo de incidente</label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
+              <div className="grid grid-cols-2 gap-1">
                 {tipos.map(t => (
                   <button key={t.id} type="button" onClick={() => setTipoInc(t.id)}
                     className="text-left py-1.5 px-3 rounded-lg text-xs font-mono"
@@ -1517,21 +1617,46 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
             </div>
           )}
 
-          {/* Descripción */}
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
-              Descripción <span style={{ color: '#3d5068' }}>(opcional)</span>
-            </label>
-            <textarea value={descripcion} onChange={e => setDescripcion(e.target.value)}
-              placeholder="Describí el evento, qué se observó, qué medidas se tomaron..."
-              rows={3} style={{ ...inputBase, resize: 'vertical', lineHeight: '1.5' }} />
-          </div>
+          {/* Asociación genealógica — solo Sanitario y Reproductivo */}
+          {esGenealogica && (
+            <div className="rounded-xl p-4 space-y-3"
+              style={{ background: 'rgba(167,139,250,0.05)', border: '1px solid rgba(167,139,250,0.2)' }}>
+              <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#a78bfa' }}>
+                🧬 Vínculo genealógico <span className="font-mono font-normal normal-case" style={{ color: '#4a5f7a' }}>(opcional — mejora las alertas)</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono mb-1" style={{ color: '#6a8099' }}>♂ Padre implicado</label>
+                  <select value={padreId} onChange={e => setPadreId(e.target.value)} style={inputBase}>
+                    <option value="">— Ninguno —</option>
+                    {machos.map(a => (
+                      <option key={a.id} value={a.id}>♂ {a.codigo ?? `#${a.id.slice(0,6)}`}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-mono mb-1" style={{ color: '#6a8099' }}>♀ Madre implicada</label>
+                  <select value={madreId} onChange={e => setMadreId(e.target.value)} style={inputBase}>
+                    <option value="">— Ninguna —</option>
+                    {hembras.map(a => (
+                      <option key={a.id} value={a.id}>♀ {a.codigo ?? `#${a.id.slice(0,6)}`}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-mono mb-1" style={{ color: '#6a8099' }}>Línea genética <span style={{ color: '#3d5068' }}>(ej: BALB/c F12, C57 lote 3)</span></label>
+                <input type="text" value={lineaGenetica} onChange={e => setLineaGenetica(e.target.value)}
+                  placeholder="Nombre de la línea o lote..." style={inputBase} />
+              </div>
+            </div>
+          )}
 
-          {/* Asociar animal o camada */}
+          {/* Animal implicado + Camada */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
-                Animal <span style={{ color: '#3d5068' }}>(opc.)</span>
+                Animal directo <span style={{ color: '#3d5068' }}>(opc.)</span>
               </label>
               <select value={animalId} onChange={e => setAnimalId(e.target.value)} style={inputBase}>
                 <option value="">— Ninguno —</option>
@@ -1556,6 +1681,16 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* Descripción */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
+              Notas adicionales <span style={{ color: '#3d5068' }}>(opcional)</span>
+            </label>
+            <textarea value={descripcion} onChange={e => setDescripcion(e.target.value)}
+              placeholder="Qué se observó, medidas tomadas, contexto..."
+              rows={2} style={{ ...inputBase, resize: 'vertical', lineHeight: '1.5' }} />
           </div>
 
           {error && (
