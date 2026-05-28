@@ -1645,6 +1645,15 @@ export function generarDecisionesHoy(
 //
 // Retorna: array de alertas con { tipo, nivel, animal?, incidentes, mensaje, accion }
 
+// Extrae todos los IDs de animales de un incidente
+// (incluye animal_id singular + animal_ids array)
+function getAnimalIdsDeIncidente(inc) {
+  const ids = new Set()
+  if (inc.animal_id) ids.add(inc.animal_id)
+  if (Array.isArray(inc.animal_ids)) inc.animal_ids.forEach(id => { if (id) ids.add(id) })
+  return ids
+}
+
 export function detectarAlertasGenealógicas(incidentes, animales) {
   const alertas = []
   const hace180 = new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10)
@@ -1657,16 +1666,47 @@ export function detectarAlertasGenealógicas(incidentes, animales) {
 
   if (relevantes.length === 0) return alertas
 
-  // ── Agrupar por padre_id ──────────────────────────────────────────────────
+  // ── Animales implicados directamente (via animal_id / animal_ids) ──────────
+  // IDs ya cubiertos por alertas de padre/madre (para no duplicar)
+  const idsPadreMadre = new Set()
+  relevantes.forEach(i => {
+    if (i.padre_id) idsPadreMadre.add(i.padre_id)
+    if (i.madre_id) idsPadreMadre.add(i.madre_id)
+  })
+
+  const porAnimalDirecto = {}
+  relevantes.forEach(i => {
+    getAnimalIdsDeIncidente(i).forEach(id => {
+      ;(porAnimalDirecto[id] = porAnimalDirecto[id] ?? []).push(i)
+    })
+  })
+
+  Object.entries(porAnimalDirecto).forEach(([animalId, incs]) => {
+    if (incs.length < 2) return
+    const animal = animales.find(a => a.id === animalId)
+    if (!animal) return
+    // Si este animal ya genera alerta como padre/madre, no duplicar
+    if (idsPadreMadre.has(animalId)) return
+    const nivel = incs.length >= 4 ? 'critico' : incs.length >= 3 ? 'alerta' : 'atencion'
+    const sexLabel = animal.sexo === 'macho' ? '♂ Macho' : '♀ Hembra'
+    alertas.push({
+      tipo: 'animal_implicado',
+      nivel,
+      animal,
+      incidentes: incs,
+      mensaje: `⚠️ ${sexLabel} ${animal.codigo} implicado en ${incs.length} incidentes (180d)`,
+      accion: nivel === 'critico'
+        ? 'Múltiples incidentes críticos — evaluar retiro de reproducción'
+        : 'Monitorear — reducir prioridad reproductiva de este animal',
+    })
+  })
+
+  // ── Agrupar por padre_id / madre_id ───────────────────────────────────────
   const porPadre = {}
   const porMadre = {}
   relevantes.forEach(i => {
-    if (i.padre_id) {
-      ;(porPadre[i.padre_id] = porPadre[i.padre_id] ?? []).push(i)
-    }
-    if (i.madre_id) {
-      ;(porMadre[i.madre_id] = porMadre[i.madre_id] ?? []).push(i)
-    }
+    if (i.padre_id) ;(porPadre[i.padre_id] = porPadre[i.padre_id] ?? []).push(i)
+    if (i.madre_id) ;(porMadre[i.madre_id] = porMadre[i.madre_id] ?? []).push(i)
   })
 
   Object.entries(porPadre).forEach(([padreId, incs]) => {
@@ -1710,14 +1750,16 @@ export function detectarAlertasGenealógicas(incidentes, animales) {
   ])
   const malformaciones = relevantes.filter(i => TIPOS_MALFORMACION.has(i.tipo_incidente))
 
+  const parejasMalformacion = new Set() // para no duplicar en familia_implicada
   if (malformaciones.length >= 2) {
     const byPair = {}
     malformaciones.forEach(i => {
       const k = [i.padre_id ?? '', i.madre_id ?? ''].filter(Boolean).sort().join('|')
       if (k) (byPair[k] = byPair[k] ?? []).push(i)
     })
-    Object.values(byPair).forEach(incs => {
+    Object.entries(byPair).forEach(([k, incs]) => {
       if (incs.length < 2) return
+      parejasMalformacion.add(k)
       const padreAnimal = incs[0].padre_id ? animales.find(a => a.id === incs[0].padre_id) : null
       const madreAnimal = incs[0].madre_id ? animales.find(a => a.id === incs[0].madre_id) : null
       const lineaLabel = [padreAnimal?.codigo, madreAnimal?.codigo].filter(Boolean).join(' × ') || 'línea desconocida'
@@ -1731,6 +1773,32 @@ export function detectarAlertasGenealógicas(incidentes, animales) {
       })
     })
   }
+
+  // ── Familia implicada (cualquier tipo de incidente repetido en misma pareja) ─
+  const byFamilia = {}
+  relevantes.forEach(i => {
+    if (i.padre_id || i.madre_id) {
+      const k = [i.padre_id ?? '', i.madre_id ?? ''].filter(Boolean).sort().join('|')
+      if (k) (byFamilia[k] = byFamilia[k] ?? []).push(i)
+    }
+  })
+  Object.entries(byFamilia).forEach(([k, incs]) => {
+    if (incs.length < 2) return
+    // Si ya está cubierto como malformacion_repetida, no agregar familia_implicada
+    if (parejasMalformacion.has(k)) return
+    const ids = k.split('|')
+    const animalesPareja = ids.map(id => animales.find(a => a.id === id)).filter(Boolean)
+    const label = animalesPareja.map(a => a.codigo).filter(Boolean).join(' × ') || 'familia'
+    const nivel = incs.length >= 4 ? 'critico' : incs.length >= 3 ? 'alerta' : 'atencion'
+    alertas.push({
+      tipo: 'familia_implicada',
+      nivel,
+      animal: animalesPareja[0] ?? null,
+      incidentes: incs,
+      mensaje: `⚠️ Familia ${label} acumula ${incs.length} incidentes repetidos (180d)`,
+      accion: 'Revisar compatibilidad genética — considerar cambio de pareja reproductiva',
+    })
+  })
 
   // ── Línea genética con alta incidencia por campo linea_genetica ────────────
   const porLinea = {}

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { useBioterioActivo } from '../context/BioterioActivoContext'
 import { hoy, formatFecha } from '../utils/calculos'
@@ -297,7 +297,10 @@ export default function Incidentes() {
               const icon = a.tipo === 'malformacion_repetida' ? '🧬'
                 : a.tipo === 'linea_problematica' ? '⚠️'
                 : a.tipo === 'padre_implicado' ? '♂'
-                : '♀'
+                : a.tipo === 'madre_implicada' ? '♀'
+                : a.tipo === 'animal_implicado' ? '🐭'
+                : a.tipo === 'familia_implicada' ? '👨‍👩‍👧'
+                : '⚠️'
               return (
                 <div key={i} className="px-5 py-3.5 flex items-start gap-3">
                   <span className="text-base shrink-0 mt-0.5" style={{ color: cl.c }}>{icon}</span>
@@ -1484,13 +1487,15 @@ export default function Incidentes() {
 
 // ── Modal: Registrar / editar incidente ───────────────────────────────────────
 
+// Categorías que habilitan selector de múltiples animales
+const CATS_MULTI_ANIMAL = ['sanitario', 'reproductivo']
+
 function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar, onCerrar }) {
   const [fecha,          setFecha]          = useState(inicial?.fecha ?? hoy())
   const [categoria,      setCategoria]      = useState(inicial?.tipo_categoria ?? '')
   const [tipoInc,        setTipoInc]        = useState(inicial?.tipo_incidente ?? '')
   const [severidad,      setSeveridad]      = useState(inicial?.severidad ?? 'leve')
   const [descripcion,    setDescripcion]    = useState(inicial?.descripcion ?? '')
-  const [animalId,       setAnimalId]       = useState(inicial?.animal_id ?? '')
   const [camadaId,       setCamadaId]       = useState(inicial?.camada_id ?? '')
   const [padreId,        setPadreId]        = useState(inicial?.padre_id ?? '')
   const [madreId,        setMadreId]        = useState(inicial?.madre_id ?? '')
@@ -1499,20 +1504,66 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
   const [guardando,      setGuardando]      = useState(false)
   const [error,          setError]          = useState('')
 
-  const tipos    = categoria ? getTiposForm(categoria) : []
-  const esEdicion = !!inicial
-  const esGenealogica = CATS_GENEALOGICAS.includes(categoria)
+  // Multi-select de animales implicados (para Sanitario / Reproductivo)
+  const [animalesImplicados, setAnimalesImplicados] = useState(() => {
+    if (inicial?.animal_ids?.length > 0) return new Set(inicial.animal_ids)
+    if (inicial?.animal_id) return new Set([inicial.animal_id])
+    return new Set()
+  })
+  const [busquedaAnimal, setBusquedaAnimal] = useState('')
+
+  const tipos      = categoria ? getTiposForm(categoria) : []
+  const esEdicion  = !!inicial
+  const esGenealogica  = CATS_GENEALOGICAS.includes(categoria)
+  const esMultiAnimal  = CATS_MULTI_ANIMAL.includes(categoria)
 
   const machos     = animales.filter(a => a.sexo === 'macho' && ['activo','en_apareamiento','en_cria'].includes(a.estado))
   const hembras    = animales.filter(a => a.sexo === 'hembra' && ['activo','en_apareamiento','en_cria'].includes(a.estado))
   const animalesDisp = animales.filter(a => ['activo','en_apareamiento','en_cria'].includes(a.estado))
   const camadasDisp  = camadas.filter(c => !c.failure_flag && c.fecha_nacimiento && !c.fecha_destete)
 
+  // Lista de animales para el panel multi-select, filtrada por búsqueda
+  const animalesFiltrados = useMemo(() => {
+    const q = busquedaAnimal.trim().toLowerCase()
+    const ACTIVOS = ['activo', 'en_apareamiento', 'en_cria']
+    const todos = [...animales].sort((a, b) => {
+      const aAct = ACTIVOS.includes(a.estado)
+      const bAct = ACTIVOS.includes(b.estado)
+      if (aAct && !bAct) return -1
+      if (!aAct && bAct) return 1
+      return (a.codigo ?? '').localeCompare(b.codigo ?? '')
+    })
+    if (!q) return todos
+    return todos.filter(a =>
+      (a.codigo ?? '').toLowerCase().includes(q) ||
+      a.id.toLowerCase().startsWith(q)
+    )
+  }, [animales, busquedaAnimal])
+
+  // Cuando se selecciona una camada: auto-poblar padre/madre en vínculo genealógico
+  useEffect(() => {
+    if (!camadaId) return
+    const camada = camadas.find(c => c.id === camadaId)
+    if (!camada) return
+    if (camada.id_padre && !padreId) setPadreId(camada.id_padre)
+    if (camada.id_madre && !madreId) setMadreId(camada.id_madre)
+  }, [camadaId]) // eslint-disable-line
+
+  function toggleAnimal(id) {
+    setAnimalesImplicados(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   async function guardar(e) {
     e.preventDefault()
     if (!categoria) { setError('Seleccioná una categoría.'); return }
     if (!tipoInc)   { setError('Seleccioná el tipo de incidente.'); return }
     setGuardando(true); setError('')
+    const idsArray = [...animalesImplicados]
     try {
       await onGuardar({
         fecha,
@@ -1520,7 +1571,8 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
         tipo_incidente: tipoInc,
         severidad,
         descripcion:    descripcion.trim() || null,
-        animal_id:      animalId      || null,
+        animal_id:      idsArray[0] ?? null,
+        animal_ids:     idsArray,
         camada_id:      camadaId      || null,
         padre_id:       padreId       || null,
         madre_id:       madreId       || null,
@@ -1652,36 +1704,138 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
             </div>
           )}
 
-          {/* Animal implicado + Camada */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
-                Animal directo <span style={{ color: '#3d5068' }}>(opc.)</span>
-              </label>
-              <select value={animalId} onChange={e => setAnimalId(e.target.value)} style={inputBase}>
-                <option value="">— Ninguno —</option>
-                {animalesDisp.map(a => (
-                  <option key={a.id} value={a.id}>
-                    {a.sexo === 'macho' ? '♂' : '♀'} {a.codigo ?? `#${a.id.slice(0,6)}`}
-                  </option>
-                ))}
-              </select>
+          {/* ── Animales implicados (multi-select) — solo Sanitario / Reproductivo ── */}
+          {esMultiAnimal ? (
+            <div className="rounded-xl p-4 space-y-3"
+              style={{ background: 'rgba(255,107,128,0.04)', border: '1px solid rgba(255,107,128,0.2)' }}>
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#ff6b80' }}>
+                  🐭 Animales implicados
+                  {animalesImplicados.size > 0 && (
+                    <span className="ml-2 font-mono font-normal normal-case" style={{ color: '#ff9100' }}>
+                      {animalesImplicados.size} seleccionado{animalesImplicados.size !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+                {animalesImplicados.size > 0 && (
+                  <button type="button" onClick={() => setAnimalesImplicados(new Set())}
+                    className="text-xs font-mono px-2 py-0.5 rounded-lg"
+                    style={{ color: '#4a5f7a', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    Limpiar todo
+                  </button>
+                )}
+              </div>
+
+              {/* Chips de seleccionados */}
+              {animalesImplicados.size > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {[...animalesImplicados].map(id => {
+                    const a = animales.find(x => x.id === id)
+                    if (!a) return null
+                    const col = a.sexo === 'macho' ? '#40c4ff' : '#a78bfa'
+                    return (
+                      <span key={id} className="flex items-center gap-1 text-xs font-mono px-2 py-0.5 rounded-full"
+                        style={{ background: `${col}18`, color: col, border: `1px solid ${col}40` }}>
+                        {a.sexo === 'macho' ? '♂' : '♀'} {a.codigo ?? a.id.slice(0, 6)}
+                        <button type="button" onClick={() => toggleAnimal(id)}
+                          style={{ color: 'inherit', opacity: 0.7, marginLeft: 2, lineHeight: 1 }}>×</button>
+                      </span>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Búsqueda */}
+              <input type="text" value={busquedaAnimal}
+                onChange={e => setBusquedaAnimal(e.target.value)}
+                placeholder="Buscar por código (ej: H31, M8)..."
+                style={inputBase} />
+
+              {/* Lista scrolleable */}
+              <div className="max-h-44 overflow-y-auto space-y-1 pr-0.5"
+                style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}>
+                {animalesFiltrados.length === 0 ? (
+                  <div className="py-3 text-center text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                    Sin animales que coincidan.
+                  </div>
+                ) : animalesFiltrados.map(a => {
+                  const sel = animalesImplicados.has(a.id)
+                  const col = a.sexo === 'macho' ? '#40c4ff' : '#a78bfa'
+                  const ACTIVOS = ['activo', 'en_apareamiento', 'en_cria']
+                  const estaActivo = ACTIVOS.includes(a.estado)
+                  return (
+                    <button key={a.id} type="button" onClick={() => toggleAnimal(a.id)}
+                      className="w-full text-left py-1.5 px-3 rounded-lg text-xs font-mono flex items-center gap-2"
+                      style={{ background: sel ? `${col}18` : 'rgba(255,255,255,0.03)', border: `1px solid ${sel ? col + '40' : 'rgba(255,255,255,0.07)'}`, color: sel ? col : '#8a9bb0' }}>
+                      <span style={{ color: col, minWidth: 12 }}>{a.sexo === 'macho' ? '♂' : '♀'}</span>
+                      <span style={{ color: sel ? col : '#c9d4e0', fontWeight: 600 }}>{a.codigo ?? `#${a.id.slice(0, 6)}`}</span>
+                      <span style={{ opacity: 0.5, fontSize: 11 }}>
+                        {a.estado === 'en_apareamiento' ? 'en apareamiento' : a.estado === 'en_cria' ? 'en cría' : a.estado}
+                      </span>
+                      {!estaActivo && (
+                        <span className="text-xs px-1 rounded"
+                          style={{ background: 'rgba(255,255,255,0.06)', color: '#4a5f7a', fontSize: 10 }}>
+                          inactivo
+                        </span>
+                      )}
+                      {sel && <span className="ml-auto font-bold" style={{ color: col }}>✓</span>}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Camada implicada */}
+              <div>
+                <label className="block text-xs font-mono mb-1" style={{ color: '#6a8099' }}>
+                  Camada implicada <span style={{ color: '#3d5068' }}>(opc. — auto-completa padre/madre)</span>
+                </label>
+                <select value={camadaId} onChange={e => setCamadaId(e.target.value)} style={inputBase}>
+                  <option value="">— Ninguna —</option>
+                  {camadasDisp.map(c => (
+                    <option key={c.id} value={c.id}>
+                      Cópula {formatFecha(c.fecha_copula, { day: '2-digit', month: '2-digit' })}
+                      {c.total_crias ? ` · ${c.total_crias} crías` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
-                Camada <span style={{ color: '#3d5068' }}>(opc.)</span>
-              </label>
-              <select value={camadaId} onChange={e => setCamadaId(e.target.value)} style={inputBase}>
-                <option value="">— Ninguna —</option>
-                {camadasDisp.map(c => (
-                  <option key={c.id} value={c.id}>
-                    Cópula {formatFecha(c.fecha_copula, { day: '2-digit', month: '2-digit' })}
-                    {c.total_crias ? ` · ${c.total_crias} crías` : ''}
-                  </option>
-                ))}
-              </select>
+          ) : (
+            /* ── Single select para otras categorías ── */
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
+                  Animal directo <span style={{ color: '#3d5068' }}>(opc.)</span>
+                </label>
+                <select
+                  value={[...animalesImplicados][0] ?? ''}
+                  onChange={e => setAnimalesImplicados(e.target.value ? new Set([e.target.value]) : new Set())}
+                  style={inputBase}>
+                  <option value="">— Ninguno —</option>
+                  {animalesDisp.map(a => (
+                    <option key={a.id} value={a.id}>
+                      {a.sexo === 'macho' ? '♂' : '♀'} {a.codigo ?? `#${a.id.slice(0, 6)}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
+                  Camada <span style={{ color: '#3d5068' }}>(opc.)</span>
+                </label>
+                <select value={camadaId} onChange={e => setCamadaId(e.target.value)} style={inputBase}>
+                  <option value="">— Ninguna —</option>
+                  {camadasDisp.map(c => (
+                    <option key={c.id} value={c.id}>
+                      Cópula {formatFecha(c.fecha_copula, { day: '2-digit', month: '2-digit' })}
+                      {c.total_crias ? ` · ${c.total_crias} crías` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Descripción */}
           <div>
