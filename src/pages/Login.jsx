@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import iterateIconOnly      from '../assets/iterate_icon_only.jpg'
-import iterateIconLight     from '../assets/iterate_icon_light.png'
-import iterateTextLogo      from '../assets/iterate_text_logo.png'
-import iterateTextLogoLight from '../assets/iterate_text_logo_light.png'
+import iterateLogoIcon      from '../assets/logoiterate.png'
+import iterateLogoIconLight from '../assets/logoiteratefondoclaro.png'
+import iterateTextLogo      from '../assets/iterate+slogan.png'
+import iterateTextLogoLight from '../assets/iterate+sloganfondoclaro.png'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 
@@ -65,7 +65,7 @@ export default function Login() {
     border: `1px solid ${tema.bgCardBorde}`,
     color: tema.textPrimary,
     borderRadius: '12px',
-    padding: '12px 16px',
+    padding: '10px 16px',
     fontSize: '14px',
     outline: 'none',
     fontFamily: 'Inter, sans-serif',
@@ -146,46 +146,38 @@ export default function Login() {
         >
           {/* Header */}
           <div
-            className="px-8 py-7 text-center"
+            className="px-8 py-3 text-center"
             style={{ borderBottom: `1px solid ${tema.greenBorde}`, background: tema.greenDim }}
           >
             {/* Logo */}
             <style>{`
-              @keyframes floatLogin { 0%,100% { transform: translateY(0px); } 50% { transform: translateY(-8px); } }
-              @media (max-width: 480px) { .login-logo-img { height: 130px !important; } }
+              @keyframes floatLogin { 0%,100% { transform: translateY(0px); } 50% { transform: translateY(-6px); } }
+              @media (max-width: 480px) { .login-logo-img { height: 160px !important; } }
             `}</style>
-            <div className="flex justify-center mb-4">
-              <div style={{
-                borderRadius: '24px',
-                border: '1.5px solid rgba(0,230,118,0.2)',
-                boxShadow: '0 0 60px rgba(0,230,118,0.18), 0 8px 40px rgba(0,0,0,0.5)',
-                animation: 'floatLogin 4s ease-in-out infinite',
-                overflow: 'hidden',
-                display: 'inline-flex',
-              }}>
-                <img
-                  src={modoBrillo ? iterateIconLight : iterateIconOnly}
-                  alt="ITeRatE"
-                  className="login-logo-img"
-                  style={{
-                    height: '200px',
-                    width: 'auto',
-                    display: 'block',
-                    marginTop: '-30px',
-                    mixBlendMode: modoBrillo ? 'multiply' : 'normal',
-                  }}
-                />
-              </div>
+            <div className="flex justify-center mb-1">
+              <img
+                src={modoBrillo ? iterateLogoIconLight : iterateLogoIcon}
+                alt="ITeRatE"
+                className="login-logo-img"
+                style={{
+                  height: '220px',
+                  width: 'auto',
+                  display: 'block',
+                  animation: 'floatLogin 4s ease-in-out infinite',
+                  mixBlendMode: modoBrillo ? 'multiply' : 'normal',
+                  filter: modoBrillo ? 'none' : 'drop-shadow(0 0 14px rgba(0,230,118,0.28))',
+                }}
+              />
             </div>
 
-            <h1 className="text-xl font-bold tracking-wide" style={{ color: tema.textPrimary }}>BIOTERIO</h1>
-            <p className="text-xs mt-1 font-mono" style={{ color: tema.green, opacity: 0.8 }}>
+            <h1 className="text-base font-bold tracking-wide" style={{ color: tema.textPrimary }}>BIOTERIO</h1>
+            <p className="text-xs font-mono" style={{ color: tema.green, opacity: 0.8 }}>
               Sistema de Gestión de Colonia
             </p>
 
             {/* Indicador de acceso restringido */}
             <div
-              className="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full text-xs font-semibold"
+              className="inline-flex items-center gap-1.5 mt-1.5 px-3 py-0.5 rounded-full text-xs font-semibold"
               style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.2)', color: '#ffb300' }}
             >
               🔒 Acceso restringido
@@ -193,9 +185,9 @@ export default function Login() {
           </div>
 
           {/* Formulario */}
-          <form onSubmit={manejarLogin} className="px-8 py-7 space-y-4">
+          <form onSubmit={manejarLogin} className="px-8 py-4 space-y-2.5">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: tema.textMuted }}>
                 Email
               </label>
               <input
@@ -210,7 +202,7 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: tema.textMuted }}>
                 Contraseña
               </label>
               <div className="relative">
@@ -248,7 +240,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={cargando}
-              className="w-full py-3 rounded-xl text-sm font-bold transition-all mt-2"
+              className="w-full py-2.5 rounded-xl text-sm font-bold transition-all mt-1"
               style={
                 cargando
                   ? { background: 'rgba(0,230,118,0.05)', border: '1px solid rgba(0,230,118,0.15)', color: '#4a5f7a', cursor: 'not-allowed' }
@@ -274,13 +266,13 @@ export default function Login() {
 
           {/* Footer */}
           <div
-            className="px-8 py-5 text-center"
+            className="px-8 py-2 text-center"
             style={{ borderTop: `1px solid ${tema.bgCardBorde}` }}
           >
             <img
               src={modoBrillo ? iterateTextLogoLight : iterateTextLogo}
               alt="ITeRatE"
-              style={{ width: '160px', maxWidth: '100%', height: 'auto', margin: '0 auto 8px', display: 'block', opacity: modoBrillo ? 0.85 : 0.6, filter: modoBrillo ? 'none' : 'drop-shadow(0 0 8px rgba(0,230,118,0.15))', mixBlendMode: modoBrillo ? 'multiply' : 'normal' }}
+              style={{ width: '210px', maxWidth: '100%', height: 'auto', margin: '0 auto 4px', display: 'block', opacity: modoBrillo ? 0.9 : 0.72, filter: modoBrillo ? 'none' : 'drop-shadow(0 0 8px rgba(0,230,118,0.15))', mixBlendMode: modoBrillo ? 'multiply' : 'normal' }}
             />
             <div className="flex items-center justify-center gap-1.5 text-xs" style={{ color: 'rgba(74,95,122,0.5)' }}>
               <span className="font-mono italic">Mus musculus · Ratón doméstico</span>
