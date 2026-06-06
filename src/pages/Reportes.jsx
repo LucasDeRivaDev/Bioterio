@@ -14,15 +14,15 @@ const LABEL_BIOTERIO = {
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
 const SECCIONES = [
-  { key: 'estadisticas',    label: 'Estadísticas',    icon: <TrendingUp size={14} />,    color: '#ffb300', rgb: '255,179,0',   printBg: '#fefae8', printBorder: '#b8860b' },
-  { key: 'reproductores',   label: 'Reproductores',   icon: <Microscope size={14} />,    color: '#ce93d8', rgb: '206,147,216', printBg: '#f5f0ff', printBorder: '#9d4edd' },
-  { key: 'emparejamientos', label: 'Emparejamientos', icon: <Dna size={14} />,           color: '#40c4ff', rgb: '64,196,255',  printBg: '#e8f4fd', printBorder: '#0277bd' },
-  { key: 'rendimiento',     label: 'Rendimiento',     icon: <BarChart2 size={14} />,     color: '#00e676', rgb: '0,230,118',   printBg: '#e8f8f0', printBorder: '#2e7d52' },
-  { key: 'stock',           label: 'Stock',           icon: <Archive size={14} />,       color: '#00e676', rgb: '0,230,118',   printBg: '#e8f8f0', printBorder: '#2e7d52' },
-  { key: 'sacrificios',     label: 'Sacrificios',     icon: <Skull size={14} />,         color: '#ff6b80', rgb: '255,107,128', printBg: '#fde8ec', printBorder: '#c62828' },
-  { key: 'entregas',        label: 'Entregas',        icon: <PackageCheck size={14} />,  color: '#ffb300', rgb: '255,179,0',   printBg: '#fefae8', printBorder: '#b8860b' },
-  { key: 'temperaturas',    label: 'Temperaturas',    icon: <Thermometer size={14} />,   color: '#40c4ff', rgb: '64,196,255',  printBg: '#e8f4fd', printBorder: '#0277bd' },
-  { key: 'incidentes',      label: 'Incidentes',      icon: <FileWarning size={14} />,   color: '#ce93d8', rgb: '206,147,216', printBg: '#f5f0ff', printBorder: '#9d4edd' },
+  { key: 'estadisticas',    label: 'Estadísticas',    icon: <TrendingUp size={14} />,    color: tema.amber, rgb: '255,179,0',   printBg: '#fefae8', printBorder: '#b8860b' },
+  { key: 'reproductores',   label: 'Reproductores',   icon: <Microscope size={14} />,    color: tema.purple, rgb: '206,147,216', printBg: '#f5f0ff', printBorder: '#9d4edd' },
+  { key: 'emparejamientos', label: 'Emparejamientos', icon: <Dna size={14} />,           color: tema.blue, rgb: '64,196,255',  printBg: '#e8f4fd', printBorder: '#0277bd' },
+  { key: 'rendimiento',     label: 'Rendimiento',     icon: <BarChart2 size={14} />,     color: tema.accent, rgb: '0,230,118',   printBg: '#e8f8f0', printBorder: '#2e7d52' },
+  { key: 'stock',           label: 'Stock',           icon: <Archive size={14} />,       color: tema.accent, rgb: '0,230,118',   printBg: '#e8f8f0', printBorder: '#2e7d52' },
+  { key: 'sacrificios',     label: 'Sacrificios',     icon: <Skull size={14} />,         color: tema.red, rgb: '255,107,128', printBg: '#fde8ec', printBorder: '#c62828' },
+  { key: 'entregas',        label: 'Entregas',        icon: <PackageCheck size={14} />,  color: tema.amber, rgb: '255,179,0',   printBg: '#fefae8', printBorder: '#b8860b' },
+  { key: 'temperaturas',    label: 'Temperaturas',    icon: <Thermometer size={14} />,   color: tema.blue, rgb: '64,196,255',  printBg: '#e8f4fd', printBorder: '#0277bd' },
+  { key: 'incidentes',      label: 'Incidentes',      icon: <FileWarning size={14} />,   color: tema.purple, rgb: '206,147,216', printBg: '#f5f0ff', printBorder: '#9d4edd' },
 ]
 
 function inicioSemana() {
@@ -158,10 +158,10 @@ export default function Reportes() {
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-1.5 h-7 rounded-full" style={{ background: '#00e676', boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
+            <div className="w-1.5 h-7 rounded-full" style={{ background: tema.accent, boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
             <div>
               <h1 className="text-xl font-bold text-white">Informes e Impresión</h1>
-              <p className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
+              <p className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>
                 {secActivas}/{SECCIONES.length} secciones activas · {tituloPeriodo}
               </p>
             </div>
@@ -169,7 +169,7 @@ export default function Reportes() {
           <button
             onClick={() => window.print()}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold"
-            style={{ background: 'rgba(0,230,118,0.15)', border: '1.5px solid rgba(0,230,118,0.4)', color: '#00e676', boxShadow: '0 0 20px rgba(0,230,118,0.1)' }}
+            style={{ background: 'rgba(0,230,118,0.15)', border: '1.5px solid rgba(0,230,118,0.4)', color: tema.accent, boxShadow: '0 0 20px rgba(0,230,118,0.1)' }}
           >
             <Printer size={15} /> Imprimir / PDF
           </button>
@@ -177,14 +177,14 @@ export default function Reportes() {
 
         {/* Período */}
         <div className="rounded-2xl p-5 space-y-4" style={cardStyle}>
-          <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>Período del informe</div>
+          <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.textMuted }}>Período del informe</div>
           <div className="flex gap-2">
             {[{ val:'mensual', label: <><Calendar size={13} style={{ display:'inline', marginRight:4 }} />Por mes</> },{ val:'semanal', label: <><CalendarDays size={13} style={{ display:'inline', marginRight:4 }} />Por semana</> }].map(({ val, label }) => (
               <button key={val} onClick={() => setPeriodo(val)}
                 className="px-4 py-2 rounded-xl text-sm font-semibold"
                 style={periodo === val
-                  ? { background: 'rgba(0,230,118,0.12)', border: '1.5px solid rgba(0,230,118,0.4)', color: '#00e676' }
-                  : { background: 'rgba(30,51,82,0.3)', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }
+                  ? { background: 'rgba(0,230,118,0.12)', border: '1.5px solid rgba(0,230,118,0.4)', color: tema.accent }
+                  : { background: 'rgba(30,51,82,0.3)', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }
                 }>{label}</button>
             ))}
           </div>
@@ -192,28 +192,28 @@ export default function Reportes() {
           {periodo === 'mensual' ? (
             <div className="flex gap-3 flex-wrap items-end">
               <div>
-                <label className="block text-xs uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5f7a' }}>Mes</label>
+                <label className="block text-xs uppercase tracking-widest font-semibold mb-1.5" style={{ color: tema.textMuted }}>Mes</label>
                 <select value={mes} onChange={e => setMes(Number(e.target.value))}
                   className="px-3 py-2 text-sm rounded-xl focus:outline-none"
-                  style={{ background: 'rgba(8,13,26,0.8)', border: '1px solid rgba(30,51,82,0.8)', color: '#c9d4e0' }}>
+                  style={{ background: tema.bgInput, border: '1px solid rgba(30,51,82,0.8)', color: tema.textPrimary }}>
                   {MESES.map((m,i) => <option key={i} value={i}>{m}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5f7a' }}>Año</label>
+                <label className="block text-xs uppercase tracking-widest font-semibold mb-1.5" style={{ color: tema.textMuted }}>Año</label>
                 <input type="number" value={anio} onChange={e => setAnio(Number(e.target.value))}
                   className="px-3 py-2 text-sm rounded-xl focus:outline-none w-28 font-mono"
-                  style={{ background: 'rgba(8,13,26,0.8)', border: '1px solid rgba(30,51,82,0.8)', color: '#c9d4e0' }} />
+                  style={{ background: tema.bgInput, border: '1px solid rgba(30,51,82,0.8)', color: tema.textPrimary }} />
               </div>
             </div>
           ) : (
             <div>
-              <label className="block text-xs uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#4a5f7a' }}>Inicio de semana</label>
+              <label className="block text-xs uppercase tracking-widest font-semibold mb-1.5" style={{ color: tema.textMuted }}>Inicio de semana</label>
               <div className="flex items-center gap-3 flex-wrap">
                 <input type="date" value={semDesde} onChange={e => setSemDesde(e.target.value)}
                   className="px-3 py-2 text-sm rounded-xl focus:outline-none font-mono"
-                  style={{ background: 'rgba(8,13,26,0.8)', border: '1px solid rgba(30,51,82,0.8)', color: '#c9d4e0' }} />
-                <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>→ {tituloPeriodo}</span>
+                  style={{ background: tema.bgInput, border: '1px solid rgba(30,51,82,0.8)', color: tema.textPrimary }} />
+                <span className="text-xs font-mono" style={{ color: tema.textMuted }}>→ {tituloPeriodo}</span>
               </div>
             </div>
           )}
@@ -222,16 +222,16 @@ export default function Reportes() {
         {/* Secciones toggle */}
         <div className="rounded-2xl p-5 space-y-4" style={cardStyle}>
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>Secciones a imprimir</div>
+            <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.textMuted }}>Secciones a imprimir</div>
             <div className="flex gap-2">
               <button onClick={() => setSecciones(Object.fromEntries(SECCIONES.map(s=>[s.key,true])))}
                 className="text-xs px-3 py-1.5 rounded-lg font-semibold"
-                style={{ color: '#00e676', background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)' }}>
+                style={{ color: tema.accent, background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)' }}>
                 ✓ Todo
               </button>
               <button onClick={() => setSecciones(Object.fromEntries(SECCIONES.map(s=>[s.key,false])))}
                 className="text-xs px-3 py-1.5 rounded-lg font-semibold"
-                style={{ color: '#ff6b80', background: 'rgba(255,107,128,0.08)', border: '1px solid rgba(255,107,128,0.25)' }}>
+                style={{ color: tema.red, background: 'rgba(255,107,128,0.08)', border: '1px solid rgba(255,107,128,0.25)' }}>
                 ✕ Ninguno
               </button>
             </div>
@@ -242,7 +242,7 @@ export default function Reportes() {
                 className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-left"
                 style={secciones[key]
                   ? { background: `rgba(${rgb},0.1)`, border: `1.5px solid rgba(${rgb},0.5)`, color }
-                  : { background: 'rgba(30,51,82,0.2)', border: '1px solid rgba(30,51,82,0.4)', color: '#4a5f7a' }
+                  : { background: 'rgba(30,51,82,0.2)', border: '1px solid rgba(30,51,82,0.4)', color: tema.textMuted }
                 }>
                 <span style={{ fontSize: '12px' }}>{secciones[key] ? '✓' : '○'}</span>
                 <span>{icon}</span>
@@ -255,20 +255,20 @@ export default function Reportes() {
         {/* Resumen rápido */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: 'Reproductores',    val: datos.reproducPeriodo.length,                                 color: '#ce93d8' },
-            { label: 'Emparejamientos',  val: datos.camPeriodo.length,                                      color: '#40c4ff' },
-            { label: 'Sacrificios',      val: datos.sacrPeriodo.reduce((s,x) => s + (x.cantidad || 1), 0), color: '#ff6b80' },
-            { label: 'Temp. registradas',val: datos.tempPeriodo.length,                                     color: '#ffb300' },
+            { label: 'Reproductores',    val: datos.reproducPeriodo.length,                                 color: tema.purple },
+            { label: 'Emparejamientos',  val: datos.camPeriodo.length,                                      color: tema.blue },
+            { label: 'Sacrificios',      val: datos.sacrPeriodo.reduce((s,x) => s + (x.cantidad || 1), 0), color: tema.red },
+            { label: 'Temp. registradas',val: datos.tempPeriodo.length,                                     color: tema.amber },
           ].map(({ label, val, color }) => (
             <div key={label} className="rounded-xl p-4 text-center" style={cardStyle}>
               <div className="text-2xl font-bold font-mono" style={{ color }}>{val}</div>
-              <div className="text-xs mt-1" style={{ color: '#4a5f7a' }}>{label}</div>
+              <div className="text-xs mt-1" style={{ color: tema.textMuted }}>{label}</div>
             </div>
           ))}
         </div>
 
-        <p className="text-xs" style={{ color: '#4a5f7a' }}>
-          💡 En el diálogo de impresión seleccioná <strong style={{ color: '#c9d4e0' }}>"Guardar como PDF"</strong> y tamaño <strong style={{ color: '#c9d4e0' }}>A4</strong>.
+        <p className="text-xs" style={{ color: tema.textMuted }}>
+          💡 En el diálogo de impresión seleccioná <strong style={{ color: tema.textPrimary }}>"Guardar como PDF"</strong> y tamaño <strong style={{ color: tema.textPrimary }}>A4</strong>.
         </p>
       </div>
 

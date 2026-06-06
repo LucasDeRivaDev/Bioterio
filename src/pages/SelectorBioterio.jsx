@@ -15,10 +15,10 @@ function badgeSanitario(incidentes, bioterioId) {
   const inc = incidentes.filter(i => i.bioterio_id === bioterioId && (i.fecha ?? '') >= hace90 && !i.resuelto)
   const graves    = inc.filter(i => i.severidad === 'grave').length
   const moderados = inc.filter(i => i.severidad === 'moderado').length
-  if (graves > 0)    return { emoji: '🔴', label: 'Riesgo',   color: '#ff6b80', count: inc.length }
-  if (moderados > 1) return { emoji: '🟡', label: 'Atención', color: '#ffb300', count: inc.length }
-  if (inc.length > 0) return { emoji: '🟡', label: 'Atención', color: '#ffb300', count: inc.length }
-  return               { emoji: '🟢', label: 'Estable',   color: '#00e676', count: 0 }
+  if (graves > 0)    return { emoji: '🔴', label: 'Riesgo',   color: tema.red, count: inc.length }
+  if (moderados > 1) return { emoji: '🟡', label: 'Atención', color: tema.amber, count: inc.length }
+  if (inc.length > 0) return { emoji: '🟡', label: 'Atención', color: tema.amber, count: inc.length }
+  return               { emoji: '🟢', label: 'Estable',   color: tema.accent, count: 0 }
 }
 
 const CSS = `
@@ -103,10 +103,10 @@ export default function SelectorBioterio() {
           <div style={{ maxHeight: abierto === 'ratas' ? '300px' : '0', overflow: 'hidden', transition: 'max-height 0.25s ease' }}>
             <div className="px-6 pb-5" style={{ borderTop: '1px solid rgba(0,230,118,0.12)' }}>
               <div className="flex flex-wrap gap-2 pt-3 mb-4">
-                <span className="text-xs font-mono px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,230,118,0.1)', color: '#00e676', border: '1px solid rgba(0,230,118,0.2)' }}>
+                <span className="text-xs font-mono px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,230,118,0.1)', color: tema.accent, border: '1px solid rgba(0,230,118,0.2)' }}>
                   Gestación 23d
                 </span>
-                <span className="text-xs font-mono px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,230,118,0.1)', color: '#00e676', border: '1px solid rgba(0,230,118,0.2)' }}>
+                <span className="text-xs font-mono px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,230,118,0.1)', color: tema.accent, border: '1px solid rgba(0,230,118,0.2)' }}>
                   Madurez 12 sem.
                 </span>
                 {(() => {
@@ -121,7 +121,7 @@ export default function SelectorBioterio() {
               <button
                 onClick={() => setBioterioActivo('ratas')}
                 className="w-full py-2.5 rounded-xl text-sm font-bold"
-                style={{ background: 'rgba(0,230,118,0.15)', border: '1.5px solid rgba(0,230,118,0.4)', color: '#00e676' }}
+                style={{ background: 'rgba(0,230,118,0.15)', border: '1.5px solid rgba(0,230,118,0.4)', color: tema.accent }}
                 onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,230,118,0.25)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,230,118,0.15)'}
               >
@@ -150,7 +150,7 @@ export default function SelectorBioterio() {
             <button
               onClick={e => { e.stopPropagation(); setBioterioActivo('resumen_ratones') }}
               className="shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold"
-              style={{ background: 'rgba(64,196,255,0.12)', border: '1px solid rgba(64,196,255,0.35)', color: '#40c4ff' }}
+              style={{ background: 'rgba(64,196,255,0.12)', border: '1px solid rgba(64,196,255,0.35)', color: tema.blue }}
               onMouseEnter={e => e.currentTarget.style.background = 'rgba(64,196,255,0.22)'}
               onMouseLeave={e => e.currentTarget.style.background = 'rgba(64,196,255,0.12)'}
             >
@@ -168,13 +168,13 @@ export default function SelectorBioterio() {
                     key={id}
                     onClick={() => setBioterioActivo(id)}
                     className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all duration-150"
-                    style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${cfg.color}30`, color: '#c9d4e0' }}
+                    style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${cfg.color}30`, color: tema.textPrimary }}
                     onMouseEnter={e => { e.currentTarget.style.background = `${cfg.color}12`; e.currentTarget.style.border = `1px solid ${cfg.color}60` }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.border = `1px solid ${cfg.color}30` }}
                   >
                     <span className="w-2 h-2 rounded-full shrink-0" style={{ background: cfg.color }} />
                     <span className="font-semibold text-sm">{cfg.labelCorto}</span>
-                    <span className="text-xs font-mono ml-1 hidden sm:inline" style={{ color: '#4a5f7a' }}>{cfg.nombreCientifico}</span>
+                    <span className="text-xs font-mono ml-1 hidden sm:inline" style={{ color: tema.textMuted }}>{cfg.nombreCientifico}</span>
                     {(() => {
                       const b = badgeSanitario(incidentesSalud, id)
                       return (
@@ -203,7 +203,7 @@ export default function SelectorBioterio() {
           >
             <span className="text-base">🌐</span>
             <span className="text-sm font-semibold" style={{ color: tema.textPrimary }}>Vista global</span>
-            <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>· Todos los bioterios</span>
+            <span className="text-xs font-mono" style={{ color: tema.textMuted }}>· Todos los bioterios</span>
             <span style={{ color: 'rgba(255,179,0,0.6)', fontSize: '18px', marginLeft: 'auto', transition: 'transform 0.2s', transform: abierto === 'global' ? 'rotate(90deg)' : 'rotate(0deg)' }}>›</span>
           </button>
 
@@ -212,14 +212,14 @@ export default function SelectorBioterio() {
               <button
                 onClick={() => setBioterioActivo('alimento_global')}
                 className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all duration-150"
-                style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,179,0,0.25)', color: '#c9d4e0' }}
+                style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,179,0,0.25)', color: tema.textPrimary }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,179,0,0.08)'; e.currentTarget.style.border = '1px solid rgba(255,179,0,0.5)' }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; e.currentTarget.style.border = '1px solid rgba(255,179,0,0.25)' }}
               >
                 <span className="text-sm">🌾</span>
                 <div className="flex-1">
-                  <div className="font-semibold text-sm" style={{ color: '#ffb300' }}>Consumo global de alimento</div>
-                  <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Ratas + Ratones · estimación diaria + predicción de duración</div>
+                  <div className="font-semibold text-sm" style={{ color: tema.amber }}>Consumo global de alimento</div>
+                  <div className="text-xs font-mono" style={{ color: tema.textMuted }}>Ratas + Ratones · estimación diaria + predicción de duración</div>
                 </div>
                 <span className="text-xs" style={{ color: 'rgba(255,179,0,0.5)' }}>›</span>
               </button>
@@ -227,14 +227,14 @@ export default function SelectorBioterio() {
               <button
                 onClick={() => setBioterioActivo('viruta_global')}
                 className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all duration-150"
-                style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(139,92,246,0.25)', color: '#c9d4e0' }}
+                style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(139,92,246,0.25)', color: tema.textPrimary }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.08)'; e.currentTarget.style.border = '1px solid rgba(139,92,246,0.5)' }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; e.currentTarget.style.border = '1px solid rgba(139,92,246,0.25)' }}
               >
                 <span className="text-sm">🪵</span>
                 <div className="flex-1">
                   <div className="font-semibold text-sm" style={{ color: '#a78bfa' }}>Consumo de viruta / camas</div>
-                  <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Ratas + Ratones · calculado por jaulas activas</div>
+                  <div className="text-xs font-mono" style={{ color: tema.textMuted }}>Ratas + Ratones · calculado por jaulas activas</div>
                 </div>
                 <span className="text-xs" style={{ color: 'rgba(139,92,246,0.5)' }}>›</span>
               </button>
@@ -242,14 +242,14 @@ export default function SelectorBioterio() {
               <button
                 onClick={() => setBioterioActivo('capacidad_global')}
                 className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all duration-150"
-                style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,61,87,0.25)', color: '#c9d4e0' }}
+                style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,61,87,0.25)', color: tema.textPrimary }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,61,87,0.08)'; e.currentTarget.style.border = '1px solid rgba(255,61,87,0.5)' }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; e.currentTarget.style.border = '1px solid rgba(255,61,87,0.25)' }}
               >
                 <span className="text-sm">📊</span>
                 <div className="flex-1">
-                  <div className="font-semibold text-sm" style={{ color: '#ff6b80' }}>Capacidad y predicción</div>
-                  <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Saturación estimada · candidatos a sacrificio · simulador</div>
+                  <div className="font-semibold text-sm" style={{ color: tema.red }}>Capacidad y predicción</div>
+                  <div className="text-xs font-mono" style={{ color: tema.textMuted }}>Saturación estimada · candidatos a sacrificio · simulador</div>
                 </div>
                 <span className="text-xs" style={{ color: 'rgba(255,61,87,0.5)' }}>›</span>
               </button>
@@ -257,14 +257,14 @@ export default function SelectorBioterio() {
               <button
                 onClick={() => setBioterioActivo('genealogia_global')}
                 className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all duration-150"
-                style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(167,139,250,0.25)', color: '#c9d4e0' }}
+                style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(167,139,250,0.25)', color: tema.textPrimary }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.08)'; e.currentTarget.style.border = '1px solid rgba(167,139,250,0.5)' }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; e.currentTarget.style.border = '1px solid rgba(167,139,250,0.25)' }}
               >
                 <span className="text-sm">🧬</span>
                 <div className="flex-1">
                   <div className="font-semibold text-sm" style={{ color: '#a78bfa' }}>Genealogía y consanguinidad</div>
-                  <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Árbol genealógico · coeficiente F · simulador de apareamiento</div>
+                  <div className="text-xs font-mono" style={{ color: tema.textMuted }}>Árbol genealógico · coeficiente F · simulador de apareamiento</div>
                 </div>
                 <span className="text-xs" style={{ color: 'rgba(167,139,250,0.5)' }}>›</span>
               </button>

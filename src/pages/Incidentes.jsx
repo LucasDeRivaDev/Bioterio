@@ -20,6 +20,7 @@ import {
 } from '../utils/sanitario'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { AlertTriangle, CheckCircle, Plus, Activity, TrendingUp, TrendingDown, Thermometer, Dna, Zap, Eye, EyeOff } from 'lucide-react'
+import { useTheme } from '../context/ThemeContext'
 
 // ── Constantes UI ─────────────────────────────────────────────────────────────
 
@@ -28,6 +29,7 @@ const BIOTERIOS_SIN_TODOS = LISTA_BIOTERIOS.slice(1)
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function Incidentes() {
+  const { tema, modoBrillo } = useTheme()
   const { incidentes, animales, camadas, temperaturas, agregarIncidente, editarIncidente, eliminarIncidente } = useBioterio()
   const { bioterioActivo, bio } = useBioterioActivo()
 
@@ -203,7 +205,7 @@ export default function Incidentes() {
           <div className="w-1.5 h-7 rounded-full" style={{ background: '#ff6b80', boxShadow: '0 0 8px rgba(255,107,128,0.5)' }} />
           <div>
             <h1 className="text-xl font-bold text-white">Vigilancia sanitaria</h1>
-            <p className="text-xs mt-0.5 font-mono" style={{ color: '#4a5f7a' }}>
+            <p className="text-xs mt-0.5 font-mono" style={{ color: tema.textMuted }}>
               {stats.abiertos} abiertos · {stats.graves} graves · {alertas.length} alertas activas ·{' '}
               <span style={{ color: colorBioterio(bioterioActivo) }}>{labelBioterio(bioterioActivo)}</span>
             </p>
@@ -223,7 +225,7 @@ export default function Incidentes() {
           ))}
           <button onClick={() => { setIncAEditar(null); setModal(true) }}
             className="px-4 py-2.5 rounded-xl text-sm font-bold"
-            style={{ background: 'rgba(255,107,128,0.12)', border: '1.5px solid rgba(255,107,128,0.35)', color: '#ff6b80' }}>
+            style={{ background: 'rgba(255,107,128,0.12)', border: '1.5px solid rgba(255,107,128,0.35)', color: tema.red }}>
             <Plus size={13} style={{ display: 'inline', marginRight: 5 }} />
             Nuevo incidente
           </button>
@@ -233,7 +235,7 @@ export default function Incidentes() {
       {/* ── ALERTAS MULTI-NIVEL ── */}
       {alertas.length > 0 && (
         <div className="space-y-2">
-          <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
+          <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
             Alertas activas ({alertas.length})
           </div>
           {alertas.map((a, i) => {
@@ -336,7 +338,7 @@ export default function Incidentes() {
         {/* Índice global de estabilidad */}
         <div className="rounded-2xl p-4 flex flex-col items-center gap-1 col-span-2 md:col-span-1"
           style={{ background: `${nvGlobal.bg}`, border: `1px solid ${nvGlobal.border}` }}>
-          <div className="text-xs font-mono uppercase tracking-wider" style={{ color: '#4a5f7a' }}>Estabilidad global</div>
+          <div className="text-xs font-mono uppercase tracking-wider" style={{ color: tema.textMuted }}>Estabilidad global</div>
           <div className="text-5xl font-bold font-mono" style={{ color: nvGlobal.color, lineHeight: 1.05 }}>{indiceGlobal}</div>
           <div className="text-xs font-mono px-2 py-0.5 rounded-full"
             style={{ background: nvGlobal.bg, color: nvGlobal.color, border: `1px solid ${nvGlobal.border}` }}>
@@ -351,7 +353,7 @@ export default function Incidentes() {
           return (
             <div className="rounded-2xl p-4 flex flex-col items-center gap-1"
               style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(255,107,128,0.2)' }}>
-              <div className="text-xs font-mono flex items-center gap-1" style={{ color: '#ff6b80' }}>
+              <div className="text-xs font-mono flex items-center gap-1" style={{ color: tema.red }}>
                 <Activity size={10} /> Sanitario
               </div>
               <div className="text-3xl font-bold font-mono" style={{ color: nv.color }}>{indices.global}</div>
@@ -363,13 +365,13 @@ export default function Incidentes() {
         {/* Índice ambiental */}
         <div className="rounded-2xl p-4 flex flex-col items-center gap-1"
           style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(255,179,0,0.2)' }}>
-          <div className="text-xs font-mono flex items-center gap-1" style={{ color: '#ffb300' }}>
+          <div className="text-xs font-mono flex items-center gap-1" style={{ color: tema.amber }}>
             <Thermometer size={10} /> Ambiental
           </div>
           <div className="text-3xl font-bold font-mono" style={{ color: nvAmbiental.color }}>{indiceAmbiental}</div>
           <div className="text-xs font-mono" style={{ color: nvAmbiental.color }}>{nvAmbiental.emoji} {nvAmbiental.label}</div>
           {statsTempActivo.promedio && (
-            <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Promedio: {statsTempActivo.promedio}°C</div>
+            <div className="text-xs font-mono" style={{ color: tema.textMuted }}>Promedio: {statsTempActivo.promedio}°C</div>
           )}
         </div>
 
@@ -391,20 +393,20 @@ export default function Incidentes() {
         if (!exp) return null
         const nvA = nivelAmbiental(indiceAmbiental)
         const rangos = [
-          { key: 'frio_extremo', label: '<18°C',   sub: 'Frío extremo',  color: '#40c4ff', umbralAlerta: 5  },
+          { key: 'frio_extremo', label: '<18°C',   sub: 'Frío extremo',  color: tema.blue, umbralAlerta: 5  },
           { key: 'frio',         label: '18–20°C', sub: 'Frío leve',     color: '#a78bfa', umbralAlerta: 15 },
-          { key: 'normal',       label: '20–24°C', sub: '✓ Óptimo',      color: '#00e676', umbralAlerta: null },
-          { key: 'calor',        label: '24–26°C', sub: 'Calor leve',    color: '#ffb300', umbralAlerta: 20 },
-          { key: 'calor_extremo',label: '>26°C',   sub: 'Calor extremo', color: '#ff6b80', umbralAlerta: 5  },
+          { key: 'normal',       label: '20–24°C', sub: '✓ Óptimo',      color: tema.accent, umbralAlerta: null },
+          { key: 'calor',        label: '24–26°C', sub: 'Calor leve',    color: tema.amber, umbralAlerta: 20 },
+          { key: 'calor_extremo',label: '>26°C',   sub: 'Calor extremo', color: tema.red, umbralAlerta: 5  },
         ]
         return (
           <div className="rounded-2xl overflow-hidden"
             style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(255,179,0,0.2)' }}>
             <div className="px-5 py-3 flex items-center gap-3"
               style={{ borderBottom: '1px solid rgba(255,179,0,0.1)', background: 'rgba(255,179,0,0.04)' }}>
-              <Thermometer size={13} style={{ color: '#ffb300' }} />
+              <Thermometer size={13} style={{ color: tema.amber }} />
               <div className="flex-1">
-                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#ffb300' }}>
+                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.amber }}>
                   Exposición térmica real — tiempo en cada rango
                 </span>
                 <span className="ml-2 text-xs font-mono" style={{ color: '#3d5068' }}>
@@ -417,7 +419,7 @@ export default function Incidentes() {
               </span>
               {exp.confianza === 'baja' && (
                 <span className="text-xs font-mono px-2 py-1 rounded-lg"
-                  style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.25)', color: '#ffb300' }}>
+                  style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.25)', color: tema.amber }}>
                   ⚠ Baja confianza — pocos datos de min/máx
                 </span>
               )}
@@ -466,14 +468,14 @@ export default function Incidentes() {
             <div className="px-5 py-2.5 text-xs font-mono space-y-0.5"
               style={{ borderTop: '1px solid rgba(255,255,255,0.05)', color: '#3d5068', background: 'rgba(255,255,255,0.01)' }}>
               <div>
-                <span style={{ color: '#4a5f7a' }}>Temperatura predominante (70%)</span> = medición del día.
-                <span style={{ color: '#4a5f7a' }}> Mínima (15%) y máxima (15%)</span> = excursiones breves del termostato.
+                <span style={{ color: tema.textMuted }}>Temperatura predominante (70%)</span> = medición del día.
+                <span style={{ color: tema.textMuted }}> Mínima (15%) y máxima (15%)</span> = excursiones breves del termostato.
               </div>
               <div>
                 Picos de 5–15 min (min/máx) pesan poco. Lo que importa es dónde está{' '}
-                <span style={{ color: '#c9d4e0' }}>la mayor parte del tiempo</span>.
+                <span style={{ color: tema.textPrimary }}>la mayor parte del tiempo</span>.
                 {exp.conDatosMinMax < exp.totalRegistros && (
-                  <span style={{ color: '#4a5f7a' }}> · {exp.conDatosMinMax}/{exp.totalRegistros} registros con min/máx</span>
+                  <span style={{ color: tema.textMuted }}> · {exp.conDatosMinMax}/{exp.totalRegistros} registros con min/máx</span>
                 )}
               </div>
             </div>
@@ -486,9 +488,9 @@ export default function Incidentes() {
         style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(255,107,128,0.2)' }}>
         <div className="px-5 py-3 flex items-center gap-2"
           style={{ borderBottom: '1px solid rgba(255,107,128,0.1)', background: 'rgba(255,107,128,0.04)' }}>
-          <Activity size={13} style={{ color: '#ff6b80' }} />
-          <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#ff6b80' }}>Índice sanitario por colonia</span>
-          <span className="ml-auto text-xs font-mono" style={{ color: '#4a5f7a' }}>Incidentes activos + historial reproductivo</span>
+          <Activity size={13} style={{ color: tema.red }} />
+          <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.red }}>Índice sanitario por colonia</span>
+          <span className="ml-auto text-xs font-mono" style={{ color: tema.textMuted }}>Incidentes activos + historial reproductivo</span>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0"
           style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
@@ -502,7 +504,7 @@ export default function Incidentes() {
                 <div className="text-2xl font-bold font-mono" style={{ color: nv.color, lineHeight: 1.1 }}>{sc}</div>
                 <div className="text-xs font-mono" style={{ color: nv.color }}>{nv.emoji} {nv.label}</div>
                 {abiertos > 0 && (
-                  <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{abiertos} abiertos</div>
+                  <div className="text-xs font-mono" style={{ color: tema.textMuted }}>{abiertos} abiertos</div>
                 )}
               </div>
             )
@@ -522,8 +524,8 @@ export default function Incidentes() {
           style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(0,230,118,0.2)' }}>
           <div className="px-5 py-3 flex items-center gap-2"
             style={{ borderBottom: '1px solid rgba(0,230,118,0.1)', background: 'rgba(0,230,118,0.04)' }}>
-            <Zap size={13} style={{ color: '#00e676' }} />
-            <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#00e676' }}>¿Qué hacer hoy?</span>
+            <Zap size={13} style={{ color: tema.accent }} />
+            <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.accent }}>¿Qué hacer hoy?</span>
           </div>
           <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
             {recomendaciones.map((r, i) => {
@@ -534,7 +536,7 @@ export default function Incidentes() {
                   <span className="text-base shrink-0">{r.icono}</span>
                   <div className="flex-1">
                     <div className="text-sm font-semibold" style={{ color: col }}>{r.accion}</div>
-                    <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>{r.motivo}</div>
+                    <div className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>{r.motivo}</div>
                   </div>
                   <span className="text-xs font-mono px-2 py-0.5 rounded-full shrink-0 self-center"
                     style={{ background: `${col}12`, border: `1px solid ${col}35`, color: col }}>
@@ -591,9 +593,9 @@ export default function Incidentes() {
             style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(255,179,0,0.25)' }}>
             <div className="px-5 py-3 flex items-center gap-2"
               style={{ borderBottom: '1px solid rgba(255,179,0,0.12)', background: 'rgba(255,179,0,0.05)' }}>
-              <Thermometer size={13} style={{ color: '#ffb300' }} />
-              <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#ffb300' }}>Estabilidad ambiental — {labelBioterio(bioterioActivo)}</span>
-              <span className="ml-auto text-xs font-mono" style={{ color: '#4a5f7a' }}>Últimos 30 días · Rango ideal 20–24°C</span>
+              <Thermometer size={13} style={{ color: tema.amber }} />
+              <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.amber }}>Estabilidad ambiental — {labelBioterio(bioterioActivo)}</span>
+              <span className="ml-auto text-xs font-mono" style={{ color: tema.textMuted }}>Últimos 30 días · Rango ideal 20–24°C</span>
             </div>
 
             {/* Índice ambiental por bioterio */}
@@ -608,7 +610,7 @@ export default function Incidentes() {
                     <div className="text-2xl font-bold font-mono" style={{ color: nv.color }}>{idx}</div>
                     <div className="text-xs font-mono" style={{ color: nv.color }}>{nv.emoji} {nv.label}</div>
                     {st.promedio != null && (
-                      <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                      <div className="text-xs font-mono" style={{ color: tema.textMuted }}>
                         {st.promedio}°C prom · {st.diasRiesgo}d riesgo
                       </div>
                     )}
@@ -622,22 +624,22 @@ export default function Incidentes() {
               <div className="grid grid-cols-3 md:grid-cols-5 gap-0 divide-x divide-y md:divide-y-0"
                 style={{ borderTop: '1px solid rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.06)' }}>
                 {[
-                  { label: 'Promedio', val: statsTempActivo.promedio ? `${statsTempActivo.promedio}°C` : '—', color: '#40c4ff' },
-                  { label: 'Mínima',  val: statsTempActivo.min != null ? `${statsTempActivo.min}°C` : '—',  color: '#40c4ff' },
+                  { label: 'Promedio', val: statsTempActivo.promedio ? `${statsTempActivo.promedio}°C` : '—', color: tema.blue },
+                  { label: 'Mínima',  val: statsTempActivo.min != null ? `${statsTempActivo.min}°C` : '—',  color: tema.blue },
                   { label: 'Máxima',  val: statsTempActivo.max != null ? `${statsTempActivo.max}°C` : '—',  color: statsTempActivo.max > 25 ? '#ff6b80' : '#40c4ff' },
                   { label: 'Días riesgo',   val: statsTempActivo.diasRiesgo,   color: statsTempActivo.diasRiesgo > 0 ? '#ff6b80' : '#00e676' },
                   { label: 'Días atención', val: statsTempActivo.diasAtencion, color: statsTempActivo.diasAtencion > 0 ? '#ffb300' : '#00e676' },
                 ].map(k => (
                   <div key={k.label} className="px-4 py-3 text-center">
                     <div className="text-lg font-bold font-mono" style={{ color: k.color }}>{k.val}</div>
-                    <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>{k.label}</div>
+                    <div className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>{k.label}</div>
                   </div>
                 ))}
               </div>
             )}
 
             {statsTempActivo.total === 0 && (
-              <div className="px-5 py-6 text-center text-xs font-mono" style={{ color: '#4a5f7a' }}>
+              <div className="px-5 py-6 text-center text-xs font-mono" style={{ color: tema.textMuted }}>
                 Sin datos de temperatura registrados para {labelBioterio(bioterioActivo)}.<br />
                 Registrá temperatura en la sección Temperatura.
               </div>
@@ -653,14 +655,14 @@ export default function Incidentes() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-0 divide-x"
               style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
               {[
-                { label: '20–24°C', desc: 'Rango ideal — sin estrés fisiológico', color: '#00e676', emoji: '🟢 Normal' },
-                { label: '18–20°C / 24–26°C', desc: 'Rango de atención — monitorear de cerca', color: '#ffb300', emoji: '🟡 Atención' },
-                { label: '<18°C / >26°C', desc: 'Riesgo — impacto reproductivo y bienestar animal', color: '#ff6b80', emoji: '🔴 Riesgo' },
+                { label: '20–24°C', desc: 'Rango ideal — sin estrés fisiológico', color: tema.accent, emoji: '🟢 Normal' },
+                { label: '18–20°C / 24–26°C', desc: 'Rango de atención — monitorear de cerca', color: tema.amber, emoji: '🟡 Atención' },
+                { label: '<18°C / >26°C', desc: 'Riesgo — impacto reproductivo y bienestar animal', color: tema.red, emoji: '🔴 Riesgo' },
               ].map(r => (
                 <div key={r.label} className="px-5 py-4">
                   <div className="text-sm font-bold font-mono" style={{ color: r.color }}>{r.emoji}</div>
                   <div className="text-xs font-semibold mt-1" style={{ color: r.color }}>{r.label}</div>
-                  <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>{r.desc}</div>
+                  <div className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>{r.desc}</div>
                 </div>
               ))}
             </div>
@@ -676,13 +678,13 @@ export default function Incidentes() {
               </div>
               <button onClick={() => setMostrarCorrel(v => !v)}
                 className="text-xs font-mono px-2 py-1 rounded-lg flex items-center gap-1"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a' }}>
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: tema.textMuted }}>
                 {mostrarCorrel ? <EyeOff size={10} /> : <Eye size={10} />}
                 {mostrarCorrel ? 'Ocultar' : 'Ver todas'}
               </button>
             </div>
             {correlaciones.length === 0 ? (
-              <div className="px-5 py-6 text-center text-xs font-mono" style={{ color: '#4a5f7a' }}>
+              <div className="px-5 py-6 text-center text-xs font-mono" style={{ color: tema.textMuted }}>
                 No se detectaron correlaciones significativas con los datos actuales.
               </div>
             ) : (
@@ -708,7 +710,7 @@ export default function Incidentes() {
                 {!mostrarCorrel && correlaciones.length > 3 && (
                   <div className="px-5 py-2 text-center">
                     <button onClick={() => setMostrarCorrel(true)}
-                      className="text-xs font-mono" style={{ color: '#40c4ff' }}>
+                      className="text-xs font-mono" style={{ color: tema.blue }}>
                       Ver {correlaciones.length - 3} más...
                     </button>
                   </div>
@@ -736,21 +738,21 @@ export default function Incidentes() {
             <div className="px-5 py-3 flex items-center gap-2 justify-between"
               style={{ borderBottom: '1px solid rgba(64,196,255,0.12)', background: 'rgba(64,196,255,0.04)' }}>
               <div className="flex items-center gap-2">
-                <Zap size={13} style={{ color: '#40c4ff' }} />
-                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#40c4ff' }}>
+                <Zap size={13} style={{ color: tema.blue }} />
+                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.blue }}>
                   ¿Qué hacer hoy?
                 </span>
               </div>
               {decisionesConcretas.length > 0 && (
                 <span className="text-xs font-mono px-2 py-0.5 rounded-full"
-                  style={{ background: 'rgba(64,196,255,0.1)', color: '#40c4ff' }}>
+                  style={{ background: 'rgba(64,196,255,0.1)', color: tema.blue }}>
                   {decisionesConcretas.filter(d => d.prioridad <= 1).length} urgente{decisionesConcretas.filter(d => d.prioridad <= 1).length !== 1 ? 's' : ''}
                 </span>
               )}
             </div>
             <div className="px-5 py-4 space-y-2">
               {decisionesConcretas.length === 0 || (decisionesConcretas.length === 1 && decisionesConcretas[0].prioridad === 99) ? (
-                <div className="text-xs font-mono py-2" style={{ color: '#00e676' }}>
+                <div className="text-xs font-mono py-2" style={{ color: tema.accent }}>
                   🟢 Sin acciones urgentes hoy — la colonia está dentro de los parámetros normales.
                 </div>
               ) : (
@@ -830,7 +832,7 @@ export default function Incidentes() {
 
                   {/* Resumen contextual */}
                   <div className="text-xs font-mono px-3 py-2.5 rounded-xl"
-                    style={{ background: `${colorNiv}0d`, border: `1px solid ${colorNiv}25`, color: '#c9d4e0' }}>
+                    style={{ background: `${colorNiv}0d`, border: `1px solid ${colorNiv}25`, color: tema.textPrimary }}>
                     {deterioro.resumen}
                   </div>
 
@@ -839,7 +841,7 @@ export default function Incidentes() {
                     <div className="flex flex-wrap gap-2">
                       {deterioro.contextoActivo.partosPendientes > 0 && (
                         <span className="text-xs px-2 py-0.5 rounded-full font-mono"
-                          style={{ background: 'rgba(64,196,255,0.1)', color: '#40c4ff', border: '1px solid rgba(64,196,255,0.25)' }}>
+                          style={{ background: 'rgba(64,196,255,0.1)', color: tema.blue, border: '1px solid rgba(64,196,255,0.25)' }}>
                           🍼 {deterioro.contextoActivo.partosPendientes} parto(s) en espera
                         </span>
                       )}
@@ -851,7 +853,7 @@ export default function Incidentes() {
                       )}
                       {deterioro.contextoActivo.apareamientosActivos > 0 && (
                         <span className="text-xs px-2 py-0.5 rounded-full font-mono"
-                          style={{ background: 'rgba(0,230,118,0.1)', color: '#00e676', border: '1px solid rgba(0,230,118,0.25)' }}>
+                          style={{ background: 'rgba(0,230,118,0.1)', color: tema.accent, border: '1px solid rgba(0,230,118,0.25)' }}>
                           ⚡ {deterioro.contextoActivo.apareamientosActivos} apareamiento(s) activo(s)
                         </span>
                       )}
@@ -862,8 +864,8 @@ export default function Incidentes() {
                   {deterioro.tieneDeterioro && deterioro.señalesActivas.length > 0 && (
                     <div className="space-y-1.5">
                       {deterioro.señalesActivas.map((s, i) => (
-                        <div key={i} className="flex items-center gap-2 text-xs font-mono" style={{ color: '#c9d4e0' }}>
-                          <span style={{ color: '#ff6b80' }}>↘</span>
+                        <div key={i} className="flex items-center gap-2 text-xs font-mono" style={{ color: tema.textPrimary }}>
+                          <span style={{ color: tema.red }}>↘</span>
                           {s}
                         </div>
                       ))}
@@ -874,7 +876,7 @@ export default function Incidentes() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs font-mono border-collapse">
                       <thead>
-                        <tr style={{ color: '#4a5f7a' }}>
+                        <tr style={{ color: tema.textMuted }}>
                           <th className="text-left py-1.5 pr-3">Ventana</th>
                           <th className="text-right py-1.5 px-2">Fertilidad</th>
                           <th className="text-right py-1.5 px-2">Confianza</th>
@@ -899,13 +901,13 @@ export default function Incidentes() {
                             : v.fertilidad === null ? '#4a5f7a'
                             : '#c9d4e0'
                           return (
-                            <tr key={i} style={{ borderTop: '1px solid rgba(255,255,255,0.04)', color: '#8a9bb0' }}>
+                            <tr key={i} style={{ borderTop: '1px solid rgba(255,255,255,0.04)', color: tema.textSecondary }}>
                               <td className="py-1.5 pr-3 text-white font-bold">{v.dias}d</td>
                               <td className="text-right px-2" style={{ color: fertColor }}>{fertDisplay}</td>
                               <td className="text-right px-2">
                                 <span style={{ color: confC, fontSize: 10 }}>{v.confianza}</span>
                                 {v.contexto && (
-                                  <span className="ml-1" style={{ color: '#4a5f7a', fontSize: 9 }} title={v.contexto}>ℹ</span>
+                                  <span className="ml-1" style={{ color: tema.textMuted, fontSize: 9 }} title={v.contexto}>ℹ</span>
                                 )}
                               </td>
                               <td className="text-right px-2" style={{ color: v.supervivencia !== null && v.supervivencia < 0.65 ? '#ff6b80' : '#c9d4e0' }}>
@@ -927,7 +929,7 @@ export default function Incidentes() {
                   {/* Patrón conclusivo */}
                   {deterioro.patron && (
                     <div className="text-xs font-mono px-3 py-2 rounded-xl"
-                      style={{ background: 'rgba(255,107,128,0.06)', border: '1px solid rgba(255,107,128,0.15)', color: '#8a9bb0' }}>
+                      style={{ background: 'rgba(255,107,128,0.06)', border: '1px solid rgba(255,107,128,0.15)', color: tema.textSecondary }}>
                       📊 {deterioro.patron}
                     </div>
                   )}
@@ -942,7 +944,7 @@ export default function Incidentes() {
               style={{ background: 'rgba(0,230,118,0.03)', border: '1px dashed rgba(0,230,118,0.2)' }}>
               <div className="text-4xl mb-3">🟢</div>
               <div className="font-semibold text-sm text-white mb-1">Sin problemas detectados</div>
-              <div className="text-xs" style={{ color: '#4a5f7a' }}>No se encontraron patrones problemáticos con los datos actuales.</div>
+              <div className="text-xs" style={{ color: tema.textMuted }}>No se encontraron patrones problemáticos con los datos actuales.</div>
             </div>
           ) : (
             <div className="space-y-3">
@@ -975,13 +977,13 @@ export default function Incidentes() {
                   <div className="px-5 py-4 grid md:grid-cols-2 gap-4">
                     {/* Factores */}
                     <div>
-                      <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
+                      <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
                         Factores probables
                       </div>
                       <div className="space-y-1">
                         {c.factores.map((f, j) => (
                           <div key={j} className="flex items-center gap-2 text-xs font-mono"
-                            style={{ color: '#c9d4e0' }}>
+                            style={{ color: tema.textPrimary }}>
                             <span style={{ color: c.nivel === 'critico' ? '#ff6b80' : '#ffb300' }}>●</span>
                             {f}
                           </div>
@@ -991,10 +993,10 @@ export default function Incidentes() {
 
                     {/* Recomendación */}
                     <div>
-                      <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
+                      <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
                         Acción recomendada
                       </div>
-                      <div className="text-xs font-mono leading-relaxed" style={{ color: '#8a9bb0' }}>
+                      <div className="text-xs font-mono leading-relaxed" style={{ color: tema.textSecondary }}>
                         {c.recomendacion}
                       </div>
                     </div>
@@ -1021,10 +1023,10 @@ export default function Incidentes() {
                 </div>
               </div>
               <div className="flex-1 space-y-2 text-xs font-mono" style={{ color: '#6a8099' }}>
-                <div>• <span style={{ color: '#c9d4e0' }}>0–20:</span> Riesgo bajo — genética saludable</div>
-                <div>• <span style={{ color: '#c9d4e0' }}>21–50:</span> Riesgo moderado — vigilar malformaciones</div>
-                <div>• <span style={{ color: '#c9d4e0' }}>51–100:</span> Riesgo alto — revisar consanguinidad y renovar reproductores</div>
-                <div className="mt-2" style={{ color: '#4a5f7a' }}>Factores: F promedio · malformaciones (180d) · fallos reproductivos (90d) · supervivencia al destete</div>
+                <div>• <span style={{ color: tema.textPrimary }}>0–20:</span> Riesgo bajo — genética saludable</div>
+                <div>• <span style={{ color: tema.textPrimary }}>21–50:</span> Riesgo moderado — vigilar malformaciones</div>
+                <div>• <span style={{ color: tema.textPrimary }}>51–100:</span> Riesgo alto — revisar consanguinidad y renovar reproductores</div>
+                <div className="mt-2" style={{ color: tema.textMuted }}>Factores: F promedio · malformaciones (180d) · fallos reproductivos (90d) · supervivencia al destete</div>
               </div>
             </div>
           </div>
@@ -1043,17 +1045,17 @@ export default function Incidentes() {
               </div>
               <div className="flex items-center gap-2 text-xs font-mono">
                 {bloqueos.totalBloqueados > 0 && (
-                  <span className="px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,107,128,0.12)', color: '#ff6b80', border: '1px solid rgba(255,107,128,0.3)' }}>
+                  <span className="px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,107,128,0.12)', color: tema.red, border: '1px solid rgba(255,107,128,0.3)' }}>
                     🔴 {bloqueos.totalBloqueados} bloqueado{bloqueos.totalBloqueados !== 1 ? 's' : ''}
                   </span>
                 )}
                 {bloqueos.totalAdvertencias > 0 && (
-                  <span className="px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,179,0,0.1)', color: '#ffb300', border: '1px solid rgba(255,179,0,0.25)' }}>
+                  <span className="px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,179,0,0.1)', color: tema.amber, border: '1px solid rgba(255,179,0,0.25)' }}>
                     🟡 {bloqueos.totalAdvertencias} advertencia{bloqueos.totalAdvertencias !== 1 ? 's' : ''}
                   </span>
                 )}
                 {bloqueos.totalBloqueados === 0 && bloqueos.totalAdvertencias === 0 && (
-                  <span className="px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,230,118,0.08)', color: '#00e676', border: '1px solid rgba(0,230,118,0.2)' }}>
+                  <span className="px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,230,118,0.08)', color: tema.accent, border: '1px solid rgba(0,230,118,0.2)' }}>
                     🟢 Sin bloqueos
                   </span>
                 )}
@@ -1061,7 +1063,7 @@ export default function Incidentes() {
             </div>
 
             {bloqueos.animalesBloqueados.size === 0 ? (
-              <div className="px-5 py-4 text-xs font-mono" style={{ color: '#4a5f7a' }}>
+              <div className="px-5 py-4 text-xs font-mono" style={{ color: tema.textMuted }}>
                 Todos los reproductores activos pasan los criterios de elegibilidad reproductiva.
               </div>
             ) : (
@@ -1082,7 +1084,7 @@ export default function Incidentes() {
                         <span className="font-bold text-sm" style={{ color: b.esBloqueo ? '#ff6b80' : '#ffb300' }}>
                           {b.animal.codigo}
                         </span>
-                        <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                        <span className="text-xs font-mono" style={{ color: tema.textMuted }}>
                           {b.animal.sexo === 'macho' ? '♂ Macho' : '♀ Hembra'}
                         </span>
                         <span className="text-xs font-mono px-1.5 py-0.5 rounded"
@@ -1104,7 +1106,7 @@ export default function Incidentes() {
                 {/* Acciones sugeridas */}
                 {bloqueos.accionesSugeridas.length > 0 && (
                   <div className="mt-2 space-y-2">
-                    <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>
+                    <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.textMuted }}>
                       Acciones automáticas sugeridas
                     </div>
                     {bloqueos.accionesSugeridas.map((a, i) => (
@@ -1112,7 +1114,7 @@ export default function Incidentes() {
                         style={{
                           background: a.nivel === 'urgente' ? 'rgba(255,107,128,0.08)' : a.nivel === 'critico' ? 'rgba(255,107,128,0.05)' : 'rgba(255,179,0,0.04)',
                           border: `1px solid ${a.nivel === 'urgente' ? 'rgba(255,107,128,0.25)' : 'rgba(255,107,128,0.15)'}`,
-                          color: '#c9d4e0',
+                          color: tema.textPrimary,
                         }}>
                         <span>{a.nivel === 'urgente' ? '⚫' : a.nivel === 'critico' ? '🔴' : '🟡'}</span>
                         <span className="flex-1">{a.accion}</span>
@@ -1130,12 +1132,12 @@ export default function Incidentes() {
               style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(255,179,0,0.2)' }}>
               <div className="px-5 py-3 flex items-center gap-2"
                 style={{ borderBottom: '1px solid rgba(255,179,0,0.1)', background: 'rgba(255,179,0,0.03)' }}>
-                <Activity size={13} style={{ color: '#ffb300' }} />
-                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#ffb300' }}>
+                <Activity size={13} style={{ color: tema.amber }} />
+                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.amber }}>
                   Correlaciones detectadas (1–90 días)
                 </span>
                 <span className="ml-auto text-xs font-mono px-2 py-0.5 rounded-full"
-                  style={{ background: 'rgba(255,179,0,0.1)', color: '#ffb300' }}>
+                  style={{ background: 'rgba(255,179,0,0.1)', color: tema.amber }}>
                   {correlacionesMultiventana.length} señal{correlacionesMultiventana.length !== 1 ? 'es' : ''}
                 </span>
               </div>
@@ -1171,15 +1173,15 @@ export default function Incidentes() {
           {/* KPIs */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { label: 'Total registros',      v: stats.total,     color: '#8a9bb0' },
-              { label: 'Abiertos',             v: stats.abiertos,  color: '#ffb300' },
-              { label: 'Graves sin resolver',  v: stats.graves,    color: '#ff6b80' },
-              { label: 'Últimos 30 días',      v: stats.recientes, color: '#40c4ff' },
+              { label: 'Total registros',      v: stats.total,     color: tema.textSecondary },
+              { label: 'Abiertos',             v: stats.abiertos,  color: tema.amber },
+              { label: 'Graves sin resolver',  v: stats.graves,    color: tema.red },
+              { label: 'Últimos 30 días',      v: stats.recientes, color: tema.blue },
             ].map(k => (
               <div key={k.label} className="rounded-xl px-4 py-4 text-center"
                 style={{ background: 'rgba(13,21,40,0.7)', border: `1px solid ${k.color}25` }}>
                 <div className="text-3xl font-bold font-mono" style={{ color: k.color, lineHeight: 1 }}>{k.v}</div>
-                <div className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>{k.label}</div>
+                <div className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>{k.label}</div>
               </div>
             ))}
           </div>
@@ -1190,7 +1192,7 @@ export default function Incidentes() {
             <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
               <div className="flex-1">
                 <div className="font-bold text-xs text-white">Incidentes por mes — últimos {periodoTendencia} meses</div>
-                <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>Graves · Moderados · Leves</div>
+                <div className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>Graves · Moderados · Leves</div>
               </div>
               <div className="flex items-center gap-1 mr-2">
                 {[6, 12].map(p => (
@@ -1219,7 +1221,7 @@ export default function Incidentes() {
                   <YAxis tick={{ fill: '#4a5f7a', fontSize: 10, fontFamily: 'monospace' }} axisLine={false} tickLine={false} allowDecimals={false} />
                   <Tooltip
                     contentStyle={{ background: '#0d1528', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px' }}
-                    labelStyle={{ color: '#c9d4e0' }}
+                    labelStyle={{ color: tema.textPrimary }}
                     formatter={(v, n) => [v, n === 'graves' ? 'Graves' : n === 'moderados' ? 'Moderados' : 'Leves']} />
                   <Bar dataKey="graves"    fill="rgba(255,107,128,0.7)" radius={[2,2,0,0]} stackId="a" />
                   <Bar dataKey="moderados" fill="rgba(255,152,0,0.6)"   radius={[2,2,0,0]} stackId="a" />
@@ -1321,13 +1323,13 @@ export default function Incidentes() {
               style={{ background: 'rgba(255,107,128,0.03)', border: '1px dashed rgba(255,107,128,0.2)' }}>
               <div className="text-4xl mb-3">📋</div>
               <div className="font-semibold text-sm text-white mb-1">Sin incidentes</div>
-              <div className="text-xs" style={{ color: '#4a5f7a' }}>No hay registros con los filtros actuales.</div>
+              <div className="text-xs" style={{ color: tema.textMuted }}>No hay registros con los filtros actuales.</div>
             </div>
           ) : (
             <div className="rounded-2xl overflow-hidden"
               style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }}>
               <div className="hidden md:grid px-5 py-2 text-xs font-semibold uppercase tracking-widest"
-                style={{ gridTemplateColumns: '90px 60px 90px 110px 1fr 80px', gap: '8px', borderBottom: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a', background: 'rgba(0,0,0,0.15)' }}>
+                style={{ gridTemplateColumns: '90px 60px 90px 110px 1fr 80px', gap: '8px', borderBottom: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted, background: 'rgba(0,0,0,0.15)' }}>
                 <span>Fecha</span><span>Colonia</span><span>Categoría</span><span>Tipo</span><span>Descripción</span><span>Estado</span>
               </div>
 
@@ -1347,7 +1349,7 @@ export default function Incidentes() {
                       className="px-5 py-3.5 flex flex-col md:grid md:items-start gap-2 group hover:bg-white/[0.01]"
                       style={{ gridTemplateColumns: '90px 60px 90px 110px 1fr 80px', opacity: inc.resuelto ? 0.6 : 1 }}>
 
-                      <div className="font-mono text-xs font-semibold" style={{ color: '#ffb300' }}>
+                      <div className="font-mono text-xs font-semibold" style={{ color: tema.amber }}>
                         {formatFecha(inc.fecha)}
                       </div>
 
@@ -1363,7 +1365,7 @@ export default function Incidentes() {
                       </div>
 
                       <div className="flex flex-col gap-1">
-                        <span className="text-xs font-semibold" style={{ color: '#c9d4e0' }}>{tipoLbl}</span>
+                        <span className="text-xs font-semibold" style={{ color: tema.textPrimary }}>{tipoLbl}</span>
                         <span className="text-xs font-mono px-1.5 py-0.5 rounded-full self-start"
                           style={{ background: sevInfo.bg, color: sevInfo.color, border: `1px solid ${sevInfo.color}40` }}>
                           {sevInfo.label}
@@ -1383,7 +1385,7 @@ export default function Incidentes() {
                           )}
                           {camada && (
                             <span className="text-xs font-mono px-1.5 py-0.5 rounded"
-                              style={{ background: 'rgba(255,179,0,0.08)', color: '#ffb300', border: '1px solid rgba(255,179,0,0.25)' }}>
+                              style={{ background: 'rgba(255,179,0,0.08)', color: tema.amber, border: '1px solid rgba(255,179,0,0.25)' }}>
                               Camada {formatFecha(camada.fecha_copula, { day: '2-digit', month: '2-digit' })}
                             </span>
                           )}
@@ -1395,7 +1397,7 @@ export default function Incidentes() {
                           )}
                           {inc.duracion_dias && (
                             <span className="text-xs font-mono px-1.5 py-0.5 rounded"
-                              style={{ background: 'rgba(138,155,176,0.08)', color: '#8a9bb0', border: '1px solid rgba(138,155,176,0.2)' }}>
+                              style={{ background: 'rgba(138,155,176,0.08)', color: tema.textSecondary, border: '1px solid rgba(138,155,176,0.2)' }}>
                               {inc.duracion_dias}d
                             </span>
                           )}
@@ -1412,12 +1414,12 @@ export default function Incidentes() {
                         </button>
                         <button onClick={() => { setIncAEditar(inc); setModal(true) }}
                           className="px-2 py-1 rounded-lg text-xs opacity-0 group-hover:opacity-100"
-                          style={{ background: 'rgba(64,196,255,0.06)', border: '1px solid rgba(64,196,255,0.2)', color: '#40c4ff' }}>
+                          style={{ background: 'rgba(64,196,255,0.06)', border: '1px solid rgba(64,196,255,0.2)', color: tema.blue }}>
                           ✎
                         </button>
                         <button onClick={() => setConfirmarElim(inc)}
                           className="px-2 py-1 rounded-lg text-xs opacity-0 group-hover:opacity-100"
-                          style={{ background: 'rgba(255,61,87,0.06)', border: '1px solid rgba(255,61,87,0.2)', color: '#ff6b80' }}>
+                          style={{ background: 'rgba(255,61,87,0.06)', border: '1px solid rgba(255,61,87,0.2)', color: tema.red }}>
                           ✕
                         </button>
                       </div>
@@ -1461,20 +1463,20 @@ export default function Incidentes() {
               <div className="text-3xl">🗑️</div>
               <div className="font-bold text-white text-sm">Eliminar incidente</div>
               <div className="text-xs px-3 py-2 rounded-lg text-left leading-relaxed"
-                style={{ background: 'rgba(255,179,0,0.06)', border: '1px solid rgba(255,179,0,0.15)', color: '#8a9bb0' }}>
+                style={{ background: 'rgba(255,179,0,0.06)', border: '1px solid rgba(255,179,0,0.15)', color: tema.textSecondary }}>
                 {confirmarElim.descripcion?.slice(0, 100) || '(sin descripción)'}
               </div>
-              <p className="text-xs" style={{ color: '#4a5f7a' }}>Esta acción no se puede deshacer.</p>
+              <p className="text-xs" style={{ color: tema.textMuted }}>Esta acción no se puede deshacer.</p>
             </div>
             <div className="flex gap-3">
               <button onClick={() => setConfirmarElim(null)}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: '#8a9bb0' }}>
+                style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: tema.textSecondary }}>
                 Cancelar
               </button>
               <button onClick={() => { eliminarIncidente(confirmarElim.id); setConfirmarElim(null) }}
                 className="flex-1 py-2.5 rounded-xl text-sm font-bold"
-                style={{ background: 'rgba(255,61,87,0.15)', border: '1px solid rgba(255,61,87,0.35)', color: '#ff6b80' }}>
+                style={{ background: 'rgba(255,61,87,0.15)', border: '1px solid rgba(255,61,87,0.35)', color: tema.red }}>
                 Eliminar
               </button>
             </div>
@@ -1589,7 +1591,7 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
 
   const inputBase = {
     background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)',
-    color: '#c9d4e0', borderRadius: '10px', padding: '9px 12px',
+    color: tema.textPrimary, borderRadius: '10px', padding: '9px 12px',
     fontSize: '13px', outline: 'none', width: '100%', fontFamily: 'monospace',
   }
 
@@ -1602,7 +1604,7 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
           <div className="font-bold text-white text-sm">
             {esEdicion ? '✎ Editar incidente' : '🩺 Registrar incidente'}
           </div>
-          <div className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
+          <div className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>
             {esEdicion ? 'Modificá los datos del incidente' : `Registrando en: ${labelBioterio(bioterioActivo)}`}
           </div>
         </div>
@@ -1612,11 +1614,11 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
           {/* Fecha + Severidad + Duración */}
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-1">
-              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>Fecha</label>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>Fecha</label>
               <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} required style={inputBase} />
             </div>
             <div className="col-span-1">
-              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>
                 Duración <span style={{ color: '#3d5068' }}>(días, opc.)</span>
               </label>
               <input type="number" min="1" value={duracionDias}
@@ -1624,7 +1626,7 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
                 placeholder="—" style={inputBase} />
             </div>
             <div className="col-span-1">
-              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>Severidad</label>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>Severidad</label>
               <div className="flex flex-col gap-1">
                 {SEVERIDADES.map(s => (
                   <button key={s.id} type="button" onClick={() => setSeveridad(s.id)}
@@ -1639,7 +1641,7 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
 
           {/* Categoría */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>Categoría</label>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>Categoría</label>
             <div className="grid grid-cols-3 md:grid-cols-5 gap-1.5">
               {Object.entries(CATEGORIAS_FORM).map(([catId, cat]) => (
                 <button key={catId} type="button"
@@ -1656,7 +1658,7 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
           {/* Tipo de incidente */}
           {categoria && tipos.length > 0 && (
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>Tipo de incidente</label>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>Tipo de incidente</label>
               <div className="grid grid-cols-2 gap-1">
                 {tipos.map(t => (
                   <button key={t.id} type="button" onClick={() => setTipoInc(t.id)}
@@ -1674,7 +1676,7 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
             <div className="rounded-xl p-4 space-y-3"
               style={{ background: 'rgba(167,139,250,0.05)', border: '1px solid rgba(167,139,250,0.2)' }}>
               <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#a78bfa' }}>
-                🧬 Vínculo genealógico <span className="font-mono font-normal normal-case" style={{ color: '#4a5f7a' }}>(opcional — mejora las alertas)</span>
+                🧬 Vínculo genealógico <span className="font-mono font-normal normal-case" style={{ color: tema.textMuted }}>(opcional — mejora las alertas)</span>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -1710,7 +1712,7 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
               style={{ background: 'rgba(255,107,128,0.04)', border: '1px solid rgba(255,107,128,0.2)' }}>
               {/* Header */}
               <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#ff6b80' }}>
+                <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.red }}>
                   🐭 Animales implicados
                   {animalesImplicados.size > 0 && (
                     <span className="ml-2 font-mono font-normal normal-case" style={{ color: '#ff9100' }}>
@@ -1721,7 +1723,7 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
                 {animalesImplicados.size > 0 && (
                   <button type="button" onClick={() => setAnimalesImplicados(new Set())}
                     className="text-xs font-mono px-2 py-0.5 rounded-lg"
-                    style={{ color: '#4a5f7a', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    style={{ color: tema.textMuted, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
                     Limpiar todo
                   </button>
                 )}
@@ -1756,7 +1758,7 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
               <div className="max-h-44 overflow-y-auto space-y-1 pr-0.5"
                 style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}>
                 {animalesFiltrados.length === 0 ? (
-                  <div className="py-3 text-center text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                  <div className="py-3 text-center text-xs font-mono" style={{ color: tema.textMuted }}>
                     Sin animales que coincidan.
                   </div>
                 ) : animalesFiltrados.map(a => {
@@ -1775,7 +1777,7 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
                       </span>
                       {!estaActivo && (
                         <span className="text-xs px-1 rounded"
-                          style={{ background: 'rgba(255,255,255,0.06)', color: '#4a5f7a', fontSize: 10 }}>
+                          style={{ background: 'rgba(255,255,255,0.06)', color: tema.textMuted, fontSize: 10 }}>
                           inactivo
                         </span>
                       )}
@@ -1805,7 +1807,7 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
             /* ── Single select para otras categorías ── */
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>
                   Animal directo <span style={{ color: '#3d5068' }}>(opc.)</span>
                 </label>
                 <select
@@ -1821,7 +1823,7 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>
                   Camada <span style={{ color: '#3d5068' }}>(opc.)</span>
                 </label>
                 <select value={camadaId} onChange={e => setCamadaId(e.target.value)} style={inputBase}>
@@ -1839,7 +1841,7 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
 
           {/* Descripción */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>
               Notas adicionales <span style={{ color: '#3d5068' }}>(opcional)</span>
             </label>
             <textarea value={descripcion} onChange={e => setDescripcion(e.target.value)}
@@ -1849,7 +1851,7 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
 
           {error && (
             <div className="text-xs px-3 py-2 rounded-lg"
-              style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.25)', color: '#ff6b80' }}>
+              style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.25)', color: tema.red }}>
               ⚠ {error}
             </div>
           )}
@@ -1857,12 +1859,12 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onCerrar}
               className="flex-1 py-2.5 rounded-xl text-sm font-mono"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a' }}>
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: tema.textMuted }}>
               Cancelar
             </button>
             <button type="submit" disabled={guardando}
               className="flex-1 py-2.5 rounded-xl text-sm font-bold"
-              style={{ background: 'rgba(255,107,128,0.14)', border: '1.5px solid rgba(255,107,128,0.45)', color: '#ff6b80', cursor: guardando ? 'not-allowed' : 'pointer', opacity: guardando ? 0.6 : 1 }}>
+              style={{ background: 'rgba(255,107,128,0.14)', border: '1.5px solid rgba(255,107,128,0.45)', color: tema.red, cursor: guardando ? 'not-allowed' : 'pointer', opacity: guardando ? 0.6 : 1 }}>
               {guardando ? 'Guardando...' : esEdicion ? '✓ Actualizar' : '✓ Registrar incidente'}
             </button>
           </div>

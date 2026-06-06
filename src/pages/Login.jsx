@@ -79,34 +79,34 @@ export default function Login() {
           <div className="px-8 py-7 text-center" style={{ borderBottom: '1px solid rgba(0,230,118,0.1)', background: 'rgba(0,230,118,0.03)' }}>
             <div className="text-3xl mb-3">🔑</div>
             <h1 className="text-xl font-bold text-white">Crear contraseña</h1>
-            <p className="text-xs mt-1" style={{ color: '#4a5f7a' }}>Elegí una contraseña para tu cuenta</p>
+            <p className="text-xs mt-1" style={{ color: tema.textMuted }}>Elegí una contraseña para tu cuenta</p>
           </div>
           {passOk ? (
             <div className="px-8 py-10 text-center space-y-3">
               <div className="text-4xl">✅</div>
               <div className="font-bold text-white">¡Contraseña creada!</div>
-              <div className="text-sm" style={{ color: '#4a5f7a' }}>Ya podés usar el sistema normalmente.</div>
+              <div className="text-sm" style={{ color: tema.textMuted }}>Ya podés usar el sistema normalmente.</div>
             </div>
           ) : (
             <form onSubmit={manejarCrearPassword} className="px-8 py-7 space-y-4">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>Nueva contraseña</label>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>Nueva contraseña</label>
                 <input
                   type={verPass ? 'text' : 'password'}
                   value={passNuevo}
                   onChange={(e) => { setPassNuevo(e.target.value); setError('') }}
                   placeholder="Mínimo 6 caracteres"
                   required
-                  style={{ width: '100%', background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', borderRadius: '12px', padding: '12px 16px', fontSize: '14px', outline: 'none' }}
+                  style={{ width: '100%', background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, borderRadius: '12px', padding: '12px 16px', fontSize: '14px', outline: 'none' }}
                 />
               </div>
               {error && (
-                <div className="rounded-xl px-4 py-3 text-sm flex items-center gap-2" style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.25)', color: '#ff6b80' }}>
+                <div className="rounded-xl px-4 py-3 text-sm flex items-center gap-2" style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.25)', color: tema.red }}>
                   <span>⚠️</span> {error}
                 </div>
               )}
               <button type="submit" disabled={cargando} className="w-full py-3 rounded-xl text-sm font-bold"
-                style={{ background: 'rgba(0,230,118,0.15)', border: '1.5px solid rgba(0,230,118,0.4)', color: '#00e676', cursor: cargando ? 'not-allowed' : 'pointer' }}>
+                style={{ background: 'rgba(0,230,118,0.15)', border: '1.5px solid rgba(0,230,118,0.4)', color: tema.accent, cursor: cargando ? 'not-allowed' : 'pointer' }}>
                 {cargando ? 'Guardando...' : 'Guardar contraseña'}
               </button>
             </form>
@@ -178,7 +178,7 @@ export default function Login() {
             {/* Indicador de acceso restringido */}
             <div
               className="inline-flex items-center gap-1.5 mt-1.5 px-3 py-0.5 rounded-full text-xs font-semibold"
-              style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.2)', color: '#ffb300' }}
+              style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.2)', color: tema.amber }}
             >
               🔒 Acceso restringido
             </div>
@@ -219,7 +219,7 @@ export default function Login() {
                   type="button"
                   onClick={() => setVerPass(!verPass)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-sm"
-                  style={{ color: '#4a5f7a', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+                  style={{ color: tema.textMuted, background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
                 >
                   {verPass ? '🙈' : '👁'}
                 </button>
@@ -230,7 +230,7 @@ export default function Login() {
             {error && (
               <div
                 className="rounded-xl px-4 py-3 text-sm flex items-center gap-2"
-                style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.25)', color: '#ff6b80' }}
+                style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.25)', color: tema.red }}
               >
                 <span>⚠️</span> {error}
               </div>
@@ -243,11 +243,11 @@ export default function Login() {
               className="w-full py-2.5 rounded-xl text-sm font-bold transition-all mt-1"
               style={
                 cargando
-                  ? { background: 'rgba(0,230,118,0.05)', border: '1px solid rgba(0,230,118,0.15)', color: '#4a5f7a', cursor: 'not-allowed' }
+                  ? { background: 'rgba(0,230,118,0.05)', border: '1px solid rgba(0,230,118,0.15)', color: tema.textMuted, cursor: 'not-allowed' }
                   : {
                       background: 'rgba(0,230,118,0.15)',
                       border: '1.5px solid rgba(0,230,118,0.4)',
-                      color: '#00e676',
+                      color: tema.accent,
                       boxShadow: '0 0 20px rgba(0,230,118,0.1)',
                       cursor: 'pointer',
                     }

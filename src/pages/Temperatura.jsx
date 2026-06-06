@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { generarId } from '../utils/storage'
+import { useTheme } from '../context/ThemeContext'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // IDs fijos en Supabase — independientes del bioterio activo
@@ -41,13 +42,14 @@ const BORDER  = '1px solid rgba(30,51,82,0.7)'
 
 // Colores por bioterio
 const CFG = {
-  ratas:   { color: '#00e676', dim: 'rgba(0,230,118,0.1)',  label: 'Bioterio de Ratas',   icon: '🐀' },
-  ratones: { color: '#40c4ff', dim: 'rgba(64,196,255,0.1)', label: 'Bioterio de Ratones', icon: '🐭' },
+  ratas:   { color: tema.accent, dim: 'rgba(0,230,118,0.1)',  label: 'Bioterio de Ratas',   icon: '🐀' },
+  ratones: { color: tema.blue, dim: 'rgba(64,196,255,0.1)', label: 'Bioterio de Ratones', icon: '🐭' },
 }
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function Temperatura() {
+  const { tema, modoBrillo } = useTheme()
   // Tab activa
   const [bio, setBio] = useState('ratas')
 
@@ -318,14 +320,14 @@ export default function Temperatura() {
         {/* Header */}
         <div>
           <h1 className="text-xl font-bold text-white tracking-wide">🌡️ Temperatura</h1>
-          <p className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
+          <p className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>
             Registro ambiental por bioterio físico
           </p>
         </div>
 
         {/* Error de carga */}
         {errorCarga && (
-          <div className="rounded-xl px-4 py-3 text-sm font-mono" style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)', color: '#ff6b80' }}>
+          <div className="rounded-xl px-4 py-3 text-sm font-mono" style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)', color: tema.red }}>
             ⚠️ {errorCarga}
           </div>
         )}
@@ -371,17 +373,17 @@ export default function Temperatura() {
           {bio === 'ratones' && (
             <div
               className="px-5 py-2 text-xs font-mono flex items-center gap-2"
-              style={{ background: 'rgba(64,196,255,0.04)', borderBottom: '1px solid rgba(64,196,255,0.1)', color: '#4a5f7a' }}
+              style={{ background: 'rgba(64,196,255,0.04)', borderBottom: '1px solid rgba(64,196,255,0.1)', color: tema.textMuted }}
             >
-              <span style={{ color: '#40c4ff' }}>ℹ</span>
+              <span style={{ color: tema.blue }}>ℹ</span>
               Balb/C · C57 · Híbridos comparten el mismo ambiente físico — un único registro.
             </div>
           )}
 
           {/* ── Botón agregar + formulario ── */}
           <div className="px-5 py-4 flex items-center justify-between gap-4" style={{ borderBottom: BORDER }}>
-            <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
-              Hoy · <span style={{ color: '#c9d4e0' }}>{hoy.split('-').reverse().join('/')}</span>
+            <div className="text-xs font-mono" style={{ color: tema.textMuted }}>
+              Hoy · <span style={{ color: tema.textPrimary }}>{hoy.split('-').reverse().join('/')}</span>
               {' · '}
               <span style={{ color: cfg.color }}>{registrosHoy.length} registro{registrosHoy.length !== 1 ? 's' : ''}</span>
             </div>
@@ -406,7 +408,7 @@ export default function Temperatura() {
                 <InputField label="Temp. máxima"   value={maxTemp} onChange={setMaxTemp} placeholder="Ej: 25.5" />
               </div>
               {errorForm && (
-                <p className="text-xs font-mono" style={{ color: '#ff6b80' }}>{errorForm}</p>
+                <p className="text-xs font-mono" style={{ color: tema.red }}>{errorForm}</p>
               )}
               <button
                 onClick={guardar}
@@ -463,7 +465,7 @@ export default function Temperatura() {
             className="px-5 py-3 flex items-center gap-3 flex-wrap"
             style={{ borderBottom: BORDER, background: 'rgba(255,179,0,0.06)' }}
           >
-            <span className="text-xs font-bold uppercase tracking-widest" style={{ color: '#ffb300' }}>
+            <span className="text-xs font-bold uppercase tracking-widest" style={{ color: tema.amber }}>
               📋 Planilla mensual — {cfg.label}
             </span>
             <input
@@ -476,7 +478,7 @@ export default function Temperatura() {
             <button
               onClick={imprimir}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-              style={{ background: 'rgba(255,179,0,0.1)', border: '1px solid rgba(255,179,0,0.3)', color: '#ffb300' }}
+              style={{ background: 'rgba(255,179,0,0.1)', border: '1px solid rgba(255,179,0,0.3)', color: tema.amber }}
             >
               🖨️ Imprimir {bio === 'ratas' ? 'Ratas' : 'Ratones'}
             </button>
@@ -490,7 +492,7 @@ export default function Temperatura() {
               />
             </div>
           ) : registrosMes.length === 0 ? (
-            <div className="px-5 py-8 text-center text-sm font-mono" style={{ color: '#4a5f7a' }}>
+            <div className="px-5 py-8 text-center text-sm font-mono" style={{ color: tema.textMuted }}>
               Sin registros para {labelMes(mesSelec)}
             </div>
           ) : (
@@ -507,11 +509,11 @@ export default function Temperatura() {
                 <table className="w-full text-xs font-mono">
                   <thead>
                     <tr style={{ borderBottom: BORDER }}>
-                      <th className="px-5 py-2 text-left font-semibold" style={{ color: '#4a5f7a' }}>Fecha</th>
-                      <th className="px-5 py-2 text-left font-semibold" style={{ color: '#4a5f7a' }}>Hora</th>
-                      <th className="px-5 py-2 text-right font-semibold" style={{ color: '#00e676' }}>Actual</th>
-                      <th className="px-5 py-2 text-right font-semibold" style={{ color: '#40c4ff' }}>Mín</th>
-                      <th className="px-5 py-2 text-right font-semibold" style={{ color: '#ff6b80' }}>Máx</th>
+                      <th className="px-5 py-2 text-left font-semibold" style={{ color: tema.textMuted }}>Fecha</th>
+                      <th className="px-5 py-2 text-left font-semibold" style={{ color: tema.textMuted }}>Hora</th>
+                      <th className="px-5 py-2 text-right font-semibold" style={{ color: tema.accent }}>Actual</th>
+                      <th className="px-5 py-2 text-right font-semibold" style={{ color: tema.blue }}>Mín</th>
+                      <th className="px-5 py-2 text-right font-semibold" style={{ color: tema.red }}>Máx</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -523,9 +525,9 @@ export default function Temperatura() {
                             {d}/{m}
                           </td>
                           <td className="px-5 py-2" style={{ color: '#6a8099' }}>{r.time?.slice(0, 5)}</td>
-                          <td className="px-5 py-2 text-right" style={{ color: '#00e676' }}>{formatTemp(r.current_temp)}</td>
-                          <td className="px-5 py-2 text-right" style={{ color: '#40c4ff' }}>{formatTemp(r.min_temp)}</td>
-                          <td className="px-5 py-2 text-right" style={{ color: '#ff6b80' }}>{formatTemp(r.max_temp)}</td>
+                          <td className="px-5 py-2 text-right" style={{ color: tema.accent }}>{formatTemp(r.current_temp)}</td>
+                          <td className="px-5 py-2 text-right" style={{ color: tema.blue }}>{formatTemp(r.min_temp)}</td>
+                          <td className="px-5 py-2 text-right" style={{ color: tema.red }}>{formatTemp(r.max_temp)}</td>
                         </tr>
                       ))
                     })}
@@ -539,7 +541,7 @@ export default function Temperatura() {
                   <button
                     onClick={() => setConfirmElim(true)}
                     className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold"
-                    style={{ background: 'rgba(255,61,87,0.05)', border: '1px solid rgba(255,61,87,0.2)', color: '#ff6b80' }}
+                    style={{ background: 'rgba(255,61,87,0.05)', border: '1px solid rgba(255,61,87,0.2)', color: tema.red }}
                   >
                     🗑️ Eliminar registros de {labelMes(mesSelec)}
                   </button>
@@ -548,8 +550,8 @@ export default function Temperatura() {
                     className="rounded-xl p-4 space-y-3"
                     style={{ background: 'rgba(255,61,87,0.06)', border: '1px solid rgba(255,61,87,0.25)' }}
                   >
-                    <p className="text-sm font-semibold" style={{ color: '#ff6b80' }}>⚠️ ¿Confirmar eliminación?</p>
-                    <p className="text-xs" style={{ color: '#8a9bb0' }}>
+                    <p className="text-sm font-semibold" style={{ color: tema.red }}>⚠️ ¿Confirmar eliminación?</p>
+                    <p className="text-xs" style={{ color: tema.textSecondary }}>
                       Se van a borrar los {registrosMes.length} registros de {labelMes(mesSelec)} del {cfg.label}.
                       Asegurate de haber impreso los datos antes de continuar.
                     </p>
@@ -558,14 +560,14 @@ export default function Temperatura() {
                         onClick={eliminarMes}
                         disabled={eliminando}
                         className="px-4 py-1.5 rounded-lg text-xs font-bold"
-                        style={{ background: 'rgba(255,61,87,0.15)', border: '1px solid rgba(255,61,87,0.4)', color: '#ff6b80', opacity: eliminando ? 0.5 : 1 }}
+                        style={{ background: 'rgba(255,61,87,0.15)', border: '1px solid rgba(255,61,87,0.4)', color: tema.red, opacity: eliminando ? 0.5 : 1 }}
                       >
                         {eliminando ? 'Eliminando...' : 'Sí, eliminar'}
                       </button>
                       <button
                         onClick={() => setConfirmElim(false)}
                         className="px-4 py-1.5 rounded-lg text-xs font-semibold"
-                        style={{ background: 'rgba(30,51,82,0.4)', border: '1px solid rgba(30,51,82,0.6)', color: '#8a9bb0' }}
+                        style={{ background: 'rgba(30,51,82,0.4)', border: '1px solid rgba(30,51,82,0.6)', color: tema.textSecondary }}
                       >
                         Cancelar
                       </button>
@@ -586,7 +588,7 @@ export default function Temperatura() {
 function InputField({ label, value, onChange, placeholder }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>
+      <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.textMuted }}>
         {label}
       </label>
       <input
@@ -621,7 +623,7 @@ function PromedioCard({ label, value, color }) {
       <div className="text-xs font-mono font-bold" style={{ color }}>
         {value != null ? formatTemp(value.toFixed(1)) : '—'}
       </div>
-      <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>{label}</div>
+      <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>{label}</div>
     </div>
   )
 }

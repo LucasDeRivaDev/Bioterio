@@ -8,6 +8,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
 import { ArrowLeft, RefreshCw, Plus, TrendingUp, Wheat, ClipboardList, ShoppingBag } from 'lucide-react'
+import { useTheme } from '../context/ThemeContext'
 
 // ── Tasas de consumo por especie y categoría (g/día por animal) ───────────────
 const TASAS = {
@@ -46,10 +47,10 @@ const KG_POR_BOLSA     = 15   // kg estándar de una bolsa
 
 // Bioterios disponibles para selección en reposición parcial
 const OPCIONES_BIOTERIOS = [
-  { id: 'ratas',            label: 'Ratas',   color: '#00e676' },
-  { id: 'ratones_balbc',    label: 'BAL/C',   color: '#40c4ff' },
+  { id: 'ratas',            label: 'Ratas',   color: tema.accent },
+  { id: 'ratones_balbc',    label: 'BAL/C',   color: tema.blue },
   { id: 'ratones_c57',      label: 'C57',     color: '#a78bfa' },
-  { id: 'ratones_hibridos', label: 'Híbridos',color: '#ffb300' },
+  { id: 'ratones_hibridos', label: 'Híbridos',color: tema.amber },
 ]
 const OPCIONES_CATEGORIAS = [
   { id: 'lactantes', label: 'Hembras lactantes' },
@@ -289,6 +290,7 @@ function composicionActual(datosBioterios) {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function ConsumoAlimento() {
+  const { tema, modoBrillo } = useTheme()
   const { limpiarBioterio } = useBioterioActivo()
 
   const [datosBioterios, setDatosBioterios] = useState(null)
@@ -587,9 +589,9 @@ export default function ConsumoAlimento() {
   const confianzaEstimacion = (() => {
     if (!ultimoCenso) return { nivel: 'sin_datos', label: 'Sin datos', emoji: '⚫', color: '#3d5068' }
     const nEst = estimacionesDesdeCenso.length
-    if (diasDesdeCenso <= 5 && nEst <= 3)  return { nivel: 'alta',  label: 'Alta',  emoji: '🟢', color: '#00e676' }
-    if (diasDesdeCenso <= 14 || nEst <= 6) return { nivel: 'media', label: 'Media', emoji: '🟡', color: '#ffb300' }
-    return { nivel: 'baja', label: 'Baja', emoji: '🔴', color: '#ff6b80' }
+    if (diasDesdeCenso <= 5 && nEst <= 3)  return { nivel: 'alta',  label: 'Alta',  emoji: '🟢', color: tema.accent }
+    if (diasDesdeCenso <= 14 || nEst <= 6) return { nivel: 'media', label: 'Media', emoji: '🟡', color: tema.amber }
+    return { nivel: 'baja', label: 'Baja', emoji: '🔴', color: tema.red }
   })()
 
   // ── Predicción de duración basada en stock estimado ──
@@ -600,9 +602,9 @@ export default function ConsumoAlimento() {
   // Alerta de stock según días restantes
   const alertaStock = diasEstimados !== null
     ? diasEstimados < 7  ? { nivel: 'critico',  emoji: '⚫', label: 'Stock crítico',   color: '#ff3d57', bg: 'rgba(255,61,87,0.15)',  border: 'rgba(255,61,87,0.4)'   }
-    : diasEstimados < 15 ? { nivel: 'urgente',  emoji: '🔴', label: 'Comprar urgente', color: '#ff6b80', bg: 'rgba(255,61,87,0.08)',  border: 'rgba(255,61,87,0.3)'   }
-    : diasEstimados < 30 ? { nivel: 'atencion', emoji: '🟡', label: 'Comprar pronto',  color: '#ffb300', bg: 'rgba(255,179,0,0.07)',  border: 'rgba(255,179,0,0.3)'   }
-    : { nivel: 'ok', emoji: '🟢', label: 'Stock OK', color: '#00e676', bg: 'rgba(0,230,118,0.06)', border: 'rgba(0,230,118,0.25)' }
+    : diasEstimados < 15 ? { nivel: 'urgente',  emoji: '🔴', label: 'Comprar urgente', color: tema.red, bg: 'rgba(255,61,87,0.08)',  border: 'rgba(255,61,87,0.3)'   }
+    : diasEstimados < 30 ? { nivel: 'atencion', emoji: '🟡', label: 'Comprar pronto',  color: tema.amber, bg: 'rgba(255,179,0,0.07)',  border: 'rgba(255,179,0,0.3)'   }
+    : { nivel: 'ok', emoji: '🟢', label: 'Stock OK', color: tema.accent, bg: 'rgba(0,230,118,0.06)', border: 'rgba(0,230,118,0.25)' }
     : null
 
   // Fecha recomendada para comprar (cuando queden 14 días)
@@ -655,11 +657,11 @@ export default function ConsumoAlimento() {
       const tasas = TASAS[especie]
 
       const cats = [
-        { key: 'lactantes', label: 'Hembras lactantes', dato: d.reproLactantes, tasa: tasas.lactante, color: '#ce93d8' },
-        { key: 'repro',     label: 'Reproductores',     dato: d.reproOtros,     tasa: tasas.repro,    color: '#40c4ff' },
-        { key: 'crias',     label: 'Crías',             dato: d.stockCrias,     tasa: tasas.crias,    color: '#00e676' },
-        { key: 'jovenes',   label: 'Jóvenes',           dato: d.stockJovenes,   tasa: tasas.jovenes,  color: '#ffb300' },
-        { key: 'adultos',   label: 'Adultos',           dato: d.stockAdultos,   tasa: tasas.adultos,  color: '#ff6b80' },
+        { key: 'lactantes', label: 'Hembras lactantes', dato: d.reproLactantes, tasa: tasas.lactante, color: tema.purple },
+        { key: 'repro',     label: 'Reproductores',     dato: d.reproOtros,     tasa: tasas.repro,    color: tema.blue },
+        { key: 'crias',     label: 'Crías',             dato: d.stockCrias,     tasa: tasas.crias,    color: tema.accent },
+        { key: 'jovenes',   label: 'Jóvenes',           dato: d.stockJovenes,   tasa: tasas.jovenes,  color: tema.amber },
+        { key: 'adultos',   label: 'Adultos',           dato: d.stockAdultos,   tasa: tasas.adultos,  color: tema.red },
       ].filter(c => c.dato.count > 0)
 
       if (cats.length === 0) return
@@ -692,11 +694,11 @@ export default function ConsumoAlimento() {
     const pc = calibracion.perCategoria
 
     const catMeta = {
-      lactantes: { label: 'Hembras lactantes', color: '#ce93d8' },
-      repro:     { label: 'Reproductores',     color: '#40c4ff' },
-      crias:     { label: 'Crías',             color: '#00e676' },
-      jovenes:   { label: 'Jóvenes',           color: '#ffb300' },
-      adultos:   { label: 'Adultos',           color: '#ff6b80' },
+      lactantes: { label: 'Hembras lactantes', color: tema.purple },
+      repro:     { label: 'Reproductores',     color: tema.blue },
+      crias:     { label: 'Crías',             color: tema.accent },
+      jovenes:   { label: 'Jóvenes',           color: tema.amber },
+      adultos:   { label: 'Adultos',           color: tema.red },
     }
 
     return CAT_KEYS.map(k => {
@@ -752,7 +754,7 @@ export default function ConsumoAlimento() {
         const pctLact = totalRepro > 0 ? (d.reproLactantes.count / totalRepro) * 100 : 0
         if (pctLact > 35) {
           eventos.push({
-            icon: '🍼', color: '#ce93d8',
+            icon: '🍼', color: tema.purple,
             label: `Alta lactancia — ${cfg.labelCorto}`,
             detalle: `${d.reproLactantes.count} hembras amamantando (${Math.round(pctLact)}% del plantel reproductor) → mayor consumo real esperado`,
           })
@@ -761,7 +763,7 @@ export default function ConsumoAlimento() {
 
       if (totalStock > 0 && totalRepro > 0 && totalStock / totalRepro > 6) {
         eventos.push({
-          icon: '📦', color: '#ffb300',
+          icon: '📦', color: tema.amber,
           label: `Población de stock alta — ${cfg.labelCorto}`,
           detalle: `${totalStock} animales en jaulas de stock vs ${totalRepro} reproductores`,
         })
@@ -771,13 +773,13 @@ export default function ConsumoAlimento() {
     if (calibracion) {
       if (calibracion.factor > 1.2) {
         eventos.push({
-          icon: '⬆️', color: '#ff6b80',
+          icon: '⬆️', color: tema.red,
           label: 'Consumo real supera lo bibliográfico',
           detalle: `+${Math.round((calibracion.factor - 1) * 100)}% sobre el valor de referencia — el modelo ya incorpora este ajuste`,
         })
       } else if (calibracion.factor < 0.85) {
         eventos.push({
-          icon: '⬇️', color: '#40c4ff',
+          icon: '⬇️', color: tema.blue,
           label: 'Consumo real por debajo de lo bibliográfico',
           detalle: `${Math.round((1 - calibracion.factor) * 100)}% menos que el valor de referencia — posible excedente de stock`,
         })
@@ -950,7 +952,7 @@ export default function ConsumoAlimento() {
         <button
           onClick={limpiarBioterio}
           className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-mono transition-colors"
-          style={{ background: 'rgba(255,179,0,0.07)', border: '1px solid rgba(255,179,0,0.2)', color: '#ffb300' }}
+          style={{ background: 'rgba(255,179,0,0.07)', border: '1px solid rgba(255,179,0,0.2)', color: tema.amber }}
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,179,0,0.14)' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,179,0,0.07)' }}
         >
@@ -959,7 +961,7 @@ export default function ConsumoAlimento() {
         </button>
         <div className="flex-1">
           <h1 className="font-bold text-white text-base">Consumo global de alimento</h1>
-          <p className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+          <p className="text-xs font-mono" style={{ color: tema.textMuted }}>
             Ratas + Ratones (Balb/C · C57 · Híbridos)
           </p>
         </div>
@@ -967,7 +969,7 @@ export default function ConsumoAlimento() {
           onClick={cargarDatos}
           disabled={cargando}
           className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a', cursor: cargando ? 'not-allowed' : 'pointer' }}
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: tema.textMuted, cursor: cargando ? 'not-allowed' : 'pointer' }}
         >
           <RefreshCw size={12} className={cargando ? 'animate-spin' : ''} />
           Actualizar
@@ -978,7 +980,7 @@ export default function ConsumoAlimento() {
       <div className="flex-1 overflow-auto p-6 max-w-4xl mx-auto w-full space-y-6">
 
         {error && (
-          <div className="rounded-2xl px-5 py-4 text-sm font-mono" style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)', color: '#ff6b80' }}>
+          <div className="rounded-2xl px-5 py-4 text-sm font-mono" style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)', color: tema.red }}>
             ⚠️ {error}
           </div>
         )}
@@ -986,7 +988,7 @@ export default function ConsumoAlimento() {
         {cargando && !datosBioterios && (
           <div className="flex items-center justify-center gap-3 py-16">
             <span className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: '#ffb300', borderTopColor: 'transparent' }} />
-            <span className="text-sm font-mono" style={{ color: '#4a5f7a' }}>Calculando consumo de los 4 bioterios...</span>
+            <span className="text-sm font-mono" style={{ color: tema.textMuted }}>Calculando consumo de los 4 bioterios...</span>
           </div>
         )}
 
@@ -1008,7 +1010,7 @@ export default function ConsumoAlimento() {
                 <span className="text-xl">🌾</span>
                 <div className="flex-1">
                   <div className="font-bold text-white text-base">Alimento disponible</div>
-                  <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                  <div className="text-xs font-mono" style={{ color: tema.textMuted }}>
                     Estimación continua · {confianzaEstimacion.emoji} Confianza {confianzaEstimacion.label}
                     {diasDesdeCenso > 0 && <span> · Censo hace {diasDesdeCenso}d</span>}
                   </div>
@@ -1026,13 +1028,13 @@ export default function ConsumoAlimento() {
 
                 {/* Stock estimado */}
                 <div className="px-5 py-5 flex flex-col items-center justify-center gap-1">
-                  <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>Stock estimado</div>
+                  <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.textMuted }}>Stock estimado</div>
                   {stockEstimadoActual !== null ? (
                     <>
                       <div className="text-4xl font-black font-mono" style={{ color: alertaStock?.color ?? '#00e676' }}>
                         {stockEstimadoActual.toFixed(1)}
                       </div>
-                      <div className="text-sm font-mono" style={{ color: '#4a5f7a' }}>kg</div>
+                      <div className="text-sm font-mono" style={{ color: tema.textMuted }}>kg</div>
                     </>
                   ) : (
                     <div className="text-2xl font-bold font-mono" style={{ color: '#3d5068' }}>—</div>
@@ -1041,13 +1043,13 @@ export default function ConsumoAlimento() {
 
                 {/* Duración estimada */}
                 <div className="px-5 py-5 flex flex-col items-center justify-center gap-1">
-                  <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>Duración estimada</div>
+                  <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.textMuted }}>Duración estimada</div>
                   {diasEstimados !== null ? (
                     <>
                       <div className="text-4xl font-black font-mono" style={{ color: alertaStock?.color ?? '#00e676' }}>
                         {diasEstimados}
                       </div>
-                      <div className="text-sm font-mono" style={{ color: '#4a5f7a' }}>días · hasta {fechaAgotamiento}</div>
+                      <div className="text-sm font-mono" style={{ color: tema.textMuted }}>días · hasta {fechaAgotamiento}</div>
                     </>
                   ) : (
                     <div className="text-sm font-mono" style={{ color: '#3d5068' }}>Registrá un censo</div>
@@ -1056,7 +1058,7 @@ export default function ConsumoAlimento() {
 
                 {/* Predicción de compra */}
                 <div className="px-5 py-5 flex flex-col items-center justify-center gap-1">
-                  <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>
+                  <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.textMuted }}>
                     {prediccionCompra?.diasParaComprar === 0 ? '⚠ Comprar ahora' : 'Comprar antes de'}
                   </div>
                   {prediccionCompra ? (
@@ -1067,7 +1069,7 @@ export default function ConsumoAlimento() {
                       }}>
                         {prediccionCompra.fechaCompra}
                       </div>
-                      <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
+                      <div className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>
                         {prediccionCompra.diasParaComprar === 0
                           ? 'Stock bajo para 14 días'
                           : `en ${prediccionCompra.diasParaComprar}d · para tener margen`}
@@ -1083,7 +1085,7 @@ export default function ConsumoAlimento() {
               <div className="grid grid-cols-3 divide-x"
                 style={{ borderColor: 'rgba(255,255,255,0.05)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                 <div className="px-5 py-3 text-center">
-                  <div className="text-xs font-mono mb-0.5" style={{ color: '#4a5f7a' }}>Último censo</div>
+                  <div className="text-xs font-mono mb-0.5" style={{ color: tema.textMuted }}>Último censo</div>
                   {ultimoCenso ? (
                     <>
                       <div className="font-bold font-mono text-sm" style={{ color: '#a78bfa' }}>{ultimoCenso.kg.toFixed(1)} kg</div>
@@ -1092,10 +1094,10 @@ export default function ConsumoAlimento() {
                   ) : <div className="text-xs font-mono" style={{ color: '#3d5068' }}>Sin censos</div>}
                 </div>
                 <div className="px-5 py-3 text-center">
-                  <div className="text-xs font-mono mb-0.5" style={{ color: '#4a5f7a' }}>Consumido desde censo</div>
+                  <div className="text-xs font-mono mb-0.5" style={{ color: tema.textMuted }}>Consumido desde censo</div>
                   {ultimoCenso ? (
                     <>
-                      <div className="font-bold font-mono text-sm" style={{ color: '#ff6b80' }}>
+                      <div className="font-bold font-mono text-sm" style={{ color: tema.red }}>
                         ~{consumoDesdeUltimoCensoKg.toFixed(1)} kg
                       </div>
                       <div className="text-xs font-mono" style={{ color: '#3d5068' }}>en {diasDesdeCenso}d</div>
@@ -1103,10 +1105,10 @@ export default function ConsumoAlimento() {
                   ) : <div className="text-xs font-mono" style={{ color: '#3d5068' }}>—</div>}
                 </div>
                 <div className="px-5 py-3 text-center">
-                  <div className="text-xs font-mono mb-0.5" style={{ color: '#4a5f7a' }}>Ingresos desde censo</div>
+                  <div className="text-xs font-mono mb-0.5" style={{ color: tema.textMuted }}>Ingresos desde censo</div>
                   {ingresosPostCenso.length > 0 ? (
                     <>
-                      <div className="font-bold font-mono text-sm" style={{ color: '#00e676' }}>
+                      <div className="font-bold font-mono text-sm" style={{ color: tema.accent }}>
                         +{ingresosPostCenso.reduce((s, i) => s + i.kg, 0).toFixed(1)} kg
                       </div>
                       <div className="text-xs font-mono" style={{ color: '#3d5068' }}>
@@ -1122,7 +1124,7 @@ export default function ConsumoAlimento() {
                 <div className="px-5 py-3 flex items-center gap-3"
                   style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,179,0,0.04)' }}>
                   <span className="text-base shrink-0">🐣</span>
-                  <div className="text-xs font-mono flex-1" style={{ color: '#ffb300' }}>
+                  <div className="text-xs font-mono flex-1" style={{ color: tema.amber }}>
                     <span className="font-bold">{partosProximos30} parto{partosProximos30 !== 1 ? 's' : ''} esperados en 30d</span>
                     {' '}— consumo +{Math.round((consumoConPartos / consumoAjustado - 1) * 100)}% →{' '}
                     duración real: <span className="font-bold">{diasEstimados} → {diasConProduccion} días</span>
@@ -1134,7 +1136,7 @@ export default function ConsumoAlimento() {
               {estimacionesDesdeCenso.length > 0 && (
                 <div className="px-5 py-2 flex items-center gap-2 flex-wrap"
                   style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.01)' }}>
-                  <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Ajustes manuales:</span>
+                  <span className="text-xs font-mono" style={{ color: tema.textMuted }}>Ajustes manuales:</span>
                   {estimacionesDesdeCenso.slice(-5).map(e => (
                     <span key={e.id} className="text-xs font-mono px-2 py-0.5 rounded-lg"
                       style={{
@@ -1161,7 +1163,7 @@ export default function ConsumoAlimento() {
                 <span className="text-base">⚡</span>
                 <div className="flex-1">
                   <div className="font-bold text-sm text-white">Estimación rápida</div>
-                  <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                  <div className="text-xs font-mono" style={{ color: tema.textMuted }}>
                     Ajustá el stock sin hacer un censo completo — se combina con el consumo estimado
                   </div>
                 </div>
@@ -1171,10 +1173,10 @@ export default function ConsumoAlimento() {
                 {/* Quick-action buttons */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
                   {[
-                    { tipo: 'bolsa_abierta',   kg: +KG_POR_BOLSA,      label: `📦 Abrí bolsa nueva`,    sub: `+${KG_POR_BOLSA} kg`, color: '#00e676', bg: 'rgba(0,230,118,0.08)',   border: 'rgba(0,230,118,0.3)'   },
-                    { tipo: 'bolsa_terminada',  kg: -KG_POR_BOLSA,      label: `✅ Bolsa terminada`,     sub: `-${KG_POR_BOLSA} kg`, color: '#ff6b80', bg: 'rgba(255,107,128,0.08)', border: 'rgba(255,107,128,0.3)' },
-                    { tipo: 'media_bolsa',      kg: -KG_POR_BOLSA / 2,  label: `📐 Queda media bolsa`,   sub: `-${KG_POR_BOLSA / 2} kg`, color: '#ffb300', bg: 'rgba(255,179,0,0.07)', border: 'rgba(255,179,0,0.3)' },
-                    { tipo: 'cuarto_bolsa',     kg: -KG_POR_BOLSA / 4,  label: `📐 Queda cuarto`,        sub: `-${KG_POR_BOLSA / 4} kg`, color: '#ffb300', bg: 'rgba(255,179,0,0.07)', border: 'rgba(255,179,0,0.3)' },
+                    { tipo: 'bolsa_abierta',   kg: +KG_POR_BOLSA,      label: `📦 Abrí bolsa nueva`,    sub: `+${KG_POR_BOLSA} kg`, color: tema.accent, bg: 'rgba(0,230,118,0.08)',   border: 'rgba(0,230,118,0.3)'   },
+                    { tipo: 'bolsa_terminada',  kg: -KG_POR_BOLSA,      label: `✅ Bolsa terminada`,     sub: `-${KG_POR_BOLSA} kg`, color: tema.red, bg: 'rgba(255,107,128,0.08)', border: 'rgba(255,107,128,0.3)' },
+                    { tipo: 'media_bolsa',      kg: -KG_POR_BOLSA / 2,  label: `📐 Queda media bolsa`,   sub: `-${KG_POR_BOLSA / 2} kg`, color: tema.amber, bg: 'rgba(255,179,0,0.07)', border: 'rgba(255,179,0,0.3)' },
+                    { tipo: 'cuarto_bolsa',     kg: -KG_POR_BOLSA / 4,  label: `📐 Queda cuarto`,        sub: `-${KG_POR_BOLSA / 4} kg`, color: tema.amber, bg: 'rgba(255,179,0,0.07)', border: 'rgba(255,179,0,0.3)' },
                   ].map(op => (
                     <button key={op.tipo}
                       onClick={() => registrarEstimacion({ tipo: op.tipo, kg: op.kg })}
@@ -1192,7 +1194,7 @@ export default function ConsumoAlimento() {
                 <button
                   onClick={() => setModalEstimRapida(true)}
                   className="w-full py-2 rounded-xl text-xs font-semibold"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a' }}
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: tema.textMuted }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)' }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
                 >
@@ -1238,10 +1240,10 @@ export default function ConsumoAlimento() {
             {/* ── Tarjeta resumen global ── */}
             <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.8)', border: '1.5px solid rgba(255,179,0,0.3)', boxShadow: '0 0 30px rgba(255,179,0,0.06)' }}>
               <div className="px-6 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(255,179,0,0.15)', background: 'rgba(255,179,0,0.05)' }}>
-                <Wheat size={20} style={{ color: '#ffb300' }} />
+                <Wheat size={20} style={{ color: tema.amber }} />
                 <div className="flex-1">
                   <div className="font-bold text-white text-sm">Consumo diario — todos los bioterios</div>
-                  <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                  <div className="text-xs font-mono" style={{ color: tema.textMuted }}>
                     Rango bibliográfico: {Math.round(global.min)} – {Math.round(global.max)} g/día
                   </div>
                 </div>
@@ -1251,8 +1253,8 @@ export default function ConsumoAlimento() {
               <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 divide-x" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
                 {/* Consumo esperado (bibliográfico) */}
                 <div className="px-6 py-4 text-center">
-                  <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#4a5f7a' }}>Consumo esperado</div>
-                  <div className="text-2xl font-bold font-mono" style={{ color: '#c9d4e0' }}>
+                  <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: tema.textMuted }}>Consumo esperado</div>
+                  <div className="text-2xl font-bold font-mono" style={{ color: tema.textPrimary }}>
                     {consumoBase >= 1000 ? `${(consumoBase / 1000).toFixed(2)} kg` : `${Math.round(consumoBase)} g`}
                   </div>
                   <div className="text-xs font-mono mt-0.5" style={{ color: '#3d5068' }}>referencia bibliográfica</div>
@@ -1277,7 +1279,7 @@ export default function ConsumoAlimento() {
 
                 {/* Confianza */}
                 <div className="px-6 py-4 text-center" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-                  <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#4a5f7a' }}>Confianza del modelo</div>
+                  <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: tema.textMuted }}>Confianza del modelo</div>
                   {calibracion ? (
                     <>
                       <div
@@ -1299,7 +1301,7 @@ export default function ConsumoAlimento() {
                       <div className="text-xs font-mono mt-1" style={{ color: '#3d5068' }}>
                         {calibracion.muestras} par{calibracion.muestras !== 1 ? 'es' : ''} de censos
                         {(calibracion.nConfirmados ?? 0) > 0 && (
-                          <span style={{ color: '#00e676' }}> · {calibracion.nConfirmados} confirmado{calibracion.nConfirmados !== 1 ? 's' : ''}</span>
+                          <span style={{ color: tema.accent }}> · {calibracion.nConfirmados} confirmado{calibracion.nConfirmados !== 1 ? 's' : ''}</span>
                         )}
                       </div>
                     </>
@@ -1321,7 +1323,7 @@ export default function ConsumoAlimento() {
                   return (
                     <div key={id} className="px-4 py-3 text-center" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                       <div className="text-xs font-mono mb-1" style={{ color: cfg.color }}>{cfg.icon} {cfg.labelCorto}</div>
-                      <div className="font-bold font-mono text-sm" style={{ color: '#c9d4e0' }}>
+                      <div className="font-bold font-mono text-sm" style={{ color: tema.textPrimary }}>
                         {adj >= 1000 ? `${(adj / 1000).toFixed(2)} kg` : `${Math.round(adj)} g`}
                       </div>
                       {calibracion && (
@@ -1350,13 +1352,13 @@ export default function ConsumoAlimento() {
               return (
                 <div className="rounded-xl px-5 py-4"
                   style={{ background: 'rgba(13,21,40,0.6)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                  <div className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#4a5f7a' }}>
+                  <div className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: tema.textMuted }}>
                     Consumo observado — última ventana entre censos
                   </div>
                   <div className="flex flex-wrap gap-x-6 gap-y-2 items-center">
                     <div>
-                      <div className="text-xs font-mono mb-0.5" style={{ color: '#4a5f7a' }}>Observado</div>
-                      <div className="font-bold font-mono text-sm" style={{ color: '#c9d4e0' }}>
+                      <div className="text-xs font-mono mb-0.5" style={{ color: tema.textMuted }}>Observado</div>
+                      <div className="font-bold font-mono text-sm" style={{ color: tema.textPrimary }}>
                         {Math.round(cp.consumidoObservadoG / cp.dias)} g/día
                       </div>
                     </div>
@@ -1364,8 +1366,8 @@ export default function ConsumoAlimento() {
                       <>
                         <div style={{ color: '#3a5068', fontSize: 18 }}>−</div>
                         <div>
-                          <div className="text-xs font-mono mb-0.5" style={{ color: '#4a5f7a' }}>Relleno en jaulas</div>
-                          <div className="font-bold font-mono text-sm" style={{ color: '#ffb300' }}>
+                          <div className="text-xs font-mono mb-0.5" style={{ color: tema.textMuted }}>Relleno en jaulas</div>
+                          <div className="font-bold font-mono text-sm" style={{ color: tema.amber }}>
                             {(cp.rellenoG / cp.dias / 1000).toFixed(2)} kg/día
                           </div>
                         </div>
@@ -1373,10 +1375,10 @@ export default function ConsumoAlimento() {
                       </>
                     )}
                     <div>
-                      <div className="text-xs font-mono mb-0.5" style={{ color: '#4a5f7a' }}>Consumo real</div>
-                      <div className="font-bold font-mono text-sm" style={{ color: '#00e676' }}>
+                      <div className="text-xs font-mono mb-0.5" style={{ color: tema.textMuted }}>Consumo real</div>
+                      <div className="font-bold font-mono text-sm" style={{ color: tema.accent }}>
                         {Math.round(cp.consumidoG / cp.dias)} g/día
-                        <span className="font-normal ml-1" style={{ color: '#4a5f7a' }}>
+                        <span className="font-normal ml-1" style={{ color: tema.textMuted }}>
                           ({(cp.consumidoG / 1000).toFixed(2)} kg en {cp.dias}d)
                         </span>
                       </div>
@@ -1419,7 +1421,7 @@ export default function ConsumoAlimento() {
             {/* ── Eventos especiales ── */}
             {eventosEspeciales.length > 0 && (
               <div className="space-y-2">
-                <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>
+                <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: tema.textMuted }}>
                   Eventos detectados
                 </h2>
                 {eventosEspeciales.map((ev, i) => (
@@ -1442,10 +1444,10 @@ export default function ConsumoAlimento() {
             {tablaModelo && tablaModelo.length > 0 && (
               <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(64,196,255,0.18)' }}>
                 <div className="px-6 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(64,196,255,0.12)', background: 'rgba(64,196,255,0.04)' }}>
-                  <TrendingUp size={18} style={{ color: '#40c4ff' }} />
+                  <TrendingUp size={18} style={{ color: tema.blue }} />
                   <div className="flex-1">
                     <div className="font-bold text-sm text-white">Modelo adaptativo por categoría</div>
-                    <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
+                    <div className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>
                       Cada categoría aprende su propio factor — solo se ajusta cuando estuvo presente entre censos
                     </div>
                   </div>
@@ -1473,7 +1475,7 @@ export default function ConsumoAlimento() {
                         <div className="col-span-3 flex items-center gap-2">
                           <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: row.color }} />
                           <div>
-                            <div className="text-xs font-semibold" style={{ color: '#c9d4e0' }}>{row.label}</div>
+                            <div className="text-xs font-semibold" style={{ color: tema.textPrimary }}>{row.label}</div>
                             <div className="text-xs font-mono" style={{ color: '#3d5068' }}>×{row.totalCount} animales</div>
                           </div>
                         </div>
@@ -1502,7 +1504,7 @@ export default function ConsumoAlimento() {
                         <div className="col-span-2 text-right">
                           {row.usandoGlobal ? (
                             <span className="text-xs font-mono px-1.5 py-0.5 rounded"
-                              style={{ background: 'rgba(255,255,255,0.04)', color: '#4a5f7a' }}>
+                              style={{ background: 'rgba(255,255,255,0.04)', color: tema.textMuted }}>
                               global
                             </span>
                           ) : (
@@ -1544,8 +1546,8 @@ export default function ConsumoAlimento() {
 
                 {/* Leyenda */}
                 <div className="px-6 py-2 text-xs font-mono" style={{ borderTop: '1px solid rgba(255,255,255,0.04)', color: '#3d5068' }}>
-                  <span style={{ color: '#4a5f7a' }}>A-días</span> = animal-días observados entre censos ·
-                  <span style={{ color: '#4a5f7a' }}> global</span> = sin censos propios, usa el factor general ·
+                  <span style={{ color: tema.textMuted }}>A-días</span> = animal-días observados entre censos ·
+                  <span style={{ color: tema.textMuted }}> global</span> = sin censos propios, usa el factor general ·
                   Confianza crece con más censos y más animal-días acumulados
                 </div>
               </div>
@@ -1558,7 +1560,7 @@ export default function ConsumoAlimento() {
                   style={{ borderBottom: '1px solid rgba(64,196,255,0.08)', background: 'rgba(64,196,255,0.03)' }}>
                   <div>
                     <div className="font-bold text-xs text-white">Adaptación por bioterio y categoría</div>
-                    <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
+                    <div className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>
                       Desglose detallado — los factores son globales por categoría, aplicados a cada colonia
                     </div>
                   </div>
@@ -1572,11 +1574,11 @@ export default function ConsumoAlimento() {
                       </span>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <div className="w-1.5 h-1.5 rounded-full" style={{ background: ins.color }} />
-                        <span className="text-xs" style={{ color: '#8a9bb0' }}>{ins.label}</span>
+                        <span className="text-xs" style={{ color: tema.textSecondary }}>{ins.label}</span>
                         <span className="text-xs font-mono" style={{ color: '#3d5068' }}>×{ins.count}</span>
                       </div>
                       <div className="flex items-center gap-2 flex-1 flex-wrap">
-                        <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                        <div className="text-xs font-mono" style={{ color: tema.textMuted }}>
                           {ins.midBiblio.toFixed(1)} g
                         </div>
                         <span className="text-xs" style={{ color: '#3d5068' }}>→</span>
@@ -1608,7 +1610,7 @@ export default function ConsumoAlimento() {
 
             {/* ── Desglose por bioterio ── */}
             <div>
-              <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#4a5f7a' }}>
+              <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: tema.textMuted }}>
                 Desglose por bioterio y categoría
               </h2>
               <div className="space-y-3">
@@ -1624,7 +1626,7 @@ export default function ConsumoAlimento() {
                         <span className="text-lg">{cfg.icon}</span>
                         <div className="flex-1">
                           <span className="font-bold text-sm text-white">{cfg.label}</span>
-                          <span className="ml-2 text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                          <span className="ml-2 text-xs font-mono" style={{ color: tema.textMuted }}>
                             Rango: {Math.round(d.totalMin)} – {Math.round(d.totalMax)} g/día
                           </span>
                         </div>
@@ -1660,7 +1662,7 @@ export default function ConsumoAlimento() {
                 <ClipboardList size={18} style={{ color: '#a78bfa' }} />
                 <div className="flex-1">
                   <div className="font-bold text-sm text-white">Movimientos de stock</div>
-                  <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                  <div className="text-xs font-mono" style={{ color: tema.textMuted }}>
                     Censos = fuente del cálculo real · Ingresos = compras que suman al stock
                   </div>
                 </div>
@@ -1678,7 +1680,7 @@ export default function ConsumoAlimento() {
                   <button
                     onClick={() => setModalIngreso(true)}
                     className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono font-semibold"
-                    style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676' }}
+                    style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)', color: tema.accent }}
                     onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,230,118,0.15)' }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,230,118,0.08)' }}
                   >
@@ -1688,7 +1690,7 @@ export default function ConsumoAlimento() {
                   <button
                     onClick={() => setModalReposicion(true)}
                     className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono font-semibold"
-                    style={{ background: 'rgba(64,196,255,0.07)', border: '1px solid rgba(64,196,255,0.25)', color: '#40c4ff' }}
+                    style={{ background: 'rgba(64,196,255,0.07)', border: '1px solid rgba(64,196,255,0.25)', color: tema.blue }}
                     onMouseEnter={e => { e.currentTarget.style.background = 'rgba(64,196,255,0.14)' }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(64,196,255,0.07)' }}
                   >
@@ -1698,17 +1700,17 @@ export default function ConsumoAlimento() {
               </div>
 
               {/* Nota explicativa */}
-              <div className="px-6 py-3 text-xs font-mono space-y-1" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(255,255,255,0.01)', color: '#4a5f7a' }}>
+              <div className="px-6 py-3 text-xs font-mono space-y-1" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(255,255,255,0.01)', color: tema.textMuted }}>
                 <div>
                   <span style={{ color: '#a78bfa' }}>📊 Censo</span>
                   {' '}— pesaje real del stock disponible. Es la fuente del aprendizaje adaptativo.
                 </div>
                 <div>
-                  <span style={{ color: '#00e676' }}>📦 Ingreso</span>
+                  <span style={{ color: tema.accent }}>📦 Ingreso</span>
                   {' '}— compra o reposición de bolsas. Suma al stock sin alterar el historial de consumo.
                 </div>
                 <div>
-                  <span style={{ color: '#40c4ff' }}>✅ Reposición confirmada</span>
+                  <span style={{ color: tema.blue }}>✅ Reposición confirmada</span>
                   {' '}— alimento trasladado a jaulas. Separa "consumido" de "almacenado en jaulas".
                 </div>
                 <div style={{ color: '#3d5068' }}>
@@ -1733,17 +1735,17 @@ export default function ConsumoAlimento() {
                           <div className="text-base mt-0.5">✅</div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-xs font-bold font-mono" style={{ color: '#40c4ff' }}>Reposición confirmada</span>
+                              <span className="text-xs font-bold font-mono" style={{ color: tema.blue }}>Reposición confirmada</span>
                               <span className="text-xs font-mono text-white">{(mov.kg ?? 0).toFixed(1)} kg en jaulas</span>
-                              <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{formatFecha(mov.fecha)}</span>
-                              {mov.hora && <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{mov.hora} hs</span>}
+                              <span className="text-xs font-mono" style={{ color: tema.textMuted }}>{formatFecha(mov.fecha)}</span>
+                              {mov.hora && <span className="text-xs font-mono" style={{ color: tema.textMuted }}>{mov.hora} hs</span>}
                               <span className="text-xs font-mono px-1.5 py-0.5 rounded"
-                                style={{ background: 'rgba(64,196,255,0.1)', border: '1px solid rgba(64,196,255,0.25)', color: '#40c4ff' }}>
+                                style={{ background: 'rgba(64,196,255,0.1)', border: '1px solid rgba(64,196,255,0.25)', color: tema.blue }}>
                                 {mov.tipo_reposicion === 'parcial' ? 'Parcial' : 'Completa'}
                               </span>
                             </div>
-                            {bios && <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>Bioterios: {bios}</div>}
-                            {cats && <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Categorías: {cats}</div>}
+                            {bios && <div className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>Bioterios: {bios}</div>}
+                            {cats && <div className="text-xs font-mono" style={{ color: tema.textMuted }}>Categorías: {cats}</div>}
                             {mov.notas && <div className="text-xs font-mono mt-0.5" style={{ color: '#3d5068' }}>{mov.notas}</div>}
                           </div>
                           <button onClick={() => eliminarReposicionItem(mov.id)} className="text-xs shrink-0 mt-0.5" style={{ color: '#2a3a50' }} title="Eliminar">✕</button>
@@ -1770,9 +1772,9 @@ export default function ConsumoAlimento() {
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-xs font-bold font-mono" style={{ color: '#a78bfa' }}>Censo</span>
                               <span className="text-xs font-mono text-white">{mov.kg.toFixed(1)} kg</span>
-                              <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{formatFecha(mov.fecha)}</span>
+                              <span className="text-xs font-mono" style={{ color: tema.textMuted }}>{formatFecha(mov.fecha)}</span>
                               {mov.hora && (
-                                <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{mov.hora} hs</span>
+                                <span className="text-xs font-mono" style={{ color: tema.textMuted }}>{mov.hora} hs</span>
                               )}
                               {/* Badge fuente de relleno */}
                               {tieneRelleno && colorFuente && (
@@ -1785,7 +1787,7 @@ export default function ConsumoAlimento() {
                               {/* Badge posible relleno sin confirmar */}
                               {probInfo?.nivel === 'alto' && !tieneRelleno && !tieneConfirmacion && (
                                 <span className="text-xs font-mono px-1.5 py-0.5 rounded"
-                                  style={{ background: 'rgba(255,179,0,0.12)', border: '1px solid rgba(255,179,0,0.3)', color: '#ffb300' }}>
+                                  style={{ background: 'rgba(255,179,0,0.12)', border: '1px solid rgba(255,179,0,0.3)', color: tema.amber }}>
                                   ⚠ posible relleno
                                 </span>
                               )}
@@ -1794,16 +1796,16 @@ export default function ConsumoAlimento() {
                               <div className="mt-1.5 space-y-0.5">
                                 {tieneRelleno ? (
                                   <>
-                                    <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
-                                      Observado: <span style={{ color: '#c9d4e0' }}>{(consumo.consumidoObservadoG / 1000).toFixed(2)} kg</span>
+                                    <div className="text-xs font-mono" style={{ color: tema.textMuted }}>
+                                      Observado: <span style={{ color: tema.textPrimary }}>{(consumo.consumidoObservadoG / 1000).toFixed(2)} kg</span>
                                       <span style={{ color: '#3d5068' }}> en {consumo.dias} días</span>
                                     </div>
-                                    <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
-                                      Reposición en jaulas: <span style={{ color: '#ffb300' }}>−{(consumo.rellenoG / 1000).toFixed(2)} kg</span>
+                                    <div className="text-xs font-mono" style={{ color: tema.textMuted }}>
+                                      Reposición en jaulas: <span style={{ color: tema.amber }}>−{(consumo.rellenoG / 1000).toFixed(2)} kg</span>
                                     </div>
-                                    <div className="text-xs font-mono font-semibold" style={{ color: '#00e676' }}>
+                                    <div className="text-xs font-mono font-semibold" style={{ color: tema.accent }}>
                                       Consumo real: {(consumo.consumidoG / 1000).toFixed(2)} kg
-                                      <span className="font-normal" style={{ color: '#4a5f7a' }}> · {Math.round(consumo.realGDia)} g/día</span>
+                                      <span className="font-normal" style={{ color: tema.textMuted }}> · {Math.round(consumo.realGDia)} g/día</span>
                                     </div>
                                   </>
                                 ) : (
@@ -1819,7 +1821,7 @@ export default function ConsumoAlimento() {
                               <button
                                 onClick={() => confirmarReposicionRapida(mov.fecha, mov.hora)}
                                 className="mt-2 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
-                                style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.3)', color: '#40c4ff' }}
+                                style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.3)', color: tema.blue }}
                                 onMouseEnter={e => { e.currentTarget.style.background = 'rgba(64,196,255,0.16)' }}
                                 onMouseLeave={e => { e.currentTarget.style.background = 'rgba(64,196,255,0.08)' }}
                               >
@@ -1837,9 +1839,9 @@ export default function ConsumoAlimento() {
                         <div className="text-base">📦</div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-bold font-mono" style={{ color: '#00e676' }}>Ingreso</span>
+                            <span className="text-xs font-bold font-mono" style={{ color: tema.accent }}>Ingreso</span>
                             <span className="text-xs font-mono text-white">+{mov.kg.toFixed(1)} kg</span>
-                            <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{formatFecha(mov.fecha)}</span>
+                            <span className="text-xs font-mono" style={{ color: tema.textMuted }}>{formatFecha(mov.fecha)}</span>
                           </div>
                         </div>
                         <button onClick={() => eliminarIngresoItem(mov.id)} className="text-xs shrink-0" style={{ color: '#2a3a50' }} title="Eliminar">✕</button>
@@ -1855,7 +1857,7 @@ export default function ConsumoAlimento() {
               <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(255,255,255,0.07)' }}>
                 <div className="px-6 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                   <div className="font-bold text-sm text-white">Consumo estimado vs. real — histórico</div>
-                  <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>kg/día por par de censos</div>
+                  <div className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>kg/día por par de censos</div>
                 </div>
                 <div className="px-4 py-4" style={{ height: 220 }}>
                   <ResponsiveContainer width="100%" height="100%">
@@ -1865,8 +1867,8 @@ export default function ConsumoAlimento() {
                       <YAxis tick={{ fill: '#4a5f7a', fontSize: 11, fontFamily: 'monospace' }} axisLine={false} tickLine={false} unit=" kg" />
                       <Tooltip
                         contentStyle={{ background: '#0d1528', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '12px' }}
-                        labelStyle={{ color: '#c9d4e0' }}
-                        itemStyle={{ color: '#c9d4e0' }}
+                        labelStyle={{ color: tema.textPrimary }}
+                        itemStyle={{ color: tema.textPrimary }}
                         formatter={(v, name) => [`${v} kg/día`, name === 'estimado' ? 'Estimado' : 'Real']}
                       />
                       <Legend formatter={v => v === 'estimado' ? 'Estimado' : 'Real'} wrapperStyle={{ fontSize: 12, fontFamily: 'monospace', color: '#6a8099' }} />
@@ -1879,15 +1881,15 @@ export default function ConsumoAlimento() {
             )}
 
             {/* Nota / leyenda del sistema adaptativo */}
-            <div className="rounded-xl px-5 py-4 text-xs font-mono space-y-1.5" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', color: '#4a5f7a' }}>
+            <div className="rounded-xl px-5 py-4 text-xs font-mono space-y-1.5" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', color: tema.textMuted }}>
               <div className="font-semibold" style={{ color: '#6a8099' }}>Sistema adaptativo de aprendizaje por categoría</div>
               <div>
                 Cada categoría construye su propio modelo. Solo se actualiza cuando tuvo animal-días observados
                 entre dos censos consecutivos — las categorías ausentes mantienen el valor bibliográfico sin cambios.
               </div>
               <div className="space-y-0.5 pt-1" style={{ color: '#3d5068' }}>
-                <div><span style={{ color: '#4a5f7a' }}>Ratas:</span> crías 5–14g · jóvenes 10–20g · adultos 20–35g · lactantes 30–40g</div>
-                <div><span style={{ color: '#4a5f7a' }}>Ratones:</span> crías 3–5g · jóvenes 5–7g · adultos 6–8g · lactantes 10–15g</div>
+                <div><span style={{ color: tema.textMuted }}>Ratas:</span> crías 5–14g · jóvenes 10–20g · adultos 20–35g · lactantes 30–40g</div>
+                <div><span style={{ color: tema.textMuted }}>Ratones:</span> crías 3–5g · jóvenes 5–7g · adultos 6–8g · lactantes 10–15g</div>
               </div>
               <div style={{ color: '#2a3a50' }}>
                 Pesos EWMA — los últimos 3 meses pesan el doble que los de hace 6 meses ·
@@ -1941,8 +1943,8 @@ function FilaCategoria({ label, dato, tasaMin, tasaMax, color }) {
   return (
     <div className="px-5 py-2.5 flex items-center gap-3">
       <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: color }} />
-      <span className="text-xs flex-1" style={{ color: '#8a9bb0' }}>{label}</span>
-      <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+      <span className="text-xs flex-1" style={{ color: tema.textSecondary }}>{label}</span>
+      <span className="text-xs font-mono" style={{ color: tema.textMuted }}>
         {dato.count} × {tasaMin}–{tasaMax} g
       </span>
       <span className="text-xs font-mono font-semibold w-24 text-right" style={{ color }}>
@@ -2026,7 +2028,7 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCo
     }
   }
 
-  const inputSt = { background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }
+  const inputSt = { background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(5,8,16,0.85)', backdropFilter: 'blur(4px)' }}>
@@ -2037,7 +2039,7 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCo
         <div className="px-6 py-5"
           style={{ borderBottom: '1px solid rgba(167,139,250,0.15)', background: 'rgba(167,139,250,0.05)' }}>
           <div className="font-bold text-white text-sm">📊 Registrar censo de alimento</div>
-          <div className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
+          <div className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>
             Pesá el alimento disponible en bolsas/depósito ahora mismo
           </div>
         </div>
@@ -2047,12 +2049,12 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCo
           {/* Fecha + hora */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>Fecha</label>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>Fecha</label>
               <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} required
                 className="w-full px-3 py-2.5 rounded-xl text-sm font-mono" style={inputSt} />
             </div>
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>Hora</label>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>Hora</label>
               <input type="time" value={hora} onChange={e => setHora(e.target.value)}
                 className="w-full px-3 py-2.5 rounded-xl text-sm font-mono" style={inputSt} />
             </div>
@@ -2071,7 +2073,7 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCo
 
           {/* Alimento disponible */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
               Alimento en bolsas / depósito (kg)
             </label>
             <input type="number" min="0" step="0.5" value={kg}
@@ -2085,18 +2087,18 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCo
             <div className="rounded-xl overflow-hidden"
               style={{ border: '1.5px solid rgba(64,196,255,0.3)', background: 'rgba(64,196,255,0.05)' }}>
               <div className="px-4 py-3" style={{ borderBottom: '1px solid rgba(64,196,255,0.15)' }}>
-                <div className="text-sm font-bold" style={{ color: '#40c4ff' }}>
+                <div className="text-sm font-bold" style={{ color: tema.blue }}>
                   ¿Se repuso alimento en las jaulas hoy?
                 </div>
-                <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
+                <div className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>
                   Es día de reposición habitual ({probInfo.label})
                 </div>
               </div>
               <div className="px-4 py-3 flex gap-2">
                 {[
-                  { v: 'si',      label: '✅ Sí',      bg: 'rgba(0,230,118,0.12)', border: 'rgba(0,230,118,0.4)', color: '#00e676' },
-                  { v: 'parcial', label: '⚠️ Parcial', bg: 'rgba(255,179,0,0.12)', border: 'rgba(255,179,0,0.4)', color: '#ffb300' },
-                  { v: 'no',      label: '❌ No',      bg: 'rgba(255,61,87,0.08)', border: 'rgba(255,61,87,0.3)', color: '#ff6b80' },
+                  { v: 'si',      label: '✅ Sí',      bg: 'rgba(0,230,118,0.12)', border: 'rgba(0,230,118,0.4)', color: tema.accent },
+                  { v: 'parcial', label: '⚠️ Parcial', bg: 'rgba(255,179,0,0.12)', border: 'rgba(255,179,0,0.4)', color: tema.amber },
+                  { v: 'no',      label: '❌ No',      bg: 'rgba(255,61,87,0.08)', border: 'rgba(255,61,87,0.3)', color: tema.red },
                 ].map(op => (
                   <button key={op.v} type="button"
                     onClick={() => setRespReposicion(respReposicion === op.v ? null : op.v)}
@@ -2115,7 +2117,7 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCo
               {(respReposicion === 'si' || respReposicion === 'parcial') && (
                 <div className="px-4 pb-4 space-y-3" style={{ borderTop: '1px solid rgba(64,196,255,0.12)' }}>
                   <div className="pt-3">
-                    <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
+                    <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>
                       ¿Cuántos kg repusiste en las jaulas?
                     </label>
                     <div className="flex gap-1.5 mb-2 flex-wrap">
@@ -2141,7 +2143,7 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCo
                   {respReposicion === 'parcial' && (
                     <>
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
+                        <div className="text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>
                           ¿Qué bioterios?
                         </div>
                         <div className="flex flex-wrap gap-1.5">
@@ -2160,7 +2162,7 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCo
                         </div>
                       </div>
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
+                        <div className="text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>
                           ¿Qué categorías? (opcional)
                         </div>
                         <div className="flex flex-wrap gap-1.5">
@@ -2183,7 +2185,7 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCo
 
                   {repKgNum > 0 && (
                     <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-mono"
-                      style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676' }}>
+                      style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)', color: tema.accent }}>
                       ✅ Reposición confirmada: {repKgNum.toFixed(1)} kg en jaulas (se guardará separado del censo)
                     </div>
                   )}
@@ -2191,7 +2193,7 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCo
               )}
 
               {respReposicion === 'no' && (
-                <div className="px-4 pb-3 text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                <div className="px-4 pb-3 text-xs font-mono" style={{ color: tema.textMuted }}>
                   Sin reposición — el consumo calculado incluye todo el alimento faltante.
                 </div>
               )}
@@ -2201,7 +2203,7 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCo
           {/* Relleno manual (si no usó el prompt o quiere ajustar) */}
           {!mostrarPrompt && (
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#4a5f7a' }}>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: tema.textMuted }}>
                 Alimento repuesto en jaulas — opcional
               </label>
               <div className="text-xs font-mono mb-2" style={{ color: '#3d5068' }}>
@@ -2247,14 +2249,14 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCo
                   ? repKgNum : rellenoNum
                 return stockActualKg - kgNum > 0 ? (
                   <>
-                    <div style={{ color: '#8a9bb0' }}>
-                      Variación observada: <span style={{ color: '#ff6b80' }}>−{(stockActualKg - kgNum).toFixed(1)} kg</span>
+                    <div style={{ color: tema.textSecondary }}>
+                      Variación observada: <span style={{ color: tema.red }}>−{(stockActualKg - kgNum).toFixed(1)} kg</span>
                     </div>
                     {efectivoRelleno > 0 && (
-                      <div style={{ color: '#8a9bb0' }}>
-                        Reposición en jaulas: <span style={{ color: '#ffb300' }}>−{efectivoRelleno.toFixed(1)} kg</span>
+                      <div style={{ color: tema.textSecondary }}>
+                        Reposición en jaulas: <span style={{ color: tema.amber }}>−{efectivoRelleno.toFixed(1)} kg</span>
                         {(respReposicion === 'si' || respReposicion === 'parcial') && (
-                          <span style={{ color: '#40c4ff' }}> ✅ confirmada</span>
+                          <span style={{ color: tema.blue }}> ✅ confirmada</span>
                         )}
                       </div>
                     )}
@@ -2271,7 +2273,7 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCo
 
           {errorGuardar && (
             <div className="rounded-xl px-4 py-3 text-xs font-mono"
-              style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.35)', color: '#ff6b80' }}>
+              style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.35)', color: tema.red }}>
               ⚠️ {errorGuardar}
             </div>
           )}
@@ -2279,7 +2281,7 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCo
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onCerrar} disabled={guardando}
               className="flex-1 py-2.5 rounded-xl text-sm font-mono"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a' }}>
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: tema.textMuted }}>
               Cancelar
             </button>
             <button type="submit" disabled={guardando}
@@ -2334,7 +2336,7 @@ function ModalReposicion({ fechaInicial, horaInicial, onConfirmar, onCerrar }) {
     })
   }
 
-  const inputSt = { background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }
+  const inputSt = { background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(5,8,16,0.85)', backdropFilter: 'blur(4px)' }}>
@@ -2343,7 +2345,7 @@ function ModalReposicion({ fechaInicial, horaInicial, onConfirmar, onCerrar }) {
         {/* Header */}
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(64,196,255,0.12)', background: 'rgba(64,196,255,0.04)' }}>
           <div className="font-bold text-white text-sm">✅ Confirmar reposición de alimento</div>
-          <div className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
+          <div className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>
             Registra alimento repuesto en jaulas — mejora la calibración del modelo
           </div>
         </div>
@@ -2353,7 +2355,7 @@ function ModalReposicion({ fechaInicial, horaInicial, onConfirmar, onCerrar }) {
           {/* Fecha + Hora */}
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>Fecha</label>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>Fecha</label>
               <input
                 type="date"
                 value={fecha}
@@ -2364,7 +2366,7 @@ function ModalReposicion({ fechaInicial, horaInicial, onConfirmar, onCerrar }) {
               />
             </div>
             <div style={{ width: '110px' }}>
-              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>Hora</label>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>Hora</label>
               <input
                 type="time"
                 value={hora}
@@ -2377,7 +2379,7 @@ function ModalReposicion({ fechaInicial, horaInicial, onConfirmar, onCerrar }) {
 
           {/* Tipo */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>Tipo de reposición</label>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>Tipo de reposición</label>
             <div className="flex gap-2">
               {[{ v: 'completa', label: 'Completa (todos los bioterios)' }, { v: 'parcial', label: 'Parcial' }].map(op => (
                 <button
@@ -2399,7 +2401,7 @@ function ModalReposicion({ fechaInicial, horaInicial, onConfirmar, onCerrar }) {
 
           {/* Kg */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>
               Alimento repuesto en jaulas (kg)
             </label>
             <div className="flex gap-1.5 mb-2 flex-wrap">
@@ -2432,7 +2434,7 @@ function ModalReposicion({ fechaInicial, horaInicial, onConfirmar, onCerrar }) {
           {/* Bioterios (solo si parcial) */}
           {tipo === 'parcial' && (
             <div>
-              <div className="text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
+              <div className="text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>
                 ¿Qué bioterios?
               </div>
               <div className="flex flex-wrap gap-1.5">
@@ -2454,7 +2456,7 @@ function ModalReposicion({ fechaInicial, horaInicial, onConfirmar, onCerrar }) {
 
           {/* Categorías (opcional, siempre disponible) */}
           <div>
-            <div className="text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
+            <div className="text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>
               ¿Qué categorías? <span style={{ color: '#2a3a50', fontWeight: 400 }}>(opcional)</span>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -2475,7 +2477,7 @@ function ModalReposicion({ fechaInicial, horaInicial, onConfirmar, onCerrar }) {
 
           {/* Notas */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>Notas (opcional)</label>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>Notas (opcional)</label>
             <input
               type="text"
               value={notas}
@@ -2490,16 +2492,16 @@ function ModalReposicion({ fechaInicial, horaInicial, onConfirmar, onCerrar }) {
           {kgNum > 0 && (
             <div className="rounded-xl px-4 py-3 text-xs font-mono"
               style={{ background: 'rgba(64,196,255,0.06)', border: '1px solid rgba(64,196,255,0.2)' }}>
-              <span style={{ color: '#4a5f7a' }}>✅ Se registrarán </span>
-              <span style={{ color: '#40c4ff' }} className="font-bold">{kgNum.toFixed(1)} kg</span>
-              <span style={{ color: '#4a5f7a' }}> como reposición confirmada el {fecha}{hora ? ` a las ${hora}` : ''}</span>
+              <span style={{ color: tema.textMuted }}>✅ Se registrarán </span>
+              <span style={{ color: tema.blue }} className="font-bold">{kgNum.toFixed(1)} kg</span>
+              <span style={{ color: tema.textMuted }}> como reposición confirmada el {fecha}{hora ? ` a las ${hora}` : ''}</span>
             </div>
           )}
 
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onCerrar}
               className="flex-1 py-2.5 rounded-xl text-sm font-mono"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a' }}>
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: tema.textMuted }}>
               Cancelar
             </button>
             <button type="submit" disabled={!kgNum}
@@ -2539,24 +2541,24 @@ function ModalIngreso({ stockActualKg, onConfirmar, onCerrar }) {
       <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(0,230,118,0.25)', boxShadow: '0 0 60px rgba(0,230,118,0.08)' }}>
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(0,230,118,0.12)', background: 'rgba(0,230,118,0.04)' }}>
           <div className="font-bold text-white text-sm">📦 Registrar ingreso de alimento</div>
-          <div className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
+          <div className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>
             Suma al stock disponible · No modifica el historial de consumo
           </div>
         </div>
         <form onSubmit={confirmar} className="px-6 py-5 space-y-4">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>Fecha del ingreso</label>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>Fecha del ingreso</label>
             <input
               type="date"
               value={fecha}
               onChange={e => setFecha(e.target.value)}
               required
               className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
-              style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }}
+              style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }}
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
               Cantidad ingresada (kg)
             </label>
             <input
@@ -2568,14 +2570,14 @@ function ModalIngreso({ stockActualKg, onConfirmar, onCerrar }) {
               placeholder="Ej: 25"
               required
               className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
-              style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }}
+              style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }}
             />
           </div>
 
           {nuevoStock && (
             <div className="rounded-xl px-4 py-3 text-xs font-mono" style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.2)' }}>
-              <span style={{ color: '#4a5f7a' }}>Stock después del ingreso: </span>
-              <span className="font-bold" style={{ color: '#00e676' }}>{nuevoStock} kg</span>
+              <span style={{ color: tema.textMuted }}>Stock después del ingreso: </span>
+              <span className="font-bold" style={{ color: tema.accent }}>{nuevoStock} kg</span>
             </div>
           )}
 
@@ -2584,14 +2586,14 @@ function ModalIngreso({ stockActualKg, onConfirmar, onCerrar }) {
               type="button"
               onClick={onCerrar}
               className="flex-1 py-2.5 rounded-xl text-sm font-mono"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a' }}
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: tema.textMuted }}
             >
               Cancelar
             </button>
             <button
               type="submit"
               className="flex-1 py-2.5 rounded-xl text-sm font-bold"
-              style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.4)', color: '#00e676' }}
+              style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.4)', color: tema.accent }}
             >
               Guardar ingreso
             </button>
@@ -2615,10 +2617,10 @@ function ModalEstimacionRapida({ stockEstimadoActual, onConfirmar, onCerrar }) {
   const nuevaEst = stockEstimadoActual !== null ? Math.max(0, stockEstimadoActual + kgNum) : null
 
   const PRESETS = [
-    { label: '📦 Bolsa nueva',    kg: +KG_POR_BOLSA,      tipo: 'bolsa_abierta',  color: '#00e676', signo: +1 },
-    { label: '✅ Bolsa terminada', kg: -KG_POR_BOLSA,      tipo: 'bolsa_terminada',color: '#ff6b80', signo: -1 },
-    { label: '📐 Media bolsa',     kg: -KG_POR_BOLSA / 2,  tipo: 'media_bolsa',    color: '#ffb300', signo: -1 },
-    { label: '📐 Cuarto bolsa',    kg: -KG_POR_BOLSA / 4,  tipo: 'cuarto_bolsa',   color: '#ffb300', signo: -1 },
+    { label: '📦 Bolsa nueva',    kg: +KG_POR_BOLSA,      tipo: 'bolsa_abierta',  color: tema.accent, signo: +1 },
+    { label: '✅ Bolsa terminada', kg: -KG_POR_BOLSA,      tipo: 'bolsa_terminada',color: tema.red, signo: -1 },
+    { label: '📐 Media bolsa',     kg: -KG_POR_BOLSA / 2,  tipo: 'media_bolsa',    color: tema.amber, signo: -1 },
+    { label: '📐 Cuarto bolsa',    kg: -KG_POR_BOLSA / 4,  tipo: 'cuarto_bolsa',   color: tema.amber, signo: -1 },
   ]
 
   function aplicarPreset(p) {
@@ -2633,7 +2635,7 @@ function ModalEstimacionRapida({ stockEstimadoActual, onConfirmar, onCerrar }) {
     onConfirmar({ tipo, kg: kgNum, notas: notas.trim() })
   }
 
-  const inputSt = { background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }
+  const inputSt = { background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(5,8,16,0.85)', backdropFilter: 'blur(4px)' }}>
@@ -2642,7 +2644,7 @@ function ModalEstimacionRapida({ stockEstimadoActual, onConfirmar, onCerrar }) {
 
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(64,196,255,0.12)', background: 'rgba(64,196,255,0.04)' }}>
           <div className="font-bold text-white text-sm">⚡ Ajuste de stock estimado</div>
-          <div className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
+          <div className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>
             Registrá un cambio sin hacer un censo completo
           </div>
         </div>
@@ -2670,7 +2672,7 @@ function ModalEstimacionRapida({ stockEstimadoActual, onConfirmar, onCerrar }) {
 
           {/* Ajuste manual */}
           <div>
-            <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
+            <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
               O ingresá un valor propio
             </div>
             <div className="flex gap-2">
@@ -2695,7 +2697,7 @@ function ModalEstimacionRapida({ stockEstimadoActual, onConfirmar, onCerrar }) {
                 onChange={e => { setKg(e.target.value); setTipo('ajuste') }}
                 placeholder="kg"
                 className="flex-1 px-3 py-2.5 rounded-xl text-sm font-mono" style={inputSt} />
-              <span className="flex items-center text-sm font-mono" style={{ color: '#4a5f7a' }}>kg</span>
+              <span className="flex items-center text-sm font-mono" style={{ color: tema.textMuted }}>kg</span>
             </div>
           </div>
 
@@ -2719,8 +2721,8 @@ function ModalEstimacionRapida({ stockEstimadoActual, onConfirmar, onCerrar }) {
                 </span>
               </div>
               {nuevaEst !== null && (
-                <div style={{ color: '#8a9bb0' }}>
-                  Stock estimado: <span style={{ color: '#c9d4e0', fontWeight: 'bold' }}>
+                <div style={{ color: tema.textSecondary }}>
+                  Stock estimado: <span style={{ color: tema.textPrimary, fontWeight: 'bold' }}>
                     {stockEstimadoActual?.toFixed(1)} → {nuevaEst.toFixed(1)} kg
                   </span>
                 </div>
@@ -2731,7 +2733,7 @@ function ModalEstimacionRapida({ stockEstimadoActual, onConfirmar, onCerrar }) {
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onCerrar}
               className="flex-1 py-2.5 rounded-xl text-sm font-mono"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a' }}>
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: tema.textMuted }}>
               Cancelar
             </button>
             <button type="submit" disabled={!valido}

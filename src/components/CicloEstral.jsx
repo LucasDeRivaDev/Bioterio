@@ -4,20 +4,21 @@ import {
   hoy, formatFecha,
   sugerirFase, calcularPatronEstral, predecirProximoEstro, calcularGestacionEstral,
 } from '../utils/calculos'
+import { useTheme } from '../context/ThemeContext'
 
 // ── Configuración visual de fases ─────────────────────────────────────────────
 const FASES = {
-  L1: { label: 'L1',  desc: 'Diestro temprano',  color: '#40c4ff', bg: 'rgba(64,196,255,0.10)'  },
+  L1: { label: 'L1',  desc: 'Diestro temprano',  color: tema.blue, bg: 'rgba(64,196,255,0.10)'  },
   L2: { label: 'L2',  desc: 'Diestro medio',      color: '#4fc3f7', bg: 'rgba(79,195,247,0.10)'  },
   L3: { label: 'L3',  desc: 'Diestro tardío',     color: '#81d4fa', bg: 'rgba(129,212,250,0.10)' },
-  O:  { label: 'O',   desc: 'Receptiva',          color: '#00e676', bg: 'rgba(0,230,118,0.12)'   },
+  O:  { label: 'O',   desc: 'Receptiva',          color: tema.accent, bg: 'rgba(0,230,118,0.12)'   },
   E:  { label: 'E',   desc: 'Post-servicio',       color: '#ff9100', bg: 'rgba(255,145,0,0.10)'   },
 }
 
 const iStyle = {
-  background: 'rgba(8,13,26,0.8)',
+  background: tema.bgInput,
   border: '1px solid rgba(30,51,82,0.8)',
-  color: '#c9d4e0',
+  color: tema.textPrimary,
   borderRadius: '8px',
   padding: '5px 10px',
   fontSize: '12px',
@@ -43,7 +44,7 @@ function FaseTag({ fase }) {
 function SelectBar({ label, opciones, valor, onChange, colorMap = {} }) {
   return (
     <div className="flex items-start gap-2">
-      <span className="text-xs shrink-0 pt-1 w-28" style={{ color: '#4a5f7a' }}>{label}</span>
+      <span className="text-xs shrink-0 pt-1 w-28" style={{ color: tema.textMuted }}>{label}</span>
       <div className="flex gap-1.5 flex-wrap">
         {opciones.map(([key, lbl]) => {
           const activo = valor === key
@@ -57,7 +58,7 @@ function SelectBar({ label, opciones, valor, onChange, colorMap = {} }) {
               style={
                 activo
                   ? { background: `${color}20`, border: `1px solid ${color}55`, color }
-                  : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }
+                  : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }
               }
             >
               {lbl}
@@ -89,7 +90,7 @@ function GestacionPanel({ gestacion, gestacionDias }) {
           <div className="text-lg font-bold" style={{ color: urgente ? '#ff6b80' : '#00e676' }}>
             Gestación — Día {diaActual}
           </div>
-          <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>
+          <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>
             {confirmadaPorEsperma
               ? 'Preñez confirmada (espermatozoides)'
               : 'Confirmada por cópula observada'}
@@ -102,12 +103,12 @@ function GestacionPanel({ gestacion, gestacionDias }) {
             <div className="text-xl font-bold font-mono" style={{ color: urgente ? '#ff6b80' : '#ffd740' }}>
               {diasParaParto}d
             </div>
-            <div className="text-xs" style={{ color: '#4a5f7a' }}>para parto</div>
+            <div className="text-xs" style={{ color: tema.textMuted }}>para parto</div>
           </div>
         ) : (
           <div className="text-center">
             <div className="text-sm font-bold" style={{ color: '#ff1744' }}>PARTO</div>
-            <div className="text-xs" style={{ color: '#4a5f7a' }}>estimado hoy</div>
+            <div className="text-xs" style={{ color: tema.textMuted }}>estimado hoy</div>
           </div>
         )}
       </div>
@@ -169,7 +170,7 @@ function PrediccionPanel({ prediccion }) {
           <div className="text-sm font-bold" style={{ color: alertColor }}>
             {alertaHoy ? '🔴 ' : alertaMañana ? '🟡 ' : '🔵 '}{alertMsg}
           </div>
-          <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>
+          <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>
             Patrón individual: ~{longitudPromedio}d ({patron}) · {ciclos} ciclo{ciclos !== 1 ? 's' : ''} registrado{ciclos !== 1 ? 's' : ''}
           </div>
         </div>
@@ -187,7 +188,7 @@ function PrediccionPanel({ prediccion }) {
             <div className="text-xs font-bold font-mono" style={{ color: i === 0 ? alertColor : '#8a9bb0' }}>
               {v.diasHasta === 0 ? 'HOY' : v.diasHasta < 0 ? `−${Math.abs(v.diasHasta)}d` : `+${v.diasHasta}d`}
             </div>
-            <div className="text-xs" style={{ color: '#4a5f7a' }}>{v.fechaFormateada}</div>
+            <div className="text-xs" style={{ color: tema.textMuted }}>{v.fechaFormateada}</div>
           </div>
         ))}
       </div>
@@ -198,6 +199,7 @@ function PrediccionPanel({ prediccion }) {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function CicloEstral({ animal }) {
+  const { tema, modoBrillo } = useTheme()
   const { extendidos, agregarExtendido, eliminarExtendido, bio } = useBioterio()
 
   // Historial de esta hembra, ordenado por fecha ascendente
@@ -302,7 +304,7 @@ export default function CicloEstral({ animal }) {
   return (
     <div className="space-y-3 mt-1">
       <div className="flex items-center justify-between">
-        <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#ce93d8' }}>
+        <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.purple }}>
           🔬 Ciclo Estral y Reproducción Predictiva
         </div>
         <button
@@ -310,8 +312,8 @@ export default function CicloEstral({ animal }) {
           className="text-xs font-semibold px-3 py-1 rounded-lg transition-all"
           style={
             mostrarForm
-              ? { background: 'rgba(206,147,216,0.08)', border: '1px solid rgba(206,147,216,0.3)', color: '#ce93d8' }
-              : { background: 'rgba(30,51,82,0.4)', border: '1px solid rgba(30,51,82,0.6)', color: '#8a9bb0' }
+              ? { background: 'rgba(206,147,216,0.08)', border: '1px solid rgba(206,147,216,0.3)', color: tema.purple }
+              : { background: 'rgba(30,51,82,0.4)', border: '1px solid rgba(30,51,82,0.6)', color: tema.textSecondary }
           }
         >
           {mostrarForm ? '✕ Cerrar' : existente ? '✏ Editar hoy' : '+ Agregar extendido'}
@@ -321,12 +323,12 @@ export default function CicloEstral({ animal }) {
       {gestacion && <GestacionPanel gestacion={gestacion} gestacionDias={bio.GESTACION_DIAS} />}
       {!gestacion && prediccion && <PrediccionPanel prediccion={prediccion} />}
       {!gestacion && !prediccion && historial.length > 0 && (
-        <div className="text-xs px-3 py-2 rounded-lg" style={{ background: 'rgba(30,51,82,0.3)', color: '#4a5f7a', border: '1px solid rgba(30,51,82,0.5)' }}>
+        <div className="text-xs px-3 py-2 rounded-lg" style={{ background: 'rgba(30,51,82,0.3)', color: tema.textMuted, border: '1px solid rgba(30,51,82,0.5)' }}>
           {(() => { const p = calcularPatronEstral(historial); return p.diasO < 2 ? `Cargá más extendidos con fase O para activar la predicción (${p.diasO ?? 0} días O registrados — necesitás 2)` : 'Datos insuficientes para predicción.' })()}
         </div>
       )}
       {historial.length === 0 && !mostrarForm && (
-        <div className="text-xs px-3 py-2 rounded-lg" style={{ background: 'rgba(30,51,82,0.3)', color: '#4a5f7a', border: '1px solid rgba(30,51,82,0.5)' }}>
+        <div className="text-xs px-3 py-2 rounded-lg" style={{ background: 'rgba(30,51,82,0.3)', color: tema.textMuted, border: '1px solid rgba(30,51,82,0.5)' }}>
           Sin extendidos registrados. Usá el botón "Agregar extendido" para empezar el seguimiento.
         </div>
       )}
@@ -334,19 +336,19 @@ export default function CicloEstral({ animal }) {
       {mostrarForm && (
         <div
           className="rounded-xl p-4 space-y-3"
-          style={{ background: 'rgba(8,13,26,0.8)', border: '1px solid rgba(30,51,82,0.9)' }}
+          style={{ background: tema.bgInput, border: '1px solid rgba(30,51,82,0.9)' }}
         >
-          <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#ce93d8' }}>
+          <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: tema.purple }}>
             {existente ? 'Editar extendido' : 'Nuevo extendido'}
-            {existente && <span className="ml-2 font-normal normal-case text-xs" style={{ color: '#4a5f7a' }}>(sobreescribe el registro de esta fecha)</span>}
+            {existente && <span className="ml-2 font-normal normal-case text-xs" style={{ color: tema.textMuted }}>(sobreescribe el registro de esta fecha)</span>}
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs w-28 shrink-0" style={{ color: '#4a5f7a' }}>Fecha</span>
+            <span className="text-xs w-28 shrink-0" style={{ color: tema.textMuted }}>Fecha</span>
             <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={{ ...iStyle, width: 'auto' }} />
           </div>
 
-          <div className="text-xs font-semibold uppercase tracking-widest pt-1" style={{ color: '#4a5f7a', borderTop: '1px solid rgba(30,51,82,0.5)', paddingTop: '8px' }}>
+          <div className="text-xs font-semibold uppercase tracking-widest pt-1" style={{ color: tema.textMuted, borderTop: '1px solid rgba(30,51,82,0.5)', paddingTop: '8px' }}>
             Citología vaginal
           </div>
 
@@ -369,7 +371,7 @@ export default function CicloEstral({ animal }) {
             onChange={setClaridad}
           />
 
-          <div className="text-xs font-semibold uppercase tracking-widest pt-1" style={{ color: '#4a5f7a', borderTop: '1px solid rgba(30,51,82,0.5)', paddingTop: '8px' }}>
+          <div className="text-xs font-semibold uppercase tracking-widest pt-1" style={{ color: tema.textMuted, borderTop: '1px solid rgba(30,51,82,0.5)', paddingTop: '8px' }}>
             Signos externos
           </div>
 
@@ -381,7 +383,7 @@ export default function CicloEstral({ animal }) {
             colorMap={{ si: '#00e676', no: '#ff6b80', dudosa: '#ffd740' }}
           />
 
-          <div className="text-xs font-semibold uppercase tracking-widest pt-1" style={{ color: '#4a5f7a', borderTop: '1px solid rgba(30,51,82,0.5)', paddingTop: '8px' }}>
+          <div className="text-xs font-semibold uppercase tracking-widest pt-1" style={{ color: tema.textMuted, borderTop: '1px solid rgba(30,51,82,0.5)', paddingTop: '8px' }}>
             Cruce con macho
           </div>
 
@@ -403,12 +405,12 @@ export default function CicloEstral({ animal }) {
 
           {copula === 'confirmada' && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold"
-              style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.3)', color: '#00e676' }}>
+              style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.3)', color: tema.accent }}>
               ✓ Este día queda marcado como Día 0 de gestación
             </div>
           )}
 
-          <div className="text-xs font-semibold uppercase tracking-widest pt-1" style={{ color: '#4a5f7a', borderTop: '1px solid rgba(30,51,82,0.5)', paddingTop: '8px' }}>
+          <div className="text-xs font-semibold uppercase tracking-widest pt-1" style={{ color: tema.textMuted, borderTop: '1px solid rgba(30,51,82,0.5)', paddingTop: '8px' }}>
             Espermatozoides (extendido del día siguiente)
           </div>
 
@@ -422,17 +424,17 @@ export default function CicloEstral({ animal }) {
 
           {esperma === 'encontrados' && !gestacion && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold"
-              style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.3)', color: '#00e676' }}>
+              style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.3)', color: tema.accent }}>
               ✓ Confirma la cópula del día anterior — preñez probable
             </div>
           )}
 
-          <div className="text-xs font-semibold uppercase tracking-widest pt-1" style={{ color: '#4a5f7a', borderTop: '1px solid rgba(30,51,82,0.5)', paddingTop: '8px' }}>
+          <div className="text-xs font-semibold uppercase tracking-widest pt-1" style={{ color: tema.textMuted, borderTop: '1px solid rgba(30,51,82,0.5)', paddingTop: '8px' }}>
             Fase del ciclo
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="text-xs w-28 shrink-0" style={{ color: '#4a5f7a' }}>Auto-sugerida</span>
+            <span className="text-xs w-28 shrink-0" style={{ color: tema.textMuted }}>Auto-sugerida</span>
             {faseSugerida ? (
               <FaseTag fase={faseSugerida} />
             ) : (
@@ -449,7 +451,7 @@ export default function CicloEstral({ animal }) {
           />
 
           <div className="flex items-center gap-2">
-            <span className="text-xs w-28 shrink-0" style={{ color: '#4a5f7a' }}>Notas</span>
+            <span className="text-xs w-28 shrink-0" style={{ color: tema.textMuted }}>Notas</span>
             <input
               type="text"
               placeholder="Observaciones opcionales..."
@@ -463,7 +465,7 @@ export default function CicloEstral({ animal }) {
             <button
               onClick={() => { setMostrarForm(false); resetForm() }}
               className="flex-1 py-2 rounded-lg text-xs font-semibold"
-              style={{ background: 'rgba(30,51,82,0.4)', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }}
+              style={{ background: 'rgba(30,51,82,0.4)', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }}
             >
               Cancelar
             </button>
@@ -474,7 +476,7 @@ export default function CicloEstral({ animal }) {
               style={{
                 background: guardando ? 'rgba(206,147,216,0.05)' : 'rgba(206,147,216,0.12)',
                 border: '1px solid rgba(206,147,216,0.35)',
-                color: '#ce93d8',
+                color: tema.purple,
                 opacity: guardando ? 0.6 : 1,
               }}
             >
@@ -486,13 +488,13 @@ export default function CicloEstral({ animal }) {
 
       {historial.length > 0 && (
         <div className="space-y-1">
-          <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
+          <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
             Historial ({historial.length} registros)
           </div>
           <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(30,51,82,0.6)' }}>
             <table className="w-full text-xs">
               <thead>
-                <tr style={{ background: 'rgba(8,13,26,0.8)', borderBottom: '1px solid rgba(30,51,82,0.6)' }}>
+                <tr style={{ background: tema.bgInput, borderBottom: '1px solid rgba(30,51,82,0.6)' }}>
                   {['Fecha', 'Citología', 'Apertura', 'Cópula', 'Esperma', 'Fase', ''].map((h) => (
                     <th key={h} className="px-3 py-2 text-left font-semibold uppercase tracking-widest" style={{ color: '#2a3a50' }}>
                       {h}
@@ -515,33 +517,33 @@ export default function CicloEstral({ animal }) {
                           : 'transparent',
                       }}
                     >
-                      <td className="px-3 py-2 font-mono" style={{ color: '#8a9bb0' }}>
+                      <td className="px-3 py-2 font-mono" style={{ color: tema.textSecondary }}>
                         {formatFecha(new Date(e.fecha + 'T12:00:00'), { day: '2-digit', month: '2-digit' })}
                         {e.es_dia_0 && (
-                          <span className="ml-1 font-bold" style={{ color: '#00e676' }}>D0</span>
+                          <span className="ml-1 font-bold" style={{ color: tema.accent }}>D0</span>
                         )}
                       </td>
-                      <td className="px-3 py-2" style={{ color: '#4a5f7a' }}>
-                        {e.citologia === 'leucocitos' && <span style={{ color: '#40c4ff' }}>Leuc.</span>}
-                        {e.citologia === 'celulas_ovales' && <span style={{ color: '#ce93d8' }}>Oval.</span>}
-                        {e.citologia === 'celulas_escamosas' && <span style={{ color: '#00e676' }}>Escam.</span>}
+                      <td className="px-3 py-2" style={{ color: tema.textMuted }}>
+                        {e.citologia === 'leucocitos' && <span style={{ color: tema.blue }}>Leuc.</span>}
+                        {e.citologia === 'celulas_ovales' && <span style={{ color: tema.purple }}>Oval.</span>}
+                        {e.citologia === 'celulas_escamosas' && <span style={{ color: tema.accent }}>Escam.</span>}
                         {!e.citologia && <span style={{ color: '#2a3a50' }}>—</span>}
                       </td>
-                      <td className="px-3 py-2" style={{ color: '#4a5f7a' }}>
-                        {e.apertura_vaginal === 'si' && <span style={{ color: '#00e676' }}>Sí</span>}
-                        {e.apertura_vaginal === 'no' && <span style={{ color: '#4a5f7a' }}>No</span>}
+                      <td className="px-3 py-2" style={{ color: tema.textMuted }}>
+                        {e.apertura_vaginal === 'si' && <span style={{ color: tema.accent }}>Sí</span>}
+                        {e.apertura_vaginal === 'no' && <span style={{ color: tema.textMuted }}>No</span>}
                         {e.apertura_vaginal === 'dudosa' && <span style={{ color: '#ffd740' }}>Dud.</span>}
                         {!e.apertura_vaginal && <span style={{ color: '#2a3a50' }}>—</span>}
                       </td>
-                      <td className="px-3 py-2" style={{ color: '#4a5f7a' }}>
-                        {e.copula === 'confirmada' && <span style={{ color: '#00e676', fontWeight: 700 }}>✓ Conf.</span>}
-                        {e.copula === 'no_confirmada' && <span style={{ color: '#ff6b80' }}>No conf.</span>}
-                        {e.copula === 'no_observado' && <span style={{ color: '#4a5f7a' }}>No obs.</span>}
+                      <td className="px-3 py-2" style={{ color: tema.textMuted }}>
+                        {e.copula === 'confirmada' && <span style={{ color: tema.accent, fontWeight: 700 }}>✓ Conf.</span>}
+                        {e.copula === 'no_confirmada' && <span style={{ color: tema.red }}>No conf.</span>}
+                        {e.copula === 'no_observado' && <span style={{ color: tema.textMuted }}>No obs.</span>}
                         {!e.copula && <span style={{ color: '#2a3a50' }}>—</span>}
                       </td>
-                      <td className="px-3 py-2" style={{ color: '#4a5f7a' }}>
-                        {e.espermatozoides === 'encontrados' && <span style={{ color: '#00e676', fontWeight: 700 }}>✓ Enc.</span>}
-                        {e.espermatozoides === 'no_encontrados' && <span style={{ color: '#4a5f7a' }}>No enc.</span>}
+                      <td className="px-3 py-2" style={{ color: tema.textMuted }}>
+                        {e.espermatozoides === 'encontrados' && <span style={{ color: tema.accent, fontWeight: 700 }}>✓ Enc.</span>}
+                        {e.espermatozoides === 'no_encontrados' && <span style={{ color: tema.textMuted }}>No enc.</span>}
                         {e.espermatozoides === 'dudoso' && <span style={{ color: '#ffd740' }}>Dud.</span>}
                         {!e.espermatozoides && <span style={{ color: '#2a3a50' }}>—</span>}
                       </td>
@@ -549,7 +551,7 @@ export default function CicloEstral({ animal }) {
                         {e.fase ? (
                           <span style={{ fontWeight: 700, color: cfg?.color ?? '#8a9bb0' }}>
                             {e.fase}
-                            {e.fase_confirmada && <span title="Fase confirmada manualmente" style={{ color: '#4a5f7a', marginLeft: 2 }}>*</span>}
+                            {e.fase_confirmada && <span title="Fase confirmada manualmente" style={{ color: tema.textMuted, marginLeft: 2 }}>*</span>}
                           </span>
                         ) : (
                           <span style={{ color: '#2a3a50' }}>—</span>
@@ -560,7 +562,7 @@ export default function CicloEstral({ animal }) {
                           onClick={() => borrar(e.id)}
                           disabled={eliminando === e.id}
                           className="text-xs font-semibold"
-                          style={{ color: '#ff6b80', opacity: eliminando === e.id ? 0.4 : 1 }}
+                          style={{ color: tema.red, opacity: eliminando === e.id ? 0.4 : 1 }}
                         >
                           {eliminando === e.id ? '...' : 'Borrar'}
                         </button>
@@ -576,7 +578,7 @@ export default function CicloEstral({ animal }) {
             <button
               onClick={() => setVerTodo(!verTodo)}
               className="text-xs font-semibold mt-1"
-              style={{ color: '#4a5f7a' }}
+              style={{ color: tema.textMuted }}
             >
               {verTodo ? '▲ Ver menos' : `▼ Ver todo (${historial.length} registros)`}
             </button>

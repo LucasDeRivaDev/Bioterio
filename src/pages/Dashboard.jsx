@@ -11,6 +11,7 @@ import {
   Calendar, FileWarning, Thermometer, Microscope,
   CheckCircle2, Layers, Link2, UserMinus, Skull,
 } from 'lucide-react'
+import { useTheme } from '../context/ThemeContext'
 
 // Estilos por prioridad
 const PRIORIDAD = {
@@ -114,7 +115,7 @@ function TarjetaTarea({ tarea, onConfirmarSeparacion, onDescartar }) {
               style={{
                 background: 'rgba(74,95,122,0.12)',
                 border: '1px solid rgba(74,95,122,0.25)',
-                color: '#4a5f7a',
+                color: tema.textMuted,
               }}
             >
               ✕
@@ -137,9 +138,9 @@ function TarjetaTarea({ tarea, onConfirmarSeparacion, onDescartar }) {
                 onChange={(e) => setFechaSep(e.target.value)}
                 className="px-2 py-1 text-xs rounded-lg font-mono focus:outline-none"
                 style={{
-                  background: 'rgba(8,13,26,0.8)',
+                  background: tema.bgInput,
                   border: `1px solid ${est.accionBorde}`,
-                  color: '#c9d4e0',
+                  color: tema.textPrimary,
                 }}
               />
               <button
@@ -159,7 +160,7 @@ function TarjetaTarea({ tarea, onConfirmarSeparacion, onDescartar }) {
               <button
                 onClick={() => setConfirmando(false)}
                 className="px-2 py-1 rounded-lg text-xs"
-                style={{ background: 'transparent', color: '#4a5f7a', border: '1px solid rgba(30,51,82,0.5)' }}
+                style={{ background: 'transparent', color: tema.textMuted, border: '1px solid rgba(30,51,82,0.5)' }}
               >
                 Cancelar
               </button>
@@ -209,7 +210,7 @@ function StatCard({ valor, label, icono, color }) {
       </div>
       <div>
         <div className="text-2xl font-bold font-mono" style={{ color: c.texto }}>{valor}</div>
-        <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>{label}</div>
+        <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>{label}</div>
       </div>
     </div>
   )
@@ -237,6 +238,7 @@ function cargarDescartadas() {
 }
 
 export default function Dashboard() {
+  const { tema, modoBrillo } = useTheme()
   const { animales, animalesExportados, camadas, extendidos, confirmarSeparacion, bio, bioterioActivo } = useBioterio()
   // En Híbridos los progenitores viven en animalesExportados — buscar en ambos
   const todosAnimales = useMemo(() => [...animales, ...animalesExportados], [animales, animalesExportados])
@@ -415,39 +417,39 @@ export default function Dashboard() {
           <div className="flex items-center gap-3 mb-1 flex-wrap">
             <div
               className="w-2 h-8 rounded-full shrink-0"
-              style={{ background: '#00e676', boxShadow: '0 0 10px rgba(0,230,118,0.6)' }}
+              style={{ background: tema.accent, boxShadow: '0 0 10px rgba(0,230,118,0.6)' }}
             />
             <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">Panel de hoy</h1>
             {/* Links independientes */}
             <Link to="/calendario"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-              style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.25)', color: '#40c4ff', textDecoration: 'none' }}
+              style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.25)', color: tema.blue, textDecoration: 'none' }}
             >
               <Calendar size={13} /> Calendario
             </Link>
             <Link to="/incidentes"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-              style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.25)', color: '#ffb300', textDecoration: 'none' }}
+              style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.25)', color: tema.amber, textDecoration: 'none' }}
             >
               <FileWarning size={13} /> Incidentes
             </Link>
             <Link to="/temperatura"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-              style={{ background: 'rgba(255,87,51,0.08)', border: '1px solid rgba(255,87,51,0.25)', color: '#ff7043', textDecoration: 'none' }}
+              style={{ background: 'rgba(255,87,51,0.08)', border: '1px solid rgba(255,87,51,0.25)', color: tema.red, textDecoration: 'none' }}
             >
               <Thermometer size={13} /> Temperatura
             </Link>
 
           </div>
-          <p className="text-sm ml-5 capitalize" style={{ color: '#4a5f7a' }}>{fechaHoy}</p>
+          <p className="text-sm ml-5 capitalize" style={{ color: tema.textMuted }}>{fechaHoy}</p>
         </div>
         <div
           className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full text-xs font-mono shrink-0"
-          style={{ background: 'rgba(0,230,118,0.07)', border: '1px solid rgba(0,230,118,0.2)', color: '#00e676' }}
+          style={{ background: 'rgba(0,230,118,0.07)', border: '1px solid rgba(0,230,118,0.2)', color: tema.accent }}
         >
           <span
             className="w-2 h-2 rounded-full pulse-soft"
-            style={{ background: '#00e676', boxShadow: '0 0 6px rgba(0,230,118,0.8)' }}
+            style={{ background: tema.accent, boxShadow: '0 0 6px rgba(0,230,118,0.8)' }}
           />
           SISTEMA ACTIVO
         </div>
@@ -465,7 +467,7 @@ export default function Dashboard() {
       {/* Alertas de ciclo estral y gestación */}
       {alertasEstrales.length > 0 && (
         <div>
-          <div className="text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: '#ce93d8' }}>
+          <div className="text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: tema.purple }}>
             🔬 Ciclo estral / gestación
           </div>
           <div className="space-y-2">
@@ -477,7 +479,7 @@ export default function Dashboard() {
                   <span style={{ color, fontSize: '16px' }}>
                     {a.tipo === 'critico' || a.tipo === 'alta' ? '⚠' : '○'}
                   </span>
-                  <span style={{ color: '#c9d4e0' }}>{a.mensaje}</span>
+                  <span style={{ color: tema.textPrimary }}>{a.mensaje}</span>
                 </div>
               )
             })}
@@ -488,7 +490,7 @@ export default function Dashboard() {
       {/* ── Control de machos reproductores ──────────────────────────────────── */}
       {(mostrarRenovacion || alertasMachos.length > 0) && (
         <div>
-          <div className="text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: '#40c4ff' }}>
+          <div className="text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: tema.blue }}>
             <UserMinus size={13} /> Control de machos
           </div>
           <div className="space-y-2">
@@ -500,12 +502,12 @@ export default function Dashboard() {
                 style={{ background: 'rgba(64,196,255,0.06)', border: '1px solid rgba(64,196,255,0.2)' }}
               >
                 <div className="flex items-start gap-3 min-w-0">
-                  <RefreshCcw size={17} style={{ color: '#40c4ff', marginTop: '2px', flexShrink: 0 }} />
+                  <RefreshCcw size={17} style={{ color: tema.blue, marginTop: '2px', flexShrink: 0 }} />
                   <div>
-                    <div className="font-semibold text-sm" style={{ color: '#40c4ff' }}>
+                    <div className="font-semibold text-sm" style={{ color: tema.blue }}>
                       Revisar y renovar stock de machos reproductores
                     </div>
-                    <div className="text-xs mt-0.5 opacity-70" style={{ color: '#40c4ff' }}>
+                    <div className="text-xs mt-0.5 opacity-70" style={{ color: tema.blue }}>
                       Recordatorio periódico (cada 5 meses) · Rango óptimo: 3–9 meses de edad
                     </div>
                   </div>
@@ -514,7 +516,7 @@ export default function Dashboard() {
                   onClick={descartarRenovacion}
                   title="Marcar como revisado"
                   className="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 transition-all"
-                  style={{ background: 'rgba(64,196,255,0.1)', border: '1px solid rgba(64,196,255,0.25)', color: '#40c4ff' }}
+                  style={{ background: 'rgba(64,196,255,0.1)', border: '1px solid rgba(64,196,255,0.25)', color: tema.blue }}
                 >
                   ✓
                 </button>
@@ -566,7 +568,7 @@ export default function Dashboard() {
       {/* ── Notas / recordatorios del día ──────────────────────────────────── */}
       {alertasNotas.length > 0 && (
         <div>
-          <div className="text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: '#fbbf24' }}>
+          <div className="text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: tema.amber }}>
             📝 Recordatorios
           </div>
           <div className="space-y-2">
@@ -585,7 +587,7 @@ export default function Dashboard() {
                       {n.titulo && (
                         <div className="text-xs font-bold" style={{ color }}>{n.titulo}</div>
                       )}
-                      <div className="text-xs" style={{ color: '#c9d4e0' }}>{n.descripcion}</div>
+                      <div className="text-xs" style={{ color: tema.textPrimary }}>{n.descripcion}</div>
                       {vencida && (
                         <div className="text-xs font-mono" style={{ color: 'rgba(138,155,176,0.4)' }}>
                           Fecha: {n.fecha.split('-').reverse().join('/')}
@@ -595,12 +597,12 @@ export default function Dashboard() {
                     <div className="flex flex-col gap-1.5 shrink-0">
                       <button onClick={() => completarNotaDash(n.id)}
                         className="px-3 py-1 rounded-lg text-xs font-bold"
-                        style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.3)', color: '#00e676', cursor: 'pointer' }}>
+                        style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.3)', color: tema.accent, cursor: 'pointer' }}>
                         ✓ Hecho
                       </button>
                       <button onClick={() => eliminarNotaDash(n.id)}
                         className="px-3 py-1 rounded-lg text-xs font-semibold"
-                        style={{ background: 'rgba(138,155,176,0.06)', border: '1px solid rgba(138,155,176,0.2)', color: '#4a5f7a', cursor: 'pointer' }}>
+                        style={{ background: 'rgba(138,155,176,0.06)', border: '1px solid rgba(138,155,176,0.2)', color: tema.textMuted, cursor: 'pointer' }}>
                         ✕
                       </button>
                     </div>
@@ -615,7 +617,7 @@ export default function Dashboard() {
       {/* ── Apareamientos planificados ──────────────────────────────────────── */}
       {(alertasApareamiento.length > 0 || proximosApareamiento.length > 0) && (
         <div>
-          <div className="text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: '#40c4ff' }}>
+          <div className="text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: tema.blue }}>
             🔗 Apareamientos planificados
           </div>
           <div className="space-y-2">
@@ -632,20 +634,20 @@ export default function Dashboard() {
                       <div className="font-semibold text-sm" style={{ color }}>
                         {vencida ? '⚠️ Apareamiento pendiente' : '🔗 Realizar apareamiento hoy'}
                       </div>
-                      <div className="text-xs" style={{ color: '#c9d4e0' }}>
+                      <div className="text-xs" style={{ color: tema.textPrimary }}>
                         Tomar machos de{' '}
-                        <span className="font-mono" style={{ color: '#40c4ff' }}>{plan.macho.codigo}</span>
+                        <span className="font-mono" style={{ color: tema.blue }}>{plan.macho.codigo}</span>
                         {plan.macho.total > 0 && (
-                          <span style={{ color: '#4a5f7a' }}> ({plan.macho.total} disp.)</span>
+                          <span style={{ color: tema.textMuted }}> ({plan.macho.total} disp.)</span>
                         )}
                         {' '}y hembras de{' '}
-                        <span className="font-mono" style={{ color: '#ce93d8' }}>{plan.hembra.codigo}</span>
+                        <span className="font-mono" style={{ color: tema.purple }}>{plan.hembra.codigo}</span>
                         {plan.hembra.total > 0 && (
-                          <span style={{ color: '#4a5f7a' }}> ({plan.hembra.total} disp.)</span>
+                          <span style={{ color: tema.textMuted }}> ({plan.hembra.total} disp.)</span>
                         )}
                       </div>
                       {plan.observaciones && (
-                        <div className="text-xs" style={{ color: '#4a5f7a' }}>{plan.observaciones}</div>
+                        <div className="text-xs" style={{ color: tema.textMuted }}>{plan.observaciones}</div>
                       )}
                       <div className="text-xs font-mono" style={{ color: 'rgba(138,155,176,0.4)' }}>
                         Planificado para: {formatFecha(plan.fecha_planificada)}
@@ -654,12 +656,12 @@ export default function Dashboard() {
                     <div className="flex flex-col gap-1.5 shrink-0">
                       <button onClick={() => completarPlan(plan.id)}
                         className="px-3 py-1 rounded-lg text-xs font-bold"
-                        style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.3)', color: '#00e676', cursor: 'pointer' }}>
+                        style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.3)', color: tema.accent, cursor: 'pointer' }}>
                         ✓ Hecho
                       </button>
                       <button onClick={() => descartarPlan(plan.id)}
                         className="px-3 py-1 rounded-lg text-xs font-semibold"
-                        style={{ background: 'rgba(138,155,176,0.06)', border: '1px solid rgba(138,155,176,0.2)', color: '#4a5f7a', cursor: 'pointer' }}>
+                        style={{ background: 'rgba(138,155,176,0.06)', border: '1px solid rgba(138,155,176,0.2)', color: tema.textMuted, cursor: 'pointer' }}>
                         ✕
                       </button>
                     </div>
@@ -673,20 +675,20 @@ export default function Dashboard() {
               <div key={plan.id} className="rounded-xl px-4 py-3 flex items-center justify-between gap-3"
                 style={{ background: 'rgba(64,196,255,0.04)', border: '1px solid rgba(64,196,255,0.15)' }}>
                 <div className="min-w-0 space-y-0.5">
-                  <div className="text-xs font-semibold" style={{ color: '#40c4ff' }}>
+                  <div className="text-xs font-semibold" style={{ color: tema.blue }}>
                     Cruce planificado · {formatFecha(plan.fecha_planificada)}
                   </div>
-                  <div className="text-xs" style={{ color: '#4a5f7a' }}>
-                    <span className="font-mono" style={{ color: '#40c4ff' }}>{plan.macho.codigo}</span>
+                  <div className="text-xs" style={{ color: tema.textMuted }}>
+                    <span className="font-mono" style={{ color: tema.blue }}>{plan.macho.codigo}</span>
                     {' '}×{' '}
-                    <span className="font-mono" style={{ color: '#ce93d8' }}>{plan.hembra.codigo}</span>
+                    <span className="font-mono" style={{ color: tema.purple }}>{plan.hembra.codigo}</span>
                     {plan.observaciones && <span> · {plan.observaciones}</span>}
                   </div>
                 </div>
                 <button onClick={() => descartarPlan(plan.id)}
                   title="Eliminar plan"
                   className="w-6 h-6 rounded-lg flex items-center justify-center text-xs shrink-0"
-                  style={{ background: 'rgba(74,95,122,0.1)', border: '1px solid rgba(74,95,122,0.2)', color: '#4a5f7a', cursor: 'pointer' }}>
+                  style={{ background: 'rgba(74,95,122,0.1)', border: '1px solid rgba(74,95,122,0.2)', color: tema.textMuted, cursor: 'pointer' }}>
                   ✕
                 </button>
               </div>
@@ -699,7 +701,7 @@ export default function Dashboard() {
       {/* Alertas urgentes */}
       {(vencidas.length > 0 || deHoy.length > 0) && (
         <div>
-          <div className="text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: '#ff6b80' }}>
+          <div className="text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: tema.red }}>
             <span className="pulse-soft">●</span> Atención inmediata
           </div>
           <div className="space-y-2">
@@ -719,16 +721,16 @@ export default function Dashboard() {
           className="rounded-xl p-6 text-center"
           style={{ background: 'rgba(0,230,118,0.05)', border: '1px solid rgba(0,230,118,0.15)' }}
         >
-          <div className="flex justify-center mb-2"><CheckCircle2 size={32} style={{ color: '#00e676' }} /></div>
-          <div className="font-semibold text-sm" style={{ color: '#00e676' }}>Sin tareas urgentes hoy</div>
-          <div className="text-xs mt-1" style={{ color: '#4a5f7a' }}>La colonia está bajo control</div>
+          <div className="flex justify-center mb-2"><CheckCircle2 size={32} style={{ color: tema.accent }} /></div>
+          <div className="font-semibold text-sm" style={{ color: tema.accent }}>Sin tareas urgentes hoy</div>
+          <div className="text-xs mt-1" style={{ color: tema.textMuted }}>La colonia está bajo control</div>
         </div>
       )}
 
       {/* Próximas tareas */}
       {proximas.length > 0 && (
         <div>
-          <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: '#4a5f7a' }}>
+          <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: tema.textMuted }}>
             Próximos 7 días
           </div>
           <div className="space-y-2">
@@ -742,7 +744,7 @@ export default function Dashboard() {
       {/* Seguimiento de preñeces */}
       {proximosPartos.length > 0 && (
         <div>
-          <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: '#4a5f7a' }}>
+          <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: tema.textMuted }}>
             <FlaskConical size={13} style={{ display: 'inline', marginRight: '4px' }} />
             Seguimiento de preñeces activas
           </div>
@@ -756,7 +758,7 @@ export default function Dashboard() {
                   <tr style={{ borderBottom: '1px solid rgba(0,230,118,0.1)', background: 'rgba(0,230,118,0.03)' }}>
                     {['Hembra', 'Cópula', 'Ventana de parto', 'Estado'].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest"
-                        style={{ color: '#4a5f7a' }}>{h}</th>
+                        style={{ color: tema.textMuted }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -767,13 +769,13 @@ export default function Dashboard() {
                       style={{ borderBottom: '1px solid rgba(30,51,82,0.4)' }}
                       className="transition-colors hover:bg-white/[0.01]"
                     >
-                      <td className="px-4 py-3 font-mono font-semibold" style={{ color: '#ce93d8' }}>
+                      <td className="px-4 py-3 font-mono font-semibold" style={{ color: tema.purple }}>
                         {madre?.codigo ?? '?'}
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs" style={{ color: '#4a5f7a' }}>
+                      <td className="px-4 py-3 font-mono text-xs" style={{ color: tema.textMuted }}>
                         {formatFecha(camada.fecha_copula)}
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs" style={{ color: '#8a9bb0' }}>
+                      <td className="px-4 py-3 font-mono text-xs" style={{ color: tema.textSecondary }}>
                         {formatFecha(rango.partoMin)} — {formatFecha(rango.partoMax)}
                       </td>
                       <td className="px-4 py-3">
@@ -802,11 +804,11 @@ export default function Dashboard() {
           className="rounded-xl p-12 text-center"
           style={{ background: 'rgba(13,21,40,0.5)', border: '1px dashed rgba(30,51,82,0.8)' }}
         >
-          <div className="flex justify-center mb-4"><Microscope size={48} style={{ color: '#4a5f7a' }} /></div>
+          <div className="flex justify-center mb-4"><Microscope size={48} style={{ color: tema.textMuted }} /></div>
           <div className="font-semibold text-white mb-1">Bioterio vacío</div>
-          <div className="text-sm" style={{ color: '#4a5f7a' }}>
+          <div className="text-sm" style={{ color: tema.textMuted }}>
             Empezá agregando animales en la sección{' '}
-            <span style={{ color: '#00e676' }}>Reproductores</span>
+            <span style={{ color: tema.accent }}>Reproductores</span>
           </div>
         </div>
       )}

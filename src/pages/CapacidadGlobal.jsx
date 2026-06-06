@@ -15,14 +15,15 @@ import {
   ArrowLeft, RefreshCw, AlertTriangle, Settings, Users,
   Layers, TrendingUp, ChevronDown, ChevronUp, Check,
 } from 'lucide-react'
+import { useTheme } from '../context/ThemeContext'
 
 // ── Bioterios ─────────────────────────────────────────────────────────────────
 
 const TODOS = [
-  { id: 'ratas',            bio: BIO_RATAS,   color: '#00e676', label: 'Bioterio de Ratas',  icon: '🐀', short: 'Ratas'    },
-  { id: 'ratones_balbc',    bio: BIO_RATONES, color: '#40c4ff', label: 'Ratones Balb/C',     icon: '🐭', short: 'BAL/C'    },
+  { id: 'ratas',            bio: BIO_RATAS,   color: tema.accent, label: 'Bioterio de Ratas',  icon: '🐀', short: 'Ratas'    },
+  { id: 'ratones_balbc',    bio: BIO_RATONES, color: tema.blue, label: 'Ratones Balb/C',     icon: '🐭', short: 'BAL/C'    },
   { id: 'ratones_c57',      bio: BIO_RATONES, color: '#a78bfa', label: 'Ratones C57',        icon: '🐭', short: 'C57'      },
-  { id: 'ratones_hibridos', bio: BIO_RATONES, color: '#ffb300', label: 'Ratones Híbridos',   icon: '🐭', short: 'Híbridos' },
+  { id: 'ratones_hibridos', bio: BIO_RATONES, color: tema.amber, label: 'Ratones Híbridos',   icon: '🐭', short: 'Híbridos' },
 ]
 
 // ── Config (Supabase) ──────────────────────────────────────────────────────────
@@ -190,15 +191,16 @@ function nivelRiesgo(nA, nJ, cfg) {
   const pJ = cfg.maxJaulas   > 0 ? nJ / cfg.maxJaulas   : 0
   const p  = Math.max(pA, pJ)
   if (p >= 1.00) return { nivel: 'saturacion', color: '#ff3d57', label: '⚫ Saturación',     pct: Math.round(p*100) }
-  if (p >= 0.95) return { nivel: 'alto',       color: '#ff6b80', label: '🔴 Riesgo alto',    pct: Math.round(p*100) }
-  if (p >= 0.80) return { nivel: 'moderado',   color: '#ffb300', label: '🟡 Riesgo moderado', pct: Math.round(p*100) }
-  if (p >= 0.60) return { nivel: 'bajo',       color: '#00e676', label: '🟢 Atención',        pct: Math.round(p*100) }
-  return                { nivel: 'ok',         color: '#00e676', label: '✓ Capacidad OK',     pct: Math.round(p*100) }
+  if (p >= 0.95) return { nivel: 'alto',       color: tema.red, label: '🔴 Riesgo alto',    pct: Math.round(p*100) }
+  if (p >= 0.80) return { nivel: 'moderado',   color: tema.amber, label: '🟡 Riesgo moderado', pct: Math.round(p*100) }
+  if (p >= 0.60) return { nivel: 'bajo',       color: tema.accent, label: '🟢 Atención',        pct: Math.round(p*100) }
+  return                { nivel: 'ok',         color: tema.accent, label: '✓ Capacidad OK',     pct: Math.round(p*100) }
 }
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function CapacidadGlobal() {
+  const { tema, modoBrillo } = useTheme()
   const { limpiarBioterio } = useBioterioActivo()
 
   const [tab,       setTab]       = useState(TODOS[0].id)
@@ -309,20 +311,20 @@ export default function CapacidadGlobal() {
         style={{ borderBottom: '1px solid rgba(0,230,118,0.15)', background: 'rgba(13,21,40,0.6)' }}>
         <button onClick={limpiarBioterio}
           className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-mono"
-          style={{ background: 'rgba(0,230,118,0.07)', border: '1px solid rgba(0,230,118,0.2)', color: '#00e676' }}
+          style={{ background: 'rgba(0,230,118,0.07)', border: '1px solid rgba(0,230,118,0.2)', color: tema.accent }}
           onMouseEnter={e => e.currentTarget.style.background='rgba(0,230,118,0.14)'}
           onMouseLeave={e => e.currentTarget.style.background='rgba(0,230,118,0.07)'}>
           <ArrowLeft size={14} /> Volver
         </button>
         <div className="flex-1">
           <h1 className="font-bold text-white text-base">Capacidad y predicción</h1>
-          <p className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+          <p className="text-xs font-mono" style={{ color: tema.textMuted }}>
             Saturación estimada · sugerencias automáticas · simulador de sacrificios
           </p>
         </div>
         <button onClick={cargar} disabled={cargando}
           className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a', cursor: cargando ? 'not-allowed' : 'pointer' }}>
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: tema.textMuted, cursor: cargando ? 'not-allowed' : 'pointer' }}>
           <RefreshCw size={12} className={cargando ? 'animate-spin' : ''} /> Actualizar
         </button>
       </div>
@@ -349,7 +351,7 @@ export default function CapacidadGlobal() {
 
         {error && (
           <div className="rounded-2xl px-5 py-4 text-sm font-mono"
-            style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)', color: '#ff6b80' }}>
+            style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)', color: tema.red }}>
             ⚠️ {error}
           </div>
         )}
@@ -357,7 +359,7 @@ export default function CapacidadGlobal() {
         {cargando && !datos && (
           <div className="flex items-center justify-center gap-3 py-20">
             <span className="w-5 h-5 rounded-full border-2 animate-spin" style={{ borderColor: '#00e676', borderTopColor: 'transparent' }} />
-            <span className="text-sm font-mono" style={{ color: '#4a5f7a' }}>Calculando capacidad de la colonia...</span>
+            <span className="text-sm font-mono" style={{ color: tema.textMuted }}>Calculando capacidad de la colonia...</span>
           </div>
         )}
 
@@ -389,33 +391,33 @@ export default function CapacidadGlobal() {
               {cfgOpen && (
                 <div className="px-6 py-5 border-b space-y-4"
                   style={{ borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}>
-                  <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>
+                  <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.textMuted }}>
                     Límites de capacidad — {bioTab.label}
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     <div>
-                      <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
+                      <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
                         <Users size={10} /> Máx. animales
                       </label>
                       <input type="number" min="0" value={cfg.maxAnimales || ''}
                         onChange={e => setCfg('maxAnimales', parseInt(e.target.value) || 0)}
                         placeholder="Sin límite"
                         className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
-                        style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }} />
+                        style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }} />
                       <div className="text-xs font-mono mt-1" style={{ color: '#3d5068' }}>0 = sin límite</div>
                     </div>
                     <div>
-                      <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
+                      <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
                         <Layers size={10} /> Máx. jaulas
                       </label>
                       <input type="number" min="0" value={cfg.maxJaulas || ''}
                         onChange={e => setCfg('maxJaulas', parseInt(e.target.value) || 0)}
                         placeholder="Sin límite"
                         className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
-                        style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }} />
+                        style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }} />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
+                      <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
                         Proyección: {cfg.diasProyeccion} días
                       </label>
                       <input type="range" min="15" max="120" step="15" value={cfg.diasProyeccion}
@@ -467,7 +469,7 @@ export default function CapacidadGlobal() {
                   <TrendingUp size={14} style={{ color: bioTab.color }} />
                   <div className="flex-1">
                     <div className="font-bold text-sm text-white">Proyección a {cfg.diasProyeccion} días</div>
-                    <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
+                    <div className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>
                       Pico estimado: {proyeccion.peakA} animales · {proyeccion.peakJ} jaulas
                       {proyeccion.eventos.length > 0 && ` · ${partosPendientes} parto${partosPendientes !== 1 ? 's' : ''} pendiente${partosPendientes !== 1 ? 's' : ''}`}
                       {` · Promedio camada: ${proyeccion.avgLit} crías (supervivencia ${proyeccion.avgSv}%)`}
@@ -478,7 +480,7 @@ export default function CapacidadGlobal() {
                 {/* Alerta de saturación proyectada */}
                 {proyeccion.satPoint && (
                   <div className="mx-4 mt-4 px-4 py-3 rounded-xl flex items-start gap-3 text-sm font-mono"
-                    style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.3)', color: '#ff6b80' }}>
+                    style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.3)', color: tema.red }}>
                     <AlertTriangle size={16} className="shrink-0 mt-0.5" />
                     <div>
                       <div className="font-bold">⚠ Saturación estimada: {proyeccion.satPoint.f}</div>
@@ -520,7 +522,7 @@ export default function CapacidadGlobal() {
                       <div key={i} className="flex items-center gap-2 text-xs font-mono">
                         <span>{ev.tipo === 'parto' ? '🐣' : '📦'}</span>
                         <span style={{ color: '#5a7a9a' }}>{ev.f}</span>
-                        <span style={{ color: '#8a9bb0' }}>{ev.desc}</span>
+                        <span style={{ color: tema.textSecondary }}>{ev.desc}</span>
                       </div>
                     ))}
                     {proyeccion.eventos.length > 6 && (
@@ -544,7 +546,7 @@ export default function CapacidadGlobal() {
                 <div className="px-6 py-3"
                   style={{ borderBottom: '1px solid rgba(255,179,0,0.12)', background: 'rgba(255,179,0,0.04)' }}>
                   <div className="font-bold text-sm text-white">💡 Sugerencias automáticas</div>
-                  <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
+                  <div className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>
                     Acciones para mantener el bioterio dentro del límite
                   </div>
                 </div>
@@ -588,7 +590,7 @@ export default function CapacidadGlobal() {
                   <span style={{ fontSize: 14 }}>💉</span>
                   <div className="flex-1">
                     <div className="font-bold text-sm text-white">Candidatos a sacrificio</div>
-                    <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
+                    <div className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>
                       Ordenados por prioridad calculada · Score: edad + rendimiento + inactividad + confiabilidad
                     </div>
                   </div>
@@ -604,7 +606,7 @@ export default function CapacidadGlobal() {
                 <div className="px-4 py-3 space-y-2">
                   {/* Leyenda */}
                   <div className="px-3 py-2 rounded-xl text-xs font-mono"
-                    style={{ background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.15)', color: '#4a5f7a' }}>
+                    style={{ background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.15)', color: tema.textMuted }}>
                     🧮 <span style={{ color: '#a78bfa' }}>Simular</span> = recalcular proyección como si ese animal fuera sacrificado
                   </div>
 
@@ -627,7 +629,7 @@ export default function CapacidadGlobal() {
                             {a.sexo === 'hembra' ? '♀' : '♂'} {a.codigo || a.id.slice(-6)}
                           </span>
                           {edad !== null && (
-                            <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                            <span className="text-xs font-mono" style={{ color: tema.textMuted }}>
                               {Math.floor(edad/30)}m {edad%30}d
                             </span>
                           )}
@@ -641,7 +643,7 @@ export default function CapacidadGlobal() {
                         <div className="flex flex-wrap gap-1.5">
                           {a.motivos.map(m => (
                             <span key={m} className="text-xs font-mono px-1.5 py-0.5 rounded-full"
-                              style={{ background: 'rgba(255,107,128,0.08)', border: '1px solid rgba(255,107,128,0.22)', color: '#ff6b80' }}>
+                              style={{ background: 'rgba(255,107,128,0.08)', border: '1px solid rgba(255,107,128,0.22)', color: tema.red }}>
                               {m}
                             </span>
                           ))}
@@ -708,10 +710,10 @@ function MetricaPanel({ label, valor, maximo, color, detalle }) {
     : color
   return (
     <div className="px-5 py-5 flex flex-col gap-2">
-      <div className="text-xs font-mono uppercase tracking-wider" style={{ color: '#4a5f7a' }}>{label}</div>
+      <div className="text-xs font-mono uppercase tracking-wider" style={{ color: tema.textMuted }}>{label}</div>
       <div className="flex items-end gap-2">
         <div className="text-3xl font-bold font-mono text-white leading-none">{valor}</div>
-        {maximo > 0 && <div className="text-sm font-mono mb-0.5" style={{ color: '#4a5f7a' }}>/ {maximo}</div>}
+        {maximo > 0 && <div className="text-sm font-mono mb-0.5" style={{ color: tema.textMuted }}>/ {maximo}</div>}
       </div>
       {pct !== null && (
         <>
@@ -730,10 +732,10 @@ function GraficoProyeccion({ data, dataKey, label, color, maximo }) {
   const maxVal = Math.max(...data.map(d => d[dataKey] ?? 0))
   const yMax   = maximo ? Math.max(maximo * 1.25, maxVal * 1.1) : maxVal * 1.2
   return (
-    <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(8,13,26,0.6)', border: '1px solid rgba(255,255,255,0.06)' }}>
+    <div className="rounded-xl overflow-hidden" style={{ background: tema.bgInput, border: '1px solid rgba(255,255,255,0.06)' }}>
       <div className="px-4 py-2.5 flex items-center gap-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
         <div className="text-xs font-bold text-white">{label}</div>
-        {maximo && <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Límite: {maximo}</div>}
+        {maximo && <div className="text-xs font-mono" style={{ color: tema.textMuted }}>Límite: {maximo}</div>}
       </div>
       <div style={{ height: 165, padding: '8px 4px 4px 4px' }}>
         <ResponsiveContainer width="100%" height="100%">
@@ -749,7 +751,7 @@ function GraficoProyeccion({ data, dataKey, label, color, maximo }) {
             <YAxis domain={[0, yMax]} tick={{ fill: '#4a5f7a', fontSize: 9, fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
             <Tooltip
               contentStyle={{ background: '#0d1528', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px' }}
-              labelStyle={{ color: '#c9d4e0' }}
+              labelStyle={{ color: tema.textPrimary }}
               formatter={v => [`${v}`, label]}
             />
             {maximo && (

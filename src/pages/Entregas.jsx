@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { formatFecha } from '../utils/calculos'
+import { useTheme } from '../context/ThemeContext'
 
 export default function Entregas() {
+  const { tema, modoBrillo } = useTheme()
   const { entregas, camadas, animales, animalesExportados, devolverEntrega } = useBioterio()
   // En Híbridos los progenitores viven en animalesExportados — buscar en ambos
   const todosAnimales = useMemo(() => [...animales, ...animalesExportados], [animales, animalesExportados])
@@ -63,18 +65,18 @@ export default function Entregas() {
       {/* Tarjetas resumen */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {[
-          { label: 'Total entregas',          val: entregas.length,  color: '#ffb300' },
-          { label: 'Animales entregados',      val: totalAnimales,    color: '#00e676' },
+          { label: 'Total entregas',          val: entregas.length,  color: tema.amber },
+          { label: 'Animales entregados',      val: totalAnimales,    color: tema.accent },
           { label: 'Último mes',               val: entregas.filter((e) => {
             if (!e.fecha) return false
             const hace30 = new Date(); hace30.setDate(hace30.getDate() - 30)
             return new Date(e.fecha + 'T12:00:00') >= hace30
-          }).reduce((s, e) => s + (e.cantidad ?? 0), 0), color: '#40c4ff' },
+          }).reduce((s, e) => s + (e.cantidad ?? 0), 0), color: tema.blue },
         ].map(({ label, val, color }) => (
           <div key={label} className="rounded-xl px-4 py-3 text-center"
             style={{ background: `${color}08`, border: `1px solid ${color}20` }}>
             <div className="font-mono font-bold text-2xl" style={{ color }}>{val}</div>
-            <div className="text-xs mt-1" style={{ color: '#4a5f7a' }}>{label}</div>
+            <div className="text-xs mt-1" style={{ color: tema.textMuted }}>{label}</div>
           </div>
         ))}
       </div>
@@ -93,10 +95,10 @@ export default function Entregas() {
         <div className="rounded-2xl p-12 text-center"
           style={{ background: 'rgba(255,179,0,0.04)', border: '1px solid rgba(255,179,0,0.15)' }}>
           <div className="text-3xl mb-3">📦</div>
-          <div className="font-semibold text-sm" style={{ color: '#ffb300' }}>
+          <div className="font-semibold text-sm" style={{ color: tema.amber }}>
             {busqueda ? 'Sin resultados para esa búsqueda' : 'Sin entregas registradas'}
           </div>
-          <div className="text-xs mt-1" style={{ color: '#4a5f7a' }}>
+          <div className="text-xs mt-1" style={{ color: tema.textMuted }}>
             {!busqueda && 'Usá el botón "📦 Entregar" desde Stock para registrar una entrega.'}
           </div>
         </div>
@@ -116,34 +118,34 @@ export default function Entregas() {
                 style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)', opacity: estaEnProceso ? 0.5 : 1 }}
               >
                 {/* Fecha */}
-                <div className="font-mono text-sm font-semibold" style={{ color: '#ffb300', minWidth: '90px' }}>
+                <div className="font-mono text-sm font-semibold" style={{ color: tema.amber, minWidth: '90px' }}>
                   {formatFecha(e.fecha) ?? '—'}
                 </div>
 
                 {/* Tipo + origen */}
                 <div className="flex-1 min-w-0">
                   {esRepro ? (
-                    <span className="text-sm font-semibold" style={{ color: '#ce93d8' }}>
+                    <span className="text-sm font-semibold" style={{ color: tema.purple }}>
                       Reproductor
                     </span>
                   ) : (
-                    <span className="text-sm font-semibold" style={{ color: '#00e676' }}>
+                    <span className="text-sm font-semibold" style={{ color: tema.accent }}>
                       {madre?.codigo ?? '?'} × {padre?.codigo ?? '?'}
                     </span>
                   )}
                   {e.observaciones && (
-                    <span className="ml-2 text-xs" style={{ color: '#4a5f7a' }}>— {e.observaciones}</span>
+                    <span className="ml-2 text-xs" style={{ color: tema.textMuted }}>— {e.observaciones}</span>
                   )}
                 </div>
 
                 {/* Cantidad + sexo */}
-                <div className="font-mono font-bold text-base text-right" style={{ color: '#ffb300' }}>
+                <div className="font-mono font-bold text-base text-right" style={{ color: tema.amber }}>
                   {e.cantidad} {e.cantidad === 1 ? 'animal' : 'animales'}
                   {(e.machos != null || e.hembras != null) && (
-                    <div className="font-normal text-xs mt-0.5" style={{ color: '#8a9bb0' }}>
-                      {e.machos != null && <span style={{ color: '#40c4ff' }}>♂ {e.machos}</span>}
+                    <div className="font-normal text-xs mt-0.5" style={{ color: tema.textSecondary }}>
+                      {e.machos != null && <span style={{ color: tema.blue }}>♂ {e.machos}</span>}
                       {e.machos != null && e.hembras != null && <span> · </span>}
-                      {e.hembras != null && <span style={{ color: '#ce93d8' }}>♀ {e.hembras}</span>}
+                      {e.hembras != null && <span style={{ color: tema.purple }}>♀ {e.hembras}</span>}
                     </div>
                   )}
                 </div>
@@ -157,7 +159,7 @@ export default function Entregas() {
                     style={{
                       background: 'rgba(64,196,255,0.08)',
                       border: '1px solid rgba(64,196,255,0.3)',
-                      color: '#40c4ff',
+                      color: tema.blue,
                       cursor: estaEnProceso ? 'not-allowed' : 'pointer',
                     }}
                   >
@@ -183,8 +185,8 @@ export default function Entregas() {
                         onMouseEnter={(ev) => ev.currentTarget.style.background = 'rgba(64,196,255,0.08)'}
                         onMouseLeave={(ev) => ev.currentTarget.style.background = 'transparent'}
                       >
-                        <div className="font-semibold" style={{ color: '#40c4ff' }}>↩ Devolver al stock</div>
-                        <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>Mantiene el registro en el historial</div>
+                        <div className="font-semibold" style={{ color: tema.blue }}>↩ Devolver al stock</div>
+                        <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>Mantiene el registro en el historial</div>
                       </button>
 
                       {/* Opción 2: borrar historial */}
@@ -196,7 +198,7 @@ export default function Entregas() {
                         onMouseLeave={(ev) => ev.currentTarget.style.background = 'transparent'}
                       >
                         <div className="font-semibold" style={{ color: '#ff5252' }}>↩ Devolver y borrar del historial</div>
-                        <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>Como si la entrega no hubiera existido</div>
+                        <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>Como si la entrega no hubiera existido</div>
                       </button>
                     </div>
                   )}

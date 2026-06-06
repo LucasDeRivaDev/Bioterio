@@ -71,7 +71,7 @@ function GaugeScore({ score, size = 90 }) {
       </svg>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <span style={{ fontSize: 22, fontWeight: 800, color: nivel.color, lineHeight: 1 }}>{score}</span>
-        <span style={{ fontSize: 9, color: '#4a5f7a', fontFamily: 'monospace' }}>/ 100</span>
+        <span style={{ fontSize: 9, color: tema.textMuted, fontFamily: 'monospace' }}>/ 100</span>
       </div>
     </div>
   )
@@ -89,7 +89,7 @@ function Chip({ children, color = '#00e676' }) {
 }
 
 function SeccionTitulo({ icono, titulo, subtitulo }) {
-  const { tema } = useTheme()
+  const { tema, modoBrillo } = useTheme()
   return (
     <div className="flex items-center gap-3 mb-4">
       <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -106,7 +106,7 @@ function SeccionTitulo({ icono, titulo, subtitulo }) {
 // ── Tarjeta de horizonte temporal ───────────────────────────────────────────
 
 function TarjetaHorizonte({ dias, data, config }) {
-  const { tema } = useTheme()
+  const { tema, modoBrillo } = useTheme()
   const color = data.ok ? '#00e676' : data.alertas.some(a => a.tipo.includes('machos') || a.tipo.includes('hembras')) ? '#ff6b80' : '#ffb300'
   const emoji = data.ok ? '🟢' : '🔴'
 
@@ -137,22 +137,22 @@ function TarjetaHorizonte({ dias, data, config }) {
           </span>
         </div>
         {data.vencenMachos > 0 && (
-          <div style={{ fontSize: 10, color: '#ffb300', fontFamily: 'monospace' }}>
+          <div style={{ fontSize: 10, color: tema.amber, fontFamily: 'monospace' }}>
             ⚠ {data.vencenMachos} macho(s) alcanzan límite
           </div>
         )}
         {data.vencenHembras > 0 && (
-          <div style={{ fontSize: 10, color: '#ffb300', fontFamily: 'monospace' }}>
+          <div style={{ fontSize: 10, color: tema.amber, fontFamily: 'monospace' }}>
             ⚠ {data.vencenHembras} hembra(s) alcanzan límite
           </div>
         )}
         {data.partosEsperados > 0 && (
-          <div style={{ fontSize: 10, color: '#00e676', fontFamily: 'monospace' }}>
+          <div style={{ fontSize: 10, color: tema.accent, fontFamily: 'monospace' }}>
             ✦ {data.partosEsperados} parto(s) esperado(s)
           </div>
         )}
         {data.alertas.map((a, i) => (
-          <div key={i} style={{ fontSize: 10, color: '#ff6b80', marginTop: 2 }}>
+          <div key={i} style={{ fontSize: 10, color: tema.red, marginTop: 2 }}>
             ✕ {a.mensaje}
           </div>
         ))}
@@ -164,7 +164,7 @@ function TarjetaHorizonte({ dias, data, config }) {
 // ── Tarjeta de candidato a renovación ──────────────────────────────────────
 
 function TarjetaCandidato({ candidato, index, onReservar, onLiberar, reservado, camadas }) {
-  const { tema } = useTheme()
+  const { tema, modoBrillo } = useTheme()
   const colorF = colorNivelF(candidato.nivelF)
   const camada = camadas.find(c => c.id === candidato.camadaId)
 
@@ -200,7 +200,7 @@ function TarjetaCandidato({ candidato, index, onReservar, onLiberar, reservado, 
           </div>
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
-          <div style={{ fontSize: 16, fontWeight: 800, color: '#00e676' }}>{candidato.priorityScore}</div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: tema.accent }}>{candidato.priorityScore}</div>
           <div style={{ fontSize: 9, color: tema.textMuted }}>score</div>
         </div>
       </div>
@@ -212,7 +212,7 @@ function TarjetaCandidato({ candidato, index, onReservar, onLiberar, reservado, 
           <div style={{ fontSize: 9, color: tema.textMuted }}>F padres</div>
         </div>
         <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '6px 8px', textAlign: 'center' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#40c4ff' }}>{candidato.scoreFamiliar}</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: tema.blue }}>{candidato.scoreFamiliar}</div>
           <div style={{ fontSize: 9, color: tema.textMuted }}>fam. score</div>
         </div>
         <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '6px 8px', textAlign: 'center' }}>
@@ -225,7 +225,7 @@ function TarjetaCandidato({ candidato, index, onReservar, onLiberar, reservado, 
 
       {/* Advertencia si la hay */}
       {candidato.advertencia && (
-        <div style={{ fontSize: 10, color: '#ffb300', background: 'rgba(255,179,0,0.08)', borderRadius: 6, padding: '4px 8px', marginBottom: 8 }}>
+        <div style={{ fontSize: 10, color: tema.amber, background: 'rgba(255,179,0,0.08)', borderRadius: 6, padding: '4px 8px', marginBottom: 8 }}>
           ⚠ {candidato.advertencia}
         </div>
       )}
@@ -249,7 +249,7 @@ function TarjetaCandidato({ candidato, index, onReservar, onLiberar, reservado, 
 // ── Motor de renovación unificado — panel de acciones ───────────────────────
 
 function PanelMotorUnificado({ motorUnificado }) {
-  const { tema } = useTheme()
+  const { tema, modoBrillo } = useTheme()
 
   if (motorUnificado.accionesRecomendadas.length === 0) {
     return (
@@ -257,7 +257,7 @@ function PanelMotorUnificado({ motorUnificado }) {
         <SeccionTitulo icono={<Target size={16} color="#00e676" />} titulo="Motor de renovación" subtitulo="Déficit · Reemplazo · Candidato · Impacto" />
         <div style={{ textAlign: 'center', padding: '16px 0' }}>
           <div style={{ fontSize: 28, marginBottom: 8 }}>✅</div>
-          <div style={{ fontSize: 13, color: '#00e676', fontWeight: 600 }}>Sin acciones urgentes</div>
+          <div style={{ fontSize: 13, color: tema.accent, fontWeight: 600 }}>Sin acciones urgentes</div>
           <div style={{ fontSize: 12, color: tema.textMuted, marginTop: 4 }}>La colonia no tiene déficit ni reproductores críticos</div>
         </div>
       </div>
@@ -317,7 +317,7 @@ function PanelMotorUnificado({ motorUnificado }) {
               {/* Flecha candidato → impacto */}
               {accion.candidato ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, background: 'rgba(0,230,118,0.06)', borderRadius: 8, padding: '6px 10px' }}>
-                  <span style={{ color: '#00e676', fontWeight: 600 }}>→ Promover:</span>
+                  <span style={{ color: tema.accent, fontWeight: 600 }}>→ Promover:</span>
                   <span style={{ color: tema.textSecondary }}>
                     {accion.candidato.diasVida}d · {accion.candidato.machos || 0}♂ {accion.candidato.hembras || 0}♀
                   </span>
@@ -339,7 +339,7 @@ function PanelMotorUnificado({ motorUnificado }) {
           <div style={{ fontSize: 11, color: tema.textMuted, marginBottom: 5 }}>
             Índice de renovación
             {motorUnificado.hayDeficit && (
-              <span style={{ color: '#ff6b80', marginLeft: 8 }}>(máx. 80 con déficit activo)</span>
+              <span style={{ color: tema.red, marginLeft: 8 }}>(máx. 80 con déficit activo)</span>
             )}
           </div>
           <BarraProgreso
@@ -365,7 +365,7 @@ function PanelMotorUnificado({ motorUnificado }) {
 // Solo se bloquea la acción si ÉSTA provoca el déficit, no si ya existía.
 
 function SimuladorImpacto({ animales, stockReal, bioterioId, motorUnificado }) {
-  const { tema } = useTheme()
+  const { tema, modoBrillo } = useTheme()
   const [animalSeleccionado, setAnimalSeleccionado] = useState('')
   const minimos = getMinimosCriticos(bioterioId)
 
@@ -452,7 +452,7 @@ function SimuladorImpacto({ animales, stockReal, bioterioId, motorUnificado }) {
           onChange={e => setAnimalSeleccionado(e.target.value)}
           style={{
             width: '100%', padding: '8px 12px', borderRadius: 10, fontSize: 13,
-            background: 'rgba(8,13,26,0.8)', border: `1px solid ${tema.bgCardBorde}`,
+            background: tema.bgInput, border: `1px solid ${tema.bgCardBorde}`,
             color: tema.textPrimary, outline: 'none',
           }}
         >
@@ -508,7 +508,7 @@ function SimuladorImpacto({ animales, stockReal, bioterioId, motorUnificado }) {
               })}
             </div>
           ) : (
-            <div style={{ fontSize: 11, color: '#00e676' }}>✓ Sin alertas activas — animal en buen estado</div>
+            <div style={{ fontSize: 11, color: tema.accent }}>✓ Sin alertas activas — animal en buen estado</div>
           )}
         </div>
       )}
@@ -519,7 +519,7 @@ function SimuladorImpacto({ animales, stockReal, bioterioId, motorUnificado }) {
           {/* ANTES / DESPUÉS — solo muestra el sexo afectado como destacado */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {[
-              { label: 'ANTES',   data: resultado.antes,   color: '#40c4ff' },
+              { label: 'ANTES',   data: resultado.antes,   color: tema.blue },
               { label: 'DESPUÉS', data: resultado.despues, color: resultado.permitir ? '#00e676' : '#ff6b80' },
             ].map(({ label, data, color }) => {
               const esDespues = label === 'DESPUÉS'
@@ -559,7 +559,7 @@ function SimuladorImpacto({ animales, stockReal, bioterioId, motorUnificado }) {
               </div>
             ))}
             {resultado.advertencias.map((a, i) => (
-              <div key={i} style={{ fontSize: 11, color: '#40c4ff', marginTop: 4, paddingLeft: 22 }}>
+              <div key={i} style={{ fontSize: 11, color: tema.blue, marginTop: 4, paddingLeft: 22 }}>
                 ℹ {a.razon}
               </div>
             ))}
@@ -568,7 +568,7 @@ function SimuladorImpacto({ animales, stockReal, bioterioId, motorUnificado }) {
           {/* Candidato de reemplazo sugerido */}
           {resultado.candidatoReemplazo && (
             <div style={{ background: 'rgba(0,230,118,0.04)', border: '1px solid rgba(0,230,118,0.15)', borderRadius: 10, padding: '10px 14px' }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#00e676', marginBottom: 4 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: tema.accent, marginBottom: 4 }}>
                 🔄 Candidato de reemplazo disponible
               </div>
               <div style={{ fontSize: 11, color: tema.textSecondary }}>
@@ -595,7 +595,7 @@ function SimuladorImpacto({ animales, stockReal, bioterioId, motorUnificado }) {
 export default function PlanificacionColonia() {
   const { animales, camadas, jaulas, sacrificios, entregas, incidentes, animalesExportados, camadasF1, pedidos } = useBioterio()
   const { bioterioActivo, bio } = useBioterioActivo()
-  const { tema } = useTheme()
+  const { tema, modoBrillo } = useTheme()
 
   const [tabHorizonte, setTabHorizonte]           = useState(90)
   const [reservasKey, setReservasKey]             = useState(0)
@@ -854,7 +854,7 @@ export default function PlanificacionColonia() {
               <div style={{ borderTop: `1px solid ${tema.bgCardBorde}`, paddingTop: 6 }}>
                 <div style={{ fontSize: 9, color: tema.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5, display: 'flex', justifyContent: 'space-between' }}>
                   <span>Productivo</span>
-                  <span style={{ color: '#00e676', fontFamily: 'monospace' }}>{indiceSostenibilidad.grupos.productivo.score}/{indiceSostenibilidad.grupos.productivo.max}</span>
+                  <span style={{ color: tema.accent, fontFamily: 'monospace' }}>{indiceSostenibilidad.grupos.productivo.score}/{indiceSostenibilidad.grupos.productivo.max}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {indiceSostenibilidad.grupos.productivo.items.map(({ key, label, valor, max, color }) => {
@@ -891,7 +891,7 @@ export default function PlanificacionColonia() {
             {sostenibilidad.riesgos.filter(r => r.nivel === 'critico').map((r, i) => (
               <div key={`r${i}`} style={{
                 display: 'flex', alignItems: 'center', gap: 8, borderRadius: 8, padding: '6px 10px',
-                background: 'rgba(255,61,87,0.06)', fontSize: 12, color: '#ff6b80',
+                background: 'rgba(255,61,87,0.06)', fontSize: 12, color: tema.red,
               }}>
                 <AlertTriangle size={13} color="#ff6b80" />
                 {r.mensaje}
@@ -968,7 +968,7 @@ export default function PlanificacionColonia() {
             <input
               type="number" min={7} max={60} value={parejasCadaDias}
               onChange={e => setParejasCadaDias(Math.max(7, Math.min(60, Number(e.target.value))))}
-              style={{ width: 46, padding: '3px 6px', borderRadius: 7, fontSize: 12, fontWeight: 700, background: 'rgba(64,196,255,0.1)', border: '1px solid rgba(64,196,255,0.3)', color: '#40c4ff', textAlign: 'center', outline: 'none' }}
+              style={{ width: 46, padding: '3px 6px', borderRadius: 7, fontSize: 12, fontWeight: 700, background: 'rgba(64,196,255,0.1)', border: '1px solid rgba(64,196,255,0.3)', color: tema.blue, textAlign: 'center', outline: 'none' }}
             />
             <span style={{ fontSize: 11, color: tema.textMuted }}>d</span>
           </div>
@@ -992,11 +992,11 @@ export default function PlanificacionColonia() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: tema.textMuted }}>
                     <span>partos</span>
-                    <span style={{ color: '#00e676', fontWeight: 600 }}>{d.partos.total}</span>
+                    <span style={{ color: tema.accent, fontWeight: 600 }}>{d.partos.total}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: tema.textMuted }}>
                     <span>nacimientos</span>
-                    <span style={{ color: '#40c4ff', fontWeight: 600 }}>+{d.stockNeto?.nacidos ?? d.crias.total}</span>
+                    <span style={{ color: tema.blue, fontWeight: 600 }}>+{d.stockNeto?.nacidos ?? d.crias.total}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: tema.textMuted }}>
                     <span>sacrificios</span>
@@ -1071,7 +1071,7 @@ export default function PlanificacionColonia() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
           {[
             { label: 'Ahora',  valor: jaulasAhora,        sub: 'jaulas activas',                  color: '#a78bfa' },
-            { label: '+ 180d', valor: `+${jaulasNetasNew}`, sub: `neto (~${h180?.stockNeto?.neto ?? 0} animales)`, color: '#40c4ff' },
+            { label: '+ 180d', valor: `+${jaulasNetasNew}`, sub: `neto (~${h180?.stockNeto?.neto ?? 0} animales)`, color: tema.blue },
             { label: 'Total',  valor: jaulasFut,           sub: satFut === 'alta' ? '⚠ Saturación' : satFut === 'media' ? '⚡ Media' : 'proyectado', color: satFut === 'alta' ? '#ff6b80' : satFut === 'media' ? '#ffb300' : '#00e676' },
           ].map(({ label, valor, sub, color }) => (
             <div key={label} style={{ textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '10px' }}>
@@ -1091,7 +1091,7 @@ export default function PlanificacionColonia() {
           </div>
         )}
         {satFut === 'alta' && (
-          <div style={{ marginTop: 10, fontSize: 11, color: '#ff6b80', background: 'rgba(255,61,87,0.07)', border: '1px solid rgba(255,61,87,0.2)', borderRadius: 8, padding: '7px 10px' }}>
+          <div style={{ marginTop: 10, fontSize: 11, color: tema.red, background: 'rgba(255,61,87,0.07)', border: '1px solid rgba(255,61,87,0.2)', borderRadius: 8, padding: '7px 10px' }}>
             ⚠ Riesgo de saturación en 180d — considerar incrementar sacrificios o reducir apareamientos
           </div>
         )}
@@ -1124,17 +1124,17 @@ export default function PlanificacionColonia() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8, marginBottom: 14 }}>
           {[
             { label: 'Crías',      valor: saturacionReal.distribucion.crias,    jaulas: saturacionReal.distribucion.jaulasCrias,    color: '#a78bfa', desc: '< 6 sem' },
-            { label: 'Jóvenes',    valor: saturacionReal.distribucion.jovenes,   jaulas: saturacionReal.distribucion.jaulasJovenes,   color: '#40c4ff', desc: '6–10 sem' },
+            { label: 'Jóvenes',    valor: saturacionReal.distribucion.jovenes,   jaulas: saturacionReal.distribucion.jaulasJovenes,   color: tema.blue, desc: '6–10 sem' },
             { label: 'Adultos',    valor: saturacionReal.distribucion.adultos,   jaulas: saturacionReal.distribucion.jaulasAdultos,   color: '#ffd740', desc: '> 10 sem' },
-            { label: '♂ Reprod.',  valor: saturacionReal.distribucion.reproMachos,  jaulas: null, color: '#40c4ff', desc: 'activos' },
-            { label: '♀ Libres',   valor: saturacionReal.distribucion.libres,    jaulas: null, color: '#ce93d8', desc: 'sin aparear' },
+            { label: '♂ Reprod.',  valor: saturacionReal.distribucion.reproMachos,  jaulas: null, color: tema.blue, desc: 'activos' },
+            { label: '♀ Libres',   valor: saturacionReal.distribucion.libres,    jaulas: null, color: tema.purple, desc: 'sin aparear' },
             { label: '♀ Gestando', valor: saturacionReal.distribucion.gestantes, jaulas: null, color: '#ff9100', desc: 'en apareamiento' },
-            { label: '♀ Lactando', valor: saturacionReal.distribucion.lactantes, jaulas: null, color: '#ff6b80', desc: 'en cría' },
-            { label: 'Reservadas', valor: saturacionReal.distribucion.reservadas, jaulas: null, color: '#00e676', desc: 'renovación' },
+            { label: '♀ Lactando', valor: saturacionReal.distribucion.lactantes, jaulas: null, color: tema.red, desc: 'en cría' },
+            { label: 'Reservadas', valor: saturacionReal.distribucion.reservadas, jaulas: null, color: tema.accent, desc: 'renovación' },
           ].map(({ label, valor, jaulas: j, color, desc }) => (
             <div key={label} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '8px 10px', textAlign: 'center' }}>
               <div style={{ fontSize: 18, fontWeight: 800, color, lineHeight: 1 }}>{valor}</div>
-              {j != null && <div style={{ fontSize: 9, color: '#ffb300', fontFamily: 'monospace' }}>{j} jaula{j !== 1 ? 's' : ''}</div>}
+              {j != null && <div style={{ fontSize: 9, color: tema.amber, fontFamily: 'monospace' }}>{j} jaula{j !== 1 ? 's' : ''}</div>}
               <div style={{ fontSize: 10, color: tema.textMuted, marginTop: 2 }}>{label}</div>
               <div style={{ fontSize: 9, color: tema.textMuted, fontStyle: 'italic' }}>{desc}</div>
             </div>
@@ -1170,9 +1170,9 @@ export default function PlanificacionColonia() {
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: tema.textMuted, marginTop: 3 }}>
             <span>0</span>
-            <span style={{ color: '#ffb300' }}>Normal: {saturacionReal.umbral.normal}</span>
+            <span style={{ color: tema.amber }}>Normal: {saturacionReal.umbral.normal}</span>
             <span style={{ color: '#ff9100' }}>Saturado: {saturacionReal.umbral.saturacion}</span>
-            <span style={{ color: '#ff6b80' }}>Crítico: {saturacionReal.umbral.critica}</span>
+            <span style={{ color: tema.red }}>Crítico: {saturacionReal.umbral.critica}</span>
           </div>
         </div>
 
@@ -1250,16 +1250,16 @@ export default function PlanificacionColonia() {
                         <span style={{ color: tema.textMuted }}>Problema: </span>{sug.problema}
                       </div>
                       {!sug.bloqueado && (
-                        <div style={{ fontSize: 11, color: '#c9d4e0' }}>
+                        <div style={{ fontSize: 11, color: tema.textPrimary }}>
                           <span style={{ color: tema.textMuted }}>Solución: </span>{sug.solucion}
                         </div>
                       )}
                       {sug.bloqueado && sug.razonBloqueo && (
-                        <div style={{ fontSize: 11, color: '#ffb300' }}>
+                        <div style={{ fontSize: 11, color: tema.amber }}>
                           <span style={{ color: tema.textMuted }}>Bloqueado: </span>{sug.razonBloqueo}
                         </div>
                       )}
-                      <div style={{ fontSize: 11, color: '#4a5f7a' }}>
+                      <div style={{ fontSize: 11, color: tema.textMuted }}>
                         <span style={{ color: tema.textMuted }}>Impacto: </span>{sug.impacto}
                       </div>
                     </div>
@@ -1276,13 +1276,13 @@ export default function PlanificacionColonia() {
         )}
 
         {sugerenciasSacrificio.length === 0 && saturacionReal.nivel === 'normal' && (
-          <div style={{ textAlign: 'center', padding: '12px 0', color: '#00e676', fontSize: 12 }}>
+          <div style={{ textAlign: 'center', padding: '12px 0', color: tema.accent, fontSize: 12 }}>
             ✅ Sin exceso de stock — no se requieren sacrificios
           </div>
         )}
 
         {sugerenciasSacrificio.length === 0 && saturacionReal.nivel !== 'normal' && (
-          <div style={{ padding: '10px', background: 'rgba(255,179,0,0.06)', borderRadius: 8, fontSize: 11, color: '#ffb300' }}>
+          <div style={{ padding: '10px', background: 'rgba(255,179,0,0.06)', borderRadius: 8, fontSize: 11, color: tema.amber }}>
             ⚠ Hay saturación pero todos los animales están protegidos (mínimos, renovación, pedidos o déficit futuro). Revisar manualmente.
           </div>
         )}
@@ -1346,12 +1346,12 @@ export default function PlanificacionColonia() {
 
                   {/* Candidato a promover */}
                   {cand && (cand.tiempoHastaUtilidad ?? 0) === 0 && (
-                    <div style={{ fontSize: 11, color: '#00e676', fontWeight: 700 }}>
+                    <div style={{ fontSize: 11, color: tema.accent, fontWeight: 700 }}>
                       → Promover ahora: {cand.machos ?? 0}♂ {cand.hembras ?? 0}♀
                     </div>
                   )}
                   {cand && (cand.tiempoHastaUtilidad ?? 0) > 0 && (
-                    <div style={{ fontSize: 11, color: '#ffb300', fontWeight: 600 }}>
+                    <div style={{ fontSize: 11, color: tema.amber, fontWeight: 600 }}>
                       ⏳ Candidato preventivo en {cand.tiempoHastaUtilidad}d
                       {' · '}usable{' '}
                       {(() => {
@@ -1420,11 +1420,11 @@ export default function PlanificacionColonia() {
                       <span style={{ color: colorPrio }}>{accion.tipo === 'deficit' ? 'Déficit' : 'Reemplazo'}</span>
                       {accion.animalSaliente ? ` — ${accion.animalSaliente.codigo}` : ''}
                       {accion.candidato
-                        ? <span style={{ color: '#00e676', marginLeft: 8 }}>
+                        ? <span style={{ color: tema.accent, marginLeft: 8 }}>
                             → {accion.candidato.diasVida}d · {accion.candidato.machos || 0}♂ {accion.candidato.hembras || 0}♀
                             {accion.impactoEnIndice && <Chip color="#00e676" style={{ marginLeft: 4 }}>{accion.impactoEnIndice}</Chip>}
                           </span>
-                        : <span style={{ color: '#ffb300', marginLeft: 8 }}>⏳ Sin candidato aún</span>
+                        : <span style={{ color: tema.amber, marginLeft: 8 }}>⏳ Sin candidato aún</span>
                       }
                     </div>
                   </div>
@@ -1453,15 +1453,15 @@ export default function PlanificacionColonia() {
                 )
               })}
             </div>
-            <div style={{ fontSize: 11, color: '#40c4ff', background: 'rgba(64,196,255,0.06)', border: '1px solid rgba(64,196,255,0.15)', borderRadius: 8, padding: '7px 10px', marginBottom: 12 }}>
+            <div style={{ fontSize: 11, color: tema.blue, background: 'rgba(64,196,255,0.06)', border: '1px solid rgba(64,196,255,0.15)', borderRadius: 8, padding: '7px 10px', marginBottom: 12 }}>
               {modoEstrategia.config.emoji} <strong>{modoEstrategia.config.label}:</strong> {modoEstrategia.config.desc}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: 7, marginBottom: 12 }}>
               {[
-                { label: '♂ activos', valor: modoEstrategia.kpis.machosActivos, color: '#40c4ff' },
-                { label: '♀ libres',  valor: modoEstrategia.kpis.libres,        color: '#ce93d8' },
-                { label: 'cand. ✓',   valor: modoEstrategia.kpis.candidatosDisp,   color: '#00e676' },
-                { label: 'cand. ~',   valor: modoEstrategia.kpis.candidatosPronto, color: '#ffb300' },
+                { label: '♂ activos', valor: modoEstrategia.kpis.machosActivos, color: tema.blue },
+                { label: '♀ libres',  valor: modoEstrategia.kpis.libres,        color: tema.purple },
+                { label: 'cand. ✓',   valor: modoEstrategia.kpis.candidatosDisp,   color: tema.accent },
+                { label: 'cand. ~',   valor: modoEstrategia.kpis.candidatosPronto, color: tema.amber },
                 { label: 'partos 90d', valor: modoEstrategia.kpis.partos90d,   color: '#ffd740' },
                 { label: 'crías 90d',  valor: modoEstrategia.kpis.crias90d,    color: '#a78bfa' },
               ].map(({ label, valor, color }) => (
@@ -1490,7 +1490,7 @@ export default function PlanificacionColonia() {
             {modoEstrategia.restricciones.length > 0 && (
               <div style={{ marginTop: 10, borderTop: `1px solid ${tema.bgCardBorde}`, paddingTop: 10 }}>
                 {modoEstrategia.restricciones.map((r, i) => (
-                  <div key={i} style={{ fontSize: 11, color: '#ffb300', display: 'flex', gap: 6 }}><span>⚑</span><span>{r}</span></div>
+                  <div key={i} style={{ fontSize: 11, color: tema.amber, display: 'flex', gap: 6 }}><span>⚑</span><span>{r}</span></div>
                 ))}
               </div>
             )}
@@ -1513,8 +1513,8 @@ export default function PlanificacionColonia() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 7 }}>
                   {[
                     { label: 'F prom.',         valor: indiceGeneticoEnriquecido.fPorcentaje, color: '#a78bfa' },
-                    { label: 'Con genealogía',  valor: `${indiceGeneticoEnriquecido.animalesConPadres}/${indiceGeneticoEnriquecido.totalReproductores}`, color: '#40c4ff' },
-                    { label: 'Reemplazos listos', valor: candidatos.filter(c => c.recomendado && c.tiempoHastaUtilidad === 0).length, color: '#00e676' },
+                    { label: 'Con genealogía',  valor: `${indiceGeneticoEnriquecido.animalesConPadres}/${indiceGeneticoEnriquecido.totalReproductores}`, color: tema.blue },
+                    { label: 'Reemplazos listos', valor: candidatos.filter(c => c.recomendado && c.tiempoHastaUtilidad === 0).length, color: tema.accent },
                   ].map(({ label, valor, color }) => (
                     <div key={label} style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 8, padding: '7px 9px', textAlign: 'center' }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color }}>{valor}</div>
@@ -1523,7 +1523,7 @@ export default function PlanificacionColonia() {
                   ))}
                 </div>
                 {indiceGeneticoEnriquecido.advertencias.map((adv, i) => (
-                  <div key={i} style={{ fontSize: 11, color: '#ffb300', marginTop: 6 }}>⚠ {adv}</div>
+                  <div key={i} style={{ fontSize: 11, color: tema.amber, marginTop: 6 }}>⚠ {adv}</div>
                 ))}
               </div>
             </div>

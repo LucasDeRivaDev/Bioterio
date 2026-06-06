@@ -11,11 +11,12 @@ import { MACHO_EDAD_LIMITE_DIAS, MACHO_EDAD_ALERTA_DIAS } from '../utils/constan
 import Badge from '../components/Badge'
 import { Trophy, UserMinus } from 'lucide-react'
 import Estadisticas from '../pages/Estadisticas'
+import { useTheme } from '../context/ThemeContext'
 
 const cardStyle = { background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }
 
 function BarraLatencia({ valor, max }) {
-  if (valor === null) return <span style={{ color: '#4a5f7a' }}>—</span>
+  if (valor === null) return <span style={{ color: tema.textMuted }}>—</span>
   const pct = max > 0 ? Math.min((valor / max) * 100, 100) : 0
   const color = valor <= 3 ? '#00e676' : valor <= 6 ? '#ffb300' : '#ff6b80'
   return (
@@ -40,7 +41,7 @@ function ScoreBadge({ score }) {
 }
 
 function ScoreChip({ score }) {
-  if (score === null || score === undefined) return <span style={{ color: '#4a5f7a' }}>—</span>
+  if (score === null || score === undefined) return <span style={{ color: tema.textMuted }}>—</span>
   const color = score === 10 ? '#00e676' : score === 7 ? '#40c4ff' : score === 5 ? '#ffb300' : '#8a9bb0'
   return (
     <span
@@ -56,13 +57,13 @@ function Medalla({ pos }) {
   if (pos === 1) return <Trophy size={22} style={{ color: '#ffd700', filter: 'drop-shadow(0 0 6px rgba(255,215,0,0.8))' }} />
   if (pos === 2) return <Trophy size={22} style={{ color: '#c0c0c0', filter: 'drop-shadow(0 0 4px rgba(192,192,192,0.6))' }} />
   if (pos === 3) return <Trophy size={22} style={{ color: '#cd7f32' }} />
-  return <span className="font-mono font-bold text-sm w-8 text-center" style={{ color: '#4a5f7a' }}>#{pos}</span>
+  return <span className="font-mono font-bold text-sm w-8 text-center" style={{ color: tema.textMuted }}>#{pos}</span>
 }
 
 function Metric({ label, valor, color, suffix = 'd' }) {
   return (
     <div className="text-center px-3">
-      <div className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5f7a' }}>{label}</div>
+      <div className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: tema.textMuted }}>{label}</div>
       <div className="font-mono font-bold text-xl" style={{ color: color ?? '#8a9bb0' }}>
         {valor !== null && valor !== undefined ? `${valor}${suffix}` : '—'}
       </div>
@@ -73,9 +74,9 @@ function Metric({ label, valor, color, suffix = 'd' }) {
 function TendenciaBadge({ tendencia }) {
   if (!tendencia) return null
   const cfg = {
-    mejorando:    { color: '#00e676', icon: '↑', label: 'Mejorando' },
-    estable:      { color: '#40c4ff', icon: '→', label: 'Estable' },
-    disminuyendo: { color: '#ff6b80', icon: '↓', label: 'Disminuyendo' },
+    mejorando:    { color: tema.accent, icon: '↑', label: 'Mejorando' },
+    estable:      { color: tema.blue, icon: '→', label: 'Estable' },
+    disminuyendo: { color: tema.red, icon: '↓', label: 'Disminuyendo' },
   }
   const { color, icon, label } = cfg[tendencia]
   return (
@@ -99,7 +100,7 @@ function ScoreCell({ label, value }) {
   const color = colorScore(value)
   return (
     <div className="flex flex-col items-center gap-1">
-      <span className="text-xs uppercase tracking-widest font-semibold text-center leading-tight" style={{ color: '#4a5f7a' }}>{label}</span>
+      <span className="text-xs uppercase tracking-widest font-semibold text-center leading-tight" style={{ color: tema.textMuted }}>{label}</span>
       <span
         className="font-mono font-bold text-sm px-2 py-0.5 rounded-lg"
         style={{ color, background: `${color}12`, border: `1px solid ${color}30` }}
@@ -111,7 +112,7 @@ function ScoreCell({ label, value }) {
 }
 
 const CONF_CONFIG = {
-  ok:       { color: '#00e676', label: 'OK' },
+  ok:       { color: tema.accent, label: 'OK' },
   leve:     { color: '#ffd740', label: 'Leve' },
   moderada: { color: '#ff9100', label: 'Moderada' },
   critica:  { color: '#ff1744', label: 'Crítica' },
@@ -134,7 +135,7 @@ function EdadMachoBadge({ macho }) {
   if (info.limite) return (
     <span
       className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full"
-      style={{ background: 'rgba(255,61,87,0.15)', border: '1px solid rgba(255,61,87,0.4)', color: '#ff6b80' }}
+      style={{ background: 'rgba(255,61,87,0.15)', border: '1px solid rgba(255,61,87,0.4)', color: tema.red }}
     >
       <UserMinus size={11} /> Edad avanzada · {info.meses}m
     </span>
@@ -151,6 +152,7 @@ function EdadMachoBadge({ macho }) {
 }
 
 export default function Rendimiento() {
+  const { tema, modoBrillo } = useTheme()
   const { animales, animalesExportados, camadas, camadasF1, bio, bioterioActivo } = useBioterio()
   const [vista, setVista] = useState('activos')
   const [subVista, setSubVista] = useState(null)
@@ -262,7 +264,7 @@ const btnSubTab = (v, label, color) => (
       style={
         subVista === v
           ? { background: `${color}18`, border: `1px solid ${color}50`, color }
-          : { background: 'transparent', border: `1px solid rgba(30,51,82,0.6)`, color: '#4a5f7a' }
+          : { background: 'transparent', border: `1px solid rgba(30,51,82,0.6)`, color: tema.textMuted }
       }
     >
       {label}
@@ -273,7 +275,7 @@ const btnSubTab = (v, label, color) => (
     return (
       <div className="p-6 space-y-6 min-0" style={{ background: '#050810' }}>
         <div className="flex items-center gap-3">
-          <div className="w-1.5 h-7 rounded-full" style={{ background: '#00e676', boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
+          <div className="w-1.5 h-7 rounded-full" style={{ background: tema.accent, boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
           <h1 className="text-xl font-bold text-white">Rendimiento reproductivo</h1>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -281,7 +283,7 @@ const btnSubTab = (v, label, color) => (
           <button
             onClick={() => setSubVista(null)}
             className="px-4 py-2 rounded-2xl text-xs font-bold"
-            style={{ background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }}
+            style={{ background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }}
           >
             ← Volver a Rendimiento
           </button>
@@ -296,10 +298,10 @@ const btnSubTab = (v, label, color) => (
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="w-1.5 h-7 rounded-full" style={{ background: '#00e676', boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
+          <div className="w-1.5 h-7 rounded-full" style={{ background: tema.accent, boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
           <div>
             <h1 className="text-xl font-bold text-white">Rendimiento reproductivo</h1>
-            <p className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>
+            <p className="text-xs mt-0.5" style={{ color: tema.textMuted }}>
               Mayor score total = mejor posición en ranking
             </p>
           </div>
@@ -308,15 +310,15 @@ const btnSubTab = (v, label, color) => (
 {/* Toggle Activos / Histórico */}
         <div
           className="flex rounded-2xl overflow-hidden text-3xs font-bold"
-          style={{ border: '1px solid rgba(30,51,82,0.8)', background: 'rgba(8,13,26,0.8)' }}
+          style={{ border: '1px solid rgba(30,51,82,0.8)', background: tema.bgInput }}
         >
           <button
             onClick={() => setVista('activos')}
-            className="px-4 py-2 transition-all" style={ vista === 'activos' ? { background: 'rgba(0,230,118,0.15)', color: '#00e676', borderRight: '1px solid rgba(30,51,82,0.8)' } : { background: 'transparent', color: '#4a5f7a', borderRight: '1px solid rgba(30,51,82,0.8)' } }
+            className="px-4 py-2 transition-all" style={ vista === 'activos' ? { background: 'rgba(0,230,118,0.15)', color: tema.accent, borderRight: '1px solid rgba(30,51,82,0.8)' } : { background: 'transparent', color: tema.textMuted, borderRight: '1px solid rgba(30,51,82,0.8)' } }
           >✦ Activos</button>
           <button
             onClick={() => setVista('historico')}
-            className="px-4 py-2 transition-all" style={ vista === 'historico' ? { background: 'rgba(64,196,255,0.12)', color: '#40c4ff' } : { background: 'transparent', color: '#4a5f7a' } }
+            className="px-4 py-2 transition-all" style={ vista === 'historico' ? { background: 'rgba(64,196,255,0.12)', color: tema.blue } : { background: 'transparent', color: tema.textMuted } }
 >📜 Histórico</button>
         </div>
       </div>
@@ -348,19 +350,19 @@ const btnSubTab = (v, label, color) => (
         className="rounded-xl p-4"
         style={{ background: 'rgba(64,196,255,0.06)', border: '1px solid rgba(64,196,255,0.15)' }}
       >
-        <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: '#40c4ff' }}>
+        <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: tema.blue }}>
           🧮 Cómo se calcula el score total — Machos
         </div>
         <div className="space-y-1 text-sm font-mono" style={{ color: 'rgba(64,196,255,0.7)' }}>
           <div>
-            <span style={{ color: '#8a9bb0' }}>Score total</span>{' = '}
-            <span style={{ color: '#40c4ff' }}>Score latencia</span>{' + '}
-            <span style={{ color: '#00e676' }}>Score camada</span>
-            <span style={{ color: '#4a5f7a' }}>{' (máx 20 pts)'}</span>
+            <span style={{ color: tema.textSecondary }}>Score total</span>{' = '}
+            <span style={{ color: tema.blue }}>Score latencia</span>{' + '}
+            <span style={{ color: tema.accent }}>Score camada</span>
+            <span style={{ color: tema.textMuted }}>{' (máx 20 pts)'}</span>
           </div>
           <div className="text-xs mt-1 space-y-0.5">
-            <div><span style={{ color: '#40c4ff' }}>Score latencia:</span><span style={{ color: '#4a5f7a' }}> 0–5d→10pts · 6–10d→7pts · 11–15d→5pts</span></div>
-            <div><span style={{ color: '#00e676' }}>Score camada:</span><span style={{ color: '#4a5f7a' }}> ≥10 crías→10pts · 8–9→7pts · &lt;8→0pts</span></div>
+            <div><span style={{ color: tema.blue }}>Score latencia:</span><span style={{ color: tema.textMuted }}> 0–5d→10pts · 6–10d→7pts · 11–15d→5pts</span></div>
+            <div><span style={{ color: tema.accent }}>Score camada:</span><span style={{ color: tema.textMuted }}> ≥10 crías→10pts · 8–9→7pts · &lt;8→0pts</span></div>
           </div>
         </div>
         <div className="text-xs mt-2" style={{ color: 'rgba(64,196,255,0.4)' }}>
@@ -370,7 +372,7 @@ const btnSubTab = (v, label, color) => (
 
       {/* Ranking machos */}
       <div>
-        <div className="text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: '#4a5f7a' }}>
+        <div className="text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: tema.textMuted }}>
           <span>🏆</span>
           {vista === 'activos' ? 'Ranking de machos — solo activos' : 'Ranking histórico de machos'}
         </div>
@@ -378,7 +380,7 @@ const btnSubTab = (v, label, color) => (
         {ranking.length === 0 ? (
           <div className="text-center py-10 rounded-xl" style={cardStyle}>
             <div className="text-3xl mb-2">♂</div>
-            <div style={{ color: '#4a5f7a' }}>No hay machos registrados</div>
+            <div style={{ color: tema.textMuted }}>No hay machos registrados</div>
           </div>
         ) : (
           <div className="space-y-3">
@@ -410,32 +412,32 @@ const btnSubTab = (v, label, color) => (
                           </Badge>
                         )}
                       </div>
-                      <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                      <div className="text-xs font-mono" style={{ color: tema.textMuted }}>
                         {m.total_camadas} apareamiento{m.total_camadas !== 1 ? 's' : ''} con resultado
                         {m.total_camadas > 0 && (
                           <span className="ml-2">
                             ·{' '}
-                            <span style={{ color: '#40c4ff' }}>{totalMachos}♂</span>
+                            <span style={{ color: tema.blue }}>{totalMachos}♂</span>
                             {' / '}
-                            <span style={{ color: '#ce93d8' }}>{totalHembras}♀</span>
+                            <span style={{ color: tema.purple }}>{totalHembras}♀</span>
                           </span>
                         )}
                         {m.avg_litter_size !== null && (
-                          <span className="ml-2">· prom. <span style={{ color: '#00e676' }}>{m.avg_litter_size} crías</span></span>
+                          <span className="ml-2">· prom. <span style={{ color: tema.accent }}>{m.avg_litter_size} crías</span></span>
                         )}
                       </div>
                     </div>
                     {/* Métricas numéricas */}
                     <div className="hidden md:flex items-center divide-x" style={{ divideColor: 'rgba(30,51,82,0.6)' }}>
                       <div className="text-center px-3">
-                        <div className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5f7a' }}>Score total</div>
+                        <div className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: tema.textMuted }}>Score total</div>
                         <div className="font-mono font-bold text-xl" style={{ color: m.score_total !== null ? '#00e676' : '#8a9bb0' }}>
                           {m.score_total !== null ? m.score_total : '—'}
-                          <span className="text-xs font-normal ml-0.5" style={{ color: '#4a5f7a' }}>/20</span>
+                          <span className="text-xs font-normal ml-0.5" style={{ color: tema.textMuted }}>/20</span>
                         </div>
                       </div>
                       <div className="text-center px-3">
-                        <div className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5f7a' }}>Lat. score</div>
+                        <div className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: tema.textMuted }}>Lat. score</div>
                         <div className="font-mono font-bold text-xl" style={{ color: m.score_promedio !== null ? '#40c4ff' : '#8a9bb0' }}>
                           {m.score_promedio !== null ? m.score_promedio : '—'}
                         </div>
@@ -478,12 +480,12 @@ const btnSubTab = (v, label, color) => (
                       className="px-5 py-3"
                       style={{ borderTop: '1px solid rgba(0,230,118,0.06)', background: 'rgba(0,0,0,0.15)' }}
                     >
-                      <div className="text-xs uppercase tracking-widest font-semibold mb-2" style={{ color: '#4a5f7a' }}>
+                      <div className="text-xs uppercase tracking-widest font-semibold mb-2" style={{ color: tema.textMuted }}>
                         Historial
                       </div>
                       <table className="w-full text-xs">
                         <thead>
-                          <tr style={{ color: '#4a5f7a' }}>
+                          <tr style={{ color: tema.textMuted }}>
                             <th className="text-left pb-1.5 font-medium">Hembra</th>
                             <th className="text-left pb-1.5 font-medium">Cópula</th>
                             <th className="text-left pb-1.5 font-medium">Nacimiento</th>
@@ -502,23 +504,23 @@ const btnSubTab = (v, label, color) => (
                             const scoreInd = scorePorLatencia(c.lat)
                             return (
                               <tr key={c.id} style={{ borderTop: '1px solid rgba(30,51,82,0.4)' }}>
-                                <td className="py-1.5 font-mono font-semibold" style={{ color: '#ce93d8' }}>
+                                <td className="py-1.5 font-mono font-semibold" style={{ color: tema.purple }}>
                                   {c.madre?.codigo ?? '?'}
                                 </td>
-                                <td className="py-1.5 font-mono" style={{ color: '#8a9bb0' }}>{formatFecha(c.fecha_copula)}</td>
+                                <td className="py-1.5 font-mono" style={{ color: tema.textSecondary }}>{formatFecha(c.fecha_copula)}</td>
                                 <td className="py-1.5 font-mono" style={{ color: c.fecha_nacimiento ? '#8a9bb0' : '#ffb300' }}>
                                   {c.fecha_nacimiento ? formatFecha(c.fecha_nacimiento) : 'Pendiente'}
                                 </td>
-                                <td className="py-1.5 font-mono" style={{ color: '#8a9bb0' }}>
+                                <td className="py-1.5 font-mono" style={{ color: tema.textSecondary }}>
                                   {c.crias_machos != null || c.crias_hembras != null
-                                    ? <><span style={{ color: '#40c4ff' }}>{c.crias_machos ?? '?'}♂</span>{' / '}<span style={{ color: '#ce93d8' }}>{c.crias_hembras ?? '?'}♀</span></>
+                                    ? <><span style={{ color: tema.blue }}>{c.crias_machos ?? '?'}♂</span>{' / '}<span style={{ color: tema.purple }}>{c.crias_hembras ?? '?'}♀</span></>
                                     : (c.total_crias ?? '?')}
                                 </td>
                                 <td className="py-1.5 font-mono font-bold" style={{ color: latColor }}>
                                   {c.lat !== null ? `${c.lat}d` : '—'}
                                 </td>
                                 <td className="py-1.5"><ScoreChip score={scoreInd} /></td>
-                                <td className="py-1.5" style={{ color: '#4a5f7a' }}>{interpretarLatencia(c.lat)}</td>
+                                <td className="py-1.5" style={{ color: tema.textMuted }}>{interpretarLatencia(c.lat)}</td>
                               </tr>
                             )
                           })}
@@ -536,7 +538,7 @@ const btnSubTab = (v, label, color) => (
       {/* Hembras */}
       {hembraStats.length > 0 && (
         <div>
-          <div className="text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: '#4a5f7a' }}>
+          <div className="text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: tema.textMuted }}>
             <span>♀</span>
             {vista === 'activos' ? 'Perfil de hembras — solo activas' : 'Perfil histórico de hembras'}
           </div>
@@ -569,13 +571,13 @@ const btnSubTab = (v, label, color) => (
                         {tendencia_camada && <TendenciaBadge tendencia={tendencia_camada} />}
                         {estadoCiclo === 'ultimo_ciclo' && (
                           <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                            style={{ background: 'rgba(255,179,0,0.12)', border: '1px solid rgba(255,179,0,0.35)', color: '#ffb300' }}>
+                            style={{ background: 'rgba(255,179,0,0.12)', border: '1px solid rgba(255,179,0,0.35)', color: tema.amber }}>
                             🟡 Último ciclo
                           </span>
                         )}
                         {estadoCiclo === 'fin_ciclo' && (
                           <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                            style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.3)', color: '#ff6b80' }}>
+                            style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.3)', color: tema.red }}>
                             🔚 Fin de ciclo
                           </span>
                         )}
@@ -585,13 +587,13 @@ const btnSubTab = (v, label, color) => (
                           </Badge>
                         )}
                       </div>
-                      <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
+                      <div className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>
                         {total} parto{total !== 1 ? 's' : ''} · {crias} crías
                         {crias > 0 && (
                           <span className="ml-1">
-                            (<span style={{ color: '#40c4ff' }}>{criasMachos}♂</span>
+                            (<span style={{ color: tema.blue }}>{criasMachos}♂</span>
                             {' / '}
-                            <span style={{ color: '#ce93d8' }}>{criasHembras}♀</span>)
+                            <span style={{ color: tema.purple }}>{criasHembras}♀</span>)
                           </span>
                         )}
                       </div>
@@ -599,10 +601,10 @@ const btnSubTab = (v, label, color) => (
                     {/* Score total hembra */}
                     {scoreTotal !== null && (
                       <div className="text-center px-3 hidden md:block">
-                        <div className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5f7a' }}>Score total</div>
-                        <div className="font-mono font-bold text-xl" style={{ color: '#ce93d8' }}>
+                        <div className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: tema.textMuted }}>Score total</div>
+                        <div className="font-mono font-bold text-xl" style={{ color: tema.purple }}>
                           {scoreTotal}
-                          <span className="text-xs font-normal ml-0.5" style={{ color: '#4a5f7a' }}>/40</span>
+                          <span className="text-xs font-normal ml-0.5" style={{ color: tema.textMuted }}>/40</span>
                         </div>
                       </div>
                     )}
@@ -618,17 +620,17 @@ const btnSubTab = (v, label, color) => (
                         <ScoreCell label="Supervivencia" value={perfil.avg_survival_score} />
                       </div>
                     ) : (
-                      <div className="text-xs" style={{ color: '#4a5f7a' }}>Sin camadas con datos completos</div>
+                      <div className="text-xs" style={{ color: tema.textMuted }}>Sin camadas con datos completos</div>
                     )}
 
                     {/* Leyenda de colores */}
                     {perfil && (
                       <div className="flex items-center gap-3 mt-3 pt-3" style={{ borderTop: '1px solid rgba(30,51,82,0.4)' }}>
-                        <span className="text-xs" style={{ color: '#4a5f7a' }}>Escala:</span>
+                        <span className="text-xs" style={{ color: tema.textMuted }}>Escala:</span>
                         {[['#00e676','8–10 Excelente'],['#ffd740','6–7.9 Bueno'],['#ff6b80','<6 Bajo']].map(([c,l]) => (
                           <span key={l} className="flex items-center gap-1 text-xs">
                             <span className="w-2 h-2 rounded-full inline-block" style={{ background: c }} />
-                            <span style={{ color: '#4a5f7a' }}>{l}</span>
+                            <span style={{ color: tema.textMuted }}>{l}</span>
                           </span>
                         ))}
                       </div>
@@ -648,8 +650,8 @@ const btnSubTab = (v, label, color) => (
           style={{ background: 'rgba(255,179,0,0.05)', border: '1px solid rgba(255,179,0,0.15)' }}
         >
           <div className="text-3xl mb-2">📊</div>
-          <div className="font-semibold text-sm" style={{ color: '#ffb300' }}>Sin datos de rendimiento aún</div>
-          <div className="text-xs mt-1" style={{ color: '#4a5f7a' }}>
+          <div className="font-semibold text-sm" style={{ color: tema.amber }}>Sin datos de rendimiento aún</div>
+          <div className="text-xs mt-1" style={{ color: tema.textMuted }}>
             Registrá camadas con fecha de nacimiento para ver el análisis de latencia
           </div>
         </div>

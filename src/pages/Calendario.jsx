@@ -6,16 +6,17 @@ import {
   getPlanes, guardarPlan, eliminarPlan,
   getNotas, guardarNota, actualizarNota, eliminarNota as eliminarNotaDB,
 } from '../utils/db'
+import { useTheme } from '../context/ThemeContext'
 
 const TIPOS = {
-  nacimiento:       { label: 'Nacimiento',          color: '#00e676', bg: 'rgba(0,230,118,0.12)',   borde: 'rgba(0,230,118,0.3)'   },
-  destete:          { label: 'Destete',             color: '#ffb300', bg: 'rgba(255,179,0,0.12)',   borde: 'rgba(255,179,0,0.3)'   },
-  madurez:          { label: 'Madurez',             color: '#ce93d8', bg: 'rgba(206,147,216,0.12)', borde: 'rgba(206,147,216,0.3)' },
-  parto_esperado:   { label: 'Parto esperado',      color: '#40c4ff', bg: 'rgba(64,196,255,0.12)',  borde: 'rgba(64,196,255,0.3)'  },
+  nacimiento:       { label: 'Nacimiento',          color: tema.accent, bg: 'rgba(0,230,118,0.12)',   borde: 'rgba(0,230,118,0.3)'   },
+  destete:          { label: 'Destete',             color: tema.amber, bg: 'rgba(255,179,0,0.12)',   borde: 'rgba(255,179,0,0.3)'   },
+  madurez:          { label: 'Madurez',             color: tema.purple, bg: 'rgba(206,147,216,0.12)', borde: 'rgba(206,147,216,0.3)' },
+  parto_esperado:   { label: 'Parto esperado',      color: tema.blue, bg: 'rgba(64,196,255,0.12)',  borde: 'rgba(64,196,255,0.3)'  },
   separacion:       { label: 'Separación pareja',   color: '#4dd0e1', bg: 'rgba(77,208,225,0.10)',  borde: 'rgba(77,208,225,0.28)' },
-  copula:           { label: 'Cópula',              color: '#8a9bb0', bg: 'rgba(138,155,176,0.08)', borde: 'rgba(138,155,176,0.2)' },
+  copula:           { label: 'Cópula',              color: tema.textSecondary, bg: 'rgba(138,155,176,0.08)', borde: 'rgba(138,155,176,0.2)' },
   plan_apareamiento:{ label: 'Apareamiento planif.',color: '#a78bfa', bg: 'rgba(139,92,246,0.12)',  borde: 'rgba(139,92,246,0.35)' },
-  nota:             { label: 'Nota / Recordatorio', color: '#fbbf24', bg: 'rgba(251,191,36,0.10)',  borde: 'rgba(251,191,36,0.28)' },
+  nota:             { label: 'Nota / Recordatorio', color: tema.amber, bg: 'rgba(251,191,36,0.10)',  borde: 'rgba(251,191,36,0.28)' },
 }
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
@@ -37,6 +38,7 @@ function formatEdadCorta(dias) {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function Calendario() {
+  const { tema, modoBrillo } = useTheme()
   const { camadas, animales, jaulas, sacrificios, entregas, bio, bioterioActivo } = useBioterio()
   const hoyJs = new Date()
   const [anio, setAnio]       = useState(hoyJs.getFullYear())
@@ -201,7 +203,7 @@ export default function Calendario() {
     <div className="p-4 md:p-6 space-y-5 min-h-screen" style={{ background: '#050810' }}>
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="w-1.5 h-7 rounded-full" style={{ background: '#00e676', boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
+        <div className="w-1.5 h-7 rounded-full" style={{ background: tema.accent, boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
         <h1 className="text-xl font-bold text-white">Calendario</h1>
       </div>
 
@@ -210,7 +212,7 @@ export default function Calendario() {
         {Object.entries(TIPOS).map(([tipo, cfg]) => (
           <div key={tipo} className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full" style={{ background: cfg.color, boxShadow: `0 0 4px ${cfg.color}` }} />
-            <span className="text-xs font-medium" style={{ color: '#4a5f7a' }}>{cfg.label}</span>
+            <span className="text-xs font-medium" style={{ color: tema.textMuted }}>{cfg.label}</span>
           </div>
         ))}
       </div>
@@ -227,15 +229,15 @@ export default function Calendario() {
             <button
               onClick={() => navMes(-1)}
               className="w-9 h-9 rounded-xl flex items-center justify-center transition-all"
-              style={{ background: 'rgba(30,51,82,0.5)', color: '#8a9bb0', border: '1px solid rgba(30,51,82,0.8)' }}
+              style={{ background: 'rgba(30,51,82,0.5)', color: tema.textSecondary, border: '1px solid rgba(30,51,82,0.8)' }}
             >←</button>
             <h2 className="font-bold text-white tracking-wide">
-              {MESES[mes]} <span className="font-mono" style={{ color: '#4a5f7a' }}>{anio}</span>
+              {MESES[mes]} <span className="font-mono" style={{ color: tema.textMuted }}>{anio}</span>
             </h2>
             <button
               onClick={() => navMes(1)}
               className="w-9 h-9 rounded-xl flex items-center justify-center transition-all"
-              style={{ background: 'rgba(30,51,82,0.5)', color: '#8a9bb0', border: '1px solid rgba(30,51,82,0.8)' }}
+              style={{ background: 'rgba(30,51,82,0.5)', color: tema.textSecondary, border: '1px solid rgba(30,51,82,0.8)' }}
             >→</button>
           </div>
 
@@ -243,7 +245,7 @@ export default function Calendario() {
           <div className="grid grid-cols-7 mb-2">
             {DIAS.map((d) => (
               <div key={d} className="text-center text-xs font-semibold uppercase tracking-widest py-1"
-                style={{ color: '#4a5f7a' }}>{d}</div>
+                style={{ color: tema.textMuted }}>{d}</div>
             ))}
           </div>
 
@@ -343,7 +345,7 @@ export default function Calendario() {
               {/* Notas del día */}
               {notasDia.length > 0 && (
                 <div className="space-y-2">
-                  <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#fbbf24', opacity: 0.7 }}>
+                  <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.amber, opacity: 0.7 }}>
                     Notas
                   </div>
                   {notasDia.map((n) => (
@@ -381,7 +383,7 @@ export default function Calendario() {
                           <button
                             onClick={() => reabrirNota(n.id)}
                             className="text-xs font-mono px-2 py-1 rounded-lg"
-                            style={{ background: 'rgba(64,196,255,0.08)', color: '#40c4ff', border: '1px solid rgba(64,196,255,0.2)' }}
+                            style={{ background: 'rgba(64,196,255,0.08)', color: tema.blue, border: '1px solid rgba(64,196,255,0.2)' }}
                           >
                             ↩ Reabrir
                           </button>
@@ -389,7 +391,7 @@ export default function Calendario() {
                           <button
                             onClick={() => completarNota(n.id)}
                             className="text-xs font-mono px-2 py-1 rounded-lg"
-                            style={{ background: 'rgba(0,230,118,0.08)', color: '#00e676', border: '1px solid rgba(0,230,118,0.2)' }}
+                            style={{ background: 'rgba(0,230,118,0.08)', color: tema.accent, border: '1px solid rgba(0,230,118,0.2)' }}
                           >
                             ✓ Hecho
                           </button>
@@ -397,7 +399,7 @@ export default function Calendario() {
                         <button
                           onClick={() => eliminarNota(n.id)}
                           className="text-xs font-mono px-2 py-1 rounded-lg"
-                          style={{ background: 'rgba(255,61,87,0.08)', color: '#ff6b80', border: '1px solid rgba(255,61,87,0.2)' }}
+                          style={{ background: 'rgba(255,61,87,0.08)', color: tema.red, border: '1px solid rgba(255,61,87,0.2)' }}
                         >
                           ✕
                         </button>
@@ -409,7 +411,7 @@ export default function Calendario() {
 
               {/* Eventos reproductivos y planes del día */}
               {eventosDia.filter((e) => e.tipo !== 'nota').length === 0 && notasDia.length === 0 ? (
-                <p className="text-sm" style={{ color: '#4a5f7a' }}>Sin eventos este día</p>
+                <p className="text-sm" style={{ color: tema.textMuted }}>Sin eventos este día</p>
               ) : eventosDia.filter((e) => e.tipo !== 'nota').length > 0 && (
                 <div className="space-y-2">
                   {eventosDia.filter((e) => e.tipo !== 'nota').map((ev) => {
@@ -433,7 +435,7 @@ export default function Calendario() {
                           <button
                             onClick={() => descartarPlan(ev.plan.id)}
                             className="text-xs font-mono px-2 py-1 rounded-lg"
-                            style={{ background: 'rgba(255,61,87,0.08)', color: '#ff6b80', border: '1px solid rgba(255,61,87,0.2)' }}
+                            style={{ background: 'rgba(255,61,87,0.08)', color: tema.red, border: '1px solid rgba(255,61,87,0.2)' }}
                           >
                             ✕ Descartar
                           </button>
@@ -470,31 +472,31 @@ export default function Calendario() {
                 if (notasMes.length === 0) return null
                 return (
                   <div className="space-y-1.5">
-                    <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#fbbf24', opacity: 0.7 }}>
+                    <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.amber, opacity: 0.7 }}>
                       Notas pendientes
                     </div>
                     {notasMes.map((n) => (
                       <div key={n.id} className="rounded-xl px-3 py-2"
                         style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.22)' }}>
-                        <div className="text-xs font-mono" style={{ color: '#fbbf24', opacity: 0.6 }}>
+                        <div className="text-xs font-mono" style={{ color: tema.amber, opacity: 0.6 }}>
                           Día {parseInt(n.fecha.split('-')[2])}
                         </div>
                         {n.titulo && (
-                          <div className="text-xs font-bold" style={{ color: '#fbbf24' }}>{n.titulo}</div>
+                          <div className="text-xs font-bold" style={{ color: tema.amber }}>{n.titulo}</div>
                         )}
-                        <div className="text-xs font-mono" style={{ color: '#c9d4e0' }}>{n.descripcion}</div>
+                        <div className="text-xs font-mono" style={{ color: tema.textPrimary }}>{n.descripcion}</div>
                         <div className="flex gap-1.5 mt-1.5">
                           <button
                             onClick={() => completarNota(n.id)}
                             className="text-xs font-mono px-2 py-0.5 rounded-lg"
-                            style={{ background: 'rgba(0,230,118,0.08)', color: '#00e676', border: '1px solid rgba(0,230,118,0.2)' }}
+                            style={{ background: 'rgba(0,230,118,0.08)', color: tema.accent, border: '1px solid rgba(0,230,118,0.2)' }}
                           >
                             ✓ Hecho
                           </button>
                           <button
                             onClick={() => eliminarNota(n.id)}
                             className="text-xs font-mono px-2 py-0.5 rounded-lg"
-                            style={{ background: 'rgba(255,61,87,0.08)', color: '#ff6b80', border: '1px solid rgba(255,61,87,0.2)' }}
+                            style={{ background: 'rgba(255,61,87,0.08)', color: tema.red, border: '1px solid rgba(255,61,87,0.2)' }}
                           >
                             ✕
                           </button>
@@ -514,7 +516,7 @@ export default function Calendario() {
                   .map(([fecha, evs]) => [fecha, evs.filter((e) => e.tipo !== 'nota')])
                   .filter(([, evs]) => evs.length > 0)
                 if (del_mes.length === 0)
-                  return <p className="text-sm" style={{ color: '#4a5f7a' }}>Sin eventos reproductivos este mes</p>
+                  return <p className="text-sm" style={{ color: tema.textMuted }}>Sin eventos reproductivos este mes</p>
                 return (
                   <div className="space-y-2 max-h-72 overflow-y-auto">
                     {del_mes.map(([fecha, evs]) => evs.map((e) => {
@@ -740,7 +742,7 @@ function ModalPlanificarApareamiento({
         className="flex-1 py-1 rounded-lg text-xs font-semibold transition-all"
         style={activo
           ? { background: `${color}18`, border: `1px solid ${color}45`, color }
-          : { background: 'transparent', border: '1px solid rgba(30,51,82,0.5)', color: '#4a5f7a' }}
+          : { background: 'transparent', border: '1px solid rgba(30,51,82,0.5)', color: tema.textMuted }}
       >
         {labels[valor]}
       </button>
@@ -777,7 +779,7 @@ function ModalPlanificarApareamiento({
           <span className="text-xs">{CAT_ICONOS[cat]}</span>
           <span className="font-bold font-mono text-xs text-white flex-1 truncate">{bloque.nombre}</span>
         </div>
-        <div className="text-xs font-mono mt-0.5 ml-5.5 flex gap-2" style={{ color: '#4a5f7a' }}>
+        <div className="text-xs font-mono mt-0.5 ml-5.5 flex gap-2" style={{ color: tema.textMuted }}>
           <span style={{ color }}>{CAT_LABELS[cat]}</span>
           <span>·</span>
           <span>{bloque.total} animales ({sexInfo})</span>
@@ -810,7 +812,7 @@ function ModalPlanificarApareamiento({
           <div className="font-bold text-white text-sm">
             {esHibridos ? '🧬 Planificar cruce F1' : '🔗 Planificar apareamiento'}
           </div>
-          <div className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
+          <div className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>
             Fecha programada: <span style={{ color: '#a78bfa' }}>{fechaLabel}</span>
             {' '}· Solo registra la intención — no crea el apareamiento todavía
           </div>
@@ -823,7 +825,7 @@ function ModalPlanificarApareamiento({
 
         {/* Estado de carga (solo Híbridos) */}
         {esHibridos && cargandoHibridos && (
-          <div className="px-6 py-4 text-xs font-mono text-center" style={{ color: '#4a5f7a' }}>
+          <div className="px-6 py-4 text-xs font-mono text-center" style={{ color: tema.textMuted }}>
             Cargando datos de BALB/C y C57…
           </div>
         )}
@@ -835,7 +837,7 @@ function ModalPlanificarApareamiento({
 
             {/* ── Columna Machos ── */}
             <div className="p-4 space-y-3" style={{ borderRight: '1px solid rgba(30,51,82,0.5)' }}>
-              <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#40c4ff' }}>
+              <div className="text-xs font-bold uppercase tracking-widest" style={{ color: tema.blue }}>
                 {esHibridos ? '♂ BALB/C — fuente de machos' : '♂ Fuente de machos'}
               </div>
 
@@ -870,7 +872,7 @@ function ModalPlanificarApareamiento({
                             </div>
                             <span className="font-bold font-mono text-xs text-white">{a.codigo}</span>
                           </div>
-                          <div className="text-xs font-mono mt-0.5 ml-5" style={{ color: '#4a5f7a' }}>{edad}</div>
+                          <div className="text-xs font-mono mt-0.5 ml-5" style={{ color: tema.textMuted }}>{edad}</div>
                         </button>
                       )
                     })
@@ -892,7 +894,7 @@ function ModalPlanificarApareamiento({
 
             {/* ── Columna Hembras ── */}
             <div className="p-4 space-y-3">
-              <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#ce93d8' }}>
+              <div className="text-xs font-bold uppercase tracking-widest" style={{ color: tema.purple }}>
                 {esHibridos ? '♀ C57 — fuente de hembras' : '♀ Fuente de hembras'}
               </div>
 
@@ -927,7 +929,7 @@ function ModalPlanificarApareamiento({
                             </div>
                             <span className="font-bold font-mono text-xs text-white">{a.codigo}</span>
                           </div>
-                          <div className="text-xs font-mono mt-0.5 ml-5" style={{ color: '#4a5f7a' }}>{edad}</div>
+                          <div className="text-xs font-mono mt-0.5 ml-5" style={{ color: tema.textMuted }}>{edad}</div>
                         </button>
                       )
                     })
@@ -954,16 +956,16 @@ function ModalPlanificarApareamiento({
               className="mx-4 mt-3 mb-1 px-4 py-3 rounded-xl flex items-center gap-3 text-xs font-mono"
               style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)' }}
             >
-              <span style={{ color: '#40c4ff' }}>♂ {getNombreFuente(fuenteMacho)}</span>
-              <span style={{ color: '#4a5f7a' }}>×</span>
-              <span style={{ color: '#ce93d8' }}>♀ {getNombreFuente(fuenteHembra)}</span>
+              <span style={{ color: tema.blue }}>♂ {getNombreFuente(fuenteMacho)}</span>
+              <span style={{ color: tema.textMuted }}>×</span>
+              <span style={{ color: tema.purple }}>♀ {getNombreFuente(fuenteHembra)}</span>
               {fuenteMacho?.tipo === 'stock' && (
-                <span className="px-1.5 py-0.5 rounded font-semibold" style={{ background: 'rgba(64,196,255,0.12)', color: '#40c4ff', fontSize: '10px' }}>
+                <span className="px-1.5 py-0.5 rounded font-semibold" style={{ background: 'rgba(64,196,255,0.12)', color: tema.blue, fontSize: '10px' }}>
                   {fuenteMacho.total} animales
                 </span>
               )}
               {fuenteHembra?.tipo === 'stock' && (
-                <span className="px-1.5 py-0.5 rounded font-semibold" style={{ background: 'rgba(206,147,216,0.12)', color: '#ce93d8', fontSize: '10px' }}>
+                <span className="px-1.5 py-0.5 rounded font-semibold" style={{ background: 'rgba(206,147,216,0.12)', color: tema.purple, fontSize: '10px' }}>
                   {fuenteHembra.total} animales
                 </span>
               )}
@@ -979,7 +981,7 @@ function ModalPlanificarApareamiento({
               onChange={(e) => setObservaciones(e.target.value)}
               className="w-full px-3 py-2.5 text-xs font-mono focus:outline-none rounded-xl"
               style={{
-                background: 'rgba(8,13,26,0.8)',
+                background: tema.bgInput,
                 border:     '1px solid rgba(30,51,82,0.8)',
                 color:      '#c9d4e0',
               }}
@@ -996,7 +998,7 @@ function ModalPlanificarApareamiento({
           <button
             onClick={onCerrar}
             className="px-4 py-2.5 rounded-xl text-sm font-mono"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a' }}
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: tema.textMuted }}
           >
             Cancelar
           </button>
@@ -1058,16 +1060,16 @@ function ModalNota({ fecha, onGuardar, onCerrar }) {
           style={{ borderBottom: '1px solid rgba(251,191,36,0.12)', background: 'rgba(251,191,36,0.05)' }}
         >
           <div className="font-bold text-white text-sm">📝 Agregar nota / recordatorio</div>
-          <div className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
-            Fecha: <span style={{ color: '#fbbf24' }}>{fechaLabel}</span>
+          <div className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>
+            Fecha: <span style={{ color: tema.amber }}>{fechaLabel}</span>
           </div>
         </div>
 
         {/* Cuerpo */}
         <div className="p-5 space-y-4">
           <div>
-            <label className="block text-xs font-semibold mb-1.5" style={{ color: '#8a9bb0' }}>
-              Título <span style={{ color: '#4a5f7a' }}>(opcional)</span>
+            <label className="block text-xs font-semibold mb-1.5" style={{ color: tema.textSecondary }}>
+              Título <span style={{ color: tema.textMuted }}>(opcional)</span>
             </label>
             <input
               type="text"
@@ -1078,7 +1080,7 @@ function ModalNota({ fecha, onGuardar, onCerrar }) {
               autoFocus
               className="w-full px-3 py-2.5 text-sm font-mono focus:outline-none rounded-xl"
               style={{
-                background: 'rgba(8,13,26,0.8)',
+                background: tema.bgInput,
                 border:     '1px solid rgba(30,51,82,0.8)',
                 color:      '#c9d4e0',
               }}
@@ -1088,8 +1090,8 @@ function ModalNota({ fecha, onGuardar, onCerrar }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold mb-1.5" style={{ color: '#8a9bb0' }}>
-              Descripción / observación <span style={{ color: '#ff6b80' }}>*</span>
+            <label className="block text-xs font-semibold mb-1.5" style={{ color: tema.textSecondary }}>
+              Descripción / observación <span style={{ color: tema.red }}>*</span>
             </label>
             <textarea
               rows={3}
@@ -1099,7 +1101,7 @@ function ModalNota({ fecha, onGuardar, onCerrar }) {
               onKeyDown={handleKey}
               className="w-full px-3 py-2.5 text-sm font-mono focus:outline-none rounded-xl resize-none"
               style={{
-                background: 'rgba(8,13,26,0.8)',
+                background: tema.bgInput,
                 border:     '1px solid rgba(30,51,82,0.8)',
                 color:      '#c9d4e0',
               }}
@@ -1120,7 +1122,7 @@ function ModalNota({ fecha, onGuardar, onCerrar }) {
           <button
             onClick={onCerrar}
             className="px-4 py-2.5 rounded-xl text-sm font-mono"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a' }}
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: tema.textMuted }}
           >
             Cancelar
           </button>

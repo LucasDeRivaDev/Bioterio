@@ -18,6 +18,7 @@ import {
   calcularConfianzaPedigree,
   generarExplicacionF,
 } from '../utils/genealogia'
+import { useTheme } from '../context/ThemeContext'
 
 const TODOS = ['ratas', 'ratones_balbc', 'ratones_c57', 'ratones_hibridos']
 
@@ -59,10 +60,10 @@ function BadgeEstado({ estado, emoji, label }) {
 
 function BadgeConfianza({ nivel }) {
   const cfg = {
-    alta:  { color: '#00e676', emoji: '🟢', label: 'Confianza alta' },
+    alta:  { color: tema.accent, emoji: '🟢', label: 'Confianza alta' },
     media: { color: '#ffd740', emoji: '🟡', label: 'Confianza media' },
-    baja:  { color: '#ff6b80', emoji: '🔴', label: 'Confianza baja' },
-  }[nivel] ?? { color: '#4a5f7a', emoji: '⚪', label: 'Sin datos' }
+    baja:  { color: tema.red, emoji: '🔴', label: 'Confianza baja' },
+  }[nivel] ?? { color: tema.textMuted, emoji: '⚪', label: 'Sin datos' }
   return (
     <span
       className="text-xs font-mono px-2 py-0.5 rounded-full shrink-0"
@@ -84,7 +85,7 @@ function PanelLineaHistorica() {
         <div className="flex items-center gap-2">
           <span className="text-base">🧬</span>
           <span className="font-bold text-sm text-white">Consanguinidad histórica de línea</span>
-          <span className="text-xs font-mono ml-auto" style={{ color: '#4a5f7a' }}>contexto genético</span>
+          <span className="text-xs font-mono ml-auto" style={{ color: tema.textMuted }}>contexto genético</span>
         </div>
       </div>
       <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -105,8 +106,8 @@ function PanelLineaHistorica() {
                   F = {fDisplay}
                 </span>
               </div>
-              <div className="text-xs font-mono" style={{ color: '#8a9bb0' }}>{info.descripcion}</div>
-              <div className="text-xs" style={{ color: '#4a5f7a' }}>{info.nota}</div>
+              <div className="text-xs font-mono" style={{ color: tema.textSecondary }}>{info.descripcion}</div>
+              <div className="text-xs" style={{ color: tema.textMuted }}>{info.nota}</div>
             </div>
           )
         })}
@@ -139,7 +140,7 @@ function NodoArbol({ nodo, size = 'normal' }) {
   return (
     <div className={`flex items-center gap-0.5 ${sizeClass}`}>
       <span className="font-bold" style={{ color }}>{simbolo}</span>
-      <span className="font-mono font-semibold" style={{ color: '#c9d4e0' }}>{nodo.codigo}</span>
+      <span className="font-mono font-semibold" style={{ color: tema.textPrimary }}>{nodo.codigo}</span>
     </div>
   )
 }
@@ -277,9 +278,9 @@ function SimuladorApareamientoPanel({ animales, pedigree }) {
   const padreAnimal = animales.find((a) => a.id === padreId)
 
   const selectStyle = {
-    background: 'rgba(8,13,26,0.8)',
+    background: tema.bgInput,
     border: '1px solid rgba(30,51,82,0.8)',
-    color: '#c9d4e0',
+    color: tema.textPrimary,
     borderRadius: '10px',
     padding: '8px 12px',
     width: '100%',
@@ -296,14 +297,14 @@ function SimuladorApareamientoPanel({ animales, pedigree }) {
         <div className="flex items-center gap-2">
           <span className="text-base">🔬</span>
           <span className="font-bold text-sm text-white">Simulador de apareamiento</span>
-          <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>· predicción de F en crías</span>
+          <span className="text-xs font-mono" style={{ color: tema.textMuted }}>· predicción de F en crías</span>
         </div>
       </div>
 
       <div className="p-4 space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#8a9bb0' }}>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textSecondary }}>
               ♀ Hembra
             </label>
             <select value={madreId} onChange={(e) => setMadreId(e.target.value)} style={selectStyle}>
@@ -314,7 +315,7 @@ function SimuladorApareamientoPanel({ animales, pedigree }) {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#8a9bb0' }}>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textSecondary }}>
               ♂ Macho
             </label>
             <select value={padreId} onChange={(e) => setPadreId(e.target.value)} style={selectStyle}>
@@ -336,10 +337,10 @@ function SimuladorApareamientoPanel({ animales, pedigree }) {
           >
             {/* Cruce */}
             {madreAnimal && padreAnimal && (
-              <div className="text-xs font-mono" style={{ color: '#8a9bb0' }}>
-                Cruce: <span style={{ color: '#ce93d8' }}>♀ {madreAnimal.codigo}</span>
+              <div className="text-xs font-mono" style={{ color: tema.textSecondary }}>
+                Cruce: <span style={{ color: tema.purple }}>♀ {madreAnimal.codigo}</span>
                 {' × '}
-                <span style={{ color: '#40c4ff' }}>♂ {padreAnimal.codigo}</span>
+                <span style={{ color: tema.blue }}>♂ {padreAnimal.codigo}</span>
               </div>
             )}
 
@@ -364,12 +365,12 @@ function SimuladorApareamientoPanel({ animales, pedigree }) {
               const colorP = p.sexo === 'hembra' ? '#ce93d8' : p.sexo === 'macho' ? '#40c4ff' : '#8a9bb0'
               return (
                 <div className="rounded-lg px-3 py-2 space-y-1" style={{ background: 'rgba(30,51,82,0.4)', border: '1px solid rgba(30,51,82,0.6)' }}>
-                  <div className="text-xs font-semibold" style={{ color: '#8a9bb0' }}>Motivo del F:</div>
+                  <div className="text-xs font-semibold" style={{ color: tema.textSecondary }}>Motivo del F:</div>
                   <div className="text-xs font-mono">
                     <span style={{ color: colorP }}>
                       {p.sexo === 'hembra' ? '♀' : p.sexo === 'macho' ? '♂' : '?'} {p.codigo}
                     </span>
-                    <span style={{ color: '#4a5f7a' }}>
+                    <span style={{ color: tema.textMuted }}>
                       {' '}— {LABEL_GEN[p.profMadre] ?? `gen.${p.profMadre}`} de la madre
                       {' '}· {LABEL_GEN[p.profPadre] ?? `gen.${p.profPadre}`} del padre
                     </span>
@@ -385,7 +386,7 @@ function SimuladorApareamientoPanel({ animales, pedigree }) {
 
             {resultado.comunes.length > 0 && (
               <div className="space-y-1.5">
-                <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>
+                <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.textMuted }}>
                   Todos los ancestros comunes ({resultado.comunes.length})
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -398,19 +399,19 @@ function SimuladorApareamientoPanel({ animales, pedigree }) {
                         style={{ background: `${color}12`, border: `1px solid ${color}30`, color }}
                       >
                         {c.sexo === 'hembra' ? '♀' : '♂'} {c.codigo}
-                        <span style={{ color: '#4a5f7a' }}> gen.{Math.max(c.profMadre, c.profPadre)}</span>
+                        <span style={{ color: tema.textMuted }}> gen.{Math.max(c.profMadre, c.profPadre)}</span>
                       </span>
                     )
                   })}
                   {resultado.comunes.length > 6 && (
-                    <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>+{resultado.comunes.length - 6} más</span>
+                    <span className="text-xs font-mono" style={{ color: tema.textMuted }}>+{resultado.comunes.length - 6} más</span>
                   )}
                 </div>
               </div>
             )}
 
             {resultado.comunes.length === 0 && resultado.f === 0 && (
-              <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+              <div className="text-xs font-mono" style={{ color: tema.textMuted }}>
                 Sin ancestros comunes detectados en las generaciones registradas
               </div>
             )}
@@ -419,7 +420,7 @@ function SimuladorApareamientoPanel({ animales, pedigree }) {
             {resultado.parentesco && LABEL_PARENTESCO[resultado.parentesco] && (
               <div className="flex items-center gap-2 text-sm">
                 <span>{LABEL_PARENTESCO[resultado.parentesco].emoji}</span>
-                <span style={{ color: '#c9d4e0' }}>{LABEL_PARENTESCO[resultado.parentesco].texto}</span>
+                <span style={{ color: tema.textPrimary }}>{LABEL_PARENTESCO[resultado.parentesco].texto}</span>
               </div>
             )}
 
@@ -435,7 +436,7 @@ function SimuladorApareamientoPanel({ animales, pedigree }) {
             )}
 
             {resultado.f === 0 && !resultado.parentesco && (
-              <div className="flex items-center gap-2 text-sm" style={{ color: '#00e676' }}>
+              <div className="flex items-center gap-2 text-sm" style={{ color: tema.accent }}>
                 <span>✓</span>
                 <span>Sin consanguinidad detectada en registros — apareamiento genéticamente seguro</span>
               </div>
@@ -443,7 +444,7 @@ function SimuladorApareamientoPanel({ animales, pedigree }) {
 
             {/* Barra de referencia */}
             <div className="space-y-1 pt-1">
-              <div className="flex justify-between text-xs font-mono" style={{ color: '#4a5f7a' }}>
+              <div className="flex justify-between text-xs font-mono" style={{ color: tema.textMuted }}>
                 <span>0%</span>
                 <span>12.5% (med. hermanos)</span>
                 <span>25% (hermanos)</span>
@@ -463,7 +464,7 @@ function SimuladorApareamientoPanel({ animales, pedigree }) {
             <button
               onClick={() => setMostrarArbol((v) => !v)}
               className="text-xs font-mono underline"
-              style={{ color: '#4a5f7a' }}
+              style={{ color: tema.textMuted }}
             >
               {mostrarArbol ? 'Ocultar' : 'Ver'} árbol genealógico de los progenitores
             </button>
@@ -472,13 +473,13 @@ function SimuladorApareamientoPanel({ animales, pedigree }) {
               <div className="grid grid-cols-2 gap-4 pt-2" style={{ borderTop: '1px solid rgba(30,51,82,0.5)' }}>
                 {madreAnimal && (
                   <div>
-                    <div className="text-xs font-semibold mb-2" style={{ color: '#ce93d8' }}>♀ {madreAnimal.codigo}</div>
+                    <div className="text-xs font-semibold mb-2" style={{ color: tema.purple }}>♀ {madreAnimal.codigo}</div>
                     <ArbolCompacto animal={madreAnimal} pedigree={pedigree} />
                   </div>
                 )}
                 {padreAnimal && (
                   <div>
-                    <div className="text-xs font-semibold mb-2" style={{ color: '#40c4ff' }}>♂ {padreAnimal.codigo}</div>
+                    <div className="text-xs font-semibold mb-2" style={{ color: tema.blue }}>♂ {padreAnimal.codigo}</div>
                     <ArbolCompacto animal={padreAnimal} pedigree={pedigree} />
                   </div>
                 )}
@@ -493,6 +494,7 @@ function SimuladorApareamientoPanel({ animales, pedigree }) {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function GenealogiaGlobal() {
+  const { tema, modoBrillo } = useTheme()
   const { setBioterioActivo } = useBioterioActivo()
   const [datos, setDatos]       = useState({})
   const [todasCamadas, setTodasCamadas] = useState([])
@@ -578,7 +580,7 @@ export default function GenealogiaGlobal() {
     return (
       <div className="min-h-screen flex items-center justify-center gap-3" style={{ background: '#050810' }}>
         <span className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: '#a78bfa', borderTopColor: 'transparent' }} />
-        <span className="text-sm font-mono" style={{ color: '#4a5f7a' }}>Cargando datos genealógicos...</span>
+        <span className="text-sm font-mono" style={{ color: tema.textMuted }}>Cargando datos genealógicos...</span>
       </div>
     )
   }
@@ -595,7 +597,7 @@ export default function GenealogiaGlobal() {
           <div className="w-1.5 h-7 rounded-full" style={{ background: '#a78bfa', boxShadow: '0 0 8px rgba(167,139,250,0.5)' }} />
           <div>
             <h1 className="text-xl font-bold text-white">Genealogía y consanguinidad</h1>
-            <p className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Análisis genético · todos los bioterios · pedigree global</p>
+            <p className="text-xs font-mono" style={{ color: tema.textMuted }}>Análisis genético · todos los bioterios · pedigree global</p>
           </div>
         </div>
         <button
@@ -621,13 +623,13 @@ export default function GenealogiaGlobal() {
             {
               label: 'Información insuficiente',
               valor: statsGlobal.sinAncestros,
-              color: '#4a5f7a',
+              color: tema.textMuted,
               sub: 'fundadores / sin registros',
             },
             {
               label: 'Con F > 12.5%',
               valor: (statsGlobal.distribucion.moderado ?? 0) + (statsGlobal.distribucion.alto ?? 0),
-              color: '#ff6b80',
+              color: tema.red,
               sub: 'consanguinidad moderada+',
             },
           ].map(({ label, valor, color, sub }) => (
@@ -636,7 +638,7 @@ export default function GenealogiaGlobal() {
               className="rounded-xl p-4"
               style={{ background: 'rgba(13,21,40,0.8)', border: `1px solid ${color}25` }}
             >
-              <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#4a5f7a' }}>{label}</div>
+              <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: tema.textMuted }}>{label}</div>
               <div className="text-2xl font-bold font-mono mb-0.5" style={{ color }}>{valor}</div>
               <div className="text-xs font-mono" style={{ color: '#3a5068' }}>{sub}</div>
             </div>
@@ -666,7 +668,7 @@ export default function GenealogiaGlobal() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-base">{cfg.icon ?? '🐭'}</span>
                   <span className="font-bold text-sm text-white">{cfg.label}</span>
-                  <span className="ml-auto text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                  <span className="ml-auto text-xs font-mono" style={{ color: tema.textMuted }}>
                     F interna = {fPorcentaje(stats.fPromedio)}%
                   </span>
                   {infoLinea?.fLinea !== null && (
@@ -716,7 +718,7 @@ export default function GenealogiaGlobal() {
                 style={
                   bioSel === id
                     ? { background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.4)', color: '#a78bfa' }
-                    : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }
+                    : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }
                 }
               >
                 {label}
@@ -727,7 +729,7 @@ export default function GenealogiaGlobal() {
 
         <div className="divide-y" style={{ borderColor: 'rgba(30,51,82,0.4)' }}>
           {fValuesFiltrados.length === 0 && (
-            <div className="px-5 py-10 text-center text-sm font-mono" style={{ color: '#4a5f7a' }}>
+            <div className="px-5 py-10 text-center text-sm font-mono" style={{ color: tema.textMuted }}>
               Sin animales activos en este bioterio
             </div>
           )}
@@ -793,7 +795,7 @@ export default function GenealogiaGlobal() {
                       </>
                     )}
                     <BadgeConfianza nivel={confianza.nivel} />
-                    <span className="text-xs" style={{ color: '#4a5f7a' }}>{expandido ? '▲' : '▼'}</span>
+                    <span className="text-xs" style={{ color: tema.textMuted }}>{expandido ? '▲' : '▼'}</span>
                   </div>
                 </button>
 
@@ -806,7 +808,7 @@ export default function GenealogiaGlobal() {
                     {/* Encabezado confianza */}
                     <div className="flex items-center gap-3 pt-3 flex-wrap">
                       <BadgeConfianza nivel={confianza.nivel} />
-                      <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                      <span className="text-xs font-mono" style={{ color: tema.textMuted }}>
                         {confianza.descripcion}
                       </span>
                       {confianza.generaciones > 0 && (
@@ -825,14 +827,14 @@ export default function GenealogiaGlobal() {
                         <div className="font-semibold" style={{ color: '#ff9100' }}>
                           ⚠️ F real no calculable — sin padres registrados
                         </div>
-                        <div className="font-mono" style={{ color: '#8a9bb0' }}>
+                        <div className="font-mono" style={{ color: tema.textSecondary }}>
                           Esta colonia tiene F histórica de línea ≈{' '}
                           <span style={{ color: '#ffd740' }}>
                             {(infoLinea.fLinea * 100).toFixed(0)}%
                           </span>
                           . Sin padres registrados, el F calculado sería 0% — lo cual es incorrecto.
                         </div>
-                        <div className="font-mono" style={{ color: '#4a5f7a' }}>
+                        <div className="font-mono" style={{ color: tema.textMuted }}>
                           Para calcular F interna real: registrar ambos padres del animal en la base de datos.
                         </div>
                       </div>
@@ -847,13 +849,13 @@ export default function GenealogiaGlobal() {
                         <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: n.color }}>
                           Motivo — F = {fPorcentaje(f)}%
                         </div>
-                        <div className="text-xs font-mono" style={{ color: '#c9d4e0' }}>
+                        <div className="text-xs font-mono" style={{ color: tema.textPrimary }}>
                           Ancestro común principal:{' '}
                           <span style={{ color: explicacion.principal.sexo === '♀' ? '#ce93d8' : '#40c4ff' }}>
                             {explicacion.principal.sexo} {explicacion.principal.codigo}
                           </span>
                           {' '}—{' '}
-                          <span style={{ color: '#8a9bb0' }}>
+                          <span style={{ color: tema.textSecondary }}>
                             {explicacion.principal.genMadre} de la madre · {explicacion.principal.genPadre} del padre
                           </span>
                         </div>
@@ -886,7 +888,7 @@ export default function GenealogiaGlobal() {
                     {/* Árbol genealógico completo (4 generaciones) */}
                     <div
                       className="rounded-xl px-4 py-3"
-                      style={{ background: 'rgba(8,13,26,0.6)', border: '1px solid rgba(30,51,82,0.5)' }}
+                      style={{ background: tema.bgInput, border: '1px solid rgba(30,51,82,0.5)' }}
                     >
                       <div className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: '#3a5068' }}>
                         Árbol genealógico
@@ -902,7 +904,7 @@ export default function GenealogiaGlobal() {
                       </div>
                     )}
                     {estadoGen.tienePadres && infoLinea?.fLinea === 0 && f === 0 && (
-                      <div className="text-xs font-mono" style={{ color: '#00e676' }}>
+                      <div className="text-xs font-mono" style={{ color: tema.accent }}>
                         ✓ Híbrido F1 — sin consanguinidad interna calculada. Heterocigosis máxima esperada.
                       </div>
                     )}

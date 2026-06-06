@@ -9,6 +9,7 @@ import {
   CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import { ArrowLeft, RefreshCw, Plus, ClipboardList, TrendingDown, Info, Layers, AlertTriangle, ShoppingCart, Calendar, Clock, CheckCircle } from 'lucide-react'
+import { useTheme } from '../context/ThemeContext'
 
 const PESOS = {
   macho_repro:      1.2,
@@ -23,10 +24,10 @@ const CAMBIOS_SEM  = 2
 const TASA_DEFAULT = 0.08
 
 const TODOS = [
-  { id: 'ratas',            especie: 'rata',  bio: BIO_RATAS,   color: '#00e676', label: 'Bioterio de Ratas',   icon: '🐀' },
-  { id: 'ratones_balbc',    especie: 'raton', bio: BIO_RATONES, color: '#40c4ff', label: 'Ratones Balb/C',      icon: '🐭' },
+  { id: 'ratas',            especie: 'rata',  bio: BIO_RATAS,   color: tema.accent, label: 'Bioterio de Ratas',   icon: '🐀' },
+  { id: 'ratones_balbc',    especie: 'raton', bio: BIO_RATONES, color: tema.blue, label: 'Ratones Balb/C',      icon: '🐭' },
   { id: 'ratones_c57',      especie: 'raton', bio: BIO_RATONES, color: '#a78bfa', label: 'Ratones C57',         icon: '🐭' },
-  { id: 'ratones_hibridos', especie: 'raton', bio: BIO_RATONES, color: '#ffb300', label: 'Ratones Híbridos',    icon: '🐭' },
+  { id: 'ratones_hibridos', especie: 'raton', bio: BIO_RATONES, color: tema.amber, label: 'Ratones Híbridos',    icon: '🐭' },
 ]
 const IDS_RATONES = ['ratones_balbc', 'ratones_c57', 'ratones_hibridos']
 
@@ -268,11 +269,11 @@ function contextoCiclo(fechaStr, horaStr) {
   const prob = probCambioReciente(fechaStr, horaStr)
   const day  = diaLocal(fechaStr)
   const h    = parseInt((horaStr ?? '12:00').split(':')[0])
-  if ((day === 1 || day === 5) && h < 9) return { label: 'Antes del cambio · inminente', color: '#ffb300' }
-  if (prob >= 0.55) return { label: 'Probable cambio de cama realizado', color: '#ffb300' }
-  if (day === 4)    return { label: 'Víspera del cambio (mañana)', color: '#4a5f7a' }
-  if (day === 2 || day === 6 || day === 0) return { label: 'Post-cambio · ciclo activo', color: '#00e676' }
-  return { label: 'Mitad del ciclo · sin cambios recientes', color: '#4a5f7a' }
+  if ((day === 1 || day === 5) && h < 9) return { label: 'Antes del cambio · inminente', color: tema.amber }
+  if (prob >= 0.55) return { label: 'Probable cambio de cama realizado', color: tema.amber }
+  if (day === 4)    return { label: 'Víspera del cambio (mañana)', color: tema.textMuted }
+  if (day === 2 || day === 6 || day === 0) return { label: 'Post-cambio · ciclo activo', color: tema.accent }
+  return { label: 'Mitad del ciclo · sin cambios recientes', color: tema.textMuted }
 }
 
 // Etiqueta corta del bioterio para mostrar en badges
@@ -354,6 +355,7 @@ async function migrarDesdeLocalStorage() {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function ConsumoViruta() {
+  const { tema, modoBrillo } = useTheme()
   const { limpiarBioterio } = useBioterioActivo()
 
   const [datos,          setDatos]          = useState(null)
@@ -517,8 +519,8 @@ export default function ConsumoViruta() {
           (() => { const f = addDias(c.fecha_nacimiento, bio.DESTETE_DIAS); return f && f > hoyStr && f <= horizStr })()
         ).length
 
-        if (partos  > 0) causas.push({ icono: '🐣', label: `+${partos} parto${partos > 1 ? 's' : ''}`,   color: '#00e676', bio: (icon ?? '') + ' ' + (label?.split(' ')[0] ?? id) })
-        if (destetes> 0) causas.push({ icono: '📦', label: `+${destetes} destete${destetes>1?'s':''}`, color: '#40c4ff', bio: (icon ?? '') + ' ' + (label?.split(' ')[0] ?? id) })
+        if (partos  > 0) causas.push({ icono: '🐣', label: `+${partos} parto${partos > 1 ? 's' : ''}`,   color: tema.accent, bio: (icon ?? '') + ' ' + (label?.split(' ')[0] ?? id) })
+        if (destetes> 0) causas.push({ icono: '📦', label: `+${destetes} destete${destetes>1?'s':''}`, color: tema.blue, bio: (icon ?? '') + ' ' + (label?.split(' ')[0] ?? id) })
       })
 
       const jaulasHoy   = TODOS.reduce((s, { id }) => s + (datos[id]?.conteos.totalJaulas ?? 0), 0)
@@ -754,13 +756,13 @@ export default function ConsumoViruta() {
         </button>
         <div className="flex-1">
           <h1 className="font-bold text-white text-base">Consumo de viruta / camas</h1>
-          <p className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+          <p className="text-xs font-mono" style={{ color: tema.textMuted }}>
             Ratas + Ratones · predicción adaptativa por tipo de jaula
           </p>
         </div>
         <button onClick={cargarDatos} disabled={cargando}
           className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a', cursor: cargando ? 'not-allowed' : 'pointer' }}>
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: tema.textMuted, cursor: cargando ? 'not-allowed' : 'pointer' }}>
           <RefreshCw size={12} className={cargando ? 'animate-spin' : ''} /> Actualizar
         </button>
       </div>
@@ -770,7 +772,7 @@ export default function ConsumoViruta() {
 
         {error && (
           <div className="rounded-2xl px-5 py-4 text-sm font-mono"
-            style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)', color: '#ff6b80' }}>
+            style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)', color: tema.red }}>
             ⚠️ {error}
           </div>
         )}
@@ -779,7 +781,7 @@ export default function ConsumoViruta() {
           <div className="flex items-center justify-center gap-3 py-20">
             <span className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin"
               style={{ borderColor: '#a78bfa', borderTopColor: 'transparent' }} />
-            <span className="text-sm font-mono" style={{ color: '#4a5f7a' }}>Contando jaulas activas...</span>
+            <span className="text-sm font-mono" style={{ color: tema.textMuted }}>Contando jaulas activas...</span>
           </div>
         )}
 
@@ -799,7 +801,7 @@ export default function ConsumoViruta() {
                 </span>
                 {calibrado ? (
                   <span className="ml-auto text-xs font-mono px-2 py-0.5 rounded-full"
-                    style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.2)', color: '#00e676' }}>
+                    style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.2)', color: tema.accent }}>
                     ✓ Calibrado con {calibracion.periodos} período{calibracion.periodos > 1 ? 's' : ''}
                   </span>
                 ) : (
@@ -815,13 +817,13 @@ export default function ConsumoViruta() {
 
                 {/* Stock actual */}
                 <div className="px-5 py-5 text-center flex flex-col items-center gap-1">
-                  <div className="text-xs font-mono uppercase tracking-wider" style={{ color: '#4a5f7a' }}>Viruta disponible</div>
+                  <div className="text-xs font-mono uppercase tracking-wider" style={{ color: tema.textMuted }}>Viruta disponible</div>
                   {stockActual !== null ? (
                     <>
                       <div className="text-3xl font-bold font-mono text-white leading-none">{stockActual}</div>
-                      <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>bolsas</div>
+                      <div className="text-xs font-mono" style={{ color: tema.textMuted }}>bolsas</div>
                       {comprasPostCenso.length > 0 && (
-                        <div className="text-xs font-mono mt-1" style={{ color: '#00e676' }}>
+                        <div className="text-xs font-mono mt-1" style={{ color: tema.accent }}>
                           +{comprasPostCenso.reduce((s, c) => s + c.bolsas, 0)} desde último censo
                         </div>
                       )}
@@ -838,11 +840,11 @@ export default function ConsumoViruta() {
 
                 {/* Consumo estimado */}
                 <div className="px-5 py-5 text-center flex flex-col items-center gap-1">
-                  <div className="text-xs font-mono uppercase tracking-wider" style={{ color: '#4a5f7a' }}>Consumo estimado</div>
+                  <div className="text-xs font-mono uppercase tracking-wider" style={{ color: tema.textMuted }}>Consumo estimado</div>
                   <div className="text-3xl font-bold font-mono leading-none" style={{ color: calibrado ? '#00e676' : '#a78bfa' }}>
                     {bolsasPorSem.toFixed(2)}
                   </div>
-                  <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>bolsas / semana</div>
+                  <div className="text-xs font-mono" style={{ color: tema.textMuted }}>bolsas / semana</div>
                   <div className="text-xs font-mono mt-1" style={{ color: '#3d5068' }}>
                     {totales.totalJaulas} jaulas · {totales.totalUnidades.toFixed(1)} unid.
                   </div>
@@ -850,13 +852,13 @@ export default function ConsumoViruta() {
 
                 {/* Duración real según evolución futura */}
                 <div className="px-5 py-5 text-center flex flex-col items-center gap-1">
-                  <div className="text-xs font-mono uppercase tracking-wider" style={{ color: '#4a5f7a' }}>Duración real</div>
+                  <div className="text-xs font-mono uppercase tracking-wider" style={{ color: tema.textMuted }}>Duración real</div>
                   {duracionReal !== null ? (
                     <>
                       <div className="text-3xl font-bold font-mono leading-none" style={{ color: colorAlerta }}>
                         {iconoAlerta} {duracionReal.toFixed(1)}
                       </div>
-                      <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>semanas</div>
+                      <div className="text-xs font-mono" style={{ color: tema.textMuted }}>semanas</div>
                       <div className="text-xs font-mono mt-1" style={{ color: '#3d5068' }}>
                         según jaulas proyectadas
                       </div>
@@ -874,7 +876,7 @@ export default function ConsumoViruta() {
                   <div className="px-5 py-3 flex items-center gap-2">
                     <span style={{ color: colorAlerta }}>📅</span>
                     <div>
-                      <div style={{ color: '#4a5f7a' }}>Agotamiento estimado</div>
+                      <div style={{ color: tema.textMuted }}>Agotamiento estimado</div>
                       <div className="font-bold" style={{ color: colorAlerta }}>
                         {fechaAgotamiento
                           ? formatFecha(fechaAgotamiento, { day: '2-digit', month: '2-digit', year: '2-digit' })
@@ -883,10 +885,10 @@ export default function ConsumoViruta() {
                     </div>
                   </div>
                   <div className="px-5 py-3 flex items-center gap-2">
-                    <ShoppingCart size={12} style={{ color: '#ffb300' }} />
+                    <ShoppingCart size={12} style={{ color: tema.amber }} />
                     <div>
-                      <div style={{ color: '#4a5f7a' }}>Comprar antes de</div>
-                      <div className="font-bold" style={{ color: '#ffb300' }}>
+                      <div style={{ color: tema.textMuted }}>Comprar antes de</div>
+                      <div className="font-bold" style={{ color: tema.amber }}>
                         {fechaCompra
                           ? formatFecha(fechaCompra, { day: '2-digit', month: '2-digit', year: '2-digit' })
                           : '—'}
@@ -906,14 +908,14 @@ export default function ConsumoViruta() {
               )}
               {nivelAlerta === 'critico' && (
                 <div className="mx-4 mb-4 px-4 py-3 rounded-xl flex items-center gap-3 text-sm font-mono"
-                  style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.3)', color: '#ff6b80' }}>
+                  style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.3)', color: tema.red }}>
                   <AlertTriangle size={16} />
                   <span>🔴 Stock crítico — menos de 6 semanas. Planificá la compra ahora.</span>
                 </div>
               )}
               {nivelAlerta === 'bajo' && (
                 <div className="mx-4 mb-4 px-4 py-3 rounded-xl flex items-center gap-3 text-sm font-mono"
-                  style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.25)', color: '#ffb300' }}>
+                  style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.25)', color: tema.amber }}>
                   <AlertTriangle size={16} />
                   <span>🟡 Stock moderado — 6–12 semanas. Comprar antes de {fechaCompra
                     ? formatFecha(fechaCompra, { day: '2-digit', month: '2-digit' }) : '—'}.</span>
@@ -926,7 +928,7 @@ export default function ConsumoViruta() {
                 <div className="px-5 py-3 flex items-center gap-3">
                   <span>🐀</span>
                   <div>
-                    <div style={{ color: '#00e676' }}>Ratas</div>
+                    <div style={{ color: tema.accent }}>Ratas</div>
                     <div style={{ color: '#3d5068' }}>{totales.contRatas?.totalJaulas ?? 0} jaulas · {totales.unidRatas.toFixed(1)} unid.</div>
                   </div>
                   <div className="ml-auto font-bold text-white">{(totales.unidRatas * tasa).toFixed(2)} bol/sem</div>
@@ -934,7 +936,7 @@ export default function ConsumoViruta() {
                 <div className="px-5 py-3 flex items-center gap-3">
                   <span>🐭</span>
                   <div>
-                    <div style={{ color: '#40c4ff' }}>Ratones (3 grupos)</div>
+                    <div style={{ color: tema.blue }}>Ratones (3 grupos)</div>
                     <div style={{ color: '#3d5068' }}>{totales.contRatones?.totalJaulas ?? 0} jaulas · {totales.unidRatones.toFixed(1)} unid.</div>
                   </div>
                   <div className="ml-auto font-bold text-white">{(totales.unidRatones * tasa).toFixed(2)} bol/sem</div>
@@ -946,7 +948,7 @@ export default function ConsumoViruta() {
                 <div className="px-5 py-3 flex items-center gap-3 text-xs font-mono"
                   style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                   <CheckCircle size={12} style={{ color: colorConfianza(confianzaModelo.pct), flexShrink: 0 }} />
-                  <span style={{ color: '#4a5f7a' }}>Confianza del modelo:</span>
+                  <span style={{ color: tema.textMuted }}>Confianza del modelo:</span>
                   <span className="font-bold" style={{ color: colorConfianza(confianzaModelo.pct) }}>
                     {confianzaModelo.pct}%
                   </span>
@@ -971,12 +973,12 @@ export default function ConsumoViruta() {
                 style={{ background: 'rgba(13,21,40,0.85)', border: '1.5px solid rgba(64,196,255,0.25)' }}>
                 <div className="px-6 py-3 flex items-center gap-2"
                   style={{ borderBottom: '1px solid rgba(64,196,255,0.12)', background: 'rgba(64,196,255,0.04)' }}>
-                  <TrendingDown size={14} style={{ color: '#40c4ff' }} />
-                  <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#40c4ff' }}>
+                  <TrendingDown size={14} style={{ color: tema.blue }} />
+                  <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.blue }}>
                     Proyección futura · evolución de jaulas y consumo
                   </span>
                   <span className="ml-auto text-xs font-mono px-2 py-0.5 rounded-full"
-                    style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.2)', color: '#40c4ff' }}>
+                    style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.2)', color: tema.blue }}>
                     2 cambios/sem fijos
                   </span>
                 </div>
@@ -990,13 +992,13 @@ export default function ConsumoViruta() {
                     const colJ   = p.deltaJaulas > 0 ? '#40c4ff' : p.deltaJaulas < 0 ? '#00e676' : '#4a5f7a'
                     return (
                       <div key={p.dias} className="px-4 py-4 flex flex-col gap-1.5">
-                        <div className="text-xs font-semibold font-mono uppercase tracking-widest" style={{ color: '#4a5f7a' }}>
+                        <div className="text-xs font-semibold font-mono uppercase tracking-widest" style={{ color: tema.textMuted }}>
                           +{p.dias}d
                         </div>
                         {/* Jaulas */}
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-xl font-bold font-mono text-white">{p.jaulasTotal}</span>
-                          <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>jaulas</span>
+                          <span className="text-xs font-mono" style={{ color: tema.textMuted }}>jaulas</span>
                           {p.deltaJaulas !== 0 && (
                             <span className="text-xs font-mono font-semibold ml-auto" style={{ color: colJ }}>
                               {signo}{p.deltaJaulas}
@@ -1005,10 +1007,10 @@ export default function ConsumoViruta() {
                         </div>
                         {/* Consumo */}
                         <div className="flex items-baseline gap-1">
-                          <span className="text-sm font-bold font-mono" style={{ color: '#40c4ff' }}>
+                          <span className="text-sm font-bold font-mono" style={{ color: tema.blue }}>
                             {p.consumoSem.toFixed(2)}
                           </span>
-                          <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>bol/sem</span>
+                          <span className="text-xs font-mono" style={{ color: tema.textMuted }}>bol/sem</span>
                         </div>
                         {/* Delta % */}
                         {p.deltaPct !== 0 && (
@@ -1043,11 +1045,11 @@ export default function ConsumoViruta() {
                     <div className="mx-4 mb-4 mt-1 px-4 py-3 rounded-xl text-xs font-mono"
                       style={{ background: 'rgba(255,152,0,0.06)', border: '1px solid rgba(255,152,0,0.2)', color: '#ff9800' }}>
                       <div className="font-semibold mb-1">📈 Impacto futuro a 90 días</div>
-                      <div style={{ color: '#8a9bb0' }}>
-                        Hoy: <strong style={{ color: 'white' }}>{consumoHoy.toFixed(2)} bol/sem</strong>
+                      <div style={{ color: tema.textSecondary }}>
+                        Hoy: <strong style={{ color: tema.textPrimary }}>{consumoHoy.toFixed(2)} bol/sem</strong>
                         {' · '}{jaulasHoy} jaulas
                         {' → '}
-                        90d: <strong style={{ color: '#40c4ff' }}>{p90.consumoSem.toFixed(2)} bol/sem</strong>
+                        90d: <strong style={{ color: tema.blue }}>{p90.consumoSem.toFixed(2)} bol/sem</strong>
                         {' · '}{p90.jaulasTotal} jaulas
                         {' ('}
                         <span style={{ color: p90.deltaPct > 0 ? '#ff9800' : '#00e676' }}>
@@ -1070,12 +1072,12 @@ export default function ConsumoViruta() {
               style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(255,179,0,0.25)' }}>
               <div className="px-6 py-3 flex items-center gap-2"
                 style={{ borderBottom: '1px solid rgba(255,179,0,0.12)', background: 'rgba(255,179,0,0.04)' }}>
-                <Calendar size={14} style={{ color: '#ffb300' }} />
-                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#ffb300' }}>
+                <Calendar size={14} style={{ color: tema.amber }} />
+                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.amber }}>
                   Ciclo de cambios de cama
                 </span>
                 <span className="ml-auto text-xs font-mono px-2 py-0.5 rounded-full"
-                  style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.2)', color: '#ffb300' }}>
+                  style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.2)', color: tema.amber }}>
                   Lunes · Viernes · 08:00
                 </span>
               </div>
@@ -1084,14 +1086,14 @@ export default function ConsumoViruta() {
 
                 {/* Próximo cambio desde hoy */}
                 <div className="px-5 py-5 text-center flex flex-col items-center gap-1">
-                  <div className="text-xs font-mono uppercase tracking-wider" style={{ color: '#4a5f7a' }}>Próximo cambio estimado</div>
+                  <div className="text-xs font-mono uppercase tracking-wider" style={{ color: tema.textMuted }}>Próximo cambio estimado</div>
                   {proximoCambioHoy ? (
                     <>
                       <div className="text-2xl font-bold font-mono text-white leading-none">{proximoCambioHoy.dia}</div>
-                      <div className="text-sm font-mono mt-0.5" style={{ color: '#ffb300' }}>
+                      <div className="text-sm font-mono mt-0.5" style={{ color: tema.amber }}>
                         {proximoCambioHoy.fecha} · 08:00
                       </div>
-                      <div className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
+                      <div className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>
                         en {proximoCambioHoy.diasRestantes < 1
                           ? `${Math.round(proximoCambioHoy.diasRestantes * 24)} hs`
                           : `${proximoCambioHoy.diasRestantes.toFixed(1)} días`}
@@ -1102,7 +1104,7 @@ export default function ConsumoViruta() {
 
                 {/* Contexto del último censo */}
                 <div className="px-5 py-5 text-center flex flex-col items-center gap-1">
-                  <div className="text-xs font-mono uppercase tracking-wider" style={{ color: '#4a5f7a' }}>Último censo · posición en ciclo</div>
+                  <div className="text-xs font-mono uppercase tracking-wider" style={{ color: tema.textMuted }}>Último censo · posición en ciclo</div>
                   {ultimoCenso ? (() => {
                     const ctx  = contextoCiclo(ultimoCenso.fecha, ultimoCenso.hora)
                     const prob = probCambioReciente(ultimoCenso.fecha, ultimoCenso.hora)
@@ -1113,7 +1115,7 @@ export default function ConsumoViruta() {
                         <div className="text-lg font-bold font-mono text-white leading-none">
                           {DIAS_SEMANA[diaLocal(ultimoCenso.fecha)]}
                         </div>
-                        <div className="text-sm font-mono flex items-center gap-1.5" style={{ color: '#4a5f7a' }}>
+                        <div className="text-sm font-mono flex items-center gap-1.5" style={{ color: tema.textMuted }}>
                           <Clock size={11} />
                           {ultimoCenso.hora ?? '—'}
                         </div>
@@ -1163,14 +1165,14 @@ export default function ConsumoViruta() {
               {pendienteConfirmacion && ultimoCenso && (
                 <div className="mx-4 mb-4 px-4 py-3 rounded-xl flex items-center gap-3"
                   style={{ background: 'rgba(255,179,0,0.06)', border: '1px solid rgba(255,179,0,0.25)' }}>
-                  <Calendar size={14} style={{ color: '#ffb300', flexShrink: 0 }} />
-                  <div className="flex-1 text-xs font-mono" style={{ color: '#ffb300' }}>
+                  <Calendar size={14} style={{ color: tema.amber, flexShrink: 0 }} />
+                  <div className="flex-1 text-xs font-mono" style={{ color: tema.amber }}>
                     El último censo fue tomado el <strong>{DIAS_SEMANA[diaLocal(ultimoCenso.fecha)]}</strong>.
                     Confirmá si se realizó el cambio de cama para mejorar la precisión del modelo.
                   </div>
                   <button onClick={() => abrirConfirmar(ultimoCenso)}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono font-semibold shrink-0"
-                    style={{ background: 'rgba(255,179,0,0.14)', border: '1px solid rgba(255,179,0,0.4)', color: '#ffb300' }}
+                    style={{ background: 'rgba(255,179,0,0.14)', border: '1px solid rgba(255,179,0,0.4)', color: tema.amber }}
                     onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,179,0,0.22)' }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,179,0,0.14)' }}>
                     <CheckCircle size={12} /> Confirmar cambio de cama
@@ -1181,7 +1183,7 @@ export default function ConsumoViruta() {
               {/* Banner aviso cambio reciente sin corregir */}
               {avisoRelleno && !avisoRelleno.confirmado && (
                 <div className="mx-4 mb-4 px-4 py-3 rounded-xl flex items-start gap-3 text-xs font-mono"
-                  style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.3)', color: '#ffb300' }}>
+                  style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.3)', color: tema.amber }}>
                   <AlertTriangle size={14} className="shrink-0 mt-0.5" />
                   <span>
                     El último censo fue tomado el <strong>{avisoRelleno.dia}</strong> con{' '}
@@ -1193,14 +1195,14 @@ export default function ConsumoViruta() {
               )}
               {avisoRelleno?.confirmado === 'si' && (
                 <div className="mx-4 mb-4 px-4 py-3 rounded-xl flex items-center gap-3 text-xs font-mono"
-                  style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.2)', color: '#00e676' }}>
+                  style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.2)', color: tema.accent }}>
                   <CheckCircle size={14} className="shrink-0" />
                   <span>Cambio de cama confirmado en este censo — el modelo usa este dato con mayor peso en la calibración.</span>
                 </div>
               )}
               {avisoRelleno?.confirmado === 'parcial' && (
                 <div className="mx-4 mb-4 px-4 py-3 rounded-xl flex items-center gap-3 text-xs font-mono"
-                  style={{ background: 'rgba(64,196,255,0.06)', border: '1px solid rgba(64,196,255,0.2)', color: '#40c4ff' }}>
+                  style={{ background: 'rgba(64,196,255,0.06)', border: '1px solid rgba(64,196,255,0.2)', color: tema.blue }}>
                   <CheckCircle size={14} className="shrink-0" />
                   <span>
                     Cambio parcial confirmado
@@ -1220,7 +1222,7 @@ export default function ConsumoViruta() {
                 <ClipboardList size={18} style={{ color: '#a78bfa' }} />
                 <div className="flex-1">
                   <div className="font-bold text-sm text-white">Movimientos de stock</div>
-                  <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                  <div className="text-xs font-mono" style={{ color: tema.textMuted }}>
                     Censos → conteos reales · Compras → ingresos de mercadería
                   </div>
                 </div>
@@ -1234,7 +1236,7 @@ export default function ConsumoViruta() {
                   </button>
                   <button onClick={() => setModalCompra(true)}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono font-semibold"
-                    style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.3)', color: '#00e676' }}
+                    style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.3)', color: tema.accent }}
                     onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,230,118,0.18)' }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,230,118,0.1)' }}>
                     <ShoppingCart size={12} /> Registrar compra
@@ -1245,9 +1247,9 @@ export default function ConsumoViruta() {
               {/* Instrucción */}
               <div className="px-6 pt-4 pb-2">
                 <div className="rounded-xl px-4 py-3 text-xs font-mono"
-                  style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', color: '#4a5f7a' }}>
+                  style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', color: tema.textMuted }}>
                   <span style={{ color: '#a78bfa' }}>📊 Censo</span>: conteo real de bolsas disponibles (fuente del cálculo de consumo)&nbsp;·&nbsp;
-                  <span style={{ color: '#00e676' }}>📦 Compra</span>: bolsas que ingresaron al stock (no alteran el cálculo de consumo histórico)
+                  <span style={{ color: tema.accent }}>📦 Compra</span>: bolsas que ingresaron al stock (no alteran el cálculo de consumo histórico)
                 </div>
               </div>
 
@@ -1269,11 +1271,11 @@ export default function ConsumoViruta() {
                         <div key={item.id}
                           className="rounded-xl px-4 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-1"
                           style={{ background: 'rgba(0,230,118,0.04)', border: '1px solid rgba(0,230,118,0.15)' }}>
-                          <span className="text-xs font-mono" style={{ color: '#00e676' }}>📦 Compra</span>
-                          <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                          <span className="text-xs font-mono" style={{ color: tema.accent }}>📦 Compra</span>
+                          <span className="text-xs font-mono" style={{ color: tema.textMuted }}>
                             {formatFecha(item.fecha)}
                           </span>
-                          <span className="text-sm font-bold font-mono" style={{ color: '#00e676' }}>
+                          <span className="text-sm font-bold font-mono" style={{ color: tema.accent }}>
                             +{item.bolsas} bolsas
                           </span>
                           <button onClick={() => eliminarCompraItem(item.id)}
@@ -1310,19 +1312,19 @@ export default function ConsumoViruta() {
                         {/* Badge cambio de cama: confirmado o inferido */}
                         {cc?.tipo === 'si' && (
                           <span className="text-xs font-mono px-1.5 py-0.5 rounded-full"
-                            style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676' }}>
+                            style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)', color: tema.accent }}>
                             ✅ Cambio confirmado
                           </span>
                         )}
                         {cc?.tipo === 'no' && (
                           <span className="text-xs font-mono px-1.5 py-0.5 rounded-full"
-                            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a' }}>
+                            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: tema.textMuted }}>
                             — Sin cambio
                           </span>
                         )}
                         {cc?.tipo === 'parcial' && (
                           <span className="text-xs font-mono px-1.5 py-0.5 rounded-full"
-                            style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.25)', color: '#40c4ff' }}>
+                            style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.25)', color: tema.blue }}>
                             ⚡ Parcial{cc.bioteriosAfectados?.length ? `: ${cc.bioteriosAfectados.map(labelCorto).join(', ')}` : ''}
                           </span>
                         )}
@@ -1332,16 +1334,16 @@ export default function ConsumoViruta() {
                           const ctx = contextoCiclo(item.fecha, item.hora)
                           return (
                             <span className="text-xs font-mono px-1.5 py-0.5 rounded-full"
-                              style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.22)', color: '#ffb300' }}>
+                              style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.22)', color: tema.amber }}>
                               🔄 Probable cambio
                             </span>
                           )
                         })()}
                         <span className="text-sm font-bold font-mono text-white">{item.bolsas} bolsas</span>
                         {consumo && (
-                          <span className="text-xs font-mono" style={{ color: '#ffb300' }}>
+                          <span className="text-xs font-mono" style={{ color: tema.amber }}>
                             −{consumo.consumido} consumidas
-                            {consumo.porSem && <span style={{ color: '#4a5f7a' }}> ({consumo.porSem} bol/sem)</span>}
+                            {consumo.porSem && <span style={{ color: tema.textMuted }}> ({consumo.porSem} bol/sem)</span>}
                           </span>
                         )}
                         <span className="font-mono text-xs" style={{ color: '#2a3a50' }}>
@@ -1351,7 +1353,7 @@ export default function ConsumoViruta() {
                         {necesitaConfirmar && (
                           <button onClick={() => abrirConfirmar(item)}
                             className="text-xs font-mono px-2 py-0.5 rounded-lg"
-                            style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.25)', color: '#ffb300' }}
+                            style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.25)', color: tema.amber }}
                             title="Confirmar si se realizó el cambio de cama">
                             Confirmar ✓
                           </button>
@@ -1372,7 +1374,7 @@ export default function ConsumoViruta() {
                   style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(255,255,255,0.07)' }}>
                   <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                     <div className="font-bold text-xs text-white">Evolución del stock (censos)</div>
-                    <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>bolsas disponibles por fecha de censo</div>
+                    <div className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>bolsas disponibles por fecha de censo</div>
                   </div>
                   <div style={{ height: 190, width: '100%', minWidth: 0 }}>
                     <ResponsiveContainer width="99%" height={190}>
@@ -1387,7 +1389,7 @@ export default function ConsumoViruta() {
                         <XAxis dataKey="f" tick={{ fill: '#4a5f7a', fontSize: 10, fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
                         <YAxis tick={{ fill: '#4a5f7a', fontSize: 10, fontFamily: 'monospace' }} axisLine={false} tickLine={false} width={30} />
                         <Tooltip contentStyle={{ background: '#0d1528', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px' }}
-                          labelStyle={{ color: '#c9d4e0' }} formatter={v => [`${v} bolsas`, 'Censo']} />
+                          labelStyle={{ color: tema.textPrimary }} formatter={v => [`${v} bolsas`, 'Censo']} />
                         <Area type="monotone" dataKey="bolsas" stroke="#a78bfa" strokeWidth={2} fill="url(#virutaGrad)" dot={{ fill: '#a78bfa', r: 3 }} />
                       </AreaChart>
                     </ResponsiveContainer>
@@ -1399,7 +1401,7 @@ export default function ConsumoViruta() {
                     style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(255,255,255,0.07)' }}>
                     <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                       <div className="font-bold text-xs text-white">Consumo real vs. estimado</div>
-                      <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>bolsas entre censos consecutivos</div>
+                      <div className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>bolsas entre censos consecutivos</div>
                     </div>
                     <div style={{ height: 190, width: '100%', minWidth: 0 }}>
                       <ResponsiveContainer width="99%" height={190}>
@@ -1408,7 +1410,7 @@ export default function ConsumoViruta() {
                           <XAxis dataKey="f" tick={{ fill: '#4a5f7a', fontSize: 10, fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
                           <YAxis tick={{ fill: '#4a5f7a', fontSize: 10, fontFamily: 'monospace' }} axisLine={false} tickLine={false} width={30} />
                           <Tooltip contentStyle={{ background: '#0d1528', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px' }}
-                            labelStyle={{ color: '#c9d4e0' }}
+                            labelStyle={{ color: tema.textPrimary }}
                             formatter={(v, n) => [`${v} bolsas`, n === 'real' ? 'Real consumido' : 'Estimado']} />
                           <Bar dataKey="real"     fill="rgba(167,139,250,0.6)" radius={[3,3,0,0]} name="real" />
                           <Bar dataKey="estimado" fill="rgba(180,130,80,0.3)"  radius={[3,3,0,0]} name="estimado" />
@@ -1422,30 +1424,30 @@ export default function ConsumoViruta() {
 
             {/* ── Detalle por tipo de jaula ── */}
             <div>
-              <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#4a5f7a' }}>
+              <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: tema.textMuted }}>
                 <Layers size={12} style={{ display: 'inline', marginRight: 6 }} />
                 Jaulas activas por tipo
               </h2>
               <div className="grid md:grid-cols-2 gap-3">
                 {totales.contRatas && (
                   <TarjetaJaulas label="Bioterio de Ratas" icon="🐀" color="#00e676" unidades={totales.unidRatas} filas={[
-                    { tipo: 'Jaula de macho reproductor',    n: totales.contRatas.machos,       peso: PESOS.macho_repro,     color: '#40c4ff' },
-                    { tipo: 'Jaula chica (hembra + camada)', n: totales.contRatas.lactantes,    peso: PESOS.hembra_lactante, color: '#ce93d8' },
-                    { tipo: 'Jaula grande (hembra repro.)',  n: totales.contRatas.hembrasRepro, peso: PESOS.hembra_repro,    color: '#ce93d8' },
-                    { tipo: 'Jaula grande (stock adultos)',  n: totales.contRatas.jAdultos,     peso: PESOS.stock_adultos,   color: '#ff6b80' },
-                    { tipo: 'Jaula mediana (stock jóvenes)',n: totales.contRatas.jJovenes,     peso: PESOS.stock_jovenes,   color: '#ffb300' },
-                    { tipo: 'Jaula chica (stock crías)',     n: totales.contRatas.jCrias,       peso: PESOS.stock_crias,     color: '#00e676' },
+                    { tipo: 'Jaula de macho reproductor',    n: totales.contRatas.machos,       peso: PESOS.macho_repro,     color: tema.blue },
+                    { tipo: 'Jaula chica (hembra + camada)', n: totales.contRatas.lactantes,    peso: PESOS.hembra_lactante, color: tema.purple },
+                    { tipo: 'Jaula grande (hembra repro.)',  n: totales.contRatas.hembrasRepro, peso: PESOS.hembra_repro,    color: tema.purple },
+                    { tipo: 'Jaula grande (stock adultos)',  n: totales.contRatas.jAdultos,     peso: PESOS.stock_adultos,   color: tema.red },
+                    { tipo: 'Jaula mediana (stock jóvenes)',n: totales.contRatas.jJovenes,     peso: PESOS.stock_jovenes,   color: tema.amber },
+                    { tipo: 'Jaula chica (stock crías)',     n: totales.contRatas.jCrias,       peso: PESOS.stock_crias,     color: tema.accent },
                   ]} />
                 )}
                 {totales.contRatones && (
                   <TarjetaJaulas label="Ratones (Balb/C · C57 · Híbridos)" icon="🐭" color="#40c4ff" unidades={totales.unidRatones}
                     nota="Jaula estándar única para todos los grupos" filas={[
-                    { tipo: 'Jaula estándar (machos repro.)',   n: totales.contRatones.machos,       peso: PESOS.raton_std, color: '#40c4ff' },
-                    { tipo: 'Jaula estándar (hembra + camada)',n: totales.contRatones.lactantes,    peso: PESOS.raton_std, color: '#ce93d8' },
-                    { tipo: 'Jaula estándar (hembra repro.)',   n: totales.contRatones.hembrasRepro, peso: PESOS.raton_std, color: '#ce93d8' },
-                    { tipo: 'Jaula estándar (stock adultos)',   n: totales.contRatones.jAdultos,     peso: PESOS.raton_std, color: '#ff6b80' },
-                    { tipo: 'Jaula estándar (stock jóvenes)',   n: totales.contRatones.jJovenes,     peso: PESOS.raton_std, color: '#ffb300' },
-                    { tipo: 'Jaula estándar (stock crías)',     n: totales.contRatones.jCrias,       peso: PESOS.raton_std, color: '#00e676' },
+                    { tipo: 'Jaula estándar (machos repro.)',   n: totales.contRatones.machos,       peso: PESOS.raton_std, color: tema.blue },
+                    { tipo: 'Jaula estándar (hembra + camada)',n: totales.contRatones.lactantes,    peso: PESOS.raton_std, color: tema.purple },
+                    { tipo: 'Jaula estándar (hembra repro.)',   n: totales.contRatones.hembrasRepro, peso: PESOS.raton_std, color: tema.purple },
+                    { tipo: 'Jaula estándar (stock adultos)',   n: totales.contRatones.jAdultos,     peso: PESOS.raton_std, color: tema.red },
+                    { tipo: 'Jaula estándar (stock jóvenes)',   n: totales.contRatones.jJovenes,     peso: PESOS.raton_std, color: tema.amber },
+                    { tipo: 'Jaula estándar (stock crías)',     n: totales.contRatones.jCrias,       peso: PESOS.raton_std, color: tema.accent },
                   ]} />
                 )}
               </div>
@@ -1457,7 +1459,7 @@ export default function ConsumoViruta() {
               <div className="flex items-center gap-2 text-xs font-semibold" style={{ color: '#6a8099' }}>
                 <Info size={12} /> Cómo funciona el sistema adaptativo
               </div>
-              <div className="grid md:grid-cols-2 gap-x-8 gap-y-1 text-xs font-mono" style={{ color: '#4a5f7a' }}>
+              <div className="grid md:grid-cols-2 gap-x-8 gap-y-1 text-xs font-mono" style={{ color: tema.textMuted }}>
                 <div className="space-y-1">
                   <div className="font-semibold" style={{ color: '#5a7a9a' }}>Pesos por tipo de jaula</div>
                   <div>Jaula macho reproductor  ×{PESOS.macho_repro}</div>
@@ -1478,7 +1480,7 @@ export default function ConsumoViruta() {
                     Períodos con cambios confirmados tienen mayor peso (×1.5 ambos / ×1.0 uno / ×0.6 ninguno).
                   </div>
                   {calibrado && (
-                    <div style={{ color: '#00e676' }}>
+                    <div style={{ color: tema.accent }}>
                       Tasa aprendida: {tasa.toFixed(4)} bol/unid/sem (promedio ponderado de {calibracion.periodos} períodos)
                     </div>
                   )}
@@ -1531,21 +1533,21 @@ function TarjetaJaulas({ label, icon, color, unidades, filas, nota }) {
         <span>{icon}</span>
         <div className="flex-1">
           <div className="font-bold text-sm text-white">{label}</div>
-          {nota && <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{nota}</div>}
+          {nota && <div className="text-xs font-mono" style={{ color: tema.textMuted }}>{nota}</div>}
         </div>
         <div className="text-right">
           <div className="font-bold font-mono text-sm" style={{ color }}>{total} jaulas</div>
-          <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{unidades.toFixed(1)} unid./sem.</div>
+          <div className="text-xs font-mono" style={{ color: tema.textMuted }}>{unidades.toFixed(1)} unid./sem.</div>
         </div>
       </div>
       <div className="px-4 py-3 space-y-1.5">
         {filas.map(({ tipo, n, peso, color: c }) => n > 0 ? (
           <div key={tipo} className="flex items-center gap-2 text-xs">
             <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: c }} />
-            <span className="flex-1 font-mono" style={{ color: '#8a9bb0' }}>{tipo}</span>
+            <span className="flex-1 font-mono" style={{ color: tema.textSecondary }}>{tipo}</span>
             <span className="font-mono font-semibold text-white">{n}</span>
             <span className="font-mono" style={{ color: '#3d5068' }}>×{peso}×{CAMBIOS_SEM}</span>
-            <span className="font-mono w-10 text-right" style={{ color: '#4a5f7a' }}>={+(n * peso * CAMBIOS_SEM).toFixed(1)}</span>
+            <span className="font-mono w-10 text-right" style={{ color: tema.textMuted }}>={+(n * peso * CAMBIOS_SEM).toFixed(1)}</span>
           </div>
         ) : null)}
         {filas.every(f => f.n === 0) && (
@@ -1595,19 +1597,19 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
 
   const bannerCiclo = (() => {
     if (cambioCama === 'si') return {
-      color: '#00e676', bg: 'rgba(0,230,118,0.08)', border: 'rgba(0,230,118,0.3)',
+      color: tema.accent, bg: 'rgba(0,230,118,0.08)', border: 'rgba(0,230,118,0.3)',
       texto: '✅ Cambio confirmado — el modelo usará este dato con mayor peso en la calibración.',
     }
     if (cambioCama === 'no') return {
-      color: '#4a5f7a', bg: 'rgba(255,255,255,0.03)', border: 'rgba(255,255,255,0.08)',
+      color: tema.textMuted, bg: 'rgba(255,255,255,0.03)', border: 'rgba(255,255,255,0.08)',
       texto: '— Sin cambio de cama — el stock refleja solo el consumo diario.',
     }
     if (cambioCama === 'parcial') return {
-      color: '#40c4ff', bg: 'rgba(64,196,255,0.06)', border: 'rgba(64,196,255,0.25)',
+      color: tema.blue, bg: 'rgba(64,196,255,0.06)', border: 'rgba(64,196,255,0.25)',
       texto: `⚡ Cambio parcial${bioAfect.length ? ` en: ${bioAfect.map(labelCorto).join(', ')}` : ' — seleccioná los bioterios abajo'}.`,
     }
     if (probPct >= 70) return {
-      color: '#ffb300', bg: 'rgba(255,179,0,0.08)', border: 'rgba(255,179,0,0.3)',
+      color: tema.amber, bg: 'rgba(255,179,0,0.08)', border: 'rgba(255,179,0,0.3)',
       texto: `🔄 Probable cambio de cama realizado (${probPct}%) — el stock refleja la situación post-cambio.`,
     }
     if (probPct >= 45) return {
@@ -1615,11 +1617,11 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
       texto: `⚠ Posible cambio en proceso (${probPct}%) — el stock podría estar variando.`,
     }
     if (esLunesOViernes && parseInt(hora.split(':')[0]) < 9) return {
-      color: '#4a5f7a', bg: 'rgba(255,255,255,0.03)', border: 'rgba(255,255,255,0.08)',
+      color: tema.textMuted, bg: 'rgba(255,255,255,0.03)', border: 'rgba(255,255,255,0.08)',
       texto: `📅 Antes del cambio de cama de hoy — el stock aún no fue afectado.`,
     }
     return {
-      color: '#00e676', bg: 'rgba(0,230,118,0.05)', border: 'rgba(0,230,118,0.2)',
+      color: tema.accent, bg: 'rgba(0,230,118,0.05)', border: 'rgba(0,230,118,0.2)',
       texto: `✓ Momento neutro del ciclo (${probPct}% prob.) — buen momento para censar.`,
     }
   })()
@@ -1631,7 +1633,7 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
         style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(167,139,250,0.3)', boxShadow: '0 0 60px rgba(167,139,250,0.12)' }}>
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(167,139,250,0.12)', background: 'rgba(167,139,250,0.05)' }}>
           <div className="font-bold text-white text-sm">📊 Registrar censo de viruta</div>
-          <div className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
+          <div className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>
             {esPrimero
               ? 'Primer censo — ¿cuántas bolsas tenés disponibles hoy?'
               : 'Conteo real de bolsas disponibles ahora mismo'}
@@ -1642,19 +1644,19 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
           {/* Fecha y hora */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>Fecha</label>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>Fecha</label>
               <input type="date" value={fecha} onChange={e => { setFecha(e.target.value); setCambioCama(null); setBioAfect([]) }} required
                 className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
-                style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }} />
+                style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }} />
             </div>
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
                 <Clock size={10} style={{ display: 'inline', marginRight: 4 }} />
                 Hora
               </label>
               <input type="time" value={hora} onChange={e => setHora(e.target.value)} required
                 className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
-                style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }} />
+                style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }} />
             </div>
           </div>
 
@@ -1662,7 +1664,7 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
           {esLunesOViernes && (
             <div className="rounded-xl p-3 space-y-2.5"
               style={{ background: 'rgba(255,179,0,0.05)', border: '1px solid rgba(255,179,0,0.2)' }}>
-              <div className="text-xs font-semibold" style={{ color: '#ffb300' }}>
+              <div className="text-xs font-semibold" style={{ color: tema.amber }}>
                 🔄 Hoy es {DIAS_SEMANA[diaLocal(fecha)]} — día de cambio de cama
               </div>
               <div className="text-xs font-mono mb-1" style={{ color: '#6a8099' }}>¿Se realizó el cambio?</div>
@@ -1687,7 +1689,7 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
               {/* Selector de bioterios para parcial */}
               {cambioCama === 'parcial' && (
                 <div className="space-y-1 pt-1">
-                  <div className="text-xs font-mono mb-1.5" style={{ color: '#4a5f7a' }}>Bioterios con cambio:</div>
+                  <div className="text-xs font-mono mb-1.5" style={{ color: tema.textMuted }}>Bioterios con cambio:</div>
                   <div className="grid grid-cols-2 gap-1.5">
                     {TODOS.map(({ id, label, icon }) => (
                       <label key={id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer"
@@ -1728,11 +1730,11 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
           {/* Próximo cambio */}
           {proxCamb && (
             <div className="rounded-xl px-3 py-2.5 flex items-center gap-3 text-xs font-mono"
-              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', color: '#4a5f7a' }}>
-              <Calendar size={12} style={{ color: '#ffb300' }} />
+              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', color: tema.textMuted }}>
+              <Calendar size={12} style={{ color: tema.amber }} />
               <div>
                 <span style={{ color: '#6a8099' }}>Próximo cambio de cama: </span>
-                <span className="font-bold" style={{ color: '#ffb300' }}>{proxCamb.dia} {proxCamb.fecha} · 08:00</span>
+                <span className="font-bold" style={{ color: tema.amber }}>{proxCamb.dia} {proxCamb.fecha} · 08:00</span>
                 <span style={{ color: '#3d5068' }}>
                   {' '}(en {proxCamb.diasRestantes < 1
                     ? `${Math.round(proxCamb.diasRestantes * 24)} hs`
@@ -1744,14 +1746,14 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
 
           {/* Bolsas */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
               Bolsas disponibles ahora
             </label>
             <input type="number" min="0" step="0.25" value={bolsas}
               onChange={e => { setBolsas(e.target.value); setError('') }}
               placeholder="Ej: 20.25" required
               className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
-              style={{ background: 'rgba(8,13,26,0.9)', border: `1px solid ${error ? 'rgba(255,61,87,0.5)' : 'rgba(30,51,82,0.9)'}`, color: '#c9d4e0', outline: 'none' }} />
+              style={{ background: 'rgba(8,13,26,0.9)', border: `1px solid ${error ? 'rgba(255,61,87,0.5)' : 'rgba(30,51,82,0.9)'}`, color: tema.textPrimary, outline: 'none' }} />
             <div className="flex gap-2 mt-2">
               <span className="text-xs font-mono self-center" style={{ color: '#3d5068' }}>Fracción:</span>
               {FRACCIONES.map(f => (
@@ -1765,13 +1767,13 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
             {preview !== null && (
               <div className="mt-2 text-xs font-mono" style={{ color: '#5a7a9a' }}>→ {preview} bolsas</div>
             )}
-            {error && <div className="mt-1.5 text-xs font-mono" style={{ color: '#ff6b80' }}>⚠ {error}</div>}
+            {error && <div className="mt-1.5 text-xs font-mono" style={{ color: tema.red }}>⚠ {error}</div>}
           </div>
 
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onCerrar}
               className="flex-1 py-2.5 rounded-xl text-sm font-mono"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a' }}>
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: tema.textMuted }}>
               Cancelar
             </button>
             <button type="submit"
@@ -1810,7 +1812,7 @@ function ModalConfirmarCambio({ censo, onConfirmar, onCerrar }) {
         style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(255,179,0,0.3)', boxShadow: '0 0 60px rgba(255,179,0,0.08)' }}>
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(255,179,0,0.12)', background: 'rgba(255,179,0,0.04)' }}>
           <div className="font-bold text-white text-sm">🔄 Confirmar cambio de cama</div>
-          <div className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
+          <div className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>
             Censo del {diaStr} {formatFecha(censo.fecha, { day: '2-digit', month: '2-digit' })}
             {censo.hora ? ` · ${censo.hora}` : ''}
           </div>
@@ -1843,7 +1845,7 @@ function ModalConfirmarCambio({ censo, onConfirmar, onCerrar }) {
           {/* Selector de bioterios para parcial */}
           {tipo === 'parcial' && (
             <div className="space-y-1.5">
-              <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Bioterios con cambio:</div>
+              <div className="text-xs font-mono" style={{ color: tema.textMuted }}>Bioterios con cambio:</div>
               <div className="grid grid-cols-2 gap-1.5">
                 {TODOS.map(({ id, label, icon }) => (
                   <label key={id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer"
@@ -1879,7 +1881,7 @@ function ModalConfirmarCambio({ censo, onConfirmar, onCerrar }) {
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onCerrar}
               className="flex-1 py-2.5 rounded-xl text-sm font-mono"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a' }}>
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: tema.textMuted }}>
               Cancelar
             </button>
             <button type="button" onClick={confirmar} disabled={!tipo}
@@ -1933,50 +1935,50 @@ function ModalCompra({ stockActual, onConfirmar, onCerrar }) {
         style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(0,230,118,0.3)', boxShadow: '0 0 60px rgba(0,230,118,0.08)' }}>
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(0,230,118,0.12)', background: 'rgba(0,230,118,0.04)' }}>
           <div className="font-bold text-white text-sm">📦 Registrar compra / ingreso de viruta</div>
-          <div className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
+          <div className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>
             Bolsas nuevas que ingresaron al stock — no altera el historial de consumo
           </div>
         </div>
         <form onSubmit={confirmar} className="px-6 py-5 space-y-4">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>Fecha de ingreso</label>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>Fecha de ingreso</label>
             <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} required
               className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
-              style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', outline: 'none' }} />
+              style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }} />
           </div>
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
               Bolsas a agregar al stock
             </label>
             <input type="number" min="0.25" step="0.25" value={bolsas}
               onChange={e => { setBolsas(e.target.value); setError('') }}
               placeholder="Ej: 10" required
               className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
-              style={{ background: 'rgba(8,13,26,0.9)', border: `1px solid ${error ? 'rgba(255,61,87,0.5)' : 'rgba(30,51,82,0.9)'}`, color: '#c9d4e0', outline: 'none' }} />
+              style={{ background: 'rgba(8,13,26,0.9)', border: `1px solid ${error ? 'rgba(255,61,87,0.5)' : 'rgba(30,51,82,0.9)'}`, color: tema.textPrimary, outline: 'none' }} />
             <div className="flex gap-2 mt-2">
               <span className="text-xs font-mono self-center" style={{ color: '#3d5068' }}>Fracción:</span>
               {FRACCIONES.map(f => (
                 <button key={f} type="button" onClick={() => aplicarFraccion(bolsas, f)}
                   className="px-2 py-1 rounded-lg text-xs font-mono"
-                  style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.2)', color: '#00e676' }}>
+                  style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.2)', color: tema.accent }}>
                   {f === 0 ? 'Entera' : f === 0.25 ? '¼' : f === 0.5 ? '½' : '¾'}
                 </button>
               ))}
             </div>
-            {error && <div className="mt-1.5 text-xs font-mono" style={{ color: '#ff6b80' }}>⚠ {error}</div>}
+            {error && <div className="mt-1.5 text-xs font-mono" style={{ color: tema.red }}>⚠ {error}</div>}
           </div>
 
           {nuevoStock !== null && (
             <div className="rounded-xl px-4 py-3 text-xs font-mono"
               style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.2)' }}>
-              <div style={{ color: '#4a5f7a' }}>Stock actual: <span className="text-white">{stockActual} bolsas</span></div>
-              <div style={{ color: '#4a5f7a' }}>+ Compra: <span style={{ color: '#00e676' }}>+{bolsasNum} bolsas</span></div>
-              <div className="mt-1 font-bold" style={{ color: '#00e676' }}>Nuevo stock: {nuevoStock} bolsas</div>
+              <div style={{ color: tema.textMuted }}>Stock actual: <span className="text-white">{stockActual} bolsas</span></div>
+              <div style={{ color: tema.textMuted }}>+ Compra: <span style={{ color: tema.accent }}>+{bolsasNum} bolsas</span></div>
+              <div className="mt-1 font-bold" style={{ color: tema.accent }}>Nuevo stock: {nuevoStock} bolsas</div>
             </div>
           )}
           {stockActual === null && !isNaN(bolsasNum) && (
             <div className="rounded-xl px-4 py-3 text-xs font-mono"
-              style={{ background: 'rgba(255,179,0,0.06)', border: '1px solid rgba(255,179,0,0.2)', color: '#ffb300' }}>
+              style={{ background: 'rgba(255,179,0,0.06)', border: '1px solid rgba(255,179,0,0.2)', color: tema.amber }}>
               ⚠ Sin censos registrados. Registrá un censo después para calcular el consumo correctamente.
             </div>
           )}
@@ -1984,12 +1986,12 @@ function ModalCompra({ stockActual, onConfirmar, onCerrar }) {
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onCerrar}
               className="flex-1 py-2.5 rounded-xl text-sm font-mono"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a' }}>
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: tema.textMuted }}>
               Cancelar
             </button>
             <button type="submit"
               className="flex-1 py-2.5 rounded-xl text-sm font-bold"
-              style={{ background: 'rgba(0,230,118,0.12)', border: '1.5px solid rgba(0,230,118,0.4)', color: '#00e676' }}>
+              style={{ background: 'rgba(0,230,118,0.12)', border: '1.5px solid rgba(0,230,118,0.4)', color: tema.accent }}>
               Registrar compra
             </button>
           </div>

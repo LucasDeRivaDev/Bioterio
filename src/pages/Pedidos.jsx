@@ -34,21 +34,21 @@ const BIOTERIOS_OPCIONES = [
   { id: 'ratones_hibridos', label: '🧬 Híbridos F1' },
 ]
 const ESTADOS_PEDIDO = [
-  { id: 'pendiente',  label: 'Pendiente',  color: '#ffb300' },
-  { id: 'en_proceso', label: 'En proceso', color: '#40c4ff' },
-  { id: 'completado', label: 'Completado', color: '#00e676' },
-  { id: 'cancelado',  label: 'Cancelado',  color: '#ff6b80' },
+  { id: 'pendiente',  label: 'Pendiente',  color: tema.amber },
+  { id: 'en_proceso', label: 'En proceso', color: tema.blue },
+  { id: 'completado', label: 'Completado', color: tema.accent },
+  { id: 'cancelado',  label: 'Cancelado',  color: tema.red },
 ]
 
 // ─── Estilos compartidos ──────────────────────────────────────────────────────
 const INPUT_STYLE = {
   width: '100%', background: 'rgba(8,13,26,0.9)',
-  border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0',
+  border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary,
   borderRadius: '10px', padding: '10px 14px', fontSize: '13px', outline: 'none',
 }
 const LABEL_STYLE = {
   display: 'block', fontSize: '11px', fontWeight: 600,
-  textTransform: 'uppercase', letterSpacing: '0.08em', color: '#4a5f7a', marginBottom: '6px',
+  textTransform: 'uppercase', letterSpacing: '0.08em', color: tema.textMuted, marginBottom: '6px',
 }
 
 // ─── Badge viabilidad ─────────────────────────────────────────────────────────
@@ -69,7 +69,7 @@ function ProximaAccionCard({ proximaAccion, tema }) {
   if (!proximaAccion?.existe) {
     return (
       <div className="rounded-2xl p-4" style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}>
-        <div className="text-xs font-bold uppercase mb-1.5" style={{ color: '#4a5f7a', letterSpacing: '0.08em' }}>
+        <div className="text-xs font-bold uppercase mb-1.5" style={{ color: tema.textMuted, letterSpacing: '0.08em' }}>
           Próxima acción
         </div>
         <div className="text-sm" style={{ color: tema.textMuted }}>
@@ -110,7 +110,7 @@ function ProximaAccionCard({ proximaAccion, tema }) {
               </span>
             )}
             {proximaAccion.fecha && (
-              <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+              <span className="text-xs font-mono" style={{ color: tema.textMuted }}>
                 {formatFecha(proximaAccion.fecha)}
               </span>
             )}
@@ -133,7 +133,7 @@ function CronogramaGPS({ planOperativo, tema }) {
 
   return (
     <div className="rounded-2xl p-4" style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}>
-      <div className="text-xs font-bold uppercase mb-3" style={{ color: '#4a5f7a', letterSpacing: '0.08em' }}>
+      <div className="text-xs font-bold uppercase mb-3" style={{ color: tema.textMuted, letterSpacing: '0.08em' }}>
         Cronograma
       </div>
       <div className="space-y-0">
@@ -175,12 +175,12 @@ function EstrategiaElegidaBanner({ optima, tema }) {
         <span className="text-lg flex-shrink-0">{optima.emoji}</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-            <span className="text-xs font-bold uppercase" style={{ color: '#40c4ff', letterSpacing: '0.07em' }}>
+            <span className="text-xs font-bold uppercase" style={{ color: tema.blue, letterSpacing: '0.07em' }}>
               Estrategia óptima
             </span>
-            <span className="text-xs font-bold" style={{ color: '#c9d4e0' }}>{optima.nombre}</span>
+            <span className="text-xs font-bold" style={{ color: tema.textPrimary }}>{optima.nombre}</span>
           </div>
-          <div className="text-xs" style={{ color: '#4a5f7a' }}>{optima.razon}</div>
+          <div className="text-xs" style={{ color: tema.textMuted }}>{optima.razon}</div>
           {optima.estrategia?.porQueElegir && (
             <div className="text-xs mt-0.5" style={{ color: '#3a5068' }}>{optima.estrategia.porQueElegir}</div>
           )}
@@ -213,7 +213,7 @@ function AlertasCriticas({ analisis, tema }) {
     <div className="space-y-2">
       {alertas.map((a, i) => (
         <div key={i} className="rounded-xl px-4 py-2.5 text-xs font-semibold"
-          style={{ background: 'rgba(255,61,87,0.09)', border: '1px solid rgba(255,61,87,0.3)', color: '#ff6b80' }}>
+          style={{ background: 'rgba(255,61,87,0.09)', border: '1px solid rgba(255,61,87,0.3)', color: tema.red }}>
           🔴 {a.msg}
         </div>
       ))}
@@ -230,13 +230,13 @@ function AccionesPedido({ pedido, analisis, onCambiarEstado, onReservarReproduct
         <>
           <button onClick={() => onCambiarEstado(pedido.id, 'en_proceso')}
             className="px-3 py-1.5 rounded-lg text-xs font-bold"
-            style={{ background: 'rgba(64,196,255,0.1)', border: '1px solid rgba(64,196,255,0.3)', color: '#40c4ff', cursor: 'pointer' }}>
+            style={{ background: 'rgba(64,196,255,0.1)', border: '1px solid rgba(64,196,255,0.3)', color: tema.blue, cursor: 'pointer' }}>
             ▶ Iniciar pedido
           </button>
           {reproductoresSeleccionados?.suficientesHembras && (
             <button onClick={() => onReservarReproductores(pedido)}
               className="px-3 py-1.5 rounded-lg text-xs font-bold"
-              style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.25)', color: '#ffb300', cursor: 'pointer' }}>
+              style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.25)', color: tema.amber, cursor: 'pointer' }}>
               🔒 Reservar reproductores
             </button>
           )}
@@ -245,14 +245,14 @@ function AccionesPedido({ pedido, analisis, onCambiarEstado, onReservarReproduct
       {pedido.estado === 'en_proceso' && (
         <button onClick={() => onCambiarEstado(pedido.id, 'completado')}
           className="px-3 py-1.5 rounded-lg text-xs font-bold"
-          style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.3)', color: '#00e676', cursor: 'pointer' }}>
+          style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.3)', color: tema.accent, cursor: 'pointer' }}>
           ✓ Marcar completado
         </button>
       )}
       {!['cancelado', 'completado'].includes(pedido.estado) && (
         <button onClick={() => onCambiarEstado(pedido.id, 'cancelado')}
           className="px-3 py-1.5 rounded-lg text-xs font-bold"
-          style={{ background: 'rgba(255,61,87,0.06)', border: '1px solid rgba(255,61,87,0.2)', color: '#ff6b80', cursor: 'pointer' }}>
+          style={{ background: 'rgba(255,61,87,0.06)', border: '1px solid rgba(255,61,87,0.2)', color: tema.red, cursor: 'pointer' }}>
           ✕ Cancelar
         </button>
       )}
@@ -268,10 +268,10 @@ function TabEstrategias({ estrategiasBiologicas, tema }) {
       {optima && (
         <div className="rounded-xl px-3 py-2"
           style={{ background: 'rgba(64,196,255,0.07)', border: '1px solid rgba(64,196,255,0.2)' }}>
-          <span className="text-xs font-bold" style={{ color: '#40c4ff' }}>
+          <span className="text-xs font-bold" style={{ color: tema.blue }}>
             🏆 Óptima: {optima.emoji} {optima.nombre}
           </span>
-          <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>{optima.razon}</div>
+          <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>{optima.razon}</div>
         </div>
       )}
       <div className="space-y-2">
@@ -291,13 +291,13 @@ function TabEstrategias({ estrategiasBiologicas, tema }) {
                   <span className="text-sm font-bold" style={{ color: tema.textPrimary }}>{esc.nombre}</span>
                   {esOptima && (
                     <span className="text-xs px-1.5 py-0.5 rounded"
-                      style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676' }}>
+                      style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.25)', color: tema.accent }}>
                       ✦ óptima
                     </span>
                   )}
                   {noViable && (
                     <span className="text-xs px-1.5 py-0.5 rounded"
-                      style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.2)', color: '#ff6b80' }}>
+                      style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.2)', color: tema.red }}>
                       No viable
                     </span>
                   )}
@@ -308,15 +308,15 @@ function TabEstrategias({ estrategiasBiologicas, tema }) {
                 </span>
               </div>
 
-              <div className="text-xs mb-2" style={{ color: '#4a5f7a' }}>{esc.descripcion}</div>
+              <div className="text-xs mb-2" style={{ color: tema.textMuted }}>{esc.descripcion}</div>
 
               <div className="flex items-center gap-3 text-xs flex-wrap mb-2">
-                <span style={{ color: '#ce93d8' }}>♀ {esc.hembrasNecesarias} hembras</span>
-                <span style={{ color: '#40c4ff' }}>♂ {esc.machosNecesarios} machos</span>
-                <span style={{ color: '#c9d4e0' }}>📦 {esc.jaulasNuevas} jaulas nuevas</span>
-                {esc.tiempoExtra > 0 && <span style={{ color: '#ffb300' }}>⏳ +{esc.tiempoExtra}d</span>}
+                <span style={{ color: tema.purple }}>♀ {esc.hembrasNecesarias} hembras</span>
+                <span style={{ color: tema.blue }}>♂ {esc.machosNecesarios} machos</span>
+                <span style={{ color: tema.textPrimary }}>📦 {esc.jaulasNuevas} jaulas nuevas</span>
+                {esc.tiempoExtra > 0 && <span style={{ color: tema.amber }}>⏳ +{esc.tiempoExtra}d</span>}
                 {esc.crecimientoColateral?.totalExcedente > 0 && (
-                  <span style={{ color: '#00e676' }}>+{esc.crecimientoColateral.totalExcedente} excedente</span>
+                  <span style={{ color: tema.accent }}>+{esc.crecimientoColateral.totalExcedente} excedente</span>
                 )}
               </div>
 
@@ -338,20 +338,20 @@ function TabEstrategias({ estrategiasBiologicas, tema }) {
                   {esc.saturacion ? '⚠ saturación' : 'Sin saturación'}
                 </span>
                 <span className="text-xs px-1.5 py-0.5 rounded"
-                  style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}`, color: '#4a5f7a' }}>
+                  style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}`, color: tema.textMuted }}>
                   Impacto: {esc.impactoColonia}
                 </span>
               </div>
 
               {esc.porQueElegir && (
-                <div className="text-xs mb-1" style={{ color: '#4a5f7a' }}>
+                <div className="text-xs mb-1" style={{ color: tema.textMuted }}>
                   💡 {esc.porQueElegir}
                 </div>
               )}
               {esc.riesgos?.length > 0 && (
                 <div className="space-y-0.5">
                   {esc.riesgos.map((r, i) => (
-                    <div key={i} className="text-xs" style={{ color: '#ff6b80' }}>⚠ {r}</div>
+                    <div key={i} className="text-xs" style={{ color: tema.red }}>⚠ {r}</div>
                   ))}
                 </div>
               )}
@@ -397,7 +397,7 @@ function TabMotorReproductivo({ capacidadReproductiva, pedido, tema }) {
             <span className="text-xs font-mono" style={{ color }}>
               {animal.sexo === 'hembra' ? '♀' : '♂'} {animal.codigo}
             </span>
-            <span className="text-xs" style={{ color: '#4a5f7a' }}>
+            <span className="text-xs" style={{ color: tema.textMuted }}>
               {razon ?? (diasParaMadurar ? `madura en ${diasParaMadurar}d` : `${diasVida}d`)}
             </span>
           </div>
@@ -414,21 +414,21 @@ function TabMotorReproductivo({ capacidadReproductiva, pedido, tema }) {
         style={{ background: 'rgba(64,196,255,0.07)', border: '1px solid rgba(64,196,255,0.2)' }}>
         <div className="flex items-center gap-2 mb-1">
           <span className="text-lg">{emoji}</span>
-          <span className="text-sm font-bold" style={{ color: '#40c4ff' }}>
+          <span className="text-sm font-bold" style={{ color: tema.blue }}>
             Generación requerida: {generacionRequerida}
           </span>
         </div>
-        <div className="text-xs" style={{ color: '#4a5f7a' }}>{descripcionGeneracion}</div>
+        <div className="text-xs" style={{ color: tema.textMuted }}>{descripcionGeneracion}</div>
         <div className="grid grid-cols-3 gap-2 mt-2 text-xs text-center">
           {[
-            { label: 'Stock libre', val: stockLibre, color: '#00e676' },
-            { label: 'En camino', val: futurosEntregables, color: '#40c4ff' },
-            { label: 'Total posible', val: totalEntregable, color: '#c9d4e0' },
+            { label: 'Stock libre', val: stockLibre, color: tema.accent },
+            { label: 'En camino', val: futurosEntregables, color: tema.blue },
+            { label: 'Total posible', val: totalEntregable, color: tema.textPrimary },
           ].map(({ label, val, color }) => (
             <div key={label} className="rounded-lg py-1.5"
               style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}` }}>
               <div className="font-bold" style={{ color }}>{val}</div>
-              <div style={{ color: '#4a5f7a' }}>{label}</div>
+              <div style={{ color: tema.textMuted }}>{label}</div>
             </div>
           ))}
         </div>
@@ -436,18 +436,18 @@ function TabMotorReproductivo({ capacidadReproductiva, pedido, tema }) {
 
       {/* Clasificación de reproductores */}
       <div>
-        <div className="text-xs font-bold mb-2 uppercase" style={{ color: '#4a5f7a', letterSpacing: '0.07em' }}>
+        <div className="text-xs font-bold mb-2 uppercase" style={{ color: tema.textMuted, letterSpacing: '0.07em' }}>
           Clasificación de reproductores
         </div>
         <div className="grid grid-cols-2 gap-2 mb-3">
           {[
-            { label: '🔒 Protegidos (mínimos)', h: hembrasProtegidas, m: machosProtegidos, color: '#ce93d8', desc: 'Nunca entregables' },
-            { label: '✅ Disponibles', h: hembrasDisponiblesRepro, m: machosDisponiblesRepro, color: '#00e676', desc: 'Para este pedido' },
+            { label: '🔒 Protegidos (mínimos)', h: hembrasProtegidas, m: machosProtegidos, color: tema.purple, desc: 'Nunca entregables' },
+            { label: '✅ Disponibles', h: hembrasDisponiblesRepro, m: machosDisponiblesRepro, color: tema.accent, desc: 'Para este pedido' },
           ].map(({ label, h, m, color, desc }) => (
             <div key={label} className="rounded-xl p-2.5"
               style={{ background: 'rgba(8,13,26,0.35)', border: `1px solid ${tema.bgCardBorde}` }}>
               <div className="text-xs font-bold mb-1" style={{ color }}>{label}</div>
-              <div className="text-xs" style={{ color: '#c9d4e0' }}>♀ {h} hembras · ♂ {m} machos</div>
+              <div className="text-xs" style={{ color: tema.textPrimary }}>♀ {h} hembras · ♂ {m} machos</div>
               <div className="text-xs mt-0.5" style={{ color: '#3a5068' }}>{desc}</div>
             </div>
           ))}
@@ -461,8 +461,8 @@ function TabMotorReproductivo({ capacidadReproductiva, pedido, tema }) {
         style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}` }}>
         <div className="font-semibold mb-1" style={{ color: tema.textSecondary }}>Colonia activa total</div>
         <div className="flex gap-4">
-          <span style={{ color: '#ce93d8' }}>♀ {hembrasActivas} hembras (mín: {minimoH})</span>
-          <span style={{ color: '#40c4ff' }}>♂ {machosActivos} machos (mín: {minimoM})</span>
+          <span style={{ color: tema.purple }}>♀ {hembrasActivas} hembras (mín: {minimoH})</span>
+          <span style={{ color: tema.blue }}>♂ {machosActivos} machos (mín: {minimoM})</span>
         </div>
       </div>
     </div>
@@ -479,9 +479,9 @@ function TabReproductores({ reproductoresSeleccionados, reproductoresProximos, t
       <div className="grid grid-cols-2 gap-2">
         {[
           { sexo: '♀ Hembras', disp: hembrasDisponibles, nec: hembrasNecesarias,
-            ok: suficientesHembras, proximos: reproductoresProximos?.hembrasProximas ?? [], color: '#ce93d8' },
+            ok: suficientesHembras, proximos: reproductoresProximos?.hembrasProximas ?? [], color: tema.purple },
           { sexo: '♂ Machos', disp: machosDisponibles, nec: machosNecesarios,
-            ok: suficientesMachos, proximos: reproductoresProximos?.machosProximos ?? [], color: '#40c4ff' },
+            ok: suficientesMachos, proximos: reproductoresProximos?.machosProximos ?? [], color: tema.blue },
         ].map(({ sexo, disp, nec, ok, proximos, color }) => (
           <div key={sexo} className="rounded-lg p-2.5"
             style={{
@@ -490,13 +490,13 @@ function TabReproductores({ reproductoresSeleccionados, reproductoresProximos, t
             }}>
             <div className="text-xs font-bold mb-0.5" style={{ color }}>{sexo}: {disp}/{nec}</div>
             {!ok && proximos.length > 0 ? (
-              <div className="text-xs" style={{ color: '#ffb300' }}>
+              <div className="text-xs" style={{ color: tema.amber }}>
                 🟡 {proximos.length} en {proximos[0].diasParaMadurar}d
               </div>
             ) : !ok ? (
-              <div className="text-xs" style={{ color: '#ff6b80' }}>Sin candidatos</div>
+              <div className="text-xs" style={{ color: tema.red }}>Sin candidatos</div>
             ) : (
-              <div className="text-xs" style={{ color: '#00e676' }}>✓ Suficientes</div>
+              <div className="text-xs" style={{ color: tema.accent }}>✓ Suficientes</div>
             )}
           </div>
         ))}
@@ -504,13 +504,13 @@ function TabReproductores({ reproductoresSeleccionados, reproductoresProximos, t
 
       {(hembrasSugeridas.length > 0 || machosSugeridos.length > 0) && (
         <div className="space-y-1">
-          <div className="text-xs font-bold mb-1" style={{ color: '#4a5f7a' }}>Sugeridos</div>
+          <div className="text-xs font-bold mb-1" style={{ color: tema.textMuted }}>Sugeridos</div>
           {hembrasSugeridas.map(({ animal, scoreRepro, nivelF, fPorc }) => (
             <div key={animal.id} className="flex items-center justify-between rounded px-2 py-1.5"
               style={{ background: 'rgba(8,13,26,0.35)', border: `1px solid ${tema.bgCardBorde}` }}>
-              <span className="text-xs font-mono font-semibold" style={{ color: '#ce93d8' }}>♀ {animal.codigo}</span>
+              <span className="text-xs font-mono font-semibold" style={{ color: tema.purple }}>♀ {animal.codigo}</span>
               <div className="flex gap-3 text-xs">
-                <span style={{ color: '#c9d4e0' }}>Score {scoreRepro}</span>
+                <span style={{ color: tema.textPrimary }}>Score {scoreRepro}</span>
                 <span style={{ color: nivelF === 'alto' ? '#ff6b80' : nivelF === 'moderado' ? '#ffb300' : '#4a5f7a' }}>
                   F {fPorc}
                 </span>
@@ -520,9 +520,9 @@ function TabReproductores({ reproductoresSeleccionados, reproductoresProximos, t
           {machosSugeridos.map(({ animal, scoreRepro, nivelF, fPorc }) => (
             <div key={animal.id} className="flex items-center justify-between rounded px-2 py-1.5"
               style={{ background: 'rgba(8,13,26,0.35)', border: `1px solid ${tema.bgCardBorde}` }}>
-              <span className="text-xs font-mono font-semibold" style={{ color: '#40c4ff' }}>♂ {animal.codigo}</span>
+              <span className="text-xs font-mono font-semibold" style={{ color: tema.blue }}>♂ {animal.codigo}</span>
               <div className="flex gap-3 text-xs">
-                <span style={{ color: '#c9d4e0' }}>Score {scoreRepro}</span>
+                <span style={{ color: tema.textPrimary }}>Score {scoreRepro}</span>
                 <span style={{ color: nivelF === 'alto' ? '#ff6b80' : nivelF === 'moderado' ? '#ffb300' : '#4a5f7a' }}>
                   F {fPorc}
                 </span>
@@ -548,7 +548,7 @@ function TabColonia({ impactoColonia, impactoEstrategico, crecimientoColateral, 
         ].map(({ label, h, m, color }) => (
           <div key={label} className="rounded-xl p-2.5 text-xs"
             style={{ background: 'rgba(8,13,26,0.35)', border: `1px solid ${tema.bgCardBorde}` }}>
-            <div className="font-semibold mb-1" style={{ color: '#4a5f7a' }}>{label}</div>
+            <div className="font-semibold mb-1" style={{ color: tema.textMuted }}>{label}</div>
             <div style={{ color }}>♀ {h} hembras</div>
             <div style={{ color }}>♂ {m} machos</div>
           </div>
@@ -569,20 +569,20 @@ function TabColonia({ impactoColonia, impactoEstrategico, crecimientoColateral, 
       {crecimientoColateral && crecimientoColateral.totalExcedente > 0 && (
         <div className="rounded-xl p-3"
           style={{ background: 'rgba(0,230,118,0.05)', border: '1px solid rgba(0,230,118,0.18)' }}>
-          <div className="text-xs font-bold mb-1.5" style={{ color: '#00e676' }}>
+          <div className="text-xs font-bold mb-1.5" style={{ color: tema.accent }}>
             🌱 Crecimiento colateral del pedido
           </div>
-          <div className="text-xs" style={{ color: '#4a5f7a' }}>{crecimientoColateral.descripcion}</div>
+          <div className="text-xs" style={{ color: tema.textMuted }}>{crecimientoColateral.descripcion}</div>
           <div className="grid grid-cols-3 gap-2 mt-2 text-xs text-center">
             {[
-              { label: '♀ sobrantes', val: crecimientoColateral.hembrasSobrantes, color: '#ce93d8' },
-              { label: '♂ sobrantes', val: crecimientoColateral.machosSobrantes, color: '#40c4ff' },
-              { label: 'Futuras repro.', val: crecimientoColateral.futuraReproductorasH, color: '#00e676' },
+              { label: '♀ sobrantes', val: crecimientoColateral.hembrasSobrantes, color: tema.purple },
+              { label: '♂ sobrantes', val: crecimientoColateral.machosSobrantes, color: tema.blue },
+              { label: 'Futuras repro.', val: crecimientoColateral.futuraReproductorasH, color: tema.accent },
             ].map(({ label, val, color }) => (
               <div key={label} className="rounded-lg py-1.5"
                 style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}` }}>
                 <div className="font-bold" style={{ color }}>{val}</div>
-                <div style={{ color: '#4a5f7a' }}>{label}</div>
+                <div style={{ color: tema.textMuted }}>{label}</div>
               </div>
             ))}
           </div>
@@ -592,7 +592,7 @@ function TabColonia({ impactoColonia, impactoEstrategico, crecimientoColateral, 
       {/* Sanitario */}
       <div className="rounded-xl px-3 py-2 text-xs"
         style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}` }}>
-        <span style={{ color: '#4a5f7a' }}>Índice sanitario: </span>
+        <span style={{ color: tema.textMuted }}>Índice sanitario: </span>
         <span style={{ color: indiceSanitario >= 75 ? '#00e676' : indiceSanitario >= 50 ? '#ffb300' : '#ff6b80' }}>
           {indiceSanitario}/100
         </span>
@@ -601,7 +601,7 @@ function TabColonia({ impactoColonia, impactoEstrategico, crecimientoColateral, 
       {/* Riesgos estratégicos */}
       {impactoEstrategico?.riesgos?.length > 0 && (
         <div className="space-y-1.5">
-          <div className="text-xs font-bold" style={{ color: '#4a5f7a' }}>Riesgos estratégicos</div>
+          <div className="text-xs font-bold" style={{ color: tema.textMuted }}>Riesgos estratégicos</div>
           {impactoEstrategico.riesgos.map((r, i) => (
             <div key={i} className="rounded-lg px-3 py-2 text-xs"
               style={{
@@ -626,8 +626,8 @@ function TabProduccion({ parejasNecesarias, animalesListos, produccionEnCurso, i
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-lg p-2.5"
           style={{ background: 'rgba(156,39,176,0.07)', border: '1px solid rgba(156,39,176,0.2)' }}>
-          <div className="text-xs font-bold mb-1" style={{ color: '#ce93d8' }}>🧬 Colonia base</div>
-          <div className="text-xs" style={{ color: '#4a5f7a' }}>
+          <div className="text-xs font-bold mb-1" style={{ color: tema.purple }}>🧬 Colonia base</div>
+          <div className="text-xs" style={{ color: tema.textMuted }}>
             <div>♀ {impactoColonia.hembrasActivas} reproductoras</div>
             <div>♂ {impactoColonia.machosActivos} reproductores</div>
             <div className="mt-1" style={{ color: '#3a5068' }}>Protegidos — nunca entregables</div>
@@ -635,10 +635,10 @@ function TabProduccion({ parejasNecesarias, animalesListos, produccionEnCurso, i
         </div>
         <div className="rounded-lg p-2.5"
           style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.18)' }}>
-          <div className="text-xs font-bold mb-1" style={{ color: '#00e676' }}>📦 Producción</div>
-          <div className="text-xs" style={{ color: '#4a5f7a' }}>
-            <div>Stock ahora: <span style={{ color: '#c9d4e0' }}>{animalesListos.disponibles}</span></div>
-            <div>En camino: <span style={{ color: '#c9d4e0' }}>{produccionEnCurso.totalProyectado}</span></div>
+          <div className="text-xs font-bold mb-1" style={{ color: tema.accent }}>📦 Producción</div>
+          <div className="text-xs" style={{ color: tema.textMuted }}>
+            <div>Stock ahora: <span style={{ color: tema.textPrimary }}>{animalesListos.disponibles}</span></div>
+            <div>En camino: <span style={{ color: tema.textPrimary }}>{produccionEnCurso.totalProyectado}</span></div>
             <div className="mt-1 font-semibold" style={{
               color: (animalesListos.disponibles + produccionEnCurso.totalProyectado) >= (pedido.cantidad ?? 0) ? '#00e676' : '#ffb300',
             }}>
@@ -655,7 +655,7 @@ function TabProduccion({ parejasNecesarias, animalesListos, produccionEnCurso, i
           border: `1px solid ${animalesListos.cubiertoConStock ? 'rgba(0,230,118,0.2)' : tema.bgCardBorde}`,
         }}>
         <div className="flex items-center justify-between text-xs">
-          <span style={{ color: '#4a5f7a' }}>📦 Stock disponible ahora</span>
+          <span style={{ color: tema.textMuted }}>📦 Stock disponible ahora</span>
           <span style={{ color: animalesListos.cubiertoConStock ? '#00e676' : animalesListos.porcentajeCubierto > 50 ? '#ffb300' : '#ff6b80' }}>
             {animalesListos.cubiertoConStock
               ? `✅ Cubierto (${animalesListos.disponibles})`
@@ -668,14 +668,14 @@ function TabProduccion({ parejasNecesarias, animalesListos, produccionEnCurso, i
       {produccionEnCurso.tandas.length > 0 ? (
         <div className="rounded-lg p-2.5"
           style={{ background: 'rgba(64,196,255,0.05)', border: '1px solid rgba(64,196,255,0.2)' }}>
-          <div className="text-xs font-semibold mb-1.5" style={{ color: '#40c4ff' }}>
+          <div className="text-xs font-semibold mb-1.5" style={{ color: tema.blue }}>
             🔄 En camino — {produccionEnCurso.totalProyectado} animales proyectados
           </div>
           {produccionEnCurso.tandas.map(t => (
             <div key={t.camadaId} className="flex items-center justify-between text-xs mb-0.5"
-              style={{ color: '#4a5f7a' }}>
+              style={{ color: tema.textMuted }}>
               <span>{t.estado === 'en_gestacion' ? '🤰 Gestación' : t.estado === 'en_cria' ? '🐣 En cría' : '✅ Destetada'}</span>
-              <span style={{ color: '#c9d4e0' }}>{t.dispDelSexo} animales</span>
+              <span style={{ color: tema.textPrimary }}>{t.dispDelSexo} animales</span>
               <span style={{ color: t.diasHastaDisponible <= 0 ? '#00e676' : t.diasHastaDisponible <= 30 ? '#ffb300' : '#4a5f7a' }}>
                 {t.diasHastaDisponible <= 0 ? 'Listo' : `en ${t.diasHastaDisponible}d`}
               </span>
@@ -692,22 +692,22 @@ function TabProduccion({ parejasNecesarias, animalesListos, produccionEnCurso, i
       {/* Parejas necesarias */}
       <div className="grid grid-cols-4 gap-2">
         {[
-          { label: '♀ Hembras', val: parejasNecesarias.hembrasNecesarias, color: '#ce93d8' },
-          { label: '♂ Machos',  val: parejasNecesarias.machosNecesarios,  color: '#40c4ff' },
-          { label: '~Crías',    val: parejasNecesarias.animalesEstimados,  color: '#c9d4e0' },
-          { label: 'Prob.',     val: `${parejasNecesarias.probabilidad}%`, color: '#00e676' },
+          { label: '♀ Hembras', val: parejasNecesarias.hembrasNecesarias, color: tema.purple },
+          { label: '♂ Machos',  val: parejasNecesarias.machosNecesarios,  color: tema.blue },
+          { label: '~Crías',    val: parejasNecesarias.animalesEstimados,  color: tema.textPrimary },
+          { label: 'Prob.',     val: `${parejasNecesarias.probabilidad}%`, color: tema.accent },
         ].map(({ label, val, color }) => (
           <div key={label} className="rounded-lg p-2 text-center"
             style={{ background: 'rgba(8,13,26,0.35)', border: `1px solid ${tema.bgCardBorde}` }}>
             <div className="font-mono font-bold" style={{ color }}>{val}</div>
-            <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>{label}</div>
+            <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>{label}</div>
           </div>
         ))}
       </div>
 
       {!parejasNecesarias.hist.conDatos && (
         <div className="rounded-lg px-3 py-1.5 text-xs"
-          style={{ background: 'rgba(255,179,0,0.05)', border: '1px solid rgba(255,179,0,0.18)', color: '#ffb300' }}>
+          style={{ background: 'rgba(255,179,0,0.05)', border: '1px solid rgba(255,179,0,0.18)', color: tema.amber }}>
           ⚠ Valores bibliográficos — registrá más camadas para mayor precisión
         </div>
       )}
@@ -725,7 +725,7 @@ function TabEscalonado({ pedidoEscalonado, tema }) {
 
   return (
     <div className="space-y-2">
-      <div className="text-xs mb-2" style={{ color: '#4a5f7a' }}>
+      <div className="text-xs mb-2" style={{ color: tema.textMuted }}>
         Cada {pedidoEscalonado.frecuenciaDias} días · {pedidoEscalonado.totalAnimales} animales totales
       </div>
       {pedidoEscalonado.tandas.map(tanda => {
@@ -735,10 +735,10 @@ function TabEscalonado({ pedidoEscalonado, tema }) {
           <div key={tanda.numero} className="rounded-xl p-3"
             style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}` }}>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold" style={{ color: '#40c4ff' }}>
+              <span className="text-xs font-bold" style={{ color: tema.blue }}>
                 📦 Tanda {tanda.numero} — {tanda.cantidad} animales
               </span>
-              <span className="text-xs font-mono" style={{ color: '#c9d4e0' }}>
+              <span className="text-xs font-mono" style={{ color: tema.textPrimary }}>
                 {formatFecha(tanda.fechaEntrega)}
                 {diasHasta != null && (
                   <span style={{ color: diasHasta < 0 ? '#ff6b80' : diasHasta <= 14 ? '#ffb300' : '#4a5f7a', marginLeft: '6px' }}>
@@ -749,10 +749,10 @@ function TabEscalonado({ pedidoEscalonado, tema }) {
             </div>
             {tanda.fechas && (
               <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs" style={{ color: '#3a5068' }}>
-                <span>🔗 Cópulas: <span style={{ color: '#c9d4e0' }}>{formatFecha(tanda.fechas.fechaCopula)}</span></span>
-                <span>🐣 Parto: <span style={{ color: '#c9d4e0' }}>{formatFecha(tanda.fechas.fechaNacimiento)}</span></span>
+                <span>🔗 Cópulas: <span style={{ color: tema.textPrimary }}>{formatFecha(tanda.fechas.fechaCopula)}</span></span>
+                <span>🐣 Parto: <span style={{ color: tema.textPrimary }}>{formatFecha(tanda.fechas.fechaNacimiento)}</span></span>
                 {!tanda.fechas.viable && (
-                  <span className="col-span-2" style={{ color: '#ff6b80' }}>⚠ Tiempo insuficiente para esta tanda</span>
+                  <span className="col-span-2" style={{ color: tema.red }}>⚠ Tiempo insuficiente para esta tanda</span>
                 )}
               </div>
             )}
@@ -812,13 +812,13 @@ function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproduct
               </span>
               {pedido.modalidad && pedido.modalidad !== 'unica' && (
                 <span className="text-xs px-2 py-0.5 rounded-lg font-semibold"
-                  style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.2)', color: '#40c4ff' }}>
+                  style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.2)', color: tema.blue }}>
                   {pedido.modalidad === 'escalonada' ? '📅 Escalonada' : '🔄 Flexible'}
                 </span>
               )}
               {pedido.soloVirgenes && (
                 <span className="text-xs px-2 py-0.5 rounded-lg font-semibold"
-                  style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.2)', color: '#00e676' }}>
+                  style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.2)', color: tema.accent }}>
                   🧬 Solo vírgenes
                 </span>
               )}
@@ -878,7 +878,7 @@ function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproduct
           <div className="p-4" style={{ background: tema.bgCard }}>
             {tabAbierta === 'plan' && (
               <div className="space-y-2">
-                <div className="text-xs font-bold mb-3 uppercase" style={{ color: '#4a5f7a', letterSpacing: '0.07em' }}>
+                <div className="text-xs font-bold mb-3 uppercase" style={{ color: tema.textMuted, letterSpacing: '0.07em' }}>
                   Plan operativo detallado
                 </div>
                 {(planOperativo ?? []).length === 0 ? (
@@ -906,7 +906,7 @@ function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproduct
                               </span>
                               <div className="flex items-center gap-2 flex-shrink-0">
                                 {labelD && <span className="text-xs font-mono font-bold" style={{ color: colorD }}>{labelD}</span>}
-                                <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{formatFecha(paso.fecha)}</span>
+                                <span className="text-xs font-mono" style={{ color: tema.textMuted }}>{formatFecha(paso.fecha)}</span>
                               </div>
                             </div>
                             <div className="text-xs" style={{ color: tema.textMuted }}>{paso.descripcion}</div>
@@ -1061,7 +1061,7 @@ function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
           {esEscalonada && (
             <div className="rounded-xl p-3 space-y-3"
               style={{ background: 'rgba(64,196,255,0.05)', border: '1px solid rgba(64,196,255,0.2)' }}>
-              <div className="text-xs font-bold" style={{ color: '#40c4ff' }}>📅 Configuración escalonada</div>
+              <div className="text-xs font-bold" style={{ color: tema.blue }}>📅 Configuración escalonada</div>
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label style={LABEL_STYLE}>Por tanda</label>
@@ -1083,7 +1083,7 @@ function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
                 </div>
               </div>
               {form.cantidadPorTanda && form.frecuenciaDias && form.tandasTotal && (
-                <div className="text-xs" style={{ color: '#40c4ff' }}>
+                <div className="text-xs" style={{ color: tema.blue }}>
                   → {form.tandasTotal} entregas de {form.cantidadPorTanda} animales cada {form.frecuenciaDias} días
                   ({Number(form.cantidadPorTanda) * Number(form.tandasTotal)} total)
                 </div>
@@ -1178,7 +1178,7 @@ function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onCerrar}
               className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-              style={{ background: 'rgba(30,51,82,0.4)', border: '1px solid rgba(30,51,82,0.8)', color: '#4a5f7a', cursor: 'pointer' }}>
+              style={{ background: 'rgba(30,51,82,0.4)', border: '1px solid rgba(30,51,82,0.8)', color: tema.textMuted, cursor: 'pointer' }}>
               Cancelar
             </button>
             <button type="submit" disabled={!esValido}
@@ -1231,10 +1231,10 @@ function TarjetaPedido({ pedido, seleccionado, onSeleccionar, onEditar, onElimin
         <div className="flex gap-1">
           <button onClick={e => { e.stopPropagation(); onEditar(pedido) }}
             className="px-2 py-1 rounded-lg text-xs"
-            style={{ background: 'rgba(30,51,82,0.5)', border: '1px solid rgba(30,51,82,0.8)', color: '#4a5f7a', cursor: 'pointer' }}>✏️</button>
+            style={{ background: 'rgba(30,51,82,0.5)', border: '1px solid rgba(30,51,82,0.8)', color: tema.textMuted, cursor: 'pointer' }}>✏️</button>
           <button onClick={e => { e.stopPropagation(); onEliminar(pedido.id) }}
             className="px-2 py-1 rounded-lg text-xs"
-            style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.2)', color: '#ff6b80', cursor: 'pointer' }}>✕</button>
+            style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.2)', color: tema.red, cursor: 'pointer' }}>✕</button>
         </div>
       </div>
     </div>
@@ -1247,7 +1247,7 @@ export default function Pedidos() {
           pedidos, agregarPedido, editarPedido, eliminarPedido: eliminarPedidoCtx,
         } = useBioterio()
   const { bioterioActivo } = useBioterioActivo()
-  const { tema } = useTheme()
+  const { tema, modoBrillo } = useTheme()
 
   const [pedidoSelId,       setPedidoSelId]       = useState(null)
   const [modalFormAbierto,  setModalFormAbierto]  = useState(false)
@@ -1404,7 +1404,7 @@ export default function Pedidos() {
         <button
           onClick={() => { setPedidoEditando(null); setModalFormAbierto(true) }}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold"
-          style={{ background: 'rgba(0,230,118,0.12)', border: '1.5px solid rgba(0,230,118,0.35)', color: '#00e676', cursor: 'pointer' }}>
+          style={{ background: 'rgba(0,230,118,0.12)', border: '1.5px solid rgba(0,230,118,0.35)', color: tema.accent, cursor: 'pointer' }}>
           + Nuevo pedido
         </button>
       </div>
@@ -1412,14 +1412,14 @@ export default function Pedidos() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         {[
-          { label: 'Total',       valor: stats.total,       color: '#c9d4e0' },
-          { label: 'Pendientes',  valor: stats.pendientes,  color: '#ffb300' },
-          { label: 'En proceso',  valor: stats.enProceso,   color: '#40c4ff' },
-          { label: 'Completados', valor: stats.completados, color: '#00e676' },
+          { label: 'Total',       valor: stats.total,       color: tema.textPrimary },
+          { label: 'Pendientes',  valor: stats.pendientes,  color: tema.amber },
+          { label: 'En proceso',  valor: stats.enProceso,   color: tema.blue },
+          { label: 'Completados', valor: stats.completados, color: tema.accent },
         ].map(s => (
           <div key={s.label} className="rounded-xl p-3 text-center" style={cardStyle}>
             <div className="font-mono font-bold text-xl" style={{ color: s.color }}>{s.valor}</div>
-            <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>{s.label}</div>
+            <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>{s.label}</div>
           </div>
         ))}
       </div>
@@ -1456,7 +1456,7 @@ export default function Pedidos() {
               {filtroEstado === 'todos' && (
                 <button onClick={() => setModalFormAbierto(true)}
                   className="px-4 py-2 rounded-xl text-sm font-bold"
-                  style={{ background: 'rgba(0,230,118,0.1)', border: '1.5px solid rgba(0,230,118,0.3)', color: '#00e676', cursor: 'pointer' }}>
+                  style={{ background: 'rgba(0,230,118,0.1)', border: '1.5px solid rgba(0,230,118,0.3)', color: tema.accent, cursor: 'pointer' }}>
                   + Crear primer pedido
                 </button>
               )}
@@ -1514,12 +1514,12 @@ export default function Pedidos() {
             <div className="flex gap-3">
               <button onClick={() => setConfirmEliminarId(null)}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ background: 'rgba(30,51,82,0.4)', border: '1px solid rgba(30,51,82,0.8)', color: '#4a5f7a', cursor: 'pointer' }}>
+                style={{ background: 'rgba(30,51,82,0.4)', border: '1px solid rgba(30,51,82,0.8)', color: tema.textMuted, cursor: 'pointer' }}>
                 Cancelar
               </button>
               <button onClick={() => handleEliminar(confirmEliminarId)}
                 className="flex-1 py-2.5 rounded-xl text-sm font-bold"
-                style={{ background: 'rgba(255,61,87,0.12)', border: '1.5px solid rgba(255,61,87,0.35)', color: '#ff6b80', cursor: 'pointer' }}>
+                style={{ background: 'rgba(255,61,87,0.12)', border: '1.5px solid rgba(255,61,87,0.35)', color: tema.red, cursor: 'pointer' }}>
                 ✕ Eliminar
               </button>
             </div>

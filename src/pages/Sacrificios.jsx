@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { formatFecha } from '../utils/calculos'
+import { useTheme } from '../context/ThemeContext'
 
 const cardStyle = { background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }
 
@@ -28,8 +29,8 @@ function MenuRestaurar({ onRestaurar, onSoloBorrar, onCerrar, labelRestaurar, la
         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,230,118,0.07)'}
         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
       >
-        <div className="font-semibold" style={{ color: '#00e676' }}>{labelRestaurar}</div>
-        <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>El animal vuelve a su estado anterior</div>
+        <div className="font-semibold" style={{ color: tema.accent }}>{labelRestaurar}</div>
+        <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>El animal vuelve a su estado anterior</div>
       </button>
 
       {/* Solo borrar registro */}
@@ -41,14 +42,14 @@ function MenuRestaurar({ onRestaurar, onSoloBorrar, onCerrar, labelRestaurar, la
         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
       >
         <div className="font-semibold" style={{ color: '#ff5252' }}>{labelBorrar}</div>
-        <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>Borra solo el registro, sin restaurar</div>
+        <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>Borra solo el registro, sin restaurar</div>
       </button>
 
       {/* Cancelar */}
       <button
         onClick={onCerrar}
         className="w-full text-left px-4 py-3 text-sm transition-colors"
-        style={{ color: '#4a5f7a', borderTop: '1px solid rgba(30,51,82,0.6)', cursor: 'pointer', background: 'transparent' }}
+        style={{ color: tema.textMuted, borderTop: '1px solid rgba(30,51,82,0.6)', cursor: 'pointer', background: 'transparent' }}
         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(74,95,122,0.06)'}
         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
       >
@@ -61,6 +62,7 @@ function MenuRestaurar({ onRestaurar, onSoloBorrar, onCerrar, labelRestaurar, la
 // ── Página principal ──────────────────────────────────────────────────────────
 
 export default function Sacrificios() {
+  const { tema, modoBrillo } = useTheme()
   const {
     animales, animalesExportados, camadas, sacrificios,
     eliminarSacrificio, eliminarSacrificioReproductor,
@@ -147,7 +149,7 @@ export default function Sacrificios() {
           <div className="w-1.5 h-7 rounded-full" style={{ background: '#ff6b80', boxShadow: '0 0 8px rgba(255,107,128,0.5)' }} />
           <div>
             <h1 className="text-xl font-bold text-white">Historial de sacrificios</h1>
-            <p className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>
+            <p className="text-xs mt-0.5" style={{ color: tema.textMuted }}>
               Seleccioná animales o jaulas desde Stock para registrar sacrificios
             </p>
           </div>
@@ -156,15 +158,15 @@ export default function Sacrificios() {
           {reproductoresSacrificados.length > 0 && (
             <div className="px-4 py-2 rounded-xl text-center"
               style={{ background: 'rgba(206,147,216,0.07)', border: '1px solid rgba(206,147,216,0.2)' }}>
-              <span className="font-mono font-bold text-lg" style={{ color: '#ce93d8' }}>{reproductoresSacrificados.length}</span>
-              <span className="text-xs ml-1.5" style={{ color: '#4a5f7a' }}>reproductores</span>
+              <span className="font-mono font-bold text-lg" style={{ color: tema.purple }}>{reproductoresSacrificados.length}</span>
+              <span className="text-xs ml-1.5" style={{ color: tema.textMuted }}>reproductores</span>
             </div>
           )}
           {totalSacrificados > 0 && (
             <div className="px-4 py-2 rounded-xl text-center"
               style={{ background: 'rgba(255,107,128,0.07)', border: '1px solid rgba(255,107,128,0.2)' }}>
-              <span className="font-mono font-bold text-lg" style={{ color: '#ff6b80' }}>{totalSacrificados}</span>
-              <span className="text-xs ml-1.5" style={{ color: '#4a5f7a' }}>crías/stock</span>
+              <span className="font-mono font-bold text-lg" style={{ color: tema.red }}>{totalSacrificados}</span>
+              <span className="text-xs ml-1.5" style={{ color: tema.textMuted }}>crías/stock</span>
             </div>
           )}
         </div>
@@ -173,11 +175,11 @@ export default function Sacrificios() {
       {/* ── SECCIÓN: Reproductores sacrificados ─────────────────────────────── */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#ce93d8' }}>
+          <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.purple }}>
             🐀 Reproductores sacrificados
           </div>
           <span className="text-xs font-mono px-2 py-0.5 rounded-full"
-            style={{ background: 'rgba(206,147,216,0.1)', color: '#ce93d8', border: '1px solid rgba(206,147,216,0.25)' }}>
+            style={{ background: 'rgba(206,147,216,0.1)', color: tema.purple, border: '1px solid rgba(206,147,216,0.25)' }}>
             {reproductoresSacrificados.length}
           </span>
         </div>
@@ -186,8 +188,8 @@ export default function Sacrificios() {
           <div className="rounded-2xl p-8 text-center"
             style={{ background: 'rgba(206,147,216,0.03)', border: '1px dashed rgba(206,147,216,0.15)' }}>
             <div className="text-2xl mb-2">🐀</div>
-            <div className="text-sm font-semibold" style={{ color: '#ce93d8' }}>Sin reproductores sacrificados</div>
-            <div className="text-xs mt-1" style={{ color: '#4a5f7a' }}>
+            <div className="text-sm font-semibold" style={{ color: tema.purple }}>Sin reproductores sacrificados</div>
+            <div className="text-xs mt-1" style={{ color: tema.textMuted }}>
               Seleccioná reproductores desde Stock → Seleccionar para registrar
             </div>
           </div>
@@ -199,7 +201,7 @@ export default function Sacrificios() {
                   <tr style={{ borderBottom: '1px solid rgba(30,51,82,0.6)', background: 'rgba(0,0,0,0.1)' }}>
                     {['Código', 'Sexo', 'Fecha sacrificio', 'Progenitores', 'Notas / Motivo', ''].map((h, i) => (
                       <th key={i} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest"
-                        style={{ color: '#4a5f7a' }}>{h}</th>
+                        style={{ color: tema.textMuted }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -210,7 +212,7 @@ export default function Sacrificios() {
                     const enProceso = cargando === a.id
                     return (
                       <tr key={a.id} style={{ borderBottom: '1px solid rgba(30,51,82,0.4)' }}>
-                        <td className="px-4 py-3 font-mono font-bold" style={{ color: '#c9d4e0' }}>
+                        <td className="px-4 py-3 font-mono font-bold" style={{ color: tema.textPrimary }}>
                           {a.codigo}
                         </td>
                         <td className="px-4 py-3 text-xs font-semibold">
@@ -218,15 +220,15 @@ export default function Sacrificios() {
                             {a.sexo === 'hembra' ? '♀ Hembra' : '♂ Macho'}
                           </span>
                         </td>
-                        <td className="px-4 py-3 font-mono text-xs" style={{ color: '#8a9bb0' }}>
+                        <td className="px-4 py-3 font-mono text-xs" style={{ color: tema.textSecondary }}>
                           {a.fecha_sacrificio ? formatFecha(a.fecha_sacrificio) : '—'}
                         </td>
-                        <td className="px-4 py-3 text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                        <td className="px-4 py-3 text-xs font-mono" style={{ color: tema.textMuted }}>
                           {(madre || padre)
                             ? <span>{madre?.codigo ?? '?'} × {padre?.codigo ?? '?'}</span>
                             : <span style={{ opacity: 0.3 }}>—</span>}
                         </td>
-                        <td className="px-4 py-3 text-xs" style={{ color: '#4a5f7a', maxWidth: '200px' }}>
+                        <td className="px-4 py-3 text-xs" style={{ color: tema.textMuted, maxWidth: '200px' }}>
                           {a.motivo_sacrificio ?? a.notas ?? '—'}
                         </td>
                         <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
@@ -267,11 +269,11 @@ export default function Sacrificios() {
       {/* ── SECCIÓN: Sacrificios de stock / camadas ──────────────────────────── */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#ff6b80' }}>
+          <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.red }}>
             🗡 Sacrificios de stock
           </div>
           <span className="text-xs font-mono px-2 py-0.5 rounded-full"
-            style={{ background: 'rgba(255,61,87,0.1)', color: '#ff6b80', border: '1px solid rgba(255,61,87,0.25)' }}>
+            style={{ background: 'rgba(255,61,87,0.1)', color: tema.red, border: '1px solid rgba(255,61,87,0.25)' }}>
             {listaEnriquecida.length}
           </span>
         </div>
@@ -280,8 +282,8 @@ export default function Sacrificios() {
           <div className="rounded-2xl p-8 text-center"
             style={{ background: 'rgba(255,107,128,0.04)', border: '1px dashed rgba(255,107,128,0.2)' }}>
             <div className="text-2xl mb-2">📋</div>
-            <div className="font-semibold text-sm" style={{ color: '#ff6b80' }}>Sin sacrificios de stock registrados</div>
-            <div className="text-xs mt-1" style={{ color: '#4a5f7a' }}>
+            <div className="font-semibold text-sm" style={{ color: tema.red }}>Sin sacrificios de stock registrados</div>
+            <div className="text-xs mt-1" style={{ color: tema.textMuted }}>
               Seleccioná jaulas desde la vista de Stock para registrar
             </div>
           </div>
@@ -293,7 +295,7 @@ export default function Sacrificios() {
                   <tr style={{ borderBottom: '1px solid rgba(30,51,82,0.6)', background: 'rgba(0,0,0,0.1)' }}>
                     {['Fecha', 'Grupo / Emparejamiento', 'Cantidad', 'Categoría', 'Notas', ''].map((h, i) => (
                       <th key={i} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest"
-                        style={{ color: '#4a5f7a' }}>{h}</th>
+                        style={{ color: tema.textMuted }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -302,32 +304,32 @@ export default function Sacrificios() {
                     const enProceso = cargando === s.id
                     return (
                       <tr key={s.id} style={{ borderBottom: '1px solid rgba(30,51,82,0.4)' }}>
-                        <td className="px-4 py-3 font-mono text-sm" style={{ color: '#8a9bb0' }}>
+                        <td className="px-4 py-3 font-mono text-sm" style={{ color: tema.textSecondary }}>
                           {formatFecha(s.fecha)}
                         </td>
                         <td className="px-4 py-3">
                           {s.madre && s.padre ? (
                             <span className="font-mono font-semibold">
-                              <span style={{ color: '#ce93d8' }}>{s.madre.codigo}</span>
-                              <span style={{ color: '#4a5f7a' }}> × </span>
-                              <span style={{ color: '#40c4ff' }}>{s.padre.codigo}</span>
+                              <span style={{ color: tema.purple }}>{s.madre.codigo}</span>
+                              <span style={{ color: tema.textMuted }}> × </span>
+                              <span style={{ color: tema.blue }}>{s.padre.codigo}</span>
                             </span>
                           ) : (
-                            <span style={{ color: '#4a5f7a' }}>—</span>
+                            <span style={{ color: tema.textMuted }}>—</span>
                           )}
                           {s.camada?.fecha_nacimiento && (
-                            <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
+                            <div className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>
                               nac. {formatFecha(s.camada.fecha_nacimiento)}
                             </div>
                           )}
                         </td>
-                        <td className="px-4 py-3 font-mono font-bold text-lg" style={{ color: '#ff6b80' }}>
+                        <td className="px-4 py-3 font-mono font-bold text-lg" style={{ color: tema.red }}>
                           {s.cantidad}
                         </td>
-                        <td className="px-4 py-3 text-xs" style={{ color: '#8a9bb0' }}>
+                        <td className="px-4 py-3 text-xs" style={{ color: tema.textSecondary }}>
                           {s.categoria ? labelCategoria[s.categoria] ?? s.categoria : '—'}
                         </td>
-                        <td className="px-4 py-3 text-xs" style={{ color: '#4a5f7a', maxWidth: '200px' }}>
+                        <td className="px-4 py-3 text-xs" style={{ color: tema.textMuted, maxWidth: '200px' }}>
                           {s.notas ?? '—'}
                         </td>
                         <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
+import { useTheme } from '../context/ThemeContext'
 
 const estadoOpciones = [
   { value: 'activo', label: 'Activo' },
@@ -21,9 +22,9 @@ const vacioAnimal = {
 
 // Estilos de input oscuros reutilizables
 const inputStyle = {
-  background: 'rgba(8,13,26,0.8)',
+  background: tema.bgInput,
   border: '1px solid rgba(30,51,82,0.8)',
-  color: '#c9d4e0',
+  color: tema.textPrimary,
   borderRadius: '10px',
 }
 const inputFocusClass = 'focus:outline-none'
@@ -31,16 +32,17 @@ const inputFocusClass = 'focus:outline-none'
 function LabInput({ label, sublabel, error, children }) {
   return (
     <div>
-      <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#8a9bb0' }}>
+      <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textSecondary }}>
         {label} {sublabel && <span className="normal-case tracking-normal font-normal opacity-60">{sublabel}</span>}
       </label>
       {children}
-      {error && <p className="text-xs mt-1" style={{ color: '#ff6b80' }}>{error}</p>}
+      {error && <p className="text-xs mt-1" style={{ color: tema.red }}>{error}</p>}
     </div>
   )
 }
 
 export default function AnimalForm({ animal, onGuardar, onCancelar }) {
+  const { tema, modoBrillo } = useTheme()
   const { animales } = useBioterio()
   const [form, setForm] = useState(animal ?? vacioAnimal)
   const [errores, setErrores] = useState({})
@@ -94,13 +96,13 @@ export default function AnimalForm({ animal, onGuardar, onCancelar }) {
     <form onSubmit={manejarEnvio} className="space-y-4">
       {/* Sexo */}
       <div>
-        <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#8a9bb0' }}>
+        <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textSecondary }}>
           Sexo
         </label>
         <div className="flex gap-3">
           {[
-            { value: 'hembra', label: '♀ Hembra', color: '#ce93d8' },
-            { value: 'macho', label: '♂ Macho', color: '#40c4ff' },
+            { value: 'hembra', label: '♀ Hembra', color: tema.purple },
+            { value: 'macho', label: '♂ Macho', color: tema.blue },
           ].map(({ value, label, color }) => (
             <button
               key={value}
@@ -118,7 +120,7 @@ export default function AnimalForm({ animal, onGuardar, onCancelar }) {
                   : {
                       background: 'rgba(8,13,26,0.5)',
                       border: '1px solid rgba(30,51,82,0.6)',
-                      color: '#4a5f7a',
+                      color: tema.textMuted,
                     }
               }
             >
@@ -147,7 +149,7 @@ export default function AnimalForm({ animal, onGuardar, onCancelar }) {
             type="button"
             onClick={sugerirCodigo}
             className="px-3 py-2 rounded-xl text-xs font-semibold transition-all"
-            style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.2)', color: '#00e676' }}
+            style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.2)', color: tema.accent }}
           >
             Auto
           </button>
@@ -208,7 +210,7 @@ export default function AnimalForm({ animal, onGuardar, onCancelar }) {
 
       {/* Notas */}
       <div>
-        <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#8a9bb0' }}>
+        <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textSecondary }}>
           Notas / Observaciones
         </label>
         <textarea
@@ -228,9 +230,9 @@ export default function AnimalForm({ animal, onGuardar, onCancelar }) {
         {/* Tipo de nota — solo visible si hay texto */}
         {form.notas.trim() && (
           <div className="flex items-center gap-2 mt-2">
-            <span className="text-xs" style={{ color: '#4a5f7a' }}>Tipo:</span>
+            <span className="text-xs" style={{ color: tema.textMuted }}>Tipo:</span>
             {[
-              { value: 'normal',  label: '⚠ Normal',  color: '#ffb300' },
+              { value: 'normal',  label: '⚠ Normal',  color: tema.amber },
               { value: 'critica', label: '🔴 Crítica', color: '#ff1744' },
             ].map(({ value, label, color }) => (
               <button
@@ -240,7 +242,7 @@ export default function AnimalForm({ animal, onGuardar, onCancelar }) {
                 className="px-3 py-1 rounded-lg text-xs font-semibold transition-all"
                 style={form.nota_tipo === value
                   ? { background: `${color}18`, border: `1px solid ${color}55`, color }
-                  : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }
+                  : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }
                 }
               >
                 {label}
@@ -259,7 +261,7 @@ export default function AnimalForm({ animal, onGuardar, onCancelar }) {
           type="button"
           onClick={onCancelar}
           className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
-          style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: '#8a9bb0' }}
+          style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: tema.textSecondary }}
         >
           Cancelar
         </button>
@@ -269,7 +271,7 @@ export default function AnimalForm({ animal, onGuardar, onCancelar }) {
           style={{
             background: 'rgba(0,230,118,0.15)',
             border: '1.5px solid rgba(0,230,118,0.4)',
-            color: '#00e676',
+            color: tema.accent,
             boxShadow: '0 0 16px rgba(0,230,118,0.1)',
           }}
         >

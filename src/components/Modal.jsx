@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
+import { useTheme } from '../context/ThemeContext'
 
 export default function Modal({ titulo, onCerrar, children, ancho = 'max-w-lg' }) {
+  const { tema, modoBrillo } = useTheme()
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onCerrar() }
     window.addEventListener('keydown', handler)
@@ -32,14 +34,14 @@ export default function Modal({ titulo, onCerrar, children, ancho = 'max-w-lg' }
           <div className="flex items-center gap-3">
             <div
               className="w-1.5 h-5 rounded-full"
-              style={{ background: '#00e676', boxShadow: '0 0 8px rgba(0,230,118,0.6)' }}
+              style={{ background: tema.accent, boxShadow: '0 0 8px rgba(0,230,118,0.6)' }}
             />
             <h2 className="text-base font-semibold text-white tracking-wide">{titulo}</h2>
           </div>
           <button
             onClick={onCerrar}
             className="w-7 h-7 rounded-lg flex items-center justify-center text-sm transition-all"
-            style={{ color: '#8a9bb0', background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.15)' }}
+            style={{ color: tema.textSecondary, background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.15)' }}
           >
             ✕
           </button>

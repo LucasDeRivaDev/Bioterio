@@ -11,13 +11,14 @@ import { BIO } from '../utils/constants'
 import Modal from '../components/Modal'
 import CamadaForm from '../components/CamadaForm'
 import Badge from '../components/Badge'
+import { useTheme } from '../context/ThemeContext'
 
 // ── Editor de distribución de jaulas ─────────────────────────────────────────
 
 const inputJaulaStyle = {
-  background: 'rgba(8,13,26,0.8)',
+  background: tema.bgInput,
   border: '1px solid rgba(30,51,82,0.8)',
-  color: '#c9d4e0',
+  color: tema.textPrimary,
   borderRadius: '8px',
 }
 
@@ -66,7 +67,7 @@ function JaulasDistribucion({ camada, jaulas, agregarJaula, editarJaula, elimina
     <div className="space-y-3">
       {/* Header de distribución */}
       <div className="flex items-center justify-between">
-        <div className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#4a5f7a' }}>
+        <div className="text-xs uppercase tracking-widest font-semibold" style={{ color: tema.textMuted }}>
           Distribución en jaulas
         </div>
         <div className="flex items-center gap-2">
@@ -74,8 +75,8 @@ function JaulasDistribucion({ camada, jaulas, agregarJaula, editarJaula, elimina
             className="text-xs font-mono font-bold px-2 py-0.5 rounded-lg"
             style={
               equilibrio
-                ? { background: 'rgba(0,230,118,0.12)', color: '#00e676', border: '1px solid rgba(0,230,118,0.3)' }
-                : { background: 'rgba(255,179,0,0.12)', color: '#ffb300', border: '1px solid rgba(255,179,0,0.3)' }
+                ? { background: 'rgba(0,230,118,0.12)', color: tema.accent, border: '1px solid rgba(0,230,118,0.3)' }
+                : { background: 'rgba(255,179,0,0.12)', color: tema.amber, border: '1px solid rgba(255,179,0,0.3)' }
             }
           >
             {totalJaulas}/{target} {equilibrio ? '✓' : '⚠'}
@@ -83,7 +84,7 @@ function JaulasDistribucion({ camada, jaulas, agregarJaula, editarJaula, elimina
           <button
             onClick={() => setMostrarNueva((v) => !v)}
             className="text-xs font-semibold px-2 py-0.5 rounded-lg"
-            style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676' }}
+            style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.25)', color: tema.accent }}
           >
             + Jaula
           </button>
@@ -92,7 +93,7 @@ function JaulasDistribucion({ camada, jaulas, agregarJaula, editarJaula, elimina
 
       {/* Sin jaulas aún */}
       {jaulasCamada.length === 0 && !mostrarNueva && (
-        <div className="text-xs py-2 text-center" style={{ color: '#4a5f7a' }}>
+        <div className="text-xs py-2 text-center" style={{ color: tema.textMuted }}>
           Sin jaulas asignadas — agregá una para organizar el stock
         </div>
       )}
@@ -106,7 +107,7 @@ function JaulasDistribucion({ camada, jaulas, agregarJaula, editarJaula, elimina
               <div className="grid grid-cols-3 gap-2">
                 {[['Total', 'total'], ['♂ Machos', 'machos'], ['♀ Hembras', 'hembras']].map(([lbl, campo]) => (
                   <div key={campo}>
-                    <div className="text-xs mb-1" style={{ color: '#4a5f7a' }}>{lbl}</div>
+                    <div className="text-xs mb-1" style={{ color: tema.textMuted }}>{lbl}</div>
                     <input
                       type="number"
                       min={0}
@@ -127,10 +128,10 @@ function JaulasDistribucion({ camada, jaulas, agregarJaula, editarJaula, elimina
                 style={inputJaulaStyle}
               />
               <div className="flex gap-2">
-                <button onClick={() => guardarEdicion(j)} className="flex-1 py-1 rounded text-xs font-bold" style={{ background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.35)', color: '#00e676' }}>
+                <button onClick={() => guardarEdicion(j)} className="flex-1 py-1 rounded text-xs font-bold" style={{ background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.35)', color: tema.accent }}>
                   Guardar
                 </button>
-                <button onClick={() => setEditando(null)} className="px-3 py-1 rounded text-xs" style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: '#4a5f7a' }}>
+                <button onClick={() => setEditando(null)} className="px-3 py-1 rounded text-xs" style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: tema.textMuted }}>
                   Cancelar
                 </button>
               </div>
@@ -139,19 +140,19 @@ function JaulasDistribucion({ camada, jaulas, agregarJaula, editarJaula, elimina
             // Fila normal
             <div key={j.id} className="flex items-center justify-between rounded-lg px-3 py-2" style={{ background: 'rgba(13,21,40,0.6)', border: '1px solid rgba(30,51,82,0.6)' }}>
               <div className="flex items-center gap-3">
-                <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>J{idx + 1}</span>
+                <span className="text-xs font-mono" style={{ color: tema.textMuted }}>J{idx + 1}</span>
                 <span className="font-mono font-bold text-sm text-white">{j.total ?? 0}</span>
                 {(j.machos != null || j.hembras != null) && (
-                  <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
-                    {j.machos != null && <span style={{ color: '#40c4ff' }}>♂{j.machos} </span>}
-                    {j.hembras != null && <span style={{ color: '#ce93d8' }}>♀{j.hembras}</span>}
+                  <span className="text-xs font-mono" style={{ color: tema.textMuted }}>
+                    {j.machos != null && <span style={{ color: tema.blue }}>♂{j.machos} </span>}
+                    {j.hembras != null && <span style={{ color: tema.purple }}>♀{j.hembras}</span>}
                   </span>
                 )}
-                {j.notas && <span className="text-xs" style={{ color: '#4a5f7a' }}>{j.notas}</span>}
+                {j.notas && <span className="text-xs" style={{ color: tema.textMuted }}>{j.notas}</span>}
               </div>
               <div className="flex gap-2">
-                <button onClick={() => iniciarEdicion(j)} className="text-xs font-semibold" style={{ color: '#40c4ff' }}>Editar</button>
-                <button onClick={() => eliminarJaula(j.id)} className="text-xs font-semibold" style={{ color: '#ff6b80' }}>✕</button>
+                <button onClick={() => iniciarEdicion(j)} className="text-xs font-semibold" style={{ color: tema.blue }}>Editar</button>
+                <button onClick={() => eliminarJaula(j.id)} className="text-xs font-semibold" style={{ color: tema.red }}>✕</button>
               </div>
             </div>
           )
@@ -160,11 +161,11 @@ function JaulasDistribucion({ camada, jaulas, agregarJaula, editarJaula, elimina
         {/* Formulario nueva jaula */}
         {mostrarNueva && (
           <div className="rounded-lg p-2.5 space-y-2" style={{ background: 'rgba(0,230,118,0.05)', border: '1px solid rgba(0,230,118,0.2)' }}>
-            <div className="text-xs font-semibold" style={{ color: '#00e676' }}>Nueva jaula</div>
+            <div className="text-xs font-semibold" style={{ color: tema.accent }}>Nueva jaula</div>
             <div className="grid grid-cols-3 gap-2">
               {[['Total *', 'total'], ['♂ Machos', 'machos'], ['♀ Hembras', 'hembras']].map(([lbl, campo]) => (
                 <div key={campo}>
-                  <div className="text-xs mb-1" style={{ color: '#4a5f7a' }}>{lbl}</div>
+                  <div className="text-xs mb-1" style={{ color: tema.textMuted }}>{lbl}</div>
                   <input
                     type="number"
                     min={0}
@@ -185,10 +186,10 @@ function JaulasDistribucion({ camada, jaulas, agregarJaula, editarJaula, elimina
               style={inputJaulaStyle}
             />
             <div className="flex gap-2">
-              <button onClick={guardarNueva} className="flex-1 py-1 rounded text-xs font-bold" style={{ background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.35)', color: '#00e676' }}>
+              <button onClick={guardarNueva} className="flex-1 py-1 rounded text-xs font-bold" style={{ background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.35)', color: tema.accent }}>
                 + Agregar
               </button>
-              <button onClick={() => setMostrarNueva(false)} className="px-3 py-1 rounded text-xs" style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: '#4a5f7a' }}>
+              <button onClick={() => setMostrarNueva(false)} className="px-3 py-1 rounded text-xs" style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: tema.textMuted }}>
                 Cancelar
               </button>
             </div>
@@ -235,7 +236,7 @@ function ScoreVal({ label, value }) {
   const esCritico = value === 0
   return (
     <div className="flex flex-col items-center gap-0.5">
-      <span className="text-xs uppercase tracking-widest font-semibold text-center leading-tight" style={{ color: '#4a5f7a' }}>{label}</span>
+      <span className="text-xs uppercase tracking-widest font-semibold text-center leading-tight" style={{ color: tema.textMuted }}>{label}</span>
       <span
         className="font-mono font-bold text-base px-2 py-0.5 rounded-lg"
         style={{ color: c, background: `${c}12`, border: `1px solid ${c}30` }}
@@ -264,10 +265,10 @@ function PerfilRow({ label, color, scores }) {
 }
 
 const NIVEL_CONFIG = {
-  ok:       { color: '#00e676', bg: 'rgba(0,230,118,0.06)',   border: 'rgba(0,230,118,0.2)',   label: 'Normal' },
-  leve:     { color: '#ffb300', bg: 'rgba(255,179,0,0.06)',   border: 'rgba(255,179,0,0.25)',   label: 'Alerta leve' },
-  moderada: { color: '#ff6b80', bg: 'rgba(255,61,87,0.06)',   border: 'rgba(255,61,87,0.25)',   label: 'Alerta moderada' },
-  critica:  { color: '#ff6b80', bg: 'rgba(255,61,87,0.10)',   border: 'rgba(255,61,87,0.4)',    label: 'Alerta crítica' },
+  ok:       { color: tema.accent, bg: 'rgba(0,230,118,0.06)',   border: 'rgba(0,230,118,0.2)',   label: 'Normal' },
+  leve:     { color: tema.amber, bg: 'rgba(255,179,0,0.06)',   border: 'rgba(255,179,0,0.25)',   label: 'Alerta leve' },
+  moderada: { color: tema.red, bg: 'rgba(255,61,87,0.06)',   border: 'rgba(255,61,87,0.25)',   label: 'Alerta moderada' },
+  critica:  { color: tema.red, bg: 'rgba(255,61,87,0.10)',   border: 'rgba(255,61,87,0.4)',    label: 'Alerta crítica' },
 }
 
 function AnalisisReproductivo({ camada, todasCamadas, animales }) {
@@ -307,7 +308,7 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
       {/* Título */}
       <div className="flex items-center gap-2">
         <div className="w-1 h-4 rounded-full" style={{ background: '#ce93d8' }} />
-        <span className="text-xs font-bold uppercase tracking-widest" style={{ color: '#ce93d8' }}>
+        <span className="text-xs font-bold uppercase tracking-widest" style={{ color: tema.purple }}>
           Análisis reproductivo
         </span>
       </div>
@@ -328,13 +329,13 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
           </div>
           <div className="grid grid-cols-4 gap-3">
             {[
-              { label: 'Nacidas',    val: camada.total_crias,      color: '#8a9bb0' },
-              { label: 'Destetadas', val: camada.total_destetados,  color: '#00e676' },
+              { label: 'Nacidas',    val: camada.total_crias,      color: tema.textSecondary },
+              { label: 'Destetadas', val: camada.total_destetados,  color: tema.accent },
               { label: 'Pérdidas',   val: scores.loss_count,        color: scores.loss_count > 0 ? '#ff6b80' : '#4a5f7a' },
               { label: 'Tasa',       val: scores.survival_rate != null ? `${Math.round(scores.survival_rate * 100)}%` : '—', color: colorScore(scores.survival_score) },
             ].map(({ label, val, color }) => (
               <div key={label} className="text-center">
-                <div className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#4a5f7a' }}>{label}</div>
+                <div className="text-xs uppercase tracking-widest font-semibold" style={{ color: tema.textMuted }}>{label}</div>
                 <div className="font-mono font-bold text-base" style={{ color }}>{val ?? '—'}</div>
               </div>
             ))}
@@ -345,7 +346,7 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
       {/* Scores de esta camada */}
       {hayScores && (
         <div className="space-y-1.5">
-          <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>
+          <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.textMuted }}>
             Scores de esta camada
           </div>
           <div className="grid grid-cols-4 gap-2">
@@ -383,7 +384,7 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
                 style={{
                   background: 'rgba(255,61,87,0.12)',
                   border: '1px solid rgba(255,61,87,0.4)',
-                  color: '#ff6b80',
+                  color: tema.red,
                 }}
               >
                 🗡 Ir a Sacrificios
@@ -404,7 +405,7 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
               { label: 'Total eventos',       val: confiabilidad.combinados },
             ].map(({ label, val }) => (
               <div key={label} className="text-center">
-                <div className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#4a5f7a' }}>{label}</div>
+                <div className="text-xs uppercase tracking-widest font-semibold" style={{ color: tema.textMuted }}>{label}</div>
                 <div className="font-mono font-bold text-base" style={{ color: NIVEL_CONFIG[confiabilidad.nivel].color }}>{val}</div>
               </div>
             ))}
@@ -412,8 +413,8 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
 
           {/* Último fallo */}
           {confiabilidad.ultimoFallo && (
-            <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
-              Último fallo: <span style={{ color: '#8a9bb0' }}>{confiabilidad.ultimoFallo}</span>
+            <div className="text-xs font-mono" style={{ color: tema.textMuted }}>
+              Último fallo: <span style={{ color: tema.textSecondary }}>{confiabilidad.ultimoFallo}</span>
             </div>
           )}
         </div>
@@ -430,7 +431,7 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
             <p className="text-xs font-bold uppercase tracking-wide" style={{ color: '#ff1744' }}>
               CRÍTICO — Hembra con camada menor a 8 crías. Recomendada para sacrificio.
             </p>
-            <p className="text-xs mt-1" style={{ color: '#ff6b80' }}>
+            <p className="text-xs mt-1" style={{ color: tema.red }}>
               Score de tamaño: <span className="font-mono font-bold">0</span> — rendimiento mínimo.{' '}
               Se generó una tarea de evaluación para{' '}
               <span className="font-bold">{madre?.codigo ?? 'la hembra'}</span>.{' '}
@@ -443,7 +444,7 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
       {/* Perfil de padres — siempre visible si hay padres identificados */}
       {(madre || padre) && (
         <div className="space-y-2">
-          <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>
+          <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.textMuted }}>
             Perfil histórico de los padres
           </div>
 
@@ -462,10 +463,10 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
               />
             ) : (
               <div className="rounded-xl p-3" style={{ background: 'rgba(5,8,16,0.4)', border: '1px solid rgba(30,51,82,0.5)' }}>
-                <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: '#ce93d8' }}>
+                <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: tema.purple }}>
                   ♀ {madre.codigo}
                 </div>
-                <div className="text-xs" style={{ color: '#4a5f7a' }}>Sin camadas previas con parto registrado</div>
+                <div className="text-xs" style={{ color: tema.textMuted }}>Sin camadas previas con parto registrado</div>
               </div>
             )
           )}
@@ -474,13 +475,13 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
           {padre && (
             rendMacho && rendMacho.total_camadas > 0 ? (
               <div className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(5,8,16,0.4)', border: '1px solid rgba(30,51,82,0.5)' }}>
-                <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#40c4ff' }}>
+                <div className="text-xs font-bold uppercase tracking-widest" style={{ color: tema.blue }}>
                   ♂ {padre.codigo} · {rendMacho.total_camadas} camada{rendMacho.total_camadas !== 1 ? 's' : ''}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <ScoreVal label="Latencia fert."  value={rendMacho.score_promedio} />
                   <div className="flex flex-col items-center gap-0.5">
-                    <span className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#4a5f7a' }}>Prom. latencia</span>
+                    <span className="text-xs uppercase tracking-widest font-semibold" style={{ color: tema.textMuted }}>Prom. latencia</span>
                     <span className="font-mono font-bold text-base" style={{ color: colorScore(rendMacho.score_promedio) }}>
                       {rendMacho.promedio_latencia != null ? `${rendMacho.promedio_latencia}d` : '—'}
                     </span>
@@ -489,10 +490,10 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
               </div>
             ) : (
               <div className="rounded-xl p-3" style={{ background: 'rgba(5,8,16,0.4)', border: '1px solid rgba(30,51,82,0.5)' }}>
-                <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: '#40c4ff' }}>
+                <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: tema.blue }}>
                   ♂ {padre.codigo}
                 </div>
-                <div className="text-xs" style={{ color: '#4a5f7a' }}>Sin camadas previas con parto registrado</div>
+                <div className="text-xs" style={{ color: tema.textMuted }}>Sin camadas previas con parto registrado</div>
               </div>
             )
           )}
@@ -505,7 +506,7 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
           className="rounded-xl p-3 space-y-2"
           style={{ background: 'rgba(206,147,216,0.05)', border: '1px solid rgba(206,147,216,0.2)' }}
         >
-          <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#ce93d8' }}>
+          <div className="text-xs font-bold uppercase tracking-widest" style={{ color: tema.purple }}>
             ✦ Predicción para próxima camada
           </div>
           <div className="grid grid-cols-3 gap-2">
@@ -520,6 +521,7 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
 }
 
 export default function Camadas() {
+  const { tema, modoBrillo } = useTheme()
   const { camadas, animales, animalesExportados, jaulas, agregarCamada, editarCamada, eliminarCamada, confirmarSeparacion, agregarJaula, editarJaula, eliminarJaula, bio } = useBioterio()
   // En Híbridos los progenitores viven en animalesExportados — buscar en ambos
   const todosAnimales = useMemo(() => [...animales, ...animalesExportados], [animales, animalesExportados])
@@ -604,8 +606,8 @@ export default function Camadas() {
         className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
         style={
           activo
-            ? { background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.3)', color: '#00e676' }
-            : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }
+            ? { background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.3)', color: tema.accent }
+            : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }
         }
       >
         {children}
@@ -617,9 +619,9 @@ export default function Camadas() {
   function DataItem({ label, valor, sub, color = '#8a9bb0' }) {
     return (
       <div>
-        <div className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5f7a' }}>{label}</div>
+        <div className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: tema.textMuted }}>{label}</div>
         <div className="font-mono font-semibold text-sm" style={{ color }}>{valor}</div>
-        {sub && <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>{sub}</div>}
+        {sub && <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>{sub}</div>}
       </div>
     )
   }
@@ -629,10 +631,10 @@ export default function Camadas() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-1.5 h-7 rounded-full" style={{ background: '#00e676', boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
+          <div className="w-1.5 h-7 rounded-full" style={{ background: tema.accent, boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
           <div>
             <h1 className="text-xl font-bold text-white">Emparejamientos</h1>
-            <p className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{camadas.length} registros</p>
+            <p className="text-xs font-mono" style={{ color: tema.textMuted }}>{camadas.length} registros</p>
           </div>
         </div>
         <button
@@ -641,7 +643,7 @@ export default function Camadas() {
           style={{
             background: 'rgba(0,230,118,0.12)',
             border: '1.5px solid rgba(0,230,118,0.35)',
-            color: '#00e676',
+            color: tema.accent,
           }}
         >
           + Registrar apareamiento
@@ -660,7 +662,7 @@ export default function Camadas() {
 
       {/* Lista */}
       {filtradas.length === 0 ? (
-        <div className="text-center py-16" style={{ color: '#4a5f7a' }}>
+        <div className="text-center py-16" style={{ color: tema.textMuted }}>
           <div className="text-4xl mb-3">🪺</div>
           <div className="text-sm">No hay emparejamientos en esta categoría</div>
         </div>
@@ -680,7 +682,7 @@ export default function Camadas() {
                         <span className="font-mono font-bold">
                           <CodigoAnimal id={camada.id_madre} color="#ce93d8" />
                         </span>
-                        <span style={{ color: '#4a5f7a' }}>×</span>
+                        <span style={{ color: tema.textMuted }}>×</span>
                         <span className="font-mono font-bold">
                           <CodigoAnimal id={camada.id_padre} color="#40c4ff" />
                         </span>
@@ -689,7 +691,7 @@ export default function Camadas() {
                           <Badge color="amarillo">Sin stock</Badge>
                         )}
                       </div>
-                      <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                      <div className="text-xs font-mono" style={{ color: tema.textMuted }}>
                         Cópula: {formatFecha(camada.fecha_copula)}
                         {camada.fecha_nacimiento && <> · Parto: {formatFecha(camada.fecha_nacimiento)}</>}
                         {camada.total_crias != null && <> · {camada.total_crias} crías</>}
@@ -699,7 +701,7 @@ export default function Camadas() {
                   <div className="flex items-center gap-4">
                     {camada.latencia !== null && (
                       <div className="text-right">
-                        <div className="text-xs uppercase tracking-widest mb-0.5" style={{ color: '#4a5f7a' }}>Latencia</div>
+                        <div className="text-xs uppercase tracking-widest mb-0.5" style={{ color: tema.textMuted }}>Latencia</div>
                         <LatenciaBit dias={camada.latencia} />
                       </div>
                     )}
@@ -713,7 +715,7 @@ export default function Camadas() {
                             value={fechaSepInput}
                             onChange={(e) => setFechaSepInput(e.target.value)}
                             className="px-2 py-1 text-xs rounded-lg font-mono focus:outline-none"
-                            style={{ background: 'rgba(8,13,26,0.8)', border: '1px solid rgba(64,196,255,0.4)', color: '#c9d4e0' }}
+                            style={{ background: tema.bgInput, border: '1px solid rgba(64,196,255,0.4)', color: tema.textPrimary }}
                           />
                           <button
                             onClick={() => {
@@ -723,15 +725,15 @@ export default function Camadas() {
                               }
                             }}
                             className="px-2.5 py-1 rounded-lg text-xs font-bold"
-                            style={{ background: 'rgba(64,196,255,0.15)', border: '1px solid rgba(64,196,255,0.4)', color: '#40c4ff' }}
+                            style={{ background: 'rgba(64,196,255,0.15)', border: '1px solid rgba(64,196,255,0.4)', color: tema.blue }}
                           >✓ Ok</button>
-                          <button onClick={() => setSeparando(null)} className="text-xs" style={{ color: '#4a5f7a' }}>✕</button>
+                          <button onClick={() => setSeparando(null)} className="text-xs" style={{ color: tema.textMuted }}>✕</button>
                         </div>
                       ) : (
                         <button
                           onClick={() => { setSeparando(camada.id); setFechaSepInput(hoy()) }}
                           className="px-2.5 py-1.5 rounded-lg text-xs font-semibold"
-                          style={{ background: 'rgba(64,196,255,0.1)', border: '1px solid rgba(64,196,255,0.3)', color: '#40c4ff' }}
+                          style={{ background: 'rgba(64,196,255,0.1)', border: '1px solid rgba(64,196,255,0.3)', color: tema.blue }}
                         >
                           ✂ Separar
                         </button>
@@ -741,14 +743,14 @@ export default function Camadas() {
                     <button
                       onClick={() => setExpandida(isExp ? null : camada.id)}
                       className="w-7 h-7 rounded-lg flex items-center justify-center text-xs"
-                      style={{ background: 'rgba(30,51,82,0.5)', color: '#4a5f7a' }}
+                      style={{ background: 'rgba(30,51,82,0.5)', color: tema.textMuted }}
                     >
                       {isExp ? '▲' : '▼'}
                     </button>
-                    <button onClick={() => setModal(camada)} className="text-xs font-semibold" style={{ color: '#40c4ff' }}>
+                    <button onClick={() => setModal(camada)} className="text-xs font-semibold" style={{ color: tema.blue }}>
                       Editar
                     </button>
-                    <button onClick={() => setConfirmarEliminar(camada)} className="text-xs font-semibold" style={{ color: '#ff6b80' }}>
+                    <button onClick={() => setConfirmarEliminar(camada)} className="text-xs font-semibold" style={{ color: tema.red }}>
                       Eliminar
                     </button>
                   </div>
@@ -799,13 +801,13 @@ export default function Camadas() {
                     )}
                     {camada.latencia !== null && (
                       <div>
-                        <div className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5f7a' }}>
+                        <div className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: tema.textMuted }}>
                           Latencia fertilización
                         </div>
                         <div className="font-mono font-bold text-lg">
                           <LatenciaBit dias={camada.latencia} />
                         </div>
-                        <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>
+                        <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>
                           {interpretarLatencia(camada.latencia)}
                         </div>
                       </div>
@@ -832,8 +834,8 @@ export default function Camadas() {
                     )}
                     {camada.notas && (
                       <div className="col-span-2">
-                        <div className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: '#4a5f7a' }}>Notas</div>
-                        <div className="text-sm" style={{ color: '#8a9bb0' }}>{camada.notas}</div>
+                        <div className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: tema.textMuted }}>Notas</div>
+                        <div className="text-sm" style={{ color: tema.textSecondary }}>{camada.notas}</div>
                       </div>
                     )}
                     {camada.failure_flag && (
@@ -843,7 +845,7 @@ export default function Camadas() {
                           style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)' }}
                         >
                           <span className="text-sm">⚠</span>
-                          <span className="text-xs font-semibold" style={{ color: '#ff6b80' }}>
+                          <span className="text-xs font-semibold" style={{ color: tema.red }}>
                             Fallo reproductivo registrado
                             {camada.failure_type && (
                               <span className="font-normal opacity-80">
@@ -874,7 +876,7 @@ export default function Camadas() {
                       className="px-5 py-3 flex items-center justify-between"
                       style={{ borderTop: '1px solid rgba(30,51,82,0.5)', background: 'rgba(0,0,0,0.15)' }}
                     >
-                      <span className="text-xs" style={{ color: '#4a5f7a' }}>
+                      <span className="text-xs" style={{ color: tema.textMuted }}>
                         {camada.incluir_en_stock === false
                           ? 'Las crías no están en stock — registro solo para historial y estadísticas.'
                           : 'Crías incluidas en stock activo.'}
@@ -883,7 +885,7 @@ export default function Camadas() {
                         <button
                           onClick={() => editarCamada({ ...camada, incluir_en_stock: true })}
                           className="text-xs font-semibold px-3 py-1.5 rounded-lg shrink-0"
-                          style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.3)', color: '#00e676' }}
+                          style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.3)', color: tema.accent }}
                         >
                           + Agregar al stock
                         </button>
@@ -891,7 +893,7 @@ export default function Camadas() {
                         <button
                           onClick={() => editarCamada({ ...camada, incluir_en_stock: false })}
                           className="text-xs font-semibold px-3 py-1.5 rounded-lg shrink-0"
-                          style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.3)', color: '#ffb300' }}
+                          style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.3)', color: tema.amber }}
                         >
                           Remover del stock
                         </button>
@@ -937,20 +939,20 @@ export default function Camadas() {
         <Modal titulo="Eliminar camada" onCerrar={() => setConfirmarEliminar(null)} ancho="max-w-sm">
           <div className="text-center space-y-4">
             <div className="text-4xl">⚠️</div>
-            <p style={{ color: '#8a9bb0' }}>
+            <p style={{ color: tema.textSecondary }}>
               ¿Eliminás el registro de{' '}
-              <span className="font-mono font-bold" style={{ color: '#ce93d8' }}>{nombreAnimal(confirmarEliminar.id_madre)}</span>
+              <span className="font-mono font-bold" style={{ color: tema.purple }}>{nombreAnimal(confirmarEliminar.id_madre)}</span>
               {' '}×{' '}
-              <span className="font-mono font-bold" style={{ color: '#40c4ff' }}>{nombreAnimal(confirmarEliminar.id_padre)}</span>?
+              <span className="font-mono font-bold" style={{ color: tema.blue }}>{nombreAnimal(confirmarEliminar.id_padre)}</span>?
             </p>
             <div className="flex gap-3">
               <button onClick={() => setConfirmarEliminar(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: '#8a9bb0' }}>
+                style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: tema.textSecondary }}>
                 Cancelar
               </button>
               <button onClick={() => { eliminarCamada(confirmarEliminar.id); setConfirmarEliminar(null) }}
                 className="flex-1 py-2.5 rounded-xl text-sm font-bold"
-                style={{ background: 'rgba(255,61,87,0.15)', border: '1px solid rgba(255,61,87,0.35)', color: '#ff6b80' }}>
+                style={{ background: 'rgba(255,61,87,0.15)', border: '1px solid rgba(255,61,87,0.35)', color: tema.red }}>
                 Eliminar
               </button>
             </div>

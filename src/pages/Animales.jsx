@@ -9,6 +9,7 @@ import AnimalForm from '../components/AnimalForm'
 import Badge from '../components/Badge'
 import CicloEstral from '../components/CicloEstral'
 import Camadas from '../pages/Camadas'
+import { useTheme } from '../context/ThemeContext'
 
 const colorEstado = { activo:'verde', en_apareamiento:'azul', en_cria:'violeta', retirado:'gris', fallecido:'rojo' }
 const labelEstado = { activo:'Activo', en_apareamiento:'En apareamiento', en_cria:'En cría', retirado:'Retirado', fallecido:'Fallecido' }
@@ -25,6 +26,7 @@ const LABEL_COLONIA = {
 }
 
 export default function Animales() {
+  const { tema, modoBrillo } = useTheme()
   const {
     animales, animalesExportados, camadas,
     agregarAnimal, editarAnimal, eliminarAnimal,
@@ -90,7 +92,7 @@ export default function Animales() {
       style={
         subVista === v
           ? { background: `${color}18`, border: `1px solid ${color}50`, color }
-          : { background: 'transparent', border: `1px solid rgba(30,51,82,0.6)`, color: '#4a5f7a' }
+          : { background: 'transparent', border: `1px solid rgba(30,51,82,0.6)`, color: tema.textMuted }
       }
     >
       {label}
@@ -101,7 +103,7 @@ export default function Animales() {
     return (
       <div className="p-4 md:p-6 space-y-5 min-0" style={{ background: '#050810' }}>
         <div className="flex items-center gap-3">
-          <div className="w-1.5 h-7 rounded-full" style={{ background: '#00e676', boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
+          <div className="w-1.5 h-7 rounded-full" style={{ background: tema.accent, boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
           <h1 className="text-2xl font-bold text-white">Reproductores</h1>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -109,7 +111,7 @@ export default function Animales() {
           <button
             onClick={() => setSubVista(null)}
             className="px-4 py-2 rounded-2xl text-3xs font-bold"
-            style={{ background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }}
+            style={{ background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }}
           >
             ← Volver a Reproductores
           </button>
@@ -122,8 +124,8 @@ export default function Animales() {
   function ScoreBarra({ label, valor, max = 10 }) {
     if (valor == null) return (
       <div className="flex items-center gap-2">
-        <span className="text-xs w-32" style={{ color: '#4a5f7a' }}>{label}</span>
-        <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>—</span>
+        <span className="text-xs w-32" style={{ color: tema.textMuted }}>{label}</span>
+        <span className="text-xs font-mono" style={{ color: tema.textMuted }}>—</span>
       </div>
     )
     const pct = Math.min((valor / max) * 100, 100)
@@ -131,7 +133,7 @@ export default function Animales() {
     const esCritico = valor === 0
     return (
       <div className="flex items-center gap-2">
-        <span className="text-xs w-32" style={{ color: '#8a9bb0' }}>{label}</span>
+        <span className="text-xs w-32" style={{ color: tema.textSecondary }}>{label}</span>
         <div className="flex-1 h-1.5 rounded-full" style={{ background: 'rgba(30,51,82,0.8)', minWidth: 60 }}>
           <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
         </div>
@@ -208,31 +210,31 @@ export default function Animales() {
             <div className="flex gap-2 flex-wrap">
               {madre ? (
                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style={{ background: 'rgba(206,147,216,0.08)', border: '1px solid rgba(206,147,216,0.2)' }}>
-                  <span className="text-xs" style={{ color: '#ce93d8' }}>♀</span>
-                  <span className="text-xs font-mono font-semibold" style={{ color: '#ce93d8' }}>{madre.codigo}</span>
+                  <span className="text-xs" style={{ color: tema.purple }}>♀</span>
+                  <span className="text-xs font-mono font-semibold" style={{ color: tema.purple }}>{madre.codigo}</span>
                 </div>
               ) : animal.id_madre ? (
                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style={{ background: 'rgba(206,147,216,0.04)', border: '1px solid rgba(206,147,216,0.1)' }}>
-                  <span className="text-xs" style={{ color: '#4a5f7a' }}>♀</span>
-                  <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Madre dada de baja</span>
+                  <span className="text-xs" style={{ color: tema.textMuted }}>♀</span>
+                  <span className="text-xs font-mono" style={{ color: tema.textMuted }}>Madre dada de baja</span>
                 </div>
               ) : null}
               {padre ? (
                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style={{ background: 'rgba(64,196,255,0.08)', border: '1px solid rgba(64,196,255,0.2)' }}>
-                  <span className="text-xs" style={{ color: '#40c4ff' }}>♂</span>
-                  <span className="text-xs font-mono font-semibold" style={{ color: '#40c4ff' }}>{padre.codigo}</span>
+                  <span className="text-xs" style={{ color: tema.blue }}>♂</span>
+                  <span className="text-xs font-mono font-semibold" style={{ color: tema.blue }}>{padre.codigo}</span>
                 </div>
               ) : animal.id_padre ? (
                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style={{ background: 'rgba(64,196,255,0.04)', border: '1px solid rgba(64,196,255,0.1)' }}>
-                  <span className="text-xs" style={{ color: '#4a5f7a' }}>♂</span>
-                  <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Padre dado de baja</span>
+                  <span className="text-xs" style={{ color: tema.textMuted }}>♂</span>
+                  <span className="text-xs font-mono" style={{ color: tema.textMuted }}>Padre dado de baja</span>
                 </div>
               ) : null}
             </div>
 
             {/* Abuelos */}
             {abuelos.length > 0 && (
-              <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+              <div className="text-xs font-mono" style={{ color: tema.textMuted }}>
                 <span style={{ color: '#3a5068' }}>Abuelos: </span>
                 {abuelos.map((a) => a.codigo).join(' · ')}
               </div>
@@ -279,17 +281,17 @@ export default function Animales() {
         <div className="space-y-2">
           {ultimoCiclo && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold"
-              style={{ background: 'rgba(255,179,0,0.09)', border: '1px solid rgba(255,179,0,0.35)', color: '#ffb300' }}>
+              style={{ background: 'rgba(255,179,0,0.09)', border: '1px solid rgba(255,179,0,0.35)', color: tema.amber }}>
               🟡 Último ciclo reproductivo — no debe volver a aparearse. Preparar reemplazo.
             </div>
           )}
           {finCiclo && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold"
-              style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.3)', color: '#ff6b80' }}>
+              style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.3)', color: tema.red }}>
               🔚 Fin de ciclo reproductivo — {totalApareaminetos} ciclos completados · crías destetadas · recomendada para sacrificio.
             </div>
           )}
-          <div className="text-xs py-2" style={{ color: '#4a5f7a' }}>Sin camadas con parto registrado</div>
+          <div className="text-xs py-2" style={{ color: tema.textMuted }}>Sin camadas con parto registrado</div>
           <SeccionGenealogica animal={animal} />
         </div>
       )
@@ -298,25 +300,25 @@ export default function Animales() {
           {/* Badges de ciclo reproductivo — solo si sigue activa */}
           {ultimoCiclo && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold"
-              style={{ background: 'rgba(255,179,0,0.09)', border: '1px solid rgba(255,179,0,0.35)', color: '#ffb300' }}>
+              style={{ background: 'rgba(255,179,0,0.09)', border: '1px solid rgba(255,179,0,0.35)', color: tema.amber }}>
               🟡 Último ciclo reproductivo — no debe volver a aparearse. Preparar reemplazo.
             </div>
           )}
           {finCiclo && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold"
-              style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.3)', color: '#ff6b80' }}>
+              style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.3)', color: tema.red }}>
               🔚 Fin de ciclo reproductivo — {totalApareaminetos} ciclos completados · crías destetadas · recomendada para sacrificio.
             </div>
           )}
           <div className="flex items-center gap-3 mb-3">
-            <span className="text-xs font-semibold" style={{ color: '#8a9bb0' }}>{perfil.total_camadas} camada{perfil.total_camadas !== 1 ? 's' : ''} analizadas</span>
+            <span className="text-xs font-semibold" style={{ color: tema.textSecondary }}>{perfil.total_camadas} camada{perfil.total_camadas !== 1 ? 's' : ''} analizadas</span>
             {conf && conf.nivel !== 'ok' && (
               <span className="px-2 py-0.5 rounded text-xs font-bold" style={{ background: `${colorConfiabilidad[conf.nivel]}18`, color: colorConfiabilidad[conf.nivel], border: `1px solid ${colorConfiabilidad[conf.nivel]}40` }}>
                 ⚠ {labelConfiabilidad[conf.nivel]} — {conf.mensaje}
               </span>
             )}
             {conf && conf.nivel === 'ok' && (
-              <span className="px-2 py-0.5 rounded text-xs font-bold" style={{ background: 'rgba(0,230,118,0.08)', color: '#00e676', border: '1px solid rgba(0,230,118,0.2)' }}>
+              <span className="px-2 py-0.5 rounded text-xs font-bold" style={{ background: 'rgba(0,230,118,0.08)', color: tema.accent, border: '1px solid rgba(0,230,118,0.2)' }}>
                 ✓ Confiabilidad OK
               </span>
             )}
@@ -333,7 +335,7 @@ export default function Animales() {
       const bajaPerf = esActivo ? detectarBajaPerformanceMacho(animal.id, camadas) : null
       if (rend.total_camadas === 0) return (
         <div className="space-y-2">
-          <div className="text-xs py-2" style={{ color: '#4a5f7a' }}>Sin camadas con parto registrado</div>
+          <div className="text-xs py-2" style={{ color: tema.textMuted }}>Sin camadas con parto registrado</div>
           <SeccionGenealogica animal={animal} />
         </div>
       )
@@ -362,9 +364,9 @@ export default function Animales() {
             </div>
           )}
           <div className="flex items-center gap-3 mb-3">
-            <span className="text-xs font-semibold" style={{ color: '#8a9bb0' }}>{rend.total_camadas} camada{rend.total_camadas !== 1 ? 's' : ''} analizadas</span>
+            <span className="text-xs font-semibold" style={{ color: tema.textSecondary }}>{rend.total_camadas} camada{rend.total_camadas !== 1 ? 's' : ''} analizadas</span>
             {rend.promedio_latencia != null && (
-              <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Latencia prom: <span className="font-bold text-white">{rend.promedio_latencia}d</span></span>
+              <span className="text-xs font-mono" style={{ color: tema.textMuted }}>Latencia prom: <span className="font-bold text-white">{rend.promedio_latencia}d</span></span>
             )}
           </div>
           <ScoreBarra label="Score fertilización" valor={rend.score_promedio} />
@@ -387,8 +389,8 @@ export default function Animales() {
         className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
         style={
           activo
-            ? { background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.3)', color: '#00e676' }
-            : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }
+            ? { background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.3)', color: tema.accent }
+            : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }
         }
       >
         {children}
@@ -401,10 +403,10 @@ return (
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-1.5 h-7 rounded-full" style={{ background: '#00e676', boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
+          <div className="w-1.5 h-7 rounded-full" style={{ background: tema.accent, boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
           <div>
             <h1 className="text-xl font-bold text-white">Reproductores</h1>
-            <p className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{animales.length} registros</p>
+            <p className="text-xs font-mono" style={{ color: tema.textMuted }}>{animales.length} registros</p>
           </div>
         </div>
         <button
@@ -413,7 +415,7 @@ return (
           style={{
             background: 'rgba(0,230,118,0.12)',
             border: '1.5px solid rgba(0,230,118,0.35)',
-            color: '#00e676',
+            color: tema.accent,
             boxShadow: '0 0 16px rgba(0,230,118,0.08)',
           }}
         >
@@ -440,7 +442,7 @@ return (
             <span className="text-lg">🧬</span>
             <div className="flex-1">
               <div className="font-bold text-sm text-white">Reproductores compartidos desde otras colonias</div>
-              <div className="text-xs font-mono mt-0.5" style={{ color: '#4a5f7a' }}>
+              <div className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>
                 Machos BAL/C × Hembras C57 para producir F1 · Las crías híbridas no pueden ser promovidas a reproductores
               </div>
             </div>
@@ -511,7 +513,7 @@ return (
                     <span className="text-xs font-mono" style={{ color: '#6a8099' }}>{edad}</span>
 
                     {/* Estado */}
-                    <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{labelEstado[a.estado] ?? a.estado}</span>
+                    <span className="text-xs font-mono" style={{ color: tema.textMuted }}>{labelEstado[a.estado] ?? a.estado}</span>
 
                     {/* Score */}
                     {scoreVal != null && (
@@ -530,7 +532,7 @@ return (
                     <button
                       onClick={() => devolverDeHibridos(a.id)}
                       className="ml-auto text-xs font-mono px-3 py-1.5 rounded-lg"
-                      style={{ background: 'rgba(255,61,87,0.06)', border: '1px solid rgba(255,61,87,0.2)', color: '#ff6b80' }}
+                      style={{ background: 'rgba(255,61,87,0.06)', border: '1px solid rgba(255,61,87,0.2)', color: tema.red }}
                       onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,61,87,0.12)' }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,61,87,0.06)' }}
                       title="Devolver a su colonia original"
@@ -554,9 +556,9 @@ return (
           onChange={(e) => setBusqueda(e.target.value)}
           className="px-3 py-1.5 text-sm focus:outline-none rounded-lg font-mono"
           style={{
-            background: 'rgba(8,13,26,0.8)',
+            background: tema.bgInput,
             border: '1px solid rgba(30,51,82,0.8)',
-            color: '#c9d4e0',
+            color: tema.textPrimary,
           }}
         />
         <div className="flex gap-1.5">
@@ -575,7 +577,7 @@ return (
 
       {/* Tabla */}
       {filtrados.length === 0 ? (
-        <div className="text-center py-16" style={{ color: '#4a5f7a' }}>
+        <div className="text-center py-16" style={{ color: tema.textMuted }}>
           <div className="text-4xl mb-3">🔬</div>
           <div className="text-sm">No se encontraron reproductores</div>
         </div>
@@ -587,7 +589,7 @@ return (
               <tr>
                 {['Código','Sexo','Nacimiento','Edad','Progenitores','Emparejamientos','Estado',''].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest"
-                    style={{ color: '#4a5f7a' }}>{h}</th>
+                    style={{ color: tema.textMuted }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -638,7 +640,7 @@ return (
                         {animal.sexo === 'hembra' ? '♀ Hembra' : '♂ Macho'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs" style={{ color: '#8a9bb0' }}>
+                    <td className="px-4 py-3 font-mono text-xs" style={{ color: tema.textSecondary }}>
                       {formatFecha(animal.fecha_nacimiento)}
                     </td>
                     <td className="px-4 py-3 font-mono text-xs">
@@ -650,7 +652,7 @@ return (
                           if (dias >= MACHO_EDAD_LIMITE_DIAS) return (
                             <span
                               className="inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-full"
-                              style={{ background: 'rgba(255,61,87,0.15)', border: '1px solid rgba(255,61,87,0.35)', color: '#ff6b80', fontSize: '10px' }}
+                              style={{ background: 'rgba(255,61,87,0.15)', border: '1px solid rgba(255,61,87,0.35)', color: tema.red, fontSize: '10px' }}
                             >
                               ⚠ Edad avanzada · {edad}
                             </span>
@@ -664,10 +666,10 @@ return (
                             </span>
                           )
                         }
-                        return <span style={{ color: '#4a5f7a' }}>{edad}</span>
+                        return <span style={{ color: tema.textMuted }}>{edad}</span>
                       })()}
                     </td>
-                    <td className="px-4 py-3 text-xs" style={{ color: '#4a5f7a' }}>
+                    <td className="px-4 py-3 text-xs" style={{ color: tema.textMuted }}>
                       {animal.id_madre || animal.id_padre ? (
                         <span className="font-mono">
                           {animal.id_madre ? nombreAnimal(animal.id_madre) : '?'} ×{' '}
@@ -675,7 +677,7 @@ return (
                         </span>
                       ) : <span style={{ color: 'rgba(74,95,122,0.3)' }}>—</span>}
                     </td>
-                    <td className="px-4 py-3 text-center font-mono font-bold" style={{ color: '#8a9bb0' }}>
+                    <td className="px-4 py-3 text-center font-mono font-bold" style={{ color: tema.textSecondary }}>
                       {contarCamadas(animal.id)}
                     </td>
                     <td className="px-4 py-3">
@@ -687,13 +689,13 @@ return (
                           const ec = getEstadoCicloHembra(animal.id, camadas)
                           if (ec === 'ultimo_ciclo') return (
                             <span className="text-xs font-bold px-1.5 py-0.5 rounded"
-                              style={{ background: 'rgba(255,179,0,0.12)', border: '1px solid rgba(255,179,0,0.35)', color: '#ffb300', whiteSpace: 'nowrap' }}>
+                              style={{ background: 'rgba(255,179,0,0.12)', border: '1px solid rgba(255,179,0,0.35)', color: tema.amber, whiteSpace: 'nowrap' }}>
                               🟡 Último ciclo
                             </span>
                           )
                           if (ec === 'fin_ciclo') return (
                             <span className="text-xs font-bold px-1.5 py-0.5 rounded"
-                              style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.3)', color: '#ff6b80', whiteSpace: 'nowrap' }}>
+                              style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.3)', color: tema.red, whiteSpace: 'nowrap' }}>
                               🔚 Fin de ciclo
                             </span>
                           )
@@ -710,17 +712,17 @@ return (
                       <button
                         onClick={() => setModal(animal)}
                         className="text-xs font-semibold mr-3 transition-colors"
-                        style={{ color: '#40c4ff' }}
+                        style={{ color: tema.blue }}
                       >Editar</button>
                       <button
                         onClick={() => setConfirmarEliminar(animal)}
                         className="text-xs font-semibold transition-colors"
-                        style={{ color: '#ff6b80' }}
+                        style={{ color: tema.red }}
                       >Eliminar</button>
                     </td>
                   </tr>
                   {expandido === animal.id && (
-                    <tr style={{ borderBottom: '1px solid rgba(30,51,82,0.4)', background: 'rgba(8,13,26,0.6)' }}>
+                    <tr style={{ borderBottom: '1px solid rgba(30,51,82,0.4)', background: tema.bgInput }}>
                       <td colSpan={8} className="px-6 py-4 space-y-4">
                         {/* Nota del animal */}
                         {animal.notas && (
@@ -737,7 +739,7 @@ return (
                                 style={{ color: animal.nota_tipo === 'critica' ? '#ff1744' : '#ffb300' }}>
                                 {animal.nota_tipo === 'critica' ? 'Observación crítica' : 'Observación'}
                               </div>
-                              <div className="text-sm leading-relaxed" style={{ color: '#c9d4e0' }}>{animal.notas}</div>
+                              <div className="text-sm leading-relaxed" style={{ color: tema.textPrimary }}>{animal.notas}</div>
                             </div>
                           </div>
                         )}
@@ -770,7 +772,7 @@ return (
         <Modal titulo="Eliminar reproductor" onCerrar={() => setConfirmarEliminar(null)} ancho="max-w-sm">
           <div className="text-center space-y-4">
             <div className="text-4xl">⚠️</div>
-            <p style={{ color: '#8a9bb0' }}>
+            <p style={{ color: tema.textSecondary }}>
               ¿Eliminás a{' '}
               <span className="font-mono font-bold text-white">{confirmarEliminar.codigo}</span>?
               Esta acción no se puede deshacer.
@@ -779,12 +781,12 @@ return (
               <button
                 onClick={() => setConfirmarEliminar(null)}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: '#8a9bb0' }}
+                style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: tema.textSecondary }}
               >Cancelar</button>
               <button
                 onClick={() => { eliminarAnimal(confirmarEliminar.id); setConfirmarEliminar(null) }}
                 className="flex-1 py-2.5 rounded-xl text-sm font-bold"
-                style={{ background: 'rgba(255,61,87,0.15)', border: '1px solid rgba(255,61,87,0.35)', color: '#ff6b80' }}
+                style={{ background: 'rgba(255,61,87,0.15)', border: '1px solid rgba(255,61,87,0.35)', color: tema.red }}
               >Eliminar</button>
             </div>
           </div>
@@ -850,7 +852,7 @@ function ModalExportarReproductor({ animalesYaExportados, onExportar, onCerrar }
           style={{ borderBottom: '1px solid rgba(139,92,246,0.15)', background: 'rgba(139,92,246,0.06)' }}
         >
           <div className="font-bold text-white text-sm">🧬 Exportar reproductor a Híbridos</div>
-          <div className="text-xs font-mono mt-1" style={{ color: '#4a5f7a' }}>
+          <div className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>
             Seleccioná un animal de BAL/C o C57 para usarlo en Híbridos. El animal sigue perteneciendo a su colonia original.
           </div>
         </div>
@@ -861,8 +863,8 @@ function ModalExportarReproductor({ animalesYaExportados, onExportar, onCerrar }
           style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
         >
           {[
-            { id: 'ratones_balbc', label: 'Machos BAL/C',   color: '#40c4ff', nota: 'Típicamente los machos' },
-            { id: 'ratones_c57',   label: 'Hembras C57',    color: '#ce93d8', nota: 'Típicamente las hembras' },
+            { id: 'ratones_balbc', label: 'Machos BAL/C',   color: tema.blue, nota: 'Típicamente los machos' },
+            { id: 'ratones_c57',   label: 'Hembras C57',    color: tema.purple, nota: 'Típicamente las hembras' },
           ].map(({ id, label, color, nota }) => (
             <button
               key={id}
@@ -885,7 +887,7 @@ function ModalExportarReproductor({ animalesYaExportados, onExportar, onCerrar }
           {cargando ? (
             <div className="flex items-center justify-center py-8 gap-2">
               <span className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: colorOrigen, borderTopColor: 'transparent' }} />
-              <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Cargando reproductores de {labelOrigen}...</span>
+              <span className="text-xs font-mono" style={{ color: tema.textMuted }}>Cargando reproductores de {labelOrigen}...</span>
             </div>
           ) : disponibles.length === 0 ? (
             <div className="text-center py-8">
@@ -937,7 +939,7 @@ function ModalExportarReproductor({ animalesYaExportados, onExportar, onCerrar }
                   {/* Estado */}
                   <span
                     className="text-xs font-mono px-2 py-0.5 rounded-full ml-auto"
-                    style={{ background: 'rgba(255,255,255,0.04)', color: '#4a5f7a' }}
+                    style={{ background: 'rgba(255,255,255,0.04)', color: tema.textMuted }}
                   >
                     {a.estado === 'activo' ? 'Activo' : a.estado === 'en_cria' ? 'En cría' : a.estado}
                   </span>
@@ -962,7 +964,7 @@ function ModalExportarReproductor({ animalesYaExportados, onExportar, onCerrar }
             type="button"
             onClick={onCerrar}
             className="px-4 py-2.5 rounded-xl text-sm font-mono"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a' }}
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: tema.textMuted }}
           >
             Cancelar
           </button>

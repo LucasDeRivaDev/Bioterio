@@ -62,7 +62,7 @@ function GaugeCircle({ valor, color = '#00e676', size = 88 }) {
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="font-bold font-mono" style={{ color, fontSize: size * 0.22 }}>{pct}</span>
-        <span style={{ color: '#4a5f7a', fontSize: size * 0.12 }}>/100</span>
+        <span style={{ color: tema.textMuted, fontSize: size * 0.12 }}>/100</span>
       </div>
     </div>
   )
@@ -80,7 +80,7 @@ function MiniKpi({ label, valor, color = '#c9d4e0' }) {
 
 // ── Sección colapsable ────────────────────────────────────────────────────────
 function Colapsable({ titulo, children, defaultOpen = false }) {
-  const { tema } = useTheme()
+  const { tema, modoBrillo } = useTheme()
   const [open, setOpen] = useState(defaultOpen)
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}>
@@ -90,7 +90,7 @@ function Colapsable({ titulo, children, defaultOpen = false }) {
         style={{ borderBottom: open ? `1px solid ${tema.bgCardBorde}` : 'none' }}
       >
         <span className="text-sm font-bold" style={{ color: tema.textPrimary }}>{titulo}</span>
-        <span style={{ color: '#4a5f7a', fontSize: 20, lineHeight: 1 }}>{open ? '−' : '+'}</span>
+        <span style={{ color: tema.textMuted, fontSize: 20, lineHeight: 1 }}>{open ? '−' : '+'}</span>
       </button>
       {open && <div className="p-5">{children}</div>}
     </div>
@@ -101,7 +101,7 @@ function Colapsable({ titulo, children, defaultOpen = false }) {
 // Solo muestra filas con cambio relevante o condición de alerta.
 // Evita "deterioro" como palabra — usa dirección e icono.
 function FilaMetrica({ label, vA, vB, invertida = false, formato = v => v?.toFixed?.(1) ?? '—', umbral = 0.08 }) {
-  const { tema } = useTheme()
+  const { tema, modoBrillo } = useTheme()
   if (vA == null && vB == null) return null
 
   const delta = vB != null && vA != null ? vB - vA : null
@@ -118,9 +118,9 @@ function FilaMetrica({ label, vA, vB, invertida = false, formato = v => v?.toFix
 
   return (
     <div className="flex items-center gap-3 py-2.5" style={{ borderBottom: `1px solid ${tema.bgCardBorde}20` }}>
-      <span className="text-xs flex-1 min-w-0" style={{ color: '#8a9bb0' }}>{label}</span>
-      <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{vA != null ? formato(vA) : '—'}</span>
-      <span className="text-xs" style={{ color: '#4a5f7a' }}>→</span>
+      <span className="text-xs flex-1 min-w-0" style={{ color: tema.textSecondary }}>{label}</span>
+      <span className="text-xs font-mono" style={{ color: tema.textMuted }}>{vA != null ? formato(vA) : '—'}</span>
+      <span className="text-xs" style={{ color: tema.textMuted }}>→</span>
       <span className="text-xs font-mono font-semibold" style={{ color: tema.textPrimary }}>{vB != null ? formato(vB) : '—'}</span>
       <span className="text-xs font-bold w-8 text-right" style={{ color }}>{icono}</span>
     </div>
@@ -130,10 +130,10 @@ function FilaMetrica({ label, vA, vB, invertida = false, formato = v => v?.toFix
 // ── Badge de nivel de alerta ──────────────────────────────────────────────────
 function NivelBadge({ nivel }) {
   const cfg = {
-    critico:    { bg: 'rgba(255,61,87,0.1)',  borde: 'rgba(255,61,87,0.3)',  color: '#ff6b80', label: 'Crítico' },
+    critico:    { bg: 'rgba(255,61,87,0.1)',  borde: 'rgba(255,61,87,0.3)',  color: tema.red, label: 'Crítico' },
     importante: { bg: 'rgba(255,152,0,0.1)',  borde: 'rgba(255,152,0,0.3)', color: '#ff9800', label: 'Importante' },
-    atencion:   { bg: 'rgba(255,179,0,0.08)', borde: 'rgba(255,179,0,0.25)',color: '#ffb300', label: 'Atención' },
-  }[nivel] ?? { bg: 'rgba(138,155,176,0.08)', borde: 'rgba(138,155,176,0.2)', color: '#8a9bb0', label: nivel }
+    atencion:   { bg: 'rgba(255,179,0,0.08)', borde: 'rgba(255,179,0,0.25)',color: tema.amber, label: 'Atención' },
+  }[nivel] ?? { bg: 'rgba(138,155,176,0.08)', borde: 'rgba(138,155,176,0.2)', color: tema.textSecondary, label: nivel }
   return (
     <span className="px-2 py-0.5 rounded-md text-xs font-semibold"
       style={{ background: cfg.bg, border: `1px solid ${cfg.borde}`, color: cfg.color }}>
@@ -144,7 +144,7 @@ function NivelBadge({ nivel }) {
 
 // ── Sección técnica colapsable ────────────────────────────────────────────────
 function SeccionTecnica({ resultado, bioterio }) {
-  const { tema } = useTheme()
+  const { tema, modoBrillo } = useTheme()
   const { mA, mB, comp, tendencias } = resultado
 
   const rA = mA.repro,      rB = mB.repro
@@ -177,7 +177,7 @@ function SeccionTecnica({ resultado, bioterio }) {
           <button key={t.id} onClick={() => setTabId(t.id)}
             className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
             style={tabId === t.id
-              ? { background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.35)', color: '#00e676' }
+              ? { background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.35)', color: tema.accent }
               : { background: 'rgba(255,255,255,0.04)', border: `1px solid ${tema.bgCardBorde}`, color: tema.textMuted }
             }
           >{t.label}</button>
@@ -268,7 +268,7 @@ function SeccionTecnica({ resultado, bioterio }) {
             <p className="text-xs py-6 text-center" style={{ color: tema.textMuted }}>Sin incidentes registrados en estos períodos. ✅</p>
           )}
           {sB.abiertos > 0 && (
-            <div className="mt-3 rounded-xl px-4 py-3 text-xs" style={{ background: 'rgba(255,179,0,0.06)', border: '1px solid rgba(255,179,0,0.2)', color: '#ffb300' }}>
+            <div className="mt-3 rounded-xl px-4 py-3 text-xs" style={{ background: 'rgba(255,179,0,0.06)', border: '1px solid rgba(255,179,0,0.2)', color: tema.amber }}>
               ⚠️ {sB.abiertos} incidente(s) sin resolver en el período actual. Darles seguimiento.
             </div>
           )}
@@ -300,10 +300,10 @@ function SeccionTecnica({ resultado, bioterio }) {
           {/* Estado actual del plantel */}
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: 'Total activos', val: rnB.totalActivos,              color: '#c9d4e0' },
-              { label: '♂ Machos',      val: rnB.machos,                    color: '#40c4ff' },
-              { label: '♀ Hembras',     val: rnB.hembras,                   color: '#ce93d8' },
-              { label: 'Edad media',    val: rnB.edadMedia ? Math.round(rnB.edadMedia) + 'd' : '—', color: '#ffb300' },
+              { label: 'Total activos', val: rnB.totalActivos,              color: tema.textPrimary },
+              { label: '♂ Machos',      val: rnB.machos,                    color: tema.blue },
+              { label: '♀ Hembras',     val: rnB.hembras,                   color: tema.purple },
+              { label: 'Edad media',    val: rnB.edadMedia ? Math.round(rnB.edadMedia) + 'd' : '—', color: tema.amber },
             ].map(({ label, val, color }) => (
               <div key={label} className="rounded-xl p-3 text-center" style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${tema.bgCardBorde}` }}>
                 <div className="text-lg font-bold font-mono" style={{ color }}>{val}</div>
@@ -316,12 +316,12 @@ function SeccionTecnica({ resultado, bioterio }) {
           {((rnB.proximosLimite ?? 0) > 0 || (rnB.excedidos ?? 0) > 0) && (
             <div className="space-y-2">
               {(rnB.excedidos ?? 0) > 0 && (
-                <div className="rounded-xl px-4 py-3 text-xs" style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)', color: '#ff6b80' }}>
+                <div className="rounded-xl px-4 py-3 text-xs" style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)', color: tema.red }}>
                   🔴 {rnB.excedidos} reproductor(es) superaron el límite de edad (≥270d). Reemplazar pronto.
                 </div>
               )}
               {(rnB.proximosLimite ?? 0) > 0 && (
-                <div className="rounded-xl px-4 py-3 text-xs" style={{ background: 'rgba(255,179,0,0.06)', border: '1px solid rgba(255,179,0,0.2)', color: '#ffb300' }}>
+                <div className="rounded-xl px-4 py-3 text-xs" style={{ background: 'rgba(255,179,0,0.06)', border: '1px solid rgba(255,179,0,0.2)', color: tema.amber }}>
                   ⚠️ {rnB.proximosLimite} reproductor(es) próximos al límite (≥240d). Planificar renovación.
                 </div>
               )}
@@ -339,15 +339,15 @@ function SeccionTecnica({ resultado, bioterio }) {
             <div className="rounded-xl px-4 py-3 text-xs space-y-1" style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${tema.bgCardBorde}` }}>
               <div className="font-semibold mb-1" style={{ color: tema.textMuted }}>Estado genético</div>
               <div className="flex justify-between">
-                <span style={{ color: '#8a9bb0' }}>Consanguinidad media (F)</span>
+                <span style={{ color: tema.textSecondary }}>Consanguinidad media (F)</span>
                 <span className="font-mono font-semibold" style={{ color: mB.genetica.fMedia > 0.125 ? '#ff6b80' : mB.genetica.fMedia > 0.0625 ? '#ffb300' : '#00e676' }}>
                   {(mB.genetica.fMedia * 100).toFixed(1)}%
                 </span>
               </div>
               {mB.genetica.animalesAltoF > 0 && (
                 <div className="flex justify-between">
-                  <span style={{ color: '#8a9bb0' }}>Animales con F elevado</span>
-                  <span className="font-mono font-semibold" style={{ color: '#ffb300' }}>{mB.genetica.animalesAltoF}</span>
+                  <span style={{ color: tema.textSecondary }}>Animales con F elevado</span>
+                  <span className="font-mono font-semibold" style={{ color: tema.amber }}>{mB.genetica.animalesAltoF}</span>
                 </div>
               )}
             </div>
@@ -402,9 +402,9 @@ function SeccionTecnica({ resultado, bioterio }) {
 function TendenciasCompactas({ tendencias, tema }) {
   const [metrica, setMetrica] = useState('fertilidad')
   const opciones = [
-    { key: 'fertilidad',    label: 'Fertilidad',   color: '#00e676', fmt: v => v + '%' },
-    { key: 'nacidos',       label: 'Nacidos/mes',  color: '#40c4ff', fmt: v => v },
-    { key: 'supervivencia', label: 'Supervivencia',color: '#ffb300', fmt: v => v + '%' },
+    { key: 'fertilidad',    label: 'Fertilidad',   color: tema.accent, fmt: v => v + '%' },
+    { key: 'nacidos',       label: 'Nacidos/mes',  color: tema.blue, fmt: v => v },
+    { key: 'supervivencia', label: 'Supervivencia',color: tema.amber, fmt: v => v + '%' },
     { key: 'incidentes',    label: 'Incidentes',   color: '#ff9800', fmt: v => v },
   ]
   const sel = opciones.find(o => o.key === metrica)
@@ -574,7 +574,7 @@ export default function Auditoria() {
               <button key={b.id} onClick={() => { setBioterio(b.id); setResultado(null) }}
                 className="px-3 py-2 rounded-xl text-xs font-semibold transition-all"
                 style={bioterio === b.id
-                  ? { background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.4)', color: '#00e676' }
+                  ? { background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.4)', color: tema.accent }
                   : { background: 'rgba(255,255,255,0.04)', border: `1px solid ${tema.bgCardBorde}`, color: tema.textSecondary }
                 }
               >{b.icon} {b.label}</button>
@@ -592,7 +592,7 @@ export default function Auditoria() {
               <button key={p.id} onClick={() => setPresetId(p.id)}
                 className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
                 style={presetId === p.id
-                  ? { background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.4)', color: '#00e676' }
+                  ? { background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.4)', color: tema.accent }
                   : { background: 'rgba(255,255,255,0.04)', border: `1px solid ${tema.bgCardBorde}`, color: tema.textSecondary }
                 }
               >{p.label}</button>
@@ -600,7 +600,7 @@ export default function Auditoria() {
             <button onClick={() => setPresetId('custom')}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
               style={presetId === 'custom'
-                ? { background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.4)', color: '#00e676' }
+                ? { background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.4)', color: tema.accent }
                 : { background: 'rgba(255,255,255,0.04)', border: `1px solid ${tema.bgCardBorde}`, color: tema.textSecondary }
               }
             >Personalizado</button>
@@ -610,18 +610,18 @@ export default function Auditoria() {
         {presetId === 'custom' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {[
-              { label: 'Período A (anterior)', data: customA, set: setCustomA, color: '#4a5f7a' },
-              { label: 'Período B (actual)',   data: customB, set: setCustomB, color: '#00e676' },
+              { label: 'Período A (anterior)', data: customA, set: setCustomA, color: tema.textMuted },
+              { label: 'Período B (actual)',   data: customB, set: setCustomB, color: tema.accent },
             ].map(({ label, data, set, color }) => (
               <div key={label} className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${tema.bgCardBorde}` }}>
                 <div className="text-xs font-semibold" style={{ color }}>{label}</div>
                 <div className="flex gap-2">
                   <input type="date" value={data.desde} onChange={e => set(p => ({ ...p, desde: e.target.value }))}
                     className="flex-1 px-2 py-1.5 rounded-lg text-xs"
-                    style={{ background: 'rgba(8,13,26,0.8)', border: `1px solid ${tema.bgCardBorde}`, color: '#c9d4e0' }} />
+                    style={{ background: tema.bgInput, border: `1px solid ${tema.bgCardBorde}`, color: tema.textPrimary }} />
                   <input type="date" value={data.hasta} onChange={e => set(p => ({ ...p, hasta: e.target.value }))}
                     className="flex-1 px-2 py-1.5 rounded-lg text-xs"
-                    style={{ background: 'rgba(8,13,26,0.8)', border: `1px solid ${tema.bgCardBorde}`, color: '#c9d4e0' }} />
+                    style={{ background: tema.bgInput, border: `1px solid ${tema.bgCardBorde}`, color: tema.textPrimary }} />
                 </div>
               </div>
             ))}
@@ -630,8 +630,8 @@ export default function Auditoria() {
 
         {periodosEfectivos && presetId !== 'custom' && (
           <div className="text-xs space-y-0.5" style={{ color: tema.textMuted }}>
-            <div>A (anterior): <b style={{ color: '#8a9bb0' }}>{periodosEfectivos.desdeA}</b> → <b style={{ color: '#8a9bb0' }}>{periodosEfectivos.hastaA}</b></div>
-            <div>B (actual):   <b style={{ color: '#00e676' }}>{periodosEfectivos.desdeB}</b> → <b style={{ color: '#00e676' }}>{periodosEfectivos.hastaB}</b></div>
+            <div>A (anterior): <b style={{ color: tema.textSecondary }}>{periodosEfectivos.desdeA}</b> → <b style={{ color: tema.textSecondary }}>{periodosEfectivos.hastaA}</b></div>
+            <div>B (actual):   <b style={{ color: tema.accent }}>{periodosEfectivos.desdeB}</b> → <b style={{ color: tema.accent }}>{periodosEfectivos.hastaB}</b></div>
           </div>
         )}
 
@@ -639,7 +639,7 @@ export default function Auditoria() {
           className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm font-bold transition-all"
           style={{
             background: analizando ? 'rgba(0,230,118,0.06)' : 'rgba(0,230,118,0.15)',
-            border: '1px solid rgba(0,230,118,0.4)', color: '#00e676',
+            border: '1px solid rgba(0,230,118,0.4)', color: tema.accent,
             cursor: analizando ? 'not-allowed' : 'pointer', opacity: analizando ? 0.7 : 1,
           }}
         >{analizando ? '⏳ Analizando...' : '🔬 Analizar y comparar'}</button>
@@ -647,7 +647,7 @@ export default function Auditoria() {
 
       {/* ── Error ─────────────────────────────────────────────────────────── */}
       {error && (
-        <div className="rounded-xl px-4 py-3 text-sm" style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.25)', color: '#ff6b80' }}>
+        <div className="rounded-xl px-4 py-3 text-sm" style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.25)', color: tema.red }}>
           ⚠️ {error}
         </div>
       )}
@@ -737,15 +737,15 @@ export default function Auditoria() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold" style={{ color: tema.textPrimary }}>Alertas</span>
                   <span className="px-2 py-0.5 rounded-full text-xs font-bold"
-                    style={{ background: 'rgba(255,61,87,0.1)', color: '#ff6b80' }}>
+                    style={{ background: 'rgba(255,61,87,0.1)', color: tema.red }}>
                     {alertas.length}
                   </span>
                 </div>
                 {alertas.map((alerta, i) => {
                   const cfg = {
-                    critico:    { bg: 'rgba(255,61,87,0.08)',  borde: 'rgba(255,61,87,0.25)',  color: '#ff6b80' },
+                    critico:    { bg: 'rgba(255,61,87,0.08)',  borde: 'rgba(255,61,87,0.25)',  color: tema.red },
                     importante: { bg: 'rgba(255,152,0,0.08)',  borde: 'rgba(255,152,0,0.25)',  color: '#ff9800' },
-                    atencion:   { bg: 'rgba(255,179,0,0.06)',  borde: 'rgba(255,179,0,0.2)',   color: '#ffb300' },
+                    atencion:   { bg: 'rgba(255,179,0,0.06)',  borde: 'rgba(255,179,0,0.2)',   color: tema.amber },
                   }[alerta.nivel] ?? {}
                   return (
                     <div key={i} className="flex items-start gap-3 px-4 py-3 rounded-xl"
@@ -763,7 +763,7 @@ export default function Auditoria() {
               <div className="rounded-2xl px-5 py-4 flex items-center gap-3" style={card}>
                 <span className="text-2xl">✅</span>
                 <div>
-                  <div className="text-sm font-semibold" style={{ color: '#00e676' }}>Sin alertas críticas</div>
+                  <div className="text-sm font-semibold" style={{ color: tema.accent }}>Sin alertas críticas</div>
                   <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>No se detectaron problemas reales en el período analizado.</div>
                 </div>
               </div>

@@ -9,6 +9,7 @@ import { BIO_RATONES } from '../utils/constants'
 import { generarId } from '../utils/storage'
 import { ArrowLeft, RefreshCw } from 'lucide-react'
 import { getPlanes, getNotas } from '../utils/db'
+import { useTheme } from '../context/ThemeContext'
 
 // ── Grupos de ratones ─────────────────────────────────────────────────────────
 const GRUPOS = ['ratones_balbc', 'ratones_c57', 'ratones_hibridos']
@@ -44,8 +45,8 @@ const TIPO_CONFIG = {
 const PRIORIDAD_CONFIG = {
   vencida: { label: 'Vencida', color: '#ff5252', bg: 'rgba(255,82,82,0.12)',    borde: 'rgba(255,82,82,0.35)',   orden: 0 },
   hoy:     { label: 'Hoy',     color: '#ff9800', bg: 'rgba(255,152,0,0.12)',    borde: 'rgba(255,152,0,0.35)',   orden: 1 },
-  proxima: { label: 'Próxima', color: '#ffb300', bg: 'rgba(255,179,0,0.10)',    borde: 'rgba(255,179,0,0.30)',   orden: 2 },
-  info:    { label: 'Info',    color: '#8a9bb0', bg: 'rgba(138,155,176,0.08)', borde: 'rgba(138,155,176,0.25)', orden: 3 },
+  proxima: { label: 'Próxima', color: tema.amber, bg: 'rgba(255,179,0,0.10)',    borde: 'rgba(255,179,0,0.30)',   orden: 2 },
+  info:    { label: 'Info',    color: tema.textSecondary, bg: 'rgba(138,155,176,0.08)', borde: 'rgba(138,155,176,0.25)', orden: 3 },
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -141,8 +142,8 @@ function MenuRestaurar({ labelRestaurar, onRestaurar, onSoloBorrar, onCerrar }) 
         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,230,118,0.07)'}
         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
       >
-        <div className="font-semibold" style={{ color: '#00e676' }}>{labelRestaurar}</div>
-        <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>El animal vuelve a su estado anterior</div>
+        <div className="font-semibold" style={{ color: tema.accent }}>{labelRestaurar}</div>
+        <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>El animal vuelve a su estado anterior</div>
       </button>
       <button onClick={onSoloBorrar}
         className="w-full text-left px-4 py-3 text-sm transition-colors"
@@ -151,11 +152,11 @@ function MenuRestaurar({ labelRestaurar, onRestaurar, onSoloBorrar, onCerrar }) 
         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
       >
         <div className="font-semibold" style={{ color: '#ff5252' }}>✕ Solo borrar registro</div>
-        <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>Borra solo el registro, sin restaurar</div>
+        <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>Borra solo el registro, sin restaurar</div>
       </button>
       <button onClick={onCerrar}
         className="w-full text-left px-4 py-3 text-sm transition-colors"
-        style={{ color: '#4a5f7a', borderTop: '1px solid rgba(30,51,82,0.6)', cursor: 'pointer', background: 'transparent' }}
+        style={{ color: tema.textMuted, borderTop: '1px solid rgba(30,51,82,0.6)', cursor: 'pointer', background: 'transparent' }}
         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(74,95,122,0.06)'}
         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
       >
@@ -168,6 +169,7 @@ function MenuRestaurar({ labelRestaurar, onRestaurar, onSoloBorrar, onCerrar }) 
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function ResumenRatones() {
+  const { tema, modoBrillo } = useTheme()
   const { limpiarBioterio, setBioterioActivo } = useBioterioActivo()
 
   const [datos,    setDatos]    = useState(null)
@@ -396,7 +398,7 @@ export default function ResumenRatones() {
         style={{ borderBottom: '1px solid rgba(64,196,255,0.15)', background: 'rgba(13,21,40,0.6)' }}>
         <button onClick={limpiarBioterio}
           className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-mono transition-colors"
-          style={{ background: 'rgba(64,196,255,0.07)', border: '1px solid rgba(64,196,255,0.2)', color: '#40c4ff' }}
+          style={{ background: 'rgba(64,196,255,0.07)', border: '1px solid rgba(64,196,255,0.2)', color: tema.blue }}
           onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(64,196,255,0.14)' }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(64,196,255,0.07)' }}
         >
@@ -404,11 +406,11 @@ export default function ResumenRatones() {
         </button>
         <div className="flex-1">
           <h1 className="font-bold text-white text-base">Resumen total de ratones</h1>
-          <p className="text-xs font-mono" style={{ color: '#4a5f7a' }}>Balb/C · C57 · Híbridos — Stock · Notificaciones · Sacrificios</p>
+          <p className="text-xs font-mono" style={{ color: tema.textMuted }}>Balb/C · C57 · Híbridos — Stock · Notificaciones · Sacrificios</p>
         </div>
         <button onClick={cargarDatos} disabled={cargando}
           className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono transition-colors"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#4a5f7a', cursor: cargando ? 'not-allowed' : 'pointer' }}
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: tema.textMuted, cursor: cargando ? 'not-allowed' : 'pointer' }}
         >
           <RefreshCw size={12} className={cargando ? 'animate-spin' : ''} /> Actualizar
         </button>
@@ -419,7 +421,7 @@ export default function ResumenRatones() {
 
         {error && (
           <div className="rounded-2xl px-5 py-4 text-sm font-mono"
-            style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)', color: '#ff6b80' }}>
+            style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)', color: tema.red }}>
             ⚠️ {error}
           </div>
         )}
@@ -428,7 +430,7 @@ export default function ResumenRatones() {
           <div className="flex items-center justify-center gap-3 py-16">
             <span className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin"
               style={{ borderColor: '#40c4ff', borderTopColor: 'transparent' }} />
-            <span className="text-sm font-mono" style={{ color: '#4a5f7a' }}>Cargando datos de las 3 colonias...</span>
+            <span className="text-sm font-mono" style={{ color: tema.textMuted }}>Cargando datos de las 3 colonias...</span>
           </div>
         )}
 
@@ -442,11 +444,11 @@ export default function ResumenRatones() {
                 <span className="text-2xl">🐭</span>
                 <div className="flex-1">
                   <div className="font-bold text-white text-sm">Stock total de ratones</div>
-                  <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>
+                  <div className="text-xs font-mono" style={{ color: tema.textMuted }}>
                     {totales.jaulas} {totales.jaulas === 1 ? 'jaula' : 'jaulas'} · Balb/C + C57 + Híbridos
                   </div>
                 </div>
-                <div className="text-3xl font-bold font-mono" style={{ color: '#40c4ff' }}>{totales.total}</div>
+                <div className="text-3xl font-bold font-mono" style={{ color: tema.blue }}>{totales.total}</div>
               </div>
               <div className="px-6 py-5 grid grid-cols-3 gap-3">
                 <TarjetaEdad label="Crías"   subtitulo="< 6 semanas"    icono="🐣" cantidad={totales.crias}   jaulas={totales.jaulasCrias}   color="#00e676" />
@@ -455,7 +457,7 @@ export default function ResumenRatones() {
               </div>
               {totales.sin_fecha > 0 && (
                 <div className="px-6 py-3 flex items-center gap-2 text-xs font-mono"
-                  style={{ borderTop: '1px solid rgba(255,255,255,0.05)', color: '#4a5f7a' }}>
+                  style={{ borderTop: '1px solid rgba(255,255,255,0.05)', color: tema.textMuted }}>
                   <span>⚠</span>
                   <span>{totales.sin_fecha} animales sin fecha de nacimiento — no clasificados por edad</span>
                 </div>
@@ -464,7 +466,7 @@ export default function ResumenRatones() {
 
             {/* ── DISTRIBUCIÓN POR COLONIA ── */}
             <div>
-              <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#4a5f7a' }}>Distribución por colonia</h2>
+              <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: tema.textMuted }}>Distribución por colonia</h2>
               <div className="space-y-3">
                 {GRUPOS.map((gid) => (
                   <FilaColonia key={gid} cfg={BIOTERIOS_CONFIG[gid]} grupo={datos[gid]} totalGlobal={totales.total} onEntrar={() => setBioterioActivo(gid)} />
@@ -478,12 +480,12 @@ export default function ResumenRatones() {
               <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
                 <div className="flex items-center gap-2">
                   <div className="w-1 h-5 rounded-full" style={{ background: '#ffb300' }} />
-                  <span className="text-xs font-bold uppercase tracking-widest" style={{ color: '#ffb300' }}>
+                  <span className="text-xs font-bold uppercase tracking-widest" style={{ color: tema.amber }}>
                     🔔 Notificaciones
                   </span>
                   {notificaciones.length > 0 && (
                     <span className="text-xs font-mono px-2 py-0.5 rounded-full"
-                      style={{ background: 'rgba(255,179,0,0.12)', color: '#ffb300', border: '1px solid rgba(255,179,0,0.3)' }}>
+                      style={{ background: 'rgba(255,179,0,0.12)', color: tema.amber, border: '1px solid rgba(255,179,0,0.3)' }}>
                       {notificaciones.length} pendientes
                     </span>
                   )}
@@ -493,7 +495,7 @@ export default function ResumenRatones() {
               {/* Filtros */}
               <div className="flex gap-2 flex-wrap mb-4">
                 {[
-                  { id: 'todas', label: 'Todas', color: '#8a9bb0', count: notificaciones.length },
+                  { id: 'todas', label: 'Todas', color: tema.textSecondary, count: notificaciones.length },
                   ...GRUPOS.map((gid) => ({
                     id: gid, label: BIOTERIOS_CONFIG[gid].labelCorto,
                     color: COLOR_COLONIA[gid], count: notifPorColonia[gid],
@@ -503,7 +505,7 @@ export default function ResumenRatones() {
                     className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
                     style={filtroNotif === id
                       ? { background: `${color}18`, border: `1px solid ${color}50`, color }
-                      : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }}
+                      : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }}
                   >
                     {label}
                     <span className="ml-1.5 font-mono opacity-60">({count})</span>
@@ -516,10 +518,10 @@ export default function ResumenRatones() {
                 <div className="rounded-2xl p-10 text-center"
                   style={{ background: 'rgba(255,179,0,0.03)', border: '1px dashed rgba(255,179,0,0.2)' }}>
                   <div className="text-2xl mb-2">✅</div>
-                  <div className="font-semibold text-sm" style={{ color: '#ffb300' }}>
+                  <div className="font-semibold text-sm" style={{ color: tema.amber }}>
                     {notificaciones.length === 0 ? 'Sin notificaciones pendientes' : 'Sin notificaciones en esta colonia'}
                   </div>
-                  <div className="text-xs mt-1" style={{ color: '#4a5f7a' }}>Todas las colonias están al día</div>
+                  <div className="text-xs mt-1" style={{ color: tema.textMuted }}>Todas las colonias están al día</div>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -540,16 +542,16 @@ export default function ResumenRatones() {
                             <span className="font-semibold text-sm text-white">{n.descripcion}</span>
                           </div>
                           {n.detalle && (
-                            <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>{n.detalle}</div>
+                            <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>{n.detalle}</div>
                           )}
                           <div className="flex items-center gap-2 mt-1 flex-wrap">
                             <span className="text-xs font-mono px-1.5 py-0.5 rounded"
                               style={{ background: pCfg.bg, color: pCfg.color, border: `1px solid ${pCfg.borde}` }}>
                               {pCfg.label}
                             </span>
-                            <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{tCfg.label}</span>
+                            <span className="text-xs font-mono" style={{ color: tema.textMuted }}>{tCfg.label}</span>
                             {n.fecha && (
-                              <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>· {formatFecha(n.fecha)}</span>
+                              <span className="text-xs font-mono" style={{ color: tema.textMuted }}>· {formatFecha(n.fecha)}</span>
                             )}
                           </div>
                         </div>
@@ -568,11 +570,11 @@ export default function ResumenRatones() {
               <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
                 <div className="flex items-center gap-2">
                   <div className="w-1 h-5 rounded-full" style={{ background: '#ff6b80' }} />
-                  <span className="text-xs font-bold uppercase tracking-widest" style={{ color: '#ff6b80' }}>
+                  <span className="text-xs font-bold uppercase tracking-widest" style={{ color: tema.red }}>
                     🗡 Sacrificios de ratones
                   </span>
                   <span className="text-xs font-mono px-2 py-0.5 rounded-full"
-                    style={{ background: 'rgba(255,61,87,0.1)', color: '#ff6b80', border: '1px solid rgba(255,61,87,0.25)' }}>
+                    style={{ background: 'rgba(255,61,87,0.1)', color: tema.red, border: '1px solid rgba(255,61,87,0.25)' }}>
                     {sacEnriquecidos.reduce((s, x) => s + x.cantidad, 0)} animales · {sacEnriquecidos.length} registros
                   </span>
                 </div>
@@ -581,7 +583,7 @@ export default function ResumenRatones() {
               {/* Filtros sacrificios */}
               <div className="flex gap-2 flex-wrap mb-4">
                 {[
-                  { id: 'todas', label: 'Todos', color: '#8a9bb0', count: sacEnriquecidos.length },
+                  { id: 'todas', label: 'Todos', color: tema.textSecondary, count: sacEnriquecidos.length },
                   ...GRUPOS.map((gid) => ({
                     id: gid, label: BIOTERIOS_CONFIG[gid].labelCorto,
                     color: COLOR_COLONIA[gid], count: sacEnriquecidos.filter(s => s.bioterioId === gid).length,
@@ -591,7 +593,7 @@ export default function ResumenRatones() {
                     className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
                     style={filtroColonia === id
                       ? { background: `${color}18`, border: `1px solid ${color}50`, color }
-                      : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }}
+                      : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }}
                   >
                     {label} <span className="ml-1.5 font-mono opacity-60">({count})</span>
                   </button>
@@ -602,7 +604,7 @@ export default function ResumenRatones() {
                 <div className="rounded-2xl p-10 text-center"
                   style={{ background: 'rgba(255,107,128,0.04)', border: '1px dashed rgba(255,107,128,0.2)' }}>
                   <div className="text-2xl mb-2">📋</div>
-                  <div className="font-semibold text-sm" style={{ color: '#ff6b80' }}>
+                  <div className="font-semibold text-sm" style={{ color: tema.red }}>
                     {sacEnriquecidos.length === 0 ? 'Sin sacrificios registrados' : 'Sin sacrificios en esta colonia'}
                   </div>
                 </div>
@@ -616,7 +618,7 @@ export default function ResumenRatones() {
                       <thead>
                         <tr style={{ borderBottom: '1px solid rgba(30,51,82,0.6)', background: 'rgba(0,0,0,0.1)' }}>
                           {['Fecha', 'Colonia', 'Animal / Grupo', 'Cant.', 'Categoría', 'Notas', ''].map((h, i) => (
-                            <th key={i} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>{h}</th>
+                            <th key={i} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest" style={{ color: tema.textMuted }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -625,7 +627,7 @@ export default function ResumenRatones() {
                           const enProceso = cargandoSac === s.id
                           return (
                             <tr key={s.id} style={{ borderBottom: '1px solid rgba(30,51,82,0.4)' }}>
-                              <td className="px-4 py-3 font-mono text-xs" style={{ color: '#8a9bb0', whiteSpace: 'nowrap' }}>{formatFecha(s.fecha)}</td>
+                              <td className="px-4 py-3 font-mono text-xs" style={{ color: tema.textSecondary, whiteSpace: 'nowrap' }}>{formatFecha(s.fecha)}</td>
                               <td className="px-4 py-3"><OrigenBadge bioterioId={s.bioterioId} /></td>
                               <td className="px-4 py-3">
                                 {s.categoria === 'reproductor' && s.animalInfo ? (
@@ -637,19 +639,19 @@ export default function ResumenRatones() {
                                   </div>
                                 ) : s.madre || s.padre ? (
                                   <span className="font-mono text-sm">
-                                    <span style={{ color: '#ce93d8' }}>{s.madre?.codigo ?? '?'}</span>
-                                    <span style={{ color: '#4a5f7a' }}> × </span>
-                                    <span style={{ color: '#40c4ff' }}>{s.padre?.codigo ?? '?'}</span>
+                                    <span style={{ color: tema.purple }}>{s.madre?.codigo ?? '?'}</span>
+                                    <span style={{ color: tema.textMuted }}> × </span>
+                                    <span style={{ color: tema.blue }}>{s.padre?.codigo ?? '?'}</span>
                                   </span>
                                 ) : (
-                                  <span style={{ color: '#4a5f7a' }}>—</span>
+                                  <span style={{ color: tema.textMuted }}>—</span>
                                 )}
                               </td>
-                              <td className="px-4 py-3 font-mono font-bold text-lg" style={{ color: '#ff6b80' }}>{s.cantidad}</td>
-                              <td className="px-4 py-3 text-xs" style={{ color: '#8a9bb0' }}>
+                              <td className="px-4 py-3 font-mono font-bold text-lg" style={{ color: tema.red }}>{s.cantidad}</td>
+                              <td className="px-4 py-3 text-xs" style={{ color: tema.textSecondary }}>
                                 {s.categoria ? (LABEL_CATEGORIA[s.categoria] ?? s.categoria) : '—'}
                               </td>
-                              <td className="px-4 py-3 text-xs" style={{ color: '#4a5f7a', maxWidth: '180px' }}>{s.notas ?? '—'}</td>
+                              <td className="px-4 py-3 text-xs" style={{ color: tema.textMuted, maxWidth: '180px' }}>{s.notas ?? '—'}</td>
                               <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                                 <div className="relative inline-block">
                                   <button
@@ -685,7 +687,7 @@ export default function ResumenRatones() {
 
             {/* ── NOTA DE USO ── */}
             <div className="rounded-xl px-5 py-4 text-xs font-mono space-y-1"
-              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', color: '#4a5f7a' }}>
+              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', color: tema.textMuted }}>
               <div className="font-semibold" style={{ color: '#6a8099' }}>Nota</div>
               <div>Las notificaciones también siguen apareciendo dentro de cada colonia individual.</div>
               <div>Este panel las centraliza para ver el estado global sin entrar a cada una.</div>
@@ -707,8 +709,8 @@ function TarjetaEdad({ label, subtitulo, icono, cantidad, jaulas, color }) {
       <span className="text-xl">{icono}</span>
       <div className="text-2xl font-bold font-mono" style={{ color }}>{cantidad}</div>
       {jaulas > 0 && <div className="text-xs font-mono" style={{ color: `${color}99` }}>{jaulas} {jaulas === 1 ? 'jaula' : 'jaulas'}</div>}
-      <div className="text-xs font-semibold" style={{ color: '#c9d4e0' }}>{label}</div>
-      <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{subtitulo}</div>
+      <div className="text-xs font-semibold" style={{ color: tema.textPrimary }}>{label}</div>
+      <div className="text-xs font-mono" style={{ color: tema.textMuted }}>{subtitulo}</div>
     </div>
   )
 }
@@ -721,7 +723,7 @@ function FilaColonia({ cfg, grupo, totalGlobal, onEntrar }) {
         style={{ borderBottom: `1px solid ${cfg.color}15`, background: `${cfg.color}07` }}>
         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: cfg.color }} />
         <span className="font-bold text-sm text-white flex-1">{cfg.labelCorto}</span>
-        <span className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{pct}% del total</span>
+        <span className="text-xs font-mono" style={{ color: tema.textMuted }}>{pct}% del total</span>
         <span className="text-lg font-bold font-mono" style={{ color: cfg.color }}>{grupo.total}</span>
         <button onClick={onEntrar}
           className="ml-2 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-colors"
@@ -757,7 +759,7 @@ function MiniCat({ label, cantidad, jaulas, color }) {
         {cantidad}
         {jaulas > 0 && <span className="text-xs font-normal" style={{ color: `${color}80` }}> ({jaulas})</span>}
       </div>
-      <div className="text-xs font-mono" style={{ color: '#4a5f7a' }}>{label}</div>
+      <div className="text-xs font-mono" style={{ color: tema.textMuted }}>{label}</div>
     </div>
   )
 }

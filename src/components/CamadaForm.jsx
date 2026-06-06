@@ -4,6 +4,7 @@ import { calcularRangoParto, calcularDestete, formatFecha, hoy, difDias, parseDa
 import { MAX_APAREAMIENTOS } from '../utils/constants'
 import { buildPedigree, evaluarApareamientoGenetico, fPorcentaje, LABEL_PARENTESCO, calcularFCoeficiente } from '../utils/genealogia'
 import { generarBloqueosSanitarios } from '../utils/sanitario'
+import { useTheme } from '../context/ThemeContext'
 
 const vacioCamada = {
   id_madre: '', id_padre: '', fecha_copula: '', fecha_nacimiento: '',
@@ -27,22 +28,22 @@ function esInactivo(animal) {
 }
 
 const inputStyle = {
-  background: 'rgba(8,13,26,0.8)',
+  background: tema.bgInput,
   border: '1px solid rgba(30,51,82,0.8)',
-  color: '#c9d4e0',
+  color: tema.textPrimary,
   borderRadius: '10px',
 }
 
 function LabInput({ label, sublabel, required, error, children }) {
   return (
     <div>
-      <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5 flex items-center gap-1.5" style={{ color: '#8a9bb0' }}>
+      <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5 flex items-center gap-1.5" style={{ color: tema.textSecondary }}>
         {label}
-        {required && <span style={{ color: '#ff6b80' }}>*</span>}
+        {required && <span style={{ color: tema.red }}>*</span>}
         {sublabel && <span className="normal-case tracking-normal font-normal opacity-50 ml-1">{sublabel}</span>}
       </label>
       {children}
-      {error && <p className="text-xs mt-1" style={{ color: '#ff6b80' }}>{error}</p>}
+      {error && <p className="text-xs mt-1" style={{ color: tema.red }}>{error}</p>}
     </div>
   )
 }
@@ -75,6 +76,7 @@ function labelColonia(bioId) {
 }
 
 export default function CamadaForm({ camada, onGuardar, onCancelar }) {
+  const { tema, modoBrillo } = useTheme()
   const { animales, animalesExportados, camadas, incidentes, bio, bioterioActivo } = useBioterio()
   const [form, setForm] = useState(camada ? normalizarCamada(camada) : vacioCamada)
   const [errores, setErrores] = useState({})
@@ -287,8 +289,8 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
         className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all"
         style={
           modoHistorico
-            ? { background: 'rgba(255,179,0,0.1)', border: '1px solid rgba(255,179,0,0.35)', color: '#ffb300' }
-            : { background: 'rgba(138,155,176,0.06)', border: '1px solid rgba(30,51,82,0.6)', color: '#4a5f7a' }
+            ? { background: 'rgba(255,179,0,0.1)', border: '1px solid rgba(255,179,0,0.35)', color: tema.amber }
+            : { background: 'rgba(138,155,176,0.06)', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }
         }
       >
         <span className="flex items-center gap-2">
@@ -338,7 +340,7 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
           {madreSelec && !esOriginalMadre(madreSelec) && (() => {
             const d = dispHembra(madreSelec)
             return !d.ok ? (
-              <p className="text-xs mt-1 px-2 py-1 rounded-lg" style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.2)', color: '#ff6b80' }}>
+              <p className="text-xs mt-1 px-2 py-1 rounded-lg" style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.2)', color: tema.red }}>
                 ⚠ Hembra no disponible: {d.motivo}
               </p>
             ) : null
@@ -354,7 +356,7 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
             )
           })()}
           {esInactivo(madreSelec) && fechaEsPasada && (
-            <p className="text-xs mt-1" style={{ color: '#ffb300' }}>
+            <p className="text-xs mt-1" style={{ color: tema.amber }}>
               Animal inactivo — permitido solo para carga histórica
             </p>
           )}
@@ -385,7 +387,7 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
           {padreSelec && !esOriginalPadre(padreSelec) && (() => {
             const d = dispMacho(padreSelec)
             return !d.ok ? (
-              <p className="text-xs mt-1 px-2 py-1 rounded-lg" style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.2)', color: '#ff6b80' }}>
+              <p className="text-xs mt-1 px-2 py-1 rounded-lg" style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.2)', color: tema.red }}>
                 ⚠ Macho no disponible: {d.motivo}
               </p>
             ) : null
@@ -401,7 +403,7 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
             )
           })()}
           {esInactivo(padreSelec) && fechaEsPasada && (
-            <p className="text-xs mt-1" style={{ color: '#ffb300' }}>
+            <p className="text-xs mt-1" style={{ color: tema.amber }}>
               Animal inactivo — permitido solo para carga histórica
             </p>
           )}
@@ -421,7 +423,7 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
             <div className="px-4 py-3 flex items-start gap-3">
               <span className="text-xl mt-0.5">🟡</span>
               <div>
-                <p className="text-sm font-bold mb-0.5" style={{ color: '#ffb300' }}>
+                <p className="text-sm font-bold mb-0.5" style={{ color: tema.amber }}>
                   Último ciclo reproductivo
                 </p>
                 <p className="text-xs" style={{ color: '#ffd06e' }}>
@@ -444,7 +446,7 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
           <div className="px-4 py-3 flex items-start gap-3">
             <span className="text-xl mt-0.5">🧬</span>
             <div className="flex-1">
-              <p className="text-sm font-bold mb-0.5" style={{ color: '#ff6b80' }}>
+              <p className="text-sm font-bold mb-0.5" style={{ color: tema.red }}>
                 Consanguinidad detectada
               </p>
               <p className="text-xs" style={{ color: '#ff9aaa' }}>
@@ -473,12 +475,12 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
                 background: confirmarConsanguinidad ? 'rgba(255,61,87,0.25)' : 'transparent',
               }}
             >
-              {confirmarConsanguinidad && <span style={{ color: '#ff6b80', fontSize: '10px', fontWeight: 'bold' }}>✓</span>}
+              {confirmarConsanguinidad && <span style={{ color: tema.red, fontSize: '10px', fontWeight: 'bold' }}>✓</span>}
             </span>
             <span>Entiendo el riesgo genético y quiero continuar</span>
           </button>
           {errores._consanguinidad && (
-            <p className="text-xs px-4 pb-2" style={{ color: '#ff6b80' }}>{errores._consanguinidad}</p>
+            <p className="text-xs px-4 pb-2" style={{ color: tema.red }}>{errores._consanguinidad}</p>
           )}
         </div>
       )}
@@ -509,7 +511,7 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
                     {animal?.codigo} — {b.accion}
                   </div>
                   {b.motivos.map((m, j) => (
-                    <div key={j} style={{ color: '#8a9bb0' }}>· {m}</div>
+                    <div key={j} style={{ color: tema.textSecondary }}>· {m}</div>
                   ))}
                 </div>
               ))}
@@ -545,14 +547,14 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
                 </span>
               </div>
               {analisisGenetico.parentesco && LABEL_PARENTESCO[analisisGenetico.parentesco] && (
-                <p className="text-xs mb-1" style={{ color: '#c9d4e0' }}>
+                <p className="text-xs mb-1" style={{ color: tema.textPrimary }}>
                   {LABEL_PARENTESCO[analisisGenetico.parentesco].emoji}{' '}
                   {LABEL_PARENTESCO[analisisGenetico.parentesco].texto}
                 </p>
               )}
               {/* Ancestros comunes */}
               {analisisGenetico.comunes && analisisGenetico.comunes.length > 0 && (
-                <p className="text-xs mb-1 font-mono" style={{ color: '#8a9bb0' }}>
+                <p className="text-xs mb-1 font-mono" style={{ color: tema.textSecondary }}>
                   Ancestros comunes: {analisisGenetico.comunes.slice(0, 4).map((c) => c.codigo).join(', ')}
                   {analisisGenetico.comunes.length > 4 ? ` +${analisisGenetico.comunes.length - 4}` : ''}
                 </p>
@@ -631,16 +633,16 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
           className="rounded-xl p-3 text-sm"
           style={{ background: 'rgba(64,196,255,0.07)', border: '1px solid rgba(64,196,255,0.2)' }}
         >
-          <div className="font-semibold mb-1 text-xs uppercase tracking-widest" style={{ color: '#40c4ff' }}>
+          <div className="font-semibold mb-1 text-xs uppercase tracking-widest" style={{ color: tema.blue }}>
             📅 Predicción automática de parto
           </div>
-          <div style={{ color: '#40c4ff' }}>
+          <div style={{ color: tema.blue }}>
             Ventana:{' '}
             <span className="font-mono font-bold">{formatFecha(rango.partoMin)}</span>
             {' '}—{' '}
             <span className="font-mono font-bold">{formatFecha(rango.partoMax)}</span>
           </div>
-          <div className="text-xs mt-0.5 opacity-60" style={{ color: '#40c4ff' }}>
+          <div className="text-xs mt-0.5 opacity-60" style={{ color: tema.blue }}>
             Más probable: {formatFecha(rango.partoProbable)}
           </div>
         </div>
@@ -677,7 +679,7 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
         <div className="space-y-3">
           <div
             className="text-xs font-semibold uppercase tracking-widest pt-1 pb-1 flex items-center gap-2"
-            style={{ color: '#00e676', borderTop: '1px solid rgba(0,230,118,0.12)' }}
+            style={{ color: tema.accent, borderTop: '1px solid rgba(0,230,118,0.12)' }}
           >
             <span>🐀</span> Datos de las crías
           </div>
@@ -736,8 +738,8 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
             className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all"
             style={
               form.incluir_en_stock
-                ? { background: 'rgba(0,230,118,0.07)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676' }
-                : { background: 'rgba(255,179,0,0.07)', border: '1px solid rgba(255,179,0,0.3)', color: '#ffb300' }
+                ? { background: 'rgba(0,230,118,0.07)', border: '1px solid rgba(0,230,118,0.25)', color: tema.accent }
+                : { background: 'rgba(255,179,0,0.07)', border: '1px solid rgba(255,179,0,0.3)', color: tema.amber }
             }
           >
             <span className="flex items-center gap-2 font-semibold">
@@ -787,8 +789,8 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
           className="w-full flex items-center justify-between px-3 py-2.5 text-sm transition-all"
           style={
             form.failure_flag
-              ? { background: 'rgba(255,61,87,0.08)', color: '#ff6b80' }
-              : { background: 'rgba(138,155,176,0.04)', color: '#4a5f7a' }
+              ? { background: 'rgba(255,61,87,0.08)', color: tema.red }
+              : { background: 'rgba(138,155,176,0.04)', color: tema.textMuted }
           }
         >
           <span className="flex items-center gap-2 font-semibold">
@@ -812,7 +814,7 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
         {/* Tipo de falla */}
         {form.failure_flag && (
           <div className="px-3 py-3 space-y-2" style={{ borderTop: '1px solid rgba(255,61,87,0.2)' }}>
-            <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#8a9bb0' }}>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textSecondary }}>
               Tipo de falla
             </label>
             <select
@@ -836,7 +838,7 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
           type="button"
           onClick={onCancelar}
           className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-          style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: '#8a9bb0' }}
+          style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: tema.textSecondary }}
         >
           Cancelar
         </button>
@@ -846,7 +848,7 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
           style={{
             background: 'rgba(0,230,118,0.15)',
             border: '1.5px solid rgba(0,230,118,0.4)',
-            color: '#00e676',
+            color: tema.accent,
             boxShadow: '0 0 16px rgba(0,230,118,0.1)',
           }}
         >

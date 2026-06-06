@@ -5,6 +5,7 @@ import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
+import { useTheme } from '../context/ThemeContext'
 
 // ── Paleta ────────────────────────────────────────────────────────────────────
 const C = {
@@ -49,9 +50,9 @@ const card = {
 }
 
 const inputStyle = {
-  background: 'rgba(8,13,26,0.8)',
+  background: tema.bgInput,
   border: '1px solid rgba(30,51,82,0.8)',
-  color: '#c9d4e0',
+  color: tema.textPrimary,
   borderRadius: '10px',
   padding: '6px 10px',
   fontSize: '13px',
@@ -64,9 +65,9 @@ function TooltipOscuro({ active, payload, label }) {
   return (
     <div
       className="rounded-xl px-3 py-2 text-xs"
-      style={{ background: 'rgba(8,13,26,0.97)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0' }}
+      style={{ background: 'rgba(8,13,26,0.97)', border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary }}
     >
-      {label && <div className="font-bold mb-1" style={{ color: '#8a9bb0' }}>{label}</div>}
+      {label && <div className="font-bold mb-1" style={{ color: tema.textSecondary }}>{label}</div>}
       {payload.map((p, i) => (
         <div key={i} className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full" style={{ background: p.fill ?? p.color }} />
@@ -86,7 +87,7 @@ function KPI({ label, valor, color = '#c9d4e0', sub }) {
       style={{ background: 'rgba(13,21,40,0.8)', border: `1px solid ${color}28` }}
     >
       <div className="text-2xl font-mono font-bold" style={{ color }}>{valor}</div>
-      <div className="text-xs mt-1 font-semibold uppercase tracking-widest" style={{ color: '#4a5f7a' }}>{label}</div>
+      <div className="text-xs mt-1 font-semibold uppercase tracking-widest" style={{ color: tema.textMuted }}>{label}</div>
       {sub && <div className="text-xs mt-0.5" style={{ color: '#2a3a50' }}>{sub}</div>}
     </div>
   )
@@ -98,7 +99,7 @@ function GraficoCard({ titulo, subtitulo, children, color = C.azul }) {
     <div style={card}>
       <div className="mb-4">
         <div className="text-sm font-bold" style={{ color }}>{titulo}</div>
-        {subtitulo && <div className="text-xs mt-0.5" style={{ color: '#4a5f7a' }}>{subtitulo}</div>}
+        {subtitulo && <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>{subtitulo}</div>}
       </div>
       {children}
     </div>
@@ -146,6 +147,7 @@ function SinDatos() {
 
 // ── PÁGINA PRINCIPAL ──────────────────────────────────────────────────────────
 export default function Estadisticas() {
+  const { tema, modoBrillo } = useTheme()
   const { camadas, camadasF1, animales, animalesExportados, bio, bioterioActivo } = useBioterio()
 
   // ── Filtros ────────────────────────────────────────────────────────────────
@@ -268,7 +270,7 @@ export default function Estadisticas() {
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-white tracking-wide">Estadísticas</h1>
-          <p className="text-xs mt-1" style={{ color: '#4a5f7a' }}>
+          <p className="text-xs mt-1" style={{ color: tema.textMuted }}>
             Indicadores reproductivos de la colonia
           </p>
         </div>
@@ -276,7 +278,7 @@ export default function Estadisticas() {
           <button
             onClick={() => { setDesde(''); setHasta(''); setFiltroMadreId(''); setFiltroPadreId('') }}
             className="text-xs px-3 py-1.5 rounded-lg"
-            style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)', color: '#ff6b80', cursor: 'pointer' }}
+            style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)', color: tema.red, cursor: 'pointer' }}
           >
             ✕ Limpiar filtros
           </button>
@@ -289,21 +291,21 @@ export default function Estadisticas() {
         style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.6)' }}
       >
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
+          <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>
             Desde
           </label>
           <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)}
             className="w-full" style={inputStyle} />
         </div>
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4a5f7a' }}>
+          <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>
             Hasta
           </label>
           <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)}
             className="w-full" style={inputStyle} />
         </div>
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#ce93d8' }}>
+          <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.purple }}>
             ♀ Madre
           </label>
           <select value={filtroMadreId} onChange={(e) => setFiltroMadreId(e.target.value)}
@@ -313,7 +315,7 @@ export default function Estadisticas() {
           </select>
         </div>
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#40c4ff' }}>
+          <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.blue }}>
             ♂ Padre
           </label>
           <select value={filtroPadreId} onChange={(e) => setFiltroPadreId(e.target.value)}
