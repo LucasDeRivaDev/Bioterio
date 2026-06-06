@@ -216,6 +216,18 @@ html.modo-claro body {
   color: #000000;
 }
 
+/* Forzar negro en todos los textos e iconos — overrides inline styles hardcodeados */
+html.modo-claro *:not(svg):not(path):not(circle):not(line):not(polyline):not(rect):not(polygon) {
+  color: #000000 !important;
+}
+/* Los SVG de Lucide usan currentColor desde el padre — heredan el negro automáticamente */
+
+/* Placeholder más suave */
+html.modo-claro ::placeholder {
+  color: #777777 !important;
+  opacity: 1;
+}
+
 /* Scrollbar — claro */
 html.modo-claro ::-webkit-scrollbar-track { background: #f1f1f1; }
 html.modo-claro ::-webkit-scrollbar-thumb { background: #cccccc; border-radius: 3px; }
