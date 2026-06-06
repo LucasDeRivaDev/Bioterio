@@ -216,16 +216,48 @@ html.modo-claro body {
   color: #000000;
 }
 
-/* Forzar negro en todos los textos e iconos — overrides inline styles hardcodeados */
-html.modo-claro *:not(svg):not(path):not(circle):not(line):not(polyline):not(rect):not(polygon) {
+/* Forzar negro en TODOS los textos e iconos — pisa inline styles y webkit-text-fill */
+html.modo-claro *:not(svg):not(path):not(circle):not(line):not(polyline):not(rect):not(polygon):not(defs):not(linearGradient):not(stop) {
   color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
 }
-/* Los SVG de Lucide usan currentColor desde el padre — heredan el negro automáticamente */
+
+/* Inputs y selects: restablecer text-fill para que el placeholder funcione */
+html.modo-claro input,
+html.modo-claro select,
+html.modo-claro textarea {
+  -webkit-text-fill-color: #000000 !important;
+}
 
 /* Placeholder más suave */
 html.modo-claro ::placeholder {
   color: #777777 !important;
+  -webkit-text-fill-color: #777777 !important;
   opacity: 1;
+}
+
+/* Gradient text de Landing — quitar gradiente, poner negro */
+html.modo-claro .gradient-text {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+}
+
+/* Fondos de colores: badges, dots, botones CTA con gradient verde/teal */
+html.modo-claro .pulse-green {
+  background: #000000 !important;
+}
+html.modo-claro .landing-root .glow-green {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12) !important;
+}
+
+/* Botones CTA con linear-gradient verde en Landing → negro con texto blanco */
+html.modo-claro a[style*="linear-gradient"],
+html.modo-claro button[style*="linear-gradient"] {
+  background: #111111 !important;
+  box-shadow: none !important;
+  -webkit-text-fill-color: #ffffff !important;
+  color: #ffffff !important;
 }
 
 /* Scrollbar — claro */
