@@ -20,16 +20,10 @@ const vacioAnimal = {
   nota_tipo: 'normal',
 }
 
-// Estilos de input oscuros reutilizables
-const inputStyle = {
-  background: tema.bgInput,
-  border: '1px solid rgba(30,51,82,0.8)',
-  color: tema.textPrimary,
-  borderRadius: '10px',
-}
 const inputFocusClass = 'focus:outline-none'
 
 function LabInput({ label, sublabel, error, children }) {
+  const { tema } = useTheme()
   return (
     <div>
       <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textSecondary }}>
@@ -43,6 +37,12 @@ function LabInput({ label, sublabel, error, children }) {
 
 export default function AnimalForm({ animal, onGuardar, onCancelar }) {
   const { tema, modoBrillo } = useTheme()
+  const inputStyle = {
+    background: tema.bgInput,
+    border: `1px solid ${tema.bgInputBorde}`,
+    color: tema.textPrimary,
+    borderRadius: '10px',
+  }
   const { animales } = useBioterio()
   const [form, setForm] = useState(animal ?? vacioAnimal)
   const [errores, setErrores] = useState({})

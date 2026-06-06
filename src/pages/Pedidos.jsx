@@ -33,24 +33,6 @@ const BIOTERIOS_OPCIONES = [
   { id: 'ratones_c57',      label: '🐭 C57BL/6' },
   { id: 'ratones_hibridos', label: '🧬 Híbridos F1' },
 ]
-const ESTADOS_PEDIDO = [
-  { id: 'pendiente',  label: 'Pendiente',  color: tema.amber },
-  { id: 'en_proceso', label: 'En proceso', color: tema.blue },
-  { id: 'completado', label: 'Completado', color: tema.accent },
-  { id: 'cancelado',  label: 'Cancelado',  color: tema.red },
-]
-
-// ─── Estilos compartidos ──────────────────────────────────────────────────────
-const INPUT_STYLE = {
-  width: '100%', background: 'rgba(8,13,26,0.9)',
-  border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary,
-  borderRadius: '10px', padding: '10px 14px', fontSize: '13px', outline: 'none',
-}
-const LABEL_STYLE = {
-  display: 'block', fontSize: '11px', fontWeight: 600,
-  textTransform: 'uppercase', letterSpacing: '0.08em', color: tema.textMuted, marginBottom: '6px',
-}
-
 // ─── Badge viabilidad ─────────────────────────────────────────────────────────
 function ViabilidadBadge({ score, small = false }) {
   const n = nivelViabilidad(score)
@@ -765,6 +747,12 @@ function TabEscalonado({ pedidoEscalonado, tema }) {
 
 // ─── PANEL DE ANÁLISIS ────────────────────────────────────────────────────────
 function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproductores, tema }) {
+  const ESTADOS_PEDIDO = [
+    { id: 'pendiente',  label: 'Pendiente',  color: tema.amber },
+    { id: 'en_proceso', label: 'En proceso', color: tema.blue },
+    { id: 'completado', label: 'Completado', color: tema.accent },
+    { id: 'cancelado',  label: 'Cancelado',  color: tema.red },
+  ]
   const [tabAbierta, setTabAbierta] = useState(null)
 
   const {
@@ -955,6 +943,15 @@ function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproduct
 
 // ─── MODAL FORMULARIO ────────────────────────────────────────────────────────
 function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
+  const INPUT_STYLE = {
+    width: '100%', background: tema.bgInput,
+    border: `1px solid ${tema.bgInputBorde}`, color: tema.textPrimary,
+    borderRadius: '10px', padding: '10px 14px', fontSize: '13px', outline: 'none',
+  }
+  const LABEL_STYLE = {
+    display: 'block', fontSize: '11px', fontWeight: 600,
+    textTransform: 'uppercase', letterSpacing: '0.08em', color: tema.textMuted, marginBottom: '6px',
+  }
   const [form, setForm] = useState({
     bioterioId:       pedido?.bioterioId        ?? 'ratas',
     cantidad:         pedido?.cantidad          ?? '',
@@ -1248,6 +1245,12 @@ export default function Pedidos() {
         } = useBioterio()
   const { bioterioActivo } = useBioterioActivo()
   const { tema, modoBrillo } = useTheme()
+  const ESTADOS_PEDIDO = [
+    { id: 'pendiente',  label: 'Pendiente',  color: tema.amber },
+    { id: 'en_proceso', label: 'En proceso', color: tema.blue },
+    { id: 'completado', label: 'Completado', color: tema.accent },
+    { id: 'cancelado',  label: 'Cancelado',  color: tema.red },
+  ]
 
   const [pedidoSelId,       setPedidoSelId]       = useState(null)
   const [modalFormAbierto,  setModalFormAbierto]  = useState(false)

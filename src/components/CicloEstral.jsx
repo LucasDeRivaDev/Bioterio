@@ -6,29 +6,34 @@ import {
 } from '../utils/calculos'
 import { useTheme } from '../context/ThemeContext'
 
-// ── Configuración visual de fases ─────────────────────────────────────────────
-const FASES = {
-  L1: { label: 'L1',  desc: 'Diestro temprano',  color: tema.blue, bg: 'rgba(64,196,255,0.10)'  },
-  L2: { label: 'L2',  desc: 'Diestro medio',      color: '#4fc3f7', bg: 'rgba(79,195,247,0.10)'  },
-  L3: { label: 'L3',  desc: 'Diestro tardío',     color: '#81d4fa', bg: 'rgba(129,212,250,0.10)' },
-  O:  { label: 'O',   desc: 'Receptiva',          color: tema.accent, bg: 'rgba(0,230,118,0.12)'   },
-  E:  { label: 'E',   desc: 'Post-servicio',       color: '#ff9100', bg: 'rgba(255,145,0,0.10)'   },
+// ── Helpers visuales ────────────────────────────────────────────────────────
+function makeFases(tema) {
+  return {
+    L1: { label: 'L1',  desc: 'Diestro temprano',  color: tema.blue,   bg: 'rgba(64,196,255,0.10)'  },
+    L2: { label: 'L2',  desc: 'Diestro medio',      color: '#4fc3f7',   bg: 'rgba(79,195,247,0.10)'  },
+    L3: { label: 'L3',  desc: 'Diestro tardío',     color: '#81d4fa',   bg: 'rgba(129,212,250,0.10)' },
+    O:  { label: 'O',   desc: 'Receptiva',          color: tema.accent, bg: 'rgba(0,230,118,0.12)'   },
+    E:  { label: 'E',   desc: 'Post-servicio',       color: '#ff9100',   bg: 'rgba(255,145,0,0.10)'   },
+  }
 }
-
-const iStyle = {
-  background: tema.bgInput,
-  border: '1px solid rgba(30,51,82,0.8)',
-  color: tema.textPrimary,
-  borderRadius: '8px',
-  padding: '5px 10px',
-  fontSize: '12px',
-  width: '100%',
-  outline: 'none',
+function makeIStyle(tema) {
+  return {
+    background: tema.bgInput,
+    border: `1px solid ${tema.bgInputBorde}`,
+    color: tema.textPrimary,
+    borderRadius: '8px',
+    padding: '5px 10px',
+    fontSize: '12px',
+    width: '100%',
+    outline: 'none',
+  }
 }
 
 // ── Sub-componentes ───────────────────────────────────────────────────────────
 
 function FaseTag({ fase }) {
+  const { tema } = useTheme()
+  const FASES = makeFases(tema)
   if (!fase || !FASES[fase]) return <span style={{ color: '#2a3a50' }}>—</span>
   const cfg = FASES[fase]
   return (
@@ -42,6 +47,7 @@ function FaseTag({ fase }) {
 }
 
 function SelectBar({ label, opciones, valor, onChange, colorMap = {} }) {
+  const { tema } = useTheme()
   return (
     <div className="flex items-start gap-2">
       <span className="text-xs shrink-0 pt-1 w-28" style={{ color: tema.textMuted }}>{label}</span>
@@ -58,7 +64,7 @@ function SelectBar({ label, opciones, valor, onChange, colorMap = {} }) {
               style={
                 activo
                   ? { background: `${color}20`, border: `1px solid ${color}55`, color }
-                  : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }
+                  : { background: 'transparent', border: `1px solid ${tema.bgInputBorde}`, color: tema.textMuted }
               }
             >
               {lbl}
@@ -71,6 +77,7 @@ function SelectBar({ label, opciones, valor, onChange, colorMap = {} }) {
 }
 
 function GestacionPanel({ gestacion, gestacionDias }) {
+  const { tema } = useTheme()
   const { diaActual, confirmadaPorEsperma, predicciones, diasParaParto, partoEsperado } = gestacion
   const pct = Math.min((diaActual / gestacionDias) * 100, 100)
   const urgente = diasParaParto <= 3
@@ -151,6 +158,7 @@ function GestacionPanel({ gestacion, gestacionDias }) {
 }
 
 function PrediccionPanel({ prediccion }) {
+  const { tema } = useTheme()
   const { proximaVentana, longitudPromedio, patron, diasO, ciclos, alertaHoy, alertaMañana } = prediccion
 
   const alertColor = alertaHoy ? '#ff6b80' : alertaMañana ? '#ffd740' : '#40c4ff'
@@ -200,6 +208,8 @@ function PrediccionPanel({ prediccion }) {
 
 export default function CicloEstral({ animal }) {
   const { tema, modoBrillo } = useTheme()
+  const FASES = makeFases(tema)
+  const iStyle = makeIStyle(tema)
   const { extendidos, agregarExtendido, eliminarExtendido, bio } = useBioterio()
 
   // Historial de esta hembra, ordenado por fecha ascendente

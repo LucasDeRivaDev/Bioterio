@@ -19,13 +19,6 @@ import { useTheme } from '../context/ThemeContext'
 
 // ── Bioterios ─────────────────────────────────────────────────────────────────
 
-const TODOS = [
-  { id: 'ratas',            bio: BIO_RATAS,   color: tema.accent, label: 'Bioterio de Ratas',  icon: '🐀', short: 'Ratas'    },
-  { id: 'ratones_balbc',    bio: BIO_RATONES, color: tema.blue, label: 'Ratones Balb/C',     icon: '🐭', short: 'BAL/C'    },
-  { id: 'ratones_c57',      bio: BIO_RATONES, color: '#a78bfa', label: 'Ratones C57',        icon: '🐭', short: 'C57'      },
-  { id: 'ratones_hibridos', bio: BIO_RATONES, color: tema.amber, label: 'Ratones Híbridos',   icon: '🐭', short: 'Híbridos' },
-]
-
 // ── Config (Supabase) ──────────────────────────────────────────────────────────
 
 const CFG0 = { maxAnimales: 0, maxJaulas: 0, diasProyeccion: 60 }
@@ -201,6 +194,12 @@ function nivelRiesgo(nA, nJ, cfg) {
 
 export default function CapacidadGlobal() {
   const { tema, modoBrillo } = useTheme()
+  const TODOS = [
+    { id: 'ratas',            bio: BIO_RATAS,   color: tema.accent, label: 'Bioterio de Ratas',  icon: '🐀', short: 'Ratas'    },
+    { id: 'ratones_balbc',    bio: BIO_RATONES, color: tema.blue,   label: 'Ratones Balb/C',     icon: '🐭', short: 'BAL/C'    },
+    { id: 'ratones_c57',      bio: BIO_RATONES, color: '#a78bfa',   label: 'Ratones C57',        icon: '🐭', short: 'C57'      },
+    { id: 'ratones_hibridos', bio: BIO_RATONES, color: tema.amber,  label: 'Ratones Híbridos',   icon: '🐭', short: 'Híbridos' },
+  ]
   const { limpiarBioterio } = useBioterioActivo()
 
   const [tab,       setTab]       = useState(TODOS[0].id)

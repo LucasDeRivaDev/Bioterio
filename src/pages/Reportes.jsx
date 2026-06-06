@@ -3,6 +3,7 @@ import { useBioterio } from '../context/BiotheriumContext'
 import { formatFecha, calcularLatencia } from '../utils/calculos'
 import { TrendingUp, Microscope, Dna, BarChart2, Archive, Skull, PackageCheck, Thermometer, FileWarning, Printer, Calendar, CalendarDays } from 'lucide-react'
 import iterateTitleLogoLight from '../assets/iterate+logo+sloganfondoclaro.png'
+import { useTheme } from '../context/ThemeContext'
 
 const LABEL_BIOTERIO = {
   ratas:            'Ratas',
@@ -12,18 +13,6 @@ const LABEL_BIOTERIO = {
 }
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
-
-const SECCIONES = [
-  { key: 'estadisticas',    label: 'Estadísticas',    icon: <TrendingUp size={14} />,    color: tema.amber, rgb: '255,179,0',   printBg: '#fefae8', printBorder: '#b8860b' },
-  { key: 'reproductores',   label: 'Reproductores',   icon: <Microscope size={14} />,    color: tema.purple, rgb: '206,147,216', printBg: '#f5f0ff', printBorder: '#9d4edd' },
-  { key: 'emparejamientos', label: 'Emparejamientos', icon: <Dna size={14} />,           color: tema.blue, rgb: '64,196,255',  printBg: '#e8f4fd', printBorder: '#0277bd' },
-  { key: 'rendimiento',     label: 'Rendimiento',     icon: <BarChart2 size={14} />,     color: tema.accent, rgb: '0,230,118',   printBg: '#e8f8f0', printBorder: '#2e7d52' },
-  { key: 'stock',           label: 'Stock',           icon: <Archive size={14} />,       color: tema.accent, rgb: '0,230,118',   printBg: '#e8f8f0', printBorder: '#2e7d52' },
-  { key: 'sacrificios',     label: 'Sacrificios',     icon: <Skull size={14} />,         color: tema.red, rgb: '255,107,128', printBg: '#fde8ec', printBorder: '#c62828' },
-  { key: 'entregas',        label: 'Entregas',        icon: <PackageCheck size={14} />,  color: tema.amber, rgb: '255,179,0',   printBg: '#fefae8', printBorder: '#b8860b' },
-  { key: 'temperaturas',    label: 'Temperaturas',    icon: <Thermometer size={14} />,   color: tema.blue, rgb: '64,196,255',  printBg: '#e8f4fd', printBorder: '#0277bd' },
-  { key: 'incidentes',      label: 'Incidentes',      icon: <FileWarning size={14} />,   color: tema.purple, rgb: '206,147,216', printBg: '#f5f0ff', printBorder: '#9d4edd' },
-]
 
 function inicioSemana() {
   const d = new Date()
@@ -36,6 +25,18 @@ function inicioSemana() {
 const cardStyle = { background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }
 
 export default function Reportes() {
+  const { tema, modoBrillo } = useTheme()
+  const SECCIONES = [
+    { key: 'estadisticas',    label: 'Estadísticas',    icon: <TrendingUp size={14} />,    color: tema.amber,  rgb: '255,179,0',   printBg: '#fefae8', printBorder: '#b8860b' },
+    { key: 'reproductores',   label: 'Reproductores',   icon: <Microscope size={14} />,    color: tema.purple, rgb: '206,147,216', printBg: '#f5f0ff', printBorder: '#9d4edd' },
+    { key: 'emparejamientos', label: 'Emparejamientos', icon: <Dna size={14} />,           color: tema.blue,   rgb: '64,196,255',  printBg: '#e8f4fd', printBorder: '#0277bd' },
+    { key: 'rendimiento',     label: 'Rendimiento',     icon: <BarChart2 size={14} />,     color: tema.accent, rgb: '0,230,118',   printBg: '#e8f8f0', printBorder: '#2e7d52' },
+    { key: 'stock',           label: 'Stock',           icon: <Archive size={14} />,       color: tema.accent, rgb: '0,230,118',   printBg: '#e8f8f0', printBorder: '#2e7d52' },
+    { key: 'sacrificios',     label: 'Sacrificios',     icon: <Skull size={14} />,         color: tema.red,    rgb: '255,107,128', printBg: '#fde8ec', printBorder: '#c62828' },
+    { key: 'entregas',        label: 'Entregas',        icon: <PackageCheck size={14} />,  color: tema.amber,  rgb: '255,179,0',   printBg: '#fefae8', printBorder: '#b8860b' },
+    { key: 'temperaturas',    label: 'Temperaturas',    icon: <Thermometer size={14} />,   color: tema.blue,   rgb: '64,196,255',  printBg: '#e8f4fd', printBorder: '#0277bd' },
+    { key: 'incidentes',      label: 'Incidentes',      icon: <FileWarning size={14} />,   color: tema.purple, rgb: '206,147,216', printBg: '#f5f0ff', printBorder: '#9d4edd' },
+  ]
   const { animales, camadas, jaulas, sacrificios, entregas, temperaturas, incidentes, bio, bioterioActivo } = useBioterio()
   const hoyDate = new Date()
 

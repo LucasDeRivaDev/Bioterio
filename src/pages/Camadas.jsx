@@ -15,14 +15,14 @@ import { useTheme } from '../context/ThemeContext'
 
 // ── Editor de distribución de jaulas ─────────────────────────────────────────
 
-const inputJaulaStyle = {
-  background: tema.bgInput,
-  border: '1px solid rgba(30,51,82,0.8)',
-  color: tema.textPrimary,
-  borderRadius: '8px',
-}
-
 function JaulasDistribucion({ camada, jaulas, agregarJaula, editarJaula, eliminarJaula }) {
+  const { tema } = useTheme()
+  const inputJaulaStyle = {
+    background: tema.bgInput,
+    border: `1px solid ${tema.bgInputBorde}`,
+    color: tema.textPrimary,
+    borderRadius: '8px',
+  }
   const jaulasCamada = jaulas.filter((j) => j.camada_id === camada.id)
   const totalJaulas  = jaulasCamada.reduce((s, j) => s + (j.total ?? 0), 0)
   const target       = camada.total_destetados ?? 0

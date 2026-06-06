@@ -8,17 +8,6 @@ import {
 } from '../utils/db'
 import { useTheme } from '../context/ThemeContext'
 
-const TIPOS = {
-  nacimiento:       { label: 'Nacimiento',          color: tema.accent, bg: 'rgba(0,230,118,0.12)',   borde: 'rgba(0,230,118,0.3)'   },
-  destete:          { label: 'Destete',             color: tema.amber, bg: 'rgba(255,179,0,0.12)',   borde: 'rgba(255,179,0,0.3)'   },
-  madurez:          { label: 'Madurez',             color: tema.purple, bg: 'rgba(206,147,216,0.12)', borde: 'rgba(206,147,216,0.3)' },
-  parto_esperado:   { label: 'Parto esperado',      color: tema.blue, bg: 'rgba(64,196,255,0.12)',  borde: 'rgba(64,196,255,0.3)'  },
-  separacion:       { label: 'Separación pareja',   color: '#4dd0e1', bg: 'rgba(77,208,225,0.10)',  borde: 'rgba(77,208,225,0.28)' },
-  copula:           { label: 'Cópula',              color: tema.textSecondary, bg: 'rgba(138,155,176,0.08)', borde: 'rgba(138,155,176,0.2)' },
-  plan_apareamiento:{ label: 'Apareamiento planif.',color: '#a78bfa', bg: 'rgba(139,92,246,0.12)',  borde: 'rgba(139,92,246,0.35)' },
-  nota:             { label: 'Nota / Recordatorio', color: tema.amber, bg: 'rgba(251,191,36,0.10)',  borde: 'rgba(251,191,36,0.28)' },
-}
-
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 const DIAS  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
 
@@ -39,6 +28,16 @@ function formatEdadCorta(dias) {
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function Calendario() {
   const { tema, modoBrillo } = useTheme()
+  const TIPOS = {
+    nacimiento:       { label: 'Nacimiento',          color: tema.accent, bg: 'rgba(0,230,118,0.12)',   borde: 'rgba(0,230,118,0.3)'   },
+    destete:          { label: 'Destete',             color: tema.amber, bg: 'rgba(255,179,0,0.12)',   borde: 'rgba(255,179,0,0.3)'   },
+    madurez:          { label: 'Madurez',             color: tema.purple, bg: 'rgba(206,147,216,0.12)', borde: 'rgba(206,147,216,0.3)' },
+    parto_esperado:   { label: 'Parto esperado',      color: tema.blue, bg: 'rgba(64,196,255,0.12)',  borde: 'rgba(64,196,255,0.3)'  },
+    separacion:       { label: 'Separación pareja',   color: '#4dd0e1', bg: 'rgba(77,208,225,0.10)',  borde: 'rgba(77,208,225,0.28)' },
+    copula:           { label: 'Cópula',              color: tema.textSecondary, bg: 'rgba(138,155,176,0.08)', borde: 'rgba(138,155,176,0.2)' },
+    plan_apareamiento:{ label: 'Apareamiento planif.',color: '#a78bfa', bg: 'rgba(139,92,246,0.12)',  borde: 'rgba(139,92,246,0.35)' },
+    nota:             { label: 'Nota / Recordatorio', color: tema.amber, bg: 'rgba(251,191,36,0.10)',  borde: 'rgba(251,191,36,0.28)' },
+  }
   const { camadas, animales, jaulas, sacrificios, entregas, bio, bioterioActivo } = useBioterio()
   const hoyJs = new Date()
   const [anio, setAnio]       = useState(hoyJs.getFullYear())

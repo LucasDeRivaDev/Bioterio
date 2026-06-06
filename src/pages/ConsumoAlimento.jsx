@@ -45,13 +45,6 @@ const LS_INGRESOS     = 'appMosca_alimento_ingresos'
 const LS_REPOSICIONES  = 'appMosca_alimento_reposiciones'
 const KG_POR_BOLSA     = 15   // kg estándar de una bolsa
 
-// Bioterios disponibles para selección en reposición parcial
-const OPCIONES_BIOTERIOS = [
-  { id: 'ratas',            label: 'Ratas',   color: tema.accent },
-  { id: 'ratones_balbc',    label: 'BAL/C',   color: tema.blue },
-  { id: 'ratones_c57',      label: 'C57',     color: '#a78bfa' },
-  { id: 'ratones_hibridos', label: 'Híbridos',color: tema.amber },
-]
 const OPCIONES_CATEGORIAS = [
   { id: 'lactantes', label: 'Hembras lactantes' },
   { id: 'repro',     label: 'Reproductores' },
@@ -291,6 +284,12 @@ function composicionActual(datosBioterios) {
 
 export default function ConsumoAlimento() {
   const { tema, modoBrillo } = useTheme()
+  const OPCIONES_BIOTERIOS = [
+    { id: 'ratas',            label: 'Ratas',    color: tema.accent },
+    { id: 'ratones_balbc',    label: 'BAL/C',    color: tema.blue },
+    { id: 'ratones_c57',      label: 'C57',      color: '#a78bfa' },
+    { id: 'ratones_hibridos', label: 'Híbridos', color: tema.amber },
+  ]
   const { limpiarBioterio } = useBioterioActivo()
 
   const [datosBioterios, setDatosBioterios] = useState(null)

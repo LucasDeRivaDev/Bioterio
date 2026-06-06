@@ -23,12 +23,6 @@ const PESOS = {
 const CAMBIOS_SEM  = 2
 const TASA_DEFAULT = 0.08
 
-const TODOS = [
-  { id: 'ratas',            especie: 'rata',  bio: BIO_RATAS,   color: tema.accent, label: 'Bioterio de Ratas',   icon: '🐀' },
-  { id: 'ratones_balbc',    especie: 'raton', bio: BIO_RATONES, color: tema.blue, label: 'Ratones Balb/C',      icon: '🐭' },
-  { id: 'ratones_c57',      especie: 'raton', bio: BIO_RATONES, color: '#a78bfa', label: 'Ratones C57',         icon: '🐭' },
-  { id: 'ratones_hibridos', especie: 'raton', bio: BIO_RATONES, color: tema.amber, label: 'Ratones Híbridos',    icon: '🐭' },
-]
 const IDS_RATONES = ['ratones_balbc', 'ratones_c57', 'ratones_hibridos']
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -356,6 +350,12 @@ async function migrarDesdeLocalStorage() {
 
 export default function ConsumoViruta() {
   const { tema, modoBrillo } = useTheme()
+  const TODOS = [
+    { id: 'ratas',            especie: 'rata',  bio: BIO_RATAS,   color: tema.accent, label: 'Bioterio de Ratas',  icon: '🐀' },
+    { id: 'ratones_balbc',    especie: 'raton', bio: BIO_RATONES, color: tema.blue,   label: 'Ratones Balb/C',     icon: '🐭' },
+    { id: 'ratones_c57',      especie: 'raton', bio: BIO_RATONES, color: '#a78bfa',   label: 'Ratones C57',        icon: '🐭' },
+    { id: 'ratones_hibridos', especie: 'raton', bio: BIO_RATONES, color: tema.amber,  label: 'Ratones Híbridos',   icon: '🐭' },
+  ]
   const { limpiarBioterio } = useBioterioActivo()
 
   const [datos,          setDatos]          = useState(null)
