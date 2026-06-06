@@ -49,7 +49,7 @@ const GRUPOS = [
 
 function NavGrupo({ grupo, onCerrarMenu }) {
   const location = useLocation()
-  const { tema } = useTheme()
+  const { tema, modoBrillo } = useTheme()
   const rutasGrupo = [grupo.to, ...grupo.hijos.map((h) => h.to)]
   const estaActivo = rutasGrupo.some((r) => location.pathname === r)
   const [abierto, setAbierto] = useState(estaActivo)
@@ -87,7 +87,7 @@ function NavGrupo({ grupo, onCerrarMenu }) {
           style={({ isActive }) => ({
             display: 'flex', alignItems: 'center', gap: '10px',
             flex: 1, padding: '8px 12px',
-            color: estaActivo ? '#00e676' : '#8a9bb0',
+            color: estaActivo ? tema.accent : tema.textSecondary,
             fontSize: '13px', fontWeight: estaActivo ? 600 : 500,
             textDecoration: 'none', background: 'transparent',
           })}
@@ -100,7 +100,7 @@ function NavGrupo({ grupo, onCerrarMenu }) {
         <button
           onClick={() => setAbierto(!abierto)}
           className="flex items-center justify-center w-8 h-8 shrink-0"
-          style={{ background: 'transparent', border: 'none', color: estaActivo ? '#00e676' : '#4a5f7a', cursor: 'pointer' }}
+          style={{ background: 'transparent', border: 'none', color: estaActivo ? tema.accent : tema.textMuted, cursor: 'pointer' }}
         >
           {abierto ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
         </button>
@@ -119,15 +119,15 @@ function NavGrupo({ grupo, onCerrarMenu }) {
                   ? {
                       display: 'flex', alignItems: 'center', gap: '8px',
                       padding: '6px 10px', borderRadius: '8px',
-                      background: 'rgba(0,230,118,0.1)',
-                      color: '#00e676',
-                      border: '1px solid rgba(0,230,118,0.2)',
+                      background: tema.accentDim,
+                      color: tema.accent,
+                      border: `1px solid ${tema.accentBorde}`,
                       fontSize: '12px', fontWeight: 600, textDecoration: 'none',
                     }
                   : {
                       display: 'flex', alignItems: 'center', gap: '8px',
                       padding: '6px 10px', borderRadius: '8px',
-                      color: '#6b7c94',
+                      color: tema.textMuted,
                       border: '1px solid transparent',
                       fontSize: '12px', fontWeight: 500, textDecoration: 'none',
                     }
@@ -150,6 +150,7 @@ const SECCIONES = [
 ]
 
 function ReportarError() {
+  const { tema } = useTheme()
   const [abierto, setAbierto]     = useState(false)
   const [seccion, setSeccion]     = useState('')
   const [descripcion, setDesc]    = useState('')
@@ -192,26 +193,26 @@ function ReportarError() {
       {abierto && (
         <div className="px-4 py-3 space-y-3">
           <div>
-            <label className="text-xs font-semibold block mb-1" style={{ color: '#4a5f7a' }}>¿Dónde ocurrió?</label>
+            <label className="text-xs font-semibold block mb-1" style={{ color: tema.textMuted }}>¿Dónde ocurrió?</label>
             <select
               value={seccion}
               onChange={(e) => setSeccion(e.target.value)}
               className="w-full px-2 py-1.5 rounded-lg text-xs focus:outline-none"
-              style={{ background: 'rgba(8,13,26,0.8)', border: '1px solid rgba(255,61,87,0.25)', color: '#c9d4e0' }}
+              style={{ background: tema.bgInput, border: '1px solid rgba(255,61,87,0.25)', color: tema.textPrimary }}
             >
               <option value="">— Seleccioná una sección —</option>
               {SECCIONES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-xs font-semibold block mb-1" style={{ color: '#4a5f7a' }}>Describí el error</label>
+            <label className="text-xs font-semibold block mb-1" style={{ color: tema.textMuted }}>Describí el error</label>
             <textarea
               value={descripcion}
               onChange={(e) => setDesc(e.target.value)}
               placeholder="¿Qué pasó? ¿Qué esperabas que pasara?"
               rows={3}
               className="w-full px-2 py-1.5 rounded-lg text-xs resize-none focus:outline-none"
-              style={{ background: 'rgba(8,13,26,0.8)', border: '1px solid rgba(255,61,87,0.25)', color: '#c9d4e0' }}
+              style={{ background: tema.bgInput, border: '1px solid rgba(255,61,87,0.25)', color: tema.textPrimary }}
             />
           </div>
           <button
@@ -221,7 +222,7 @@ function ReportarError() {
             style={{
               background: enviado ? 'rgba(0,230,118,0.15)' : 'rgba(255,61,87,0.15)',
               border: `1px solid ${enviado ? 'rgba(0,230,118,0.4)' : 'rgba(255,61,87,0.4)'}`,
-              color: enviado ? '#00e676' : '#ff6b80',
+              color: enviado ? tema.accent : '#ff6b80',
               cursor: !descripcion.trim() || enviado ? 'not-allowed' : 'pointer',
               opacity: !descripcion.trim() ? 0.5 : 1,
             }}
@@ -310,7 +311,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-base shrink-0">{config?.icon ?? '🐀'}</span>
             <div className="min-w-0">
-              <div className="text-xs font-semibold truncate" style={{ color: config?.color ?? '#00e676' }}>
+              <div className="text-xs font-semibold truncate" style={{ color: modoBrillo ? tema.textPrimary : (config?.color ?? tema.accent) }}>
                 {config?.labelCorto ?? 'Ratas'}
               </div>
               <div className="text-xs font-mono italic truncate" style={{ color: 'rgba(138,155,176,0.5)', fontSize: '10px' }}>
@@ -331,9 +332,9 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
       {/* Stats rápidas */}
       <div className="px-4 py-3 grid grid-cols-3 gap-1" style={{ borderBottom: `1px solid ${tema.bgCardBorde}` }}>
         {[
-          { val: hembrasActivas, label: '♀', color: '#ce93d8' },
-          { val: machosActivos,  label: '♂', color: '#40c4ff' },
-          { val: prenadas,       label: '🫄', color: '#ffb300' },
+          { val: hembrasActivas, label: '♀', color: tema.purple },
+          { val: machosActivos,  label: '♂', color: tema.blue },
+          { val: prenadas,       label: '🫄', color: tema.amber },
         ].map(({ val, label, color }) => (
           <div
             key={label}
@@ -410,9 +411,9 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
                   display: 'flex', alignItems: 'center', gap: '10px',
                   padding: '8px 12px', borderRadius: '10px',
                   background: tema.greenDim,
-                  color: '#00e676',
-                  border: '1px solid rgba(0,230,118,0.25)',
-                  boxShadow: '0 0 12px rgba(0,230,118,0.1)',
+                  color: tema.accent,
+                  border: `1px solid ${tema.accentBorde}`,
+                  boxShadow: modoBrillo ? 'none' : '0 0 12px rgba(0,230,118,0.1)',
                   fontSize: '13px', fontWeight: 600, textDecoration: 'none',
                 }
               : {
@@ -440,9 +441,9 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
                   display: 'flex', alignItems: 'center', gap: '10px',
                   padding: '8px 12px', borderRadius: '10px',
                   background: tema.greenDim,
-                  color: '#00e676',
-                  border: '1px solid rgba(0,230,118,0.25)',
-                  boxShadow: '0 0 12px rgba(0,230,118,0.1)',
+                  color: tema.accent,
+                  border: `1px solid ${tema.accentBorde}`,
+                  boxShadow: modoBrillo ? 'none' : '0 0 12px rgba(0,230,118,0.1)',
                   fontSize: '13px', fontWeight: 600, textDecoration: 'none',
                 }
               : {
@@ -470,9 +471,9 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
                   display: 'flex', alignItems: 'center', gap: '10px',
                   padding: '8px 12px', borderRadius: '10px',
                   background: tema.greenDim,
-                  color: '#00e676',
-                  border: '1px solid rgba(0,230,118,0.25)',
-                  boxShadow: '0 0 12px rgba(0,230,118,0.1)',
+                  color: tema.accent,
+                  border: `1px solid ${tema.accentBorde}`,
+                  boxShadow: modoBrillo ? 'none' : '0 0 12px rgba(0,230,118,0.1)',
                   fontSize: '13px', fontWeight: 600, textDecoration: 'none',
                 }
               : {
@@ -503,9 +504,9 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
                   display: 'flex', alignItems: 'center', gap: '10px',
                   padding: '8px 12px', borderRadius: '10px',
                   background: tema.greenDim,
-                  color: '#00e676',
-                  border: '1px solid rgba(0,230,118,0.25)',
-                  boxShadow: '0 0 12px rgba(0,230,118,0.1)',
+                  color: tema.accent,
+                  border: `1px solid ${tema.accentBorde}`,
+                  boxShadow: modoBrillo ? 'none' : '0 0 12px rgba(0,230,118,0.1)',
                   fontSize: '13px', fontWeight: 600, textDecoration: 'none',
                 }
               : {
@@ -542,13 +543,13 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
           >
             <span className="text-xl">{config.icon}</span>
             <div className="flex-1 min-w-0">
-              <div className="font-bold text-sm" style={{ color: '#c9a87a' }}>{config.label}</div>
-              <div className="text-xs font-mono italic opacity-60 truncate" style={{ color: '#a17850' }}>{config.nombreCientifico}</div>
+              <div className="font-bold text-sm" style={{ color: tema.textPrimary }}>{config.label}</div>
+              <div className="text-xs font-mono italic opacity-60 truncate" style={{ color: tema.textSecondary }}>{config.nombreCientifico}</div>
             </div>
             <ChevronDown
               size={13}
               style={{
-                color: '#a17850',
+                color: tema.textMuted,
                 flexShrink: 0,
                 transition: 'transform 0.2s',
                 transform: fichaVisible ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -560,13 +561,13 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
           {fichaVisible && (
             <>
               <div className="px-4 py-3 space-y-2">
-                <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'rgba(161,120,80,0.5)' }}>
+                <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
                   Referencias biológicas
                 </div>
                 {datosBio.map(({ label, valor }) => (
                   <div key={label} className="flex items-start justify-between gap-2">
-                    <span className="text-xs leading-tight" style={{ color: '#6b7c94' }}>{label}</span>
-                    <span className="text-xs font-mono font-semibold text-right" style={{ color: '#a17850' }}>{valor}</span>
+                    <span className="text-xs leading-tight" style={{ color: tema.textMuted }}>{label}</span>
+                    <span className="text-xs font-mono font-semibold text-right" style={{ color: tema.textSecondary }}>{valor}</span>
                   </div>
                 ))}
               </div>
@@ -574,7 +575,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
               {config.orden && config.orden !== '—' && (
                 <div
                   className="px-4 py-2 text-xs text-center font-mono"
-                  style={{ borderTop: '1px solid rgba(161,120,80,0.15)', color: 'rgba(107,124,148,0.5)' }}
+                  style={{ borderTop: `1px solid ${tema.bgCardBorde}`, color: tema.textMuted }}
                 >
                   {config.orden}
                 </div>
@@ -594,7 +595,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
       >
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <div className="text-xs font-semibold uppercase tracking-widest mb-0.5" style={{ color: '#4a5f7a' }}>
+            <div className="text-xs font-semibold uppercase tracking-widest mb-0.5" style={{ color: tema.textMuted }}>
               Usuario
             </div>
             <div
