@@ -1938,6 +1938,7 @@ export default function ConsumoAlimento() {
 // ── Sub-componentes ────────────────────────────────────────────────────────────
 
 function FilaCategoria({ label, dato, tasaMin, tasaMax, color }) {
+  const { tema } = useTheme()
   if (dato.count === 0) return null
   return (
     <div className="px-5 py-2.5 flex items-center gap-3">
@@ -1954,6 +1955,7 @@ function FilaCategoria({ label, dato, tasaMin, tasaMax, color }) {
 }
 
 function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onConfirmarReposicion, onCerrar }) {
+  const { tema } = useTheme()
   const horaActual = () => {
     const d = new Date()
     return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`

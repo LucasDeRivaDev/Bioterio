@@ -232,6 +232,7 @@ function colorScore(v) {
 }
 
 function ScoreVal({ label, value }) {
+  const { tema } = useTheme()
   const c = colorScore(value)
   const esCritico = value === 0
   return (
@@ -264,14 +265,14 @@ function PerfilRow({ label, color, scores }) {
   )
 }
 
-const NIVEL_CONFIG = {
-  ok:       { color: tema.accent, bg: 'rgba(0,230,118,0.06)',   border: 'rgba(0,230,118,0.2)',   label: 'Normal' },
-  leve:     { color: tema.amber, bg: 'rgba(255,179,0,0.06)',   border: 'rgba(255,179,0,0.25)',   label: 'Alerta leve' },
-  moderada: { color: tema.red, bg: 'rgba(255,61,87,0.06)',   border: 'rgba(255,61,87,0.25)',   label: 'Alerta moderada' },
-  critica:  { color: tema.red, bg: 'rgba(255,61,87,0.10)',   border: 'rgba(255,61,87,0.4)',    label: 'Alerta crítica' },
-}
-
 function AnalisisReproductivo({ camada, todasCamadas, animales }) {
+  const { tema } = useTheme()
+  const NIVEL_CONFIG = {
+    ok:       { color: tema.accent, bg: 'rgba(0,230,118,0.06)',   border: 'rgba(0,230,118,0.2)',   label: 'Normal' },
+    leve:     { color: tema.amber, bg: 'rgba(255,179,0,0.06)',   border: 'rgba(255,179,0,0.25)',   label: 'Alerta leve' },
+    moderada: { color: tema.red, bg: 'rgba(255,61,87,0.06)',   border: 'rgba(255,61,87,0.25)',   label: 'Alerta moderada' },
+    critica:  { color: tema.red, bg: 'rgba(255,61,87,0.10)',   border: 'rgba(255,61,87,0.4)',    label: 'Alerta crítica' },
+  }
   const navigate = useNavigate()
   const scores = calcularScoresCamada(camada)
 

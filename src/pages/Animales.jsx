@@ -808,6 +808,7 @@ return (
 // ── Modal para exportar reproductores a Híbridos ──────────────────────────────
 
 function ModalExportarReproductor({ animalesYaExportados, onExportar, onCerrar }) {
+  const { tema } = useTheme()
   const [origen,    setOrigen]    = useState('ratones_balbc')
   const [animales,  setAnimales]  = useState([])
   const [cargando,  setCargando]  = useState(true)

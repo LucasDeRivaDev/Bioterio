@@ -16,6 +16,7 @@ import { useTheme } from '../context/ThemeContext'
 const cardStyle = { background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }
 
 function BarraLatencia({ valor, max }) {
+  const { tema } = useTheme()
   if (valor === null) return <span style={{ color: tema.textMuted }}>—</span>
   const pct = max > 0 ? Math.min((valor / max) * 100, 100) : 0
   const color = valor <= 3 ? '#00e676' : valor <= 6 ? '#ffb300' : '#ff6b80'
@@ -41,6 +42,7 @@ function ScoreBadge({ score }) {
 }
 
 function ScoreChip({ score }) {
+  const { tema } = useTheme()
   if (score === null || score === undefined) return <span style={{ color: tema.textMuted }}>—</span>
   const color = score === 10 ? '#00e676' : score === 7 ? '#40c4ff' : score === 5 ? '#ffb300' : '#8a9bb0'
   return (
@@ -54,6 +56,7 @@ function ScoreChip({ score }) {
 }
 
 function Medalla({ pos }) {
+  const { tema } = useTheme()
   if (pos === 1) return <Trophy size={22} style={{ color: '#ffd700', filter: 'drop-shadow(0 0 6px rgba(255,215,0,0.8))' }} />
   if (pos === 2) return <Trophy size={22} style={{ color: '#c0c0c0', filter: 'drop-shadow(0 0 4px rgba(192,192,192,0.6))' }} />
   if (pos === 3) return <Trophy size={22} style={{ color: '#cd7f32' }} />
@@ -61,6 +64,7 @@ function Medalla({ pos }) {
 }
 
 function Metric({ label, valor, color, suffix = 'd' }) {
+  const { tema } = useTheme()
   return (
     <div className="text-center px-3">
       <div className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: tema.textMuted }}>{label}</div>
@@ -72,6 +76,7 @@ function Metric({ label, valor, color, suffix = 'd' }) {
 }
 
 function TendenciaBadge({ tendencia }) {
+  const { tema } = useTheme()
   if (!tendencia) return null
   const cfg = {
     mejorando:    { color: tema.accent, icon: '↑', label: 'Mejorando' },
@@ -97,6 +102,7 @@ function colorScore(v) {
 }
 
 function ScoreCell({ label, value }) {
+  const { tema } = useTheme()
   const color = colorScore(value)
   return (
     <div className="flex flex-col items-center gap-1">
@@ -111,13 +117,6 @@ function ScoreCell({ label, value }) {
   )
 }
 
-const CONF_CONFIG = {
-  ok:       { color: tema.accent, label: 'OK' },
-  leve:     { color: '#ffd740', label: 'Leve' },
-  moderada: { color: '#ff9100', label: 'Moderada' },
-  critica:  { color: '#ff1744', label: 'Crítica' },
-}
-
 const ESTADOS_ACTIVOS = new Set(['activo', 'en_apareamiento', 'en_cria'])
 
 function edadMachoInfo(macho) {
@@ -130,6 +129,7 @@ function edadMachoInfo(macho) {
 }
 
 function EdadMachoBadge({ macho }) {
+  const { tema } = useTheme()
   const info = edadMachoInfo(macho)
   if (!info) return null
   if (info.limite) return (
@@ -153,6 +153,12 @@ function EdadMachoBadge({ macho }) {
 
 export default function Rendimiento() {
   const { tema, modoBrillo } = useTheme()
+  const CONF_CONFIG = {
+    ok:       { color: tema.accent, label: 'OK' },
+    leve:     { color: '#ffd740', label: 'Leve' },
+    moderada: { color: '#ff9100', label: 'Moderada' },
+    critica:  { color: '#ff1744', label: 'Crítica' },
+  }
   const { animales, animalesExportados, camadas, camadasF1, bio, bioterioActivo } = useBioterio()
   const [vista, setVista] = useState('activos')
   const [subVista, setSubVista] = useState(null)

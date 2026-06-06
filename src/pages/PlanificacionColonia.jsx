@@ -52,6 +52,7 @@ function BarraProgreso({ valor, max = 100, color = '#00e676', height = 6 }) {
 }
 
 function GaugeScore({ score, size = 90 }) {
+  const { tema } = useTheme()
   const nivel = nivelEstabilidad(score)
   const pct   = score / 100
   const circunf = Math.PI * 2 * 36

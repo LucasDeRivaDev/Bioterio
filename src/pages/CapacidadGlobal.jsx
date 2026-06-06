@@ -178,7 +178,7 @@ function calcMotivos(animal, camadas) {
   return m.slice(0, 2)
 }
 
-function nivelRiesgo(nA, nJ, cfg) {
+function nivelRiesgo(nA, nJ, cfg, tema) {
   if (cfg.maxAnimales <= 0 && cfg.maxJaulas <= 0) return null
   const pA = cfg.maxAnimales > 0 ? nA / cfg.maxAnimales : 0
   const pJ = cfg.maxJaulas   > 0 ? nJ / cfg.maxJaulas   : 0
@@ -296,7 +296,7 @@ export default function CapacidadGlobal() {
     setExcluidos(prev => ({ ...prev, [tab]: new Set() }))
   }
 
-  const riesgo       = proyeccion ? nivelRiesgo(proyeccion.base.nAnimales, proyeccion.base.nJaulas, cfg) : null
+  const riesgo       = proyeccion ? nivelRiesgo(proyeccion.base.nAnimales, proyeccion.base.nJaulas, cfg, tema) : null
   const nExcluidos   = excluidos[tab]?.size ?? 0
   const limiteActivo = cfg.maxAnimales > 0 || cfg.maxJaulas > 0
 
@@ -701,6 +701,7 @@ export default function CapacidadGlobal() {
 // ── Sub-componentes ────────────────────────────────────────────────────────────
 
 function MetricaPanel({ label, valor, maximo, color, detalle }) {
+  const { tema } = useTheme()
   const pct = maximo > 0 ? Math.min(100, Math.round(valor / maximo * 100)) : null
   const barColor = pct === null ? color
     : pct >= 100 ? '#ff3d57'
@@ -728,6 +729,7 @@ function MetricaPanel({ label, valor, maximo, color, detalle }) {
 }
 
 function GraficoProyeccion({ data, dataKey, label, color, maximo }) {
+  const { tema } = useTheme()
   const maxVal = Math.max(...data.map(d => d[dataKey] ?? 0))
   const yMax   = maximo ? Math.max(maximo * 1.25, maxVal * 1.1) : maxVal * 1.2
   return (

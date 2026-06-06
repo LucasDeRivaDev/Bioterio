@@ -34,16 +34,6 @@ function formatEdad(dias) {
   return `${Math.floor(dias / 30)}m`
 }
 
-// ── Configuración de categorías ───────────────────────────────────────────────
-
-const CAT = {
-  macho_repro:  { label: 'Macho reproductor',  color: tema.blue, bg: 'rgba(64,196,255,0.1)',   borde: 'rgba(64,196,255,0.3)',   icono: '🐀' },
-  hembra_repro: { label: 'Hembra reproductora', color: tema.purple, bg: 'rgba(206,147,216,0.1)',  borde: 'rgba(206,147,216,0.3)', icono: '🐀' },
-  crias:        { label: 'Crías',               color: tema.accent, bg: 'rgba(0,230,118,0.08)',   borde: 'rgba(0,230,118,0.25)',  icono: '🐣' },
-  jovenes:      { label: 'Jóvenes',             color: tema.amber, bg: 'rgba(255,179,0,0.08)',   borde: 'rgba(255,179,0,0.25)',  icono: '🐭' },
-  adultos:      { label: 'Adultos',             color: tema.red, bg: 'rgba(255,61,87,0.08)',   borde: 'rgba(255,61,87,0.25)', icono: '🐁' },
-}
-
 // Orden fijo de categorías para visualización del stock
 const ORDEN_CAT = ['hembra_repro', 'macho_repro', 'crias', 'jovenes', 'adultos']
 
@@ -76,6 +66,7 @@ function sexoBloque(b) {
 // ── Componentes ───────────────────────────────────────────────────────────────
 
 function ChipCategoria({ label, animales, jaulas, color }) {
+  const { tema } = useTheme()
   return (
     <div
       className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono"
@@ -92,6 +83,7 @@ const COLOR_MACHO  = '#40c4ff'
 const COLOR_HEMBRA = '#ce93d8'
 
 function SexoDisplay({ bloque, cfg }) {
+  const { tema } = useTheme()
   const { tipo, animal, machos, hembras, total } = bloque
 
   if (tipo === 'reproductor') {
@@ -1863,6 +1855,13 @@ function ModalEliminarJaula({ bloque, onConfirmar, onCerrar }) {
 
 export default function Stock() {
   const { tema, modoBrillo } = useTheme()
+  const CAT = {
+    macho_repro:  { label: 'Macho reproductor',  color: tema.blue, bg: 'rgba(64,196,255,0.1)',   borde: 'rgba(64,196,255,0.3)',   icono: '🐀' },
+    hembra_repro: { label: 'Hembra reproductora', color: tema.purple, bg: 'rgba(206,147,216,0.1)',  borde: 'rgba(206,147,216,0.3)', icono: '🐀' },
+    crias:        { label: 'Crías',               color: tema.accent, bg: 'rgba(0,230,118,0.08)',   borde: 'rgba(0,230,118,0.25)',  icono: '🐣' },
+    jovenes:      { label: 'Jóvenes',             color: tema.amber, bg: 'rgba(255,179,0,0.08)',   borde: 'rgba(255,179,0,0.25)',  icono: '🐭' },
+    adultos:      { label: 'Adultos',             color: tema.red, bg: 'rgba(255,61,87,0.08)',   borde: 'rgba(255,61,87,0.25)', icono: '🐁' },
+  }
   const { animales, animalesExportados, camadas, sacrificios, entregas, jaulas, bio, bioterioActivo, agregarAnimal, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, editarCamada, registrarSacrificio, registrarEntrega, entregarReproductor } = useBioterio()
   const esHibridos = bioterioActivo === 'ratones_hibridos'
   // Sacrificios de ratones se manejan desde el Resumen global de ratones

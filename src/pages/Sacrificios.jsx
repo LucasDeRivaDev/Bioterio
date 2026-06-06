@@ -16,6 +16,7 @@ const labelCategoria = {
 // ── Menú de confirmación de restauración ─────────────────────────────────────
 
 function MenuRestaurar({ onRestaurar, onSoloBorrar, onCerrar, labelRestaurar, labelBorrar }) {
+  const { tema } = useTheme()
   return (
     <div
       className="absolute right-0 top-8 z-50 rounded-xl overflow-hidden shadow-2xl"

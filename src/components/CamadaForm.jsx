@@ -27,14 +27,8 @@ function esInactivo(animal) {
   return animal && !ESTADOS_ACTIVOS.includes(animal.estado)
 }
 
-const inputStyle = {
-  background: tema.bgInput,
-  border: '1px solid rgba(30,51,82,0.8)',
-  color: tema.textPrimary,
-  borderRadius: '10px',
-}
-
 function LabInput({ label, sublabel, required, error, children }) {
+  const { tema } = useTheme()
   return (
     <div>
       <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5 flex items-center gap-1.5" style={{ color: tema.textSecondary }}>
@@ -77,6 +71,12 @@ function labelColonia(bioId) {
 
 export default function CamadaForm({ camada, onGuardar, onCancelar }) {
   const { tema, modoBrillo } = useTheme()
+  const inputStyle = {
+    background: tema.bgInput,
+    border: '1px solid rgba(30,51,82,0.8)',
+    color: tema.textPrimary,
+    borderRadius: '10px',
+  }
   const { animales, animalesExportados, camadas, incidentes, bio, bioterioActivo } = useBioterio()
   const [form, setForm] = useState(camada ? normalizarCamada(camada) : vacioCamada)
   const [errores, setErrores] = useState({})

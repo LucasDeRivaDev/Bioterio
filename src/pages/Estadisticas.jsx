@@ -49,18 +49,9 @@ const card = {
   padding: '20px',
 }
 
-const inputStyle = {
-  background: tema.bgInput,
-  border: '1px solid rgba(30,51,82,0.8)',
-  color: tema.textPrimary,
-  borderRadius: '10px',
-  padding: '6px 10px',
-  fontSize: '13px',
-  outline: 'none',
-}
-
 // ── Tooltip personalizado ─────────────────────────────────────────────────────
 function TooltipOscuro({ active, payload, label }) {
+  const { tema } = useTheme()
   if (!active || !payload?.length) return null
   return (
     <div
@@ -81,6 +72,7 @@ function TooltipOscuro({ active, payload, label }) {
 
 // ── KPI ───────────────────────────────────────────────────────────────────────
 function KPI({ label, valor, color = '#c9d4e0', sub }) {
+  const { tema } = useTheme()
   return (
     <div
       className="rounded-xl px-4 py-3 text-center"
@@ -95,6 +87,7 @@ function KPI({ label, valor, color = '#c9d4e0', sub }) {
 
 // ── Encabezado de cada gráfico ────────────────────────────────────────────────
 function GraficoCard({ titulo, subtitulo, children, color = C.azul }) {
+  const { tema } = useTheme()
   return (
     <div style={card}>
       <div className="mb-4">
@@ -148,6 +141,15 @@ function SinDatos() {
 // ── PÁGINA PRINCIPAL ──────────────────────────────────────────────────────────
 export default function Estadisticas() {
   const { tema, modoBrillo } = useTheme()
+  const inputStyle = {
+    background: tema.bgInput,
+    border: '1px solid rgba(30,51,82,0.8)',
+    color: tema.textPrimary,
+    borderRadius: '10px',
+    padding: '6px 10px',
+    fontSize: '13px',
+    outline: 'none',
+  }
   const { camadas, camadasF1, animales, animalesExportados, bio, bioterioActivo } = useBioterio()
 
   // ── Filtros ────────────────────────────────────────────────────────────────

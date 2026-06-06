@@ -66,6 +66,7 @@ const ICONO_TIPO = {
 // ── Tarjeta de tarea con acción inline para separaciones ─────────────────────
 
 function TarjetaTarea({ tarea, onConfirmarSeparacion, onDescartar }) {
+  const { tema } = useTheme()
   const est          = PRIORIDAD[tarea.prioridad]
   const esSeparacion = tarea.tipo === 'separacion'
 
@@ -188,6 +189,7 @@ function TarjetaTarea({ tarea, onConfirmarSeparacion, onDescartar }) {
 // ── Stat card ─────────────────────────────────────────────────────────────────
 
 function StatCard({ valor, label, icono, color }) {
+  const { tema } = useTheme()
   const colores = {
     verde:   { bg: 'rgba(0,230,118,0.08)',   borde: 'rgba(0,230,118,0.2)',   texto: '#00e676' },
     azul:    { bg: 'rgba(64,196,255,0.08)',  borde: 'rgba(64,196,255,0.2)',  texto: '#40c4ff' },

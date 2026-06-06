@@ -124,6 +124,7 @@ function OrigenBadge({ bioterioId }) {
 }
 
 function MenuRestaurar({ labelRestaurar, onRestaurar, onSoloBorrar, onCerrar }) {
+  const { tema } = useTheme()
   return (
     <div
       className="absolute right-0 top-8 z-50 rounded-xl overflow-hidden shadow-2xl"
@@ -702,6 +703,7 @@ export default function ResumenRatones() {
 // ── Sub-componentes de stock ───────────────────────────────────────────────────
 
 function TarjetaEdad({ label, subtitulo, icono, cantidad, jaulas, color }) {
+  const { tema } = useTheme()
   return (
     <div className="rounded-xl p-4 flex flex-col items-center gap-1 text-center"
       style={{ background: `${color}09`, border: `1px solid ${color}25` }}>
@@ -715,6 +717,7 @@ function TarjetaEdad({ label, subtitulo, icono, cantidad, jaulas, color }) {
 }
 
 function FilaColonia({ cfg, grupo, totalGlobal, onEntrar }) {
+  const { tema } = useTheme()
   const pct = totalGlobal > 0 ? Math.round((grupo.total / totalGlobal) * 100) : 0
   return (
     <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.6)', border: `1px solid ${cfg.color}25` }}>
@@ -752,6 +755,7 @@ function FilaColonia({ cfg, grupo, totalGlobal, onEntrar }) {
 }
 
 function MiniCat({ label, cantidad, jaulas, color }) {
+  const { tema } = useTheme()
   return (
     <div className="flex flex-col items-center gap-0.5">
       <div className="text-base font-bold font-mono" style={{ color: cantidad > 0 ? color : '#2a3a50' }}>

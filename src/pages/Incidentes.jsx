@@ -1493,6 +1493,7 @@ export default function Incidentes() {
 const CATS_MULTI_ANIMAL = ['sanitario', 'reproductivo']
 
 function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar, onCerrar }) {
+  const { tema } = useTheme()
   const [fecha,          setFecha]          = useState(inicial?.fecha ?? hoy())
   const [categoria,      setCategoria]      = useState(inicial?.tipo_categoria ?? '')
   const [tipoInc,        setTipoInc]        = useState(inicial?.tipo_incidente ?? '')

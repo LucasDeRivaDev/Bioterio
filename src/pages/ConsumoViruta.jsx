@@ -259,7 +259,7 @@ function proximoCambioDesde(fechaStr, horaStr) {
   }
 }
 
-function contextoCiclo(fechaStr, horaStr) {
+function contextoCiclo(fechaStr, horaStr, tema) {
   const prob = probCambioReciente(fechaStr, horaStr)
   const day  = diaLocal(fechaStr)
   const h    = parseInt((horaStr ?? '12:00').split(':')[0])
@@ -1106,7 +1106,7 @@ export default function ConsumoViruta() {
                 <div className="px-5 py-5 text-center flex flex-col items-center gap-1">
                   <div className="text-xs font-mono uppercase tracking-wider" style={{ color: tema.textMuted }}>Último censo · posición en ciclo</div>
                   {ultimoCenso ? (() => {
-                    const ctx  = contextoCiclo(ultimoCenso.fecha, ultimoCenso.hora)
+                    const ctx  = contextoCiclo(ultimoCenso.fecha, ultimoCenso.hora, tema)
                     const prob = probCambioReciente(ultimoCenso.fecha, ultimoCenso.hora)
                     const probPct = Math.round(prob * 100)
                     const cc = ultimoCenso.cambioCama
@@ -1331,7 +1331,7 @@ export default function ConsumoViruta() {
                         {!cc?.tipo && (() => {
                           const prob = probCambioReciente(item.fecha, item.hora)
                           if (prob < 0.45) return null
-                          const ctx = contextoCiclo(item.fecha, item.hora)
+                          const ctx = contextoCiclo(item.fecha, item.hora, tema)
                           return (
                             <span className="text-xs font-mono px-1.5 py-0.5 rounded-full"
                               style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.22)', color: tema.amber }}>
@@ -1525,6 +1525,7 @@ export default function ConsumoViruta() {
 // ── Sub-componentes ────────────────────────────────────────────────────────────
 
 function TarjetaJaulas({ label, icon, color, unidades, filas, nota }) {
+  const { tema } = useTheme()
   const total = filas.reduce((s, f) => s + f.n, 0)
   return (
     <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.6)', border: `1px solid ${color}20` }}>
@@ -1561,6 +1562,7 @@ function TarjetaJaulas({ label, icon, color, unidades, filas, nota }) {
 // ── Modal: Registrar censo ────────────────────────────────────────────────────
 
 function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
+  const { tema } = useTheme()
   const [fecha,       setFecha]       = useState(hoy())
   const [hora,        setHora]        = useState(horaActual())
   const [bolsas,      setBolsas]      = useState('')

@@ -10,7 +10,7 @@ import { supabase } from '../lib/supabase'
 const GRUPOS_RATONES = ['ratones_balbc', 'ratones_c57', 'ratones_hibridos']
 
 // ── Badge sanitario simplificado (sin camadas, solo incidentes) ───────────────
-function badgeSanitario(incidentes, bioterioId) {
+function badgeSanitario(incidentes, bioterioId, tema) {
   const hace90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
   const inc = incidentes.filter(i => i.bioterio_id === bioterioId && (i.fecha ?? '') >= hace90 && !i.resuelto)
   const graves    = inc.filter(i => i.severidad === 'grave').length
@@ -110,7 +110,7 @@ export default function SelectorBioterio() {
                   Madurez 12 sem.
                 </span>
                 {(() => {
-                  const b = badgeSanitario(incidentesSalud, 'ratas')
+                  const b = badgeSanitario(incidentesSalud, 'ratas', tema)
                   return (
                     <span className="text-xs font-mono px-2 py-0.5 rounded-full" style={{ background: `${b.color}18`, color: b.color, border: `1px solid ${b.color}40` }}>
                       {b.emoji} {b.label}{b.count > 0 ? ` · ${b.count}` : ''}
@@ -176,7 +176,7 @@ export default function SelectorBioterio() {
                     <span className="font-semibold text-sm">{cfg.labelCorto}</span>
                     <span className="text-xs font-mono ml-1 hidden sm:inline" style={{ color: tema.textMuted }}>{cfg.nombreCientifico}</span>
                     {(() => {
-                      const b = badgeSanitario(incidentesSalud, id)
+                      const b = badgeSanitario(incidentesSalud, id, tema)
                       return (
                         <span className="hidden sm:inline text-xs px-1.5 py-0.5 rounded-full font-mono" style={{ background: `${b.color}15`, color: b.color, border: `1px solid ${b.color}35` }}>
                           {b.emoji}{b.count > 0 ? ` ${b.count}` : ''}

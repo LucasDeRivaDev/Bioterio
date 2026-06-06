@@ -42,6 +42,7 @@ const yTick = { fontSize: 9, fill: '#4a5f7a' }
 
 // ── Gauge de sustentabilidad ──────────────────────────────────────────────────
 function GaugeCircle({ valor, color = '#00e676', size = 88 }) {
+  const { tema } = useTheme()
   const pct  = Math.max(0, Math.min(100, valor ?? 0))
   const r    = size * 0.4
   const circ = 2 * Math.PI * r
@@ -129,6 +130,7 @@ function FilaMetrica({ label, vA, vB, invertida = false, formato = v => v?.toFix
 
 // ── Badge de nivel de alerta ──────────────────────────────────────────────────
 function NivelBadge({ nivel }) {
+  const { tema } = useTheme()
   const cfg = {
     critico:    { bg: 'rgba(255,61,87,0.1)',  borde: 'rgba(255,61,87,0.3)',  color: tema.red, label: 'Crítico' },
     importante: { bg: 'rgba(255,152,0,0.1)',  borde: 'rgba(255,152,0,0.3)', color: '#ff9800', label: 'Importante' },

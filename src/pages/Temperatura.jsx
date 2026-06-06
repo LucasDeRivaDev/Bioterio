@@ -40,16 +40,14 @@ function promedio(arr) {
 const CARD_BG = 'rgba(13,21,40,0.95)'
 const BORDER  = '1px solid rgba(30,51,82,0.7)'
 
-// Colores por bioterio
-const CFG = {
-  ratas:   { color: tema.accent, dim: 'rgba(0,230,118,0.1)',  label: 'Bioterio de Ratas',   icon: '🐀' },
-  ratones: { color: tema.blue, dim: 'rgba(64,196,255,0.1)', label: 'Bioterio de Ratones', icon: '🐭' },
-}
-
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function Temperatura() {
   const { tema, modoBrillo } = useTheme()
+  const CFG = {
+    ratas:   { color: tema.accent, dim: 'rgba(0,230,118,0.1)',  label: 'Bioterio de Ratas',   icon: '🐀' },
+    ratones: { color: tema.blue, dim: 'rgba(64,196,255,0.1)', label: 'Bioterio de Ratones', icon: '🐭' },
+  }
   // Tab activa
   const [bio, setBio] = useState('ratas')
 
@@ -586,6 +584,7 @@ export default function Temperatura() {
 // ── Sub-componentes ────────────────────────────────────────────────────────────
 
 function InputField({ label, value, onChange, placeholder }) {
+  const { tema } = useTheme()
   return (
     <div className="flex flex-col gap-1">
       <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.textMuted }}>
@@ -615,6 +614,7 @@ function TempChip({ label, value, color }) {
 }
 
 function PromedioCard({ label, value, color }) {
+  const { tema } = useTheme()
   return (
     <div
       className="rounded-xl px-3 py-2 text-center"

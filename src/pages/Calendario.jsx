@@ -577,6 +577,7 @@ function ModalPlanificarApareamiento({
   fecha, onGuardar, onCerrar,
   esHibridos = false, datosHibridos = null, cargandoHibridos = false,
 }) {
+  const { tema } = useTheme()
   // Fuentes de animales según modo
   const machos  = esHibridos
     ? (datosHibridos?.animalesBalbc ?? []).filter((a) => a.sexo === 'macho'  && a.estado === 'activo')

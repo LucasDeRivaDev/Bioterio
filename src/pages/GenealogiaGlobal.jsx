@@ -59,6 +59,7 @@ function BadgeEstado({ estado, emoji, label }) {
 }
 
 function BadgeConfianza({ nivel }) {
+  const { tema } = useTheme()
   const cfg = {
     alta:  { color: tema.accent, emoji: '🟢', label: 'Confianza alta' },
     media: { color: '#ffd740', emoji: '🟡', label: 'Confianza media' },
@@ -76,6 +77,8 @@ function BadgeConfianza({ nivel }) {
 
 // ── Panel histórico de línea ──────────────────────────────────────────────────
 function PanelLineaHistorica() {
+  const { tema } = useTheme()
+
   return (
     <div
       className="rounded-2xl overflow-hidden"
@@ -121,6 +124,7 @@ function PanelLineaHistorica() {
 
 // ── Árbol genealógico — nodo individual ──────────────────────────────────────
 function NodoArbol({ nodo, size = 'normal' }) {
+  const { tema } = useTheme()
   if (!nodo) return null
 
   if (nodo.desconocido) {
@@ -262,6 +266,7 @@ function ArbolCompacto({ animal, pedigree }) {
 
 // ── Simulador de apareamiento ─────────────────────────────────────────────────
 function SimuladorApareamientoPanel({ animales, pedigree }) {
+  const { tema } = useTheme()
   const [madreId, setMadreId] = useState('')
   const [padreId, setPadreId] = useState('')
   const [mostrarArbol, setMostrarArbol] = useState(false)
