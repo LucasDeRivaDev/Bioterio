@@ -1,5 +1,5 @@
-import iterateLogo      from '../assets/iterate_logo.png'
-import iterateLogoLight from '../assets/iterate_logo_light.png'
+import iterateLogo      from '../assets/logoiterate.png'
+import iterateLogoLight from '../assets/logoiteratefondoclaro.png'
 import { useTheme } from '../context/ThemeContext'
 
 /**
@@ -23,6 +23,8 @@ export default function ITeRatELogo({ height = 60, style = {}, forceDark = false
         height: `${height}px`,
         width: 'auto',
         display: 'block',
+        filter: (!forceDark && modoBrillo) ? 'none' : 'contrast(2) brightness(1.1)',
+        mixBlendMode: (!forceDark && modoBrillo) ? 'multiply' : 'screen',
         ...style,
       }}
     />

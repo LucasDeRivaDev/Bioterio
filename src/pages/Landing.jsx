@@ -3,13 +3,13 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import ITeRatELogo from '../components/ITeRatELogo'
-import iterateLogoOriginal  from '../assets/iterate_logo.jpg'
-import iterateTextLogo       from '../assets/iterate_text_logo.png'
-import iterateTextLogoLight  from '../assets/iterate_text_logo_light.png'
-import iterateTitleLogo      from '../assets/iterate_logo.png'
-import iterateTitleLogoLight from '../assets/iterate_title_logo_light.png'
-import iterateNavLogo        from '../assets/iterate_nav_logo.png'
-import iterateNavLogoLight   from '../assets/iterate_logo_light.png'
+import iterateLogoOriginal  from '../assets/logoiterate.png'
+import iterateTextLogo       from '../assets/iterate+slogan.png'
+import iterateTextLogoLight  from '../assets/iterate+sloganfondoclaro.png'
+import iterateTitleLogo      from '../assets/iterate+logo+slogan.png'
+import iterateTitleLogoLight from '../assets/iterate+logo+sloganfondoclaro.png'
+import iterateNavLogo        from '../assets/logoiterate.png'
+import iterateNavLogoLight   from '../assets/logoiteratefondoclaro.png'
 import { Dna, BarChart2, Archive, Calendar, Skull, Printer, GraduationCap, Microscope, FlaskConical, Building2 } from 'lucide-react'
 
 const CSS = `
@@ -167,16 +167,13 @@ export default function Landing() {
         {/* Ícono pestaña — centrado en el nav de 96px */}
         <div style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: '24px', zIndex: 102, pointerEvents: 'none' }}>
           <div className="landing-nav-logo" style={{
-            background: modoBrillo ? '#ffffff' : 'rgb(4, 26, 31)',
-            borderRadius: '16px',
-            border: modoBrillo ? '1.5px solid rgba(0,0,0,0.08)' : '1.5px solid rgba(0,230,118,0.2)',
-            boxShadow: modoBrillo ? '0 2px 12px rgba(0,0,0,0.08)' : '0 0 60px rgba(0,230,118,0.18), 0 8px 40px rgba(0,0,0,0.5)',
+            background: 'none',
+            border: 'none',
+            boxShadow: 'none',
             padding: '6px 10px',
             display: 'inline-flex',
-            overflow: modoBrillo ? 'hidden' : 'visible',
-            height: modoBrillo ? '105px' : 'auto',
           }}>
-            <img src={modoBrillo ? iterateNavLogoLight : iterateNavLogo} alt="ITeRatE" style={{ height: modoBrillo ? '120px' : '60px', width: 'auto', display: 'block', filter: modoBrillo ? 'none' : 'drop-shadow(0 0 8px rgba(0,230,118,0.3))', mixBlendMode: 'normal' }} />
+            <img src={modoBrillo ? iterateNavLogoLight : iterateNavLogo} alt="ITeRatE" style={{ height: '120px', width: 'auto', display: 'block', filter: modoBrillo ? 'none' : 'drop-shadow(0 0 8px rgba(0,230,118,0.3))' }} />
           </div>
         </div>
 
@@ -261,19 +258,18 @@ export default function Landing() {
           </div>
 
           {/* Right: Logo sin fondo — oculto en mobile */}
-          <div className="landing-hero-right float" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', paddingLeft: modoBrillo ? '0' : '18px' }}>
-            <div style={{ position: 'relative', width: '100%' }}>
+          <div className="landing-hero-right float" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', width: '100%' }}>
               {!modoBrillo && <div style={{ position: 'absolute', inset: '-40px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,230,118,0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />}
               <img
                 src={modoBrillo ? iterateTitleLogoLight : iterateTitleLogo}
                 alt="ITeRatE"
                 style={{
-                  width: '100%',
+                  width: modoBrillo ? '470px' : '520px',
+                  maxWidth: '100%',
                   height: 'auto',
-                  maxWidth: modoBrillo ? 'none' : '520px',
                   display: 'block',
                   filter: modoBrillo ? 'none' : 'drop-shadow(0 0 30px rgba(0,230,118,0.25))',
-                  mixBlendMode: modoBrillo ? 'multiply' : 'normal',
                 }}
               />
             </div>
@@ -420,7 +416,7 @@ export default function Landing() {
       </section>
 
       {/* ── CONTACTO ── */}
-      <section id="contacto" className="landing-section-pad" style={{ padding: '100px 24px' }}>
+      <section id="contacto" className="landing-section-pad" style={{ padding: '100px 24px 40px' }}>
         <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
           <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'center' }}><Dna size={48} style={{ color: '#00e676' }} /></div>
           <h2 className="landing-section-h2" style={{ fontSize: '40px', fontWeight: 800, color: 'white', letterSpacing: '-1px', marginBottom: '16px' }}>Pedí tu demo gratuito</h2>
@@ -468,7 +464,7 @@ export default function Landing() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer style={{ padding: '42px 24px 28px', borderTop: `1px solid ${tema.bgCardBorde}`, background: tema.bgMain }}>
+      <footer style={{ padding: '0 24px', borderTop: `1px solid ${tema.bgCardBorde}`, background: tema.bgMain }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '18px' }}>
           <img
             src={modoBrillo ? iterateTextLogoLight : iterateTextLogo}
@@ -480,7 +476,6 @@ export default function Landing() {
               display: 'block',
               filter: modoBrillo ? 'none' : 'drop-shadow(0 0 20px rgba(0,230,118,0.2))',
               opacity: 0.85,
-              mixBlendMode: modoBrillo ? 'multiply' : 'normal',
             }}
           />
           <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>

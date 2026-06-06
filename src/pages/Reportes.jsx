@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { formatFecha, calcularLatencia } from '../utils/calculos'
 import { TrendingUp, Microscope, Dna, BarChart2, Archive, Skull, PackageCheck, Thermometer, FileWarning, Printer, Calendar, CalendarDays } from 'lucide-react'
-import iterateTitleLogoLight from '../assets/iterate_logo_light.png'
+import iterateTitleLogoLight from '../assets/iterate+logo+sloganfondoclaro.png'
 
 const LABEL_BIOTERIO = {
   ratas:            'Ratas',
