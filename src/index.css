@@ -212,7 +212,7 @@ input[type=text], input[type=date], input[type=number], select, textarea {
 
 /* Texto del body */
 html.modo-claro body {
-  background: #ffffff !important;
+  background: #F4F4EF !important;
   color: #000000;
 }
 
