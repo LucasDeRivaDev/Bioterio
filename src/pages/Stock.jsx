@@ -63,6 +63,16 @@ function sexoBloque(b) {
 
 // helpers LS eliminados — ahora usa db.js
 
+function getCAT(tema) {
+  return {
+    macho_repro:  { label: 'Macho reproductor',   color: tema.blue,   bg: 'rgba(64,196,255,0.1)',   borde: 'rgba(64,196,255,0.3)',   icono: '🐀' },
+    hembra_repro: { label: 'Hembra reproductora', color: tema.purple, bg: 'rgba(206,147,216,0.1)',  borde: 'rgba(206,147,216,0.3)', icono: '🐀' },
+    crias:        { label: 'Crías',               color: tema.accent, bg: 'rgba(0,230,118,0.08)',   borde: 'rgba(0,230,118,0.25)',  icono: '🐣' },
+    jovenes:      { label: 'Jóvenes',             color: tema.amber,  bg: 'rgba(255,179,0,0.08)',   borde: 'rgba(255,179,0,0.25)',  icono: '🐭' },
+    adultos:      { label: 'Adultos',             color: tema.red,    bg: 'rgba(255,61,87,0.08)',   borde: 'rgba(255,61,87,0.25)', icono: '🐁' },
+  }
+}
+
 // ── Componentes ───────────────────────────────────────────────────────────────
 
 function ChipCategoria({ label, animales, jaulas, color }) {
@@ -185,6 +195,8 @@ function MiniCalidad({ icono, codigo, calidad, animal }) {
 }
 
 function BloqueJaula({ bloque, camadas, onClick, onEliminar, modoSeleccion = false, seleccionada = false, animalesReservados = new Map(), jaulasReservadas = new Map(), reservadosHibridos = new Map() }) {
+  const { tema } = useTheme()
+  const CAT = getCAT(tema)
   const cfg = CAT[bloque.categoria]
   const esStock = bloque.tipo === 'stock'
   // Estado de ciclo reproductivo — solo para hembras reproductoras
@@ -445,6 +457,8 @@ function BloqueJaula({ bloque, camadas, onClick, onEliminar, modoSeleccion = fal
 const labelEstadoRepro = { activo: 'Activo', en_apareamiento: 'En apareamiento', en_cria: 'En cría', retirado: 'Retirado', fallecido: 'Fallecido' }
 
 function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, agregarJaula, editarAnimal, onPromover, esHibridos }) {
+  const { tema } = useTheme()
+  const CAT = getCAT(tema)
   const cfg       = CAT[bloque.categoria]
   const esRepro   = bloque.tipo === 'reproductor'
   const esVirtual = Boolean(bloque.virtual)
@@ -1106,6 +1120,8 @@ function ModalPlanificarApareamiento({ bloquesMacho, bloquesHembra, onGuardar, o
 }
 
 function ModalSacrificio({ bloques, onConfirmar, onCerrar, animalesReservados = new Map(), jaulasReservadas = new Map(), reservadosHibridos = new Map() }) {
+  const { tema } = useTheme()
+  const CAT = getCAT(tema)
   const [fecha, setFecha]       = useState(hoy())
   const [notas, setNotas]       = useState('')
   const [guardando, setGuardando] = useState(false)
@@ -1356,6 +1372,8 @@ function ModalSacrificio({ bloques, onConfirmar, onCerrar, animalesReservados = 
 }
 
 function ModalEntrega({ bloques, onConfirmar, onCerrar, animalesReservados = new Map(), jaulasReservadas = new Map(), reservadosHibridos = new Map() }) {
+  const { tema } = useTheme()
+  const CAT = getCAT(tema)
   const [fecha,        setFecha]        = useState(hoy())
   const [observaciones, setObservaciones] = useState('')
   const [guardando,    setGuardando]    = useState(false)
@@ -1597,6 +1615,8 @@ function ModalEntrega({ bloques, onConfirmar, onCerrar, animalesReservados = new
 // ── Modal para promover desde selección múltiple ──────────────────────────────
 
 function ModalPromoverReproductor({ bloques, animales, onConfirmar, onCerrar }) {
+  const { tema } = useTheme()
+  const CAT = getCAT(tema)
   const [guardando, setGuardando] = useState(false)
   const [items, setItems] = useState(() =>
     bloques.map((b) => {
@@ -1784,6 +1804,8 @@ function CategoriaCard({ icono, titulo, subtitulo, total, grupos, gruposLabel, m
 
 
 function ModalEliminarJaula({ bloque, onConfirmar, onCerrar }) {
+  const { tema } = useTheme()
+  const CAT = getCAT(tema)
   const [guardando, setGuardando] = useState(false)
   const cfg = CAT[bloque.categoria]
 
@@ -1855,13 +1877,7 @@ function ModalEliminarJaula({ bloque, onConfirmar, onCerrar }) {
 
 export default function Stock() {
   const { tema, modoBrillo } = useTheme()
-  const CAT = {
-    macho_repro:  { label: 'Macho reproductor',  color: tema.blue, bg: 'rgba(64,196,255,0.1)',   borde: 'rgba(64,196,255,0.3)',   icono: '🐀' },
-    hembra_repro: { label: 'Hembra reproductora', color: tema.purple, bg: 'rgba(206,147,216,0.1)',  borde: 'rgba(206,147,216,0.3)', icono: '🐀' },
-    crias:        { label: 'Crías',               color: tema.accent, bg: 'rgba(0,230,118,0.08)',   borde: 'rgba(0,230,118,0.25)',  icono: '🐣' },
-    jovenes:      { label: 'Jóvenes',             color: tema.amber, bg: 'rgba(255,179,0,0.08)',   borde: 'rgba(255,179,0,0.25)',  icono: '🐭' },
-    adultos:      { label: 'Adultos',             color: tema.red, bg: 'rgba(255,61,87,0.08)',   borde: 'rgba(255,61,87,0.25)', icono: '🐁' },
-  }
+  const CAT = getCAT(tema)
   const { animales, animalesExportados, camadas, sacrificios, entregas, jaulas, bio, bioterioActivo, agregarAnimal, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, editarCamada, registrarSacrificio, registrarEntrega, entregarReproductor } = useBioterio()
   const esHibridos = bioterioActivo === 'ratones_hibridos'
   // Sacrificios de ratones se manejan desde el Resumen global de ratones
