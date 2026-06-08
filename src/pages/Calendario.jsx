@@ -199,7 +199,7 @@ export default function Calendario() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-5 min-h-screen" style={{ background: '#050810' }}>
+    <div className="p-4 md:p-6 space-y-5 min-h-screen" style={{ background: tema.bgMain }}>
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-1.5 h-7 rounded-full" style={{ background: tema.accent, boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
@@ -221,7 +221,7 @@ export default function Calendario() {
         {/* ── Grilla del calendario ── */}
         <div
           className="flex-1 rounded-2xl p-4 md:p-5"
-          style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }}
+          style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.8)' }}
         >
           {/* Navegación */}
           <div className="flex items-center justify-between mb-5">
@@ -303,7 +303,7 @@ export default function Calendario() {
         {/* ── Panel lateral ── */}
         <div
           className="w-full md:w-72 rounded-2xl p-4 h-fit space-y-3"
-          style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }}
+          style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.8)' }}
         >
           {diaSelec ? (
             <>
@@ -793,12 +793,12 @@ function ModalPlanificarApareamiento({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(5,8,16,0.88)', backdropFilter: 'blur(4px)' }}
+      style={{ background: tema.bgCard, backdropFilter: 'blur(4px)' }}
     >
       <div
         className="w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col"
         style={{
-          background:  'rgba(13,21,40,0.98)',
+          background: tema.bgCard,
           border:      '1.5px solid rgba(139,92,246,0.35)',
           boxShadow:   '0 0 60px rgba(139,92,246,0.12)',
           maxHeight:   '90vh',
@@ -1043,13 +1043,13 @@ function ModalNota({ fecha, onGuardar, onCerrar }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(5,8,16,0.88)', backdropFilter: 'blur(4px)' }}
+      style={{ background: tema.bgCard, backdropFilter: 'blur(4px)' }}
       onClick={(e) => { if (e.target === e.currentTarget) onCerrar() }}
     >
       <div
         className="w-full max-w-md rounded-2xl overflow-hidden flex flex-col"
         style={{
-          background: 'rgba(13,21,40,0.98)',
+          background: tema.bgCard,
           border:     '1.5px solid rgba(251,191,36,0.3)',
           boxShadow:  '0 0 60px rgba(251,191,36,0.08)',
         }}

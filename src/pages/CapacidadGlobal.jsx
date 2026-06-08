@@ -303,11 +303,11 @@ export default function CapacidadGlobal() {
   const partosPendientes = proyeccion?.eventos.filter(e => e.tipo === 'parto').length ?? 0
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#050810' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: tema.bgMain }}>
 
       {/* Header */}
       <div className="flex items-center gap-4 px-6 py-4 shrink-0"
-        style={{ borderBottom: '1px solid rgba(0,230,118,0.15)', background: 'rgba(13,21,40,0.6)' }}>
+        style={{ borderBottom: '1px solid rgba(0,230,118,0.15)', background: tema.bgCard }}>
         <button onClick={limpiarBioterio}
           className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-mono"
           style={{ background: 'rgba(0,230,118,0.07)', border: '1px solid rgba(0,230,118,0.2)', color: tema.accent }}
@@ -330,7 +330,7 @@ export default function CapacidadGlobal() {
 
       {/* Tabs */}
       <div className="flex gap-1 px-4 py-3 shrink-0"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(13,21,40,0.4)' }}>
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: tema.bgCard }}>
         {TODOS.map(b => (
           <button key={b.id} onClick={() => { setTab(b.id); setCfgOpen(false) }}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all"
@@ -366,7 +366,7 @@ export default function CapacidadGlobal() {
           <>
             {/* ── Panel estado actual + config ── */}
             <div className="rounded-2xl overflow-hidden"
-              style={{ background: 'rgba(13,21,40,0.9)', border: `1.5px solid ${bioTab.color}30`, boxShadow: `0 0 40px ${bioTab.color}06` }}>
+              style={{ background: tema.bgCard, border: `1.5px solid ${bioTab.color}30`, boxShadow: `0 0 40px ${bioTab.color}06` }}>
 
               {/* Header */}
               <div className="px-6 py-3 flex items-center gap-3"
@@ -402,7 +402,7 @@ export default function CapacidadGlobal() {
                         onChange={e => setCfg('maxAnimales', parseInt(e.target.value) || 0)}
                         placeholder="Sin límite"
                         className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
-                        style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }} />
+                        style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }} />
                       <div className="text-xs font-mono mt-1" style={{ color: '#3d5068' }}>0 = sin límite</div>
                     </div>
                     <div>
@@ -413,7 +413,7 @@ export default function CapacidadGlobal() {
                         onChange={e => setCfg('maxJaulas', parseInt(e.target.value) || 0)}
                         placeholder="Sin límite"
                         className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
-                        style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }} />
+                        style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }} />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
@@ -462,7 +462,7 @@ export default function CapacidadGlobal() {
             {/* ── Proyección ── */}
             {limiteActivo && (
               <div className="rounded-2xl overflow-hidden"
-                style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                style={{ background: tema.bgCard, border: '1px solid rgba(255,255,255,0.07)' }}>
                 <div className="px-6 py-4 flex items-center gap-2"
                   style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                   <TrendingUp size={14} style={{ color: bioTab.color }} />
@@ -541,7 +541,7 @@ export default function CapacidadGlobal() {
             {/* ── Sugerencias automáticas (si hay riesgo o saturación) ── */}
             {limiteActivo && (proyeccion.satPoint || (riesgo && riesgo.nivel !== 'ok' && riesgo.nivel !== 'bajo')) && (
               <div className="rounded-2xl overflow-hidden"
-                style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(255,179,0,0.2)' }}>
+                style={{ background: tema.bgCard, border: '1px solid rgba(255,179,0,0.2)' }}>
                 <div className="px-6 py-3"
                   style={{ borderBottom: '1px solid rgba(255,179,0,0.12)', background: 'rgba(255,179,0,0.04)' }}>
                   <div className="font-bold text-sm text-white">💡 Sugerencias automáticas</div>
@@ -583,7 +583,7 @@ export default function CapacidadGlobal() {
             {/* ── Candidatos a sacrificio ── */}
             {candidatos.length > 0 && (
               <div className="rounded-2xl overflow-hidden"
-                style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(255,107,128,0.2)' }}>
+                style={{ background: tema.bgCard, border: '1px solid rgba(255,107,128,0.2)' }}>
                 <div className="px-6 py-3 flex items-center gap-2"
                   style={{ borderBottom: '1px solid rgba(255,107,128,0.12)', background: 'rgba(255,107,128,0.04)' }}>
                   <span style={{ fontSize: 14 }}>💉</span>

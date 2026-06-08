@@ -3,8 +3,6 @@ import { useBioterio } from '../context/BiotheriumContext'
 import { formatFecha } from '../utils/calculos'
 import { useTheme } from '../context/ThemeContext'
 
-const cardStyle = { background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }
-
 const labelCategoria = {
   cria: 'Cría',
   joven: 'Joven',
@@ -20,7 +18,7 @@ function MenuRestaurar({ onRestaurar, onSoloBorrar, onCerrar, labelRestaurar, la
   return (
     <div
       className="absolute right-0 top-8 z-50 rounded-xl overflow-hidden shadow-2xl"
-      style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(30,51,82,0.9)', minWidth: '230px' }}
+      style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.9)', minWidth: '230px' }}
     >
       {/* Restaurar con stock */}
       <button
@@ -64,6 +62,7 @@ function MenuRestaurar({ onRestaurar, onSoloBorrar, onCerrar, labelRestaurar, la
 
 export default function Sacrificios() {
   const { tema, modoBrillo } = useTheme()
+  const cardStyle = { background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }
   const {
     animales, animalesExportados, camadas, sacrificios,
     eliminarSacrificio, eliminarSacrificioReproductor,
@@ -140,7 +139,7 @@ export default function Sacrificios() {
   return (
     <div
       className="p-4 md:p-6 space-y-6 min-h-screen"
-      style={{ background: '#050810' }}
+      style={{ background: tema.bgMain }}
       onClick={() => setMenuAbierto(null)}  // cerrar menú al hacer click fuera
     >
 

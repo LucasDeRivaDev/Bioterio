@@ -139,7 +139,7 @@ export default function Landing() {
       {/* ── NAVBAR ── */}
       <nav className="landing-nav" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: modoBrillo ? 'rgba(244,244,239,0.96)' : 'rgba(5,8,16,0.85)', borderBottom: `1px solid ${tema.bgCardBorde}`, backdropFilter: 'blur(20px)', overflow: 'visible' }}>
         {/* Ícono pestaña — centrado en el nav de 96px */}
-        <div style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: '24px', zIndex: 102, pointerEvents: 'none' }}>
+        <div style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: '24px', zIndex: 102, pointerEvents: 'none', mixBlendMode: modoBrillo ? 'multiply' : 'normal' }}>
           <div className="landing-nav-logo" style={{
             background: 'none',
             border: 'none',
@@ -225,7 +225,7 @@ export default function Landing() {
           </div>
 
           {/* Right: Logo sin fondo — oculto en mobile */}
-          <div className="landing-hero-right float" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <div className="landing-hero-right float" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mixBlendMode: modoBrillo ? 'multiply' : 'normal' }}>
             <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', width: '100%' }}>
               {!modoBrillo && <div style={{ position: 'absolute', inset: '-40px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,230,118,0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />}
               <img
@@ -432,6 +432,7 @@ export default function Landing() {
               display: 'block',
               filter: modoBrillo ? 'none' : 'drop-shadow(0 0 20px rgba(0,230,118,0.2))',
               opacity: 0.85,
+              mixBlendMode: modoBrillo ? 'multiply' : 'screen',
             }}
           />
           <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>

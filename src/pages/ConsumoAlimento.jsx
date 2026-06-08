@@ -941,12 +941,12 @@ export default function ConsumoAlimento() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#050810' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: tema.bgMain }}>
 
       {/* Header */}
       <div
         className="flex items-center gap-4 px-6 py-4 shrink-0"
-        style={{ borderBottom: '1px solid rgba(255,179,0,0.15)', background: 'rgba(13,21,40,0.6)' }}
+        style={{ borderBottom: '1px solid rgba(255,179,0,0.15)', background: tema.bgCard }}
       >
         <button
           onClick={limpiarBioterio}
@@ -998,7 +998,7 @@ export default function ConsumoAlimento() {
             ════════════════════════════════════════════════════════════ */}
             <div className="rounded-2xl overflow-hidden"
               style={{
-                background: 'rgba(13,21,40,0.95)',
+                background: tema.bgCard,
                 border: `2px solid ${alertaStock?.border ?? 'rgba(0,230,118,0.4)'}`,
                 boxShadow: `0 0 40px ${alertaStock?.bg ?? 'rgba(0,230,118,0.06)'}`,
               }}>
@@ -1156,7 +1156,7 @@ export default function ConsumoAlimento() {
 
             {/* ── Estimación rápida: ajuste de stock sin censo completo ── */}
             <div className="rounded-2xl overflow-hidden"
-              style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(64,196,255,0.2)' }}>
+              style={{ background: tema.bgCard, border: '1px solid rgba(64,196,255,0.2)' }}>
               <div className="px-5 py-3 flex items-center gap-3"
                 style={{ borderBottom: '1px solid rgba(64,196,255,0.12)', background: 'rgba(64,196,255,0.04)' }}>
                 <span className="text-base">⚡</span>
@@ -1237,7 +1237,7 @@ export default function ConsumoAlimento() {
             </div>
 
             {/* ── Tarjeta resumen global ── */}
-            <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.8)', border: '1.5px solid rgba(255,179,0,0.3)', boxShadow: '0 0 30px rgba(255,179,0,0.06)' }}>
+            <div className="rounded-2xl overflow-hidden" style={{ background: tema.bgCard, border: '1.5px solid rgba(255,179,0,0.3)', boxShadow: '0 0 30px rgba(255,179,0,0.06)' }}>
               <div className="px-6 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(255,179,0,0.15)', background: 'rgba(255,179,0,0.05)' }}>
                 <Wheat size={20} style={{ color: tema.amber }} />
                 <div className="flex-1">
@@ -1350,7 +1350,7 @@ export default function ConsumoAlimento() {
                 : cp.fuenteRelleno === 'declarado' ? '⚠️ Relleno declarado' : '— Sin corrección'
               return (
                 <div className="rounded-xl px-5 py-4"
-                  style={{ background: 'rgba(13,21,40,0.6)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                  style={{ background: tema.bgCard, border: '1px solid rgba(255,255,255,0.07)' }}>
                   <div className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: tema.textMuted }}>
                     Consumo observado — última ventana entre censos
                   </div>
@@ -1441,7 +1441,7 @@ export default function ConsumoAlimento() {
 
             {/* ── Tabla de modelo adaptativo por categoría ── */}
             {tablaModelo && tablaModelo.length > 0 && (
-              <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(64,196,255,0.18)' }}>
+              <div className="rounded-2xl overflow-hidden" style={{ background: tema.bgCard, border: '1px solid rgba(64,196,255,0.18)' }}>
                 <div className="px-6 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(64,196,255,0.12)', background: 'rgba(64,196,255,0.04)' }}>
                   <TrendingUp size={18} style={{ color: tema.blue }} />
                   <div className="flex-1">
@@ -1554,7 +1554,7 @@ export default function ConsumoAlimento() {
 
             {/* ── Insights por categoría (desglose por bioterio) ── */}
             {categoryInsights && categoryInsights.length > 0 && (
-              <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(64,196,255,0.12)' }}>
+              <div className="rounded-2xl overflow-hidden" style={{ background: tema.bgCard, border: '1px solid rgba(64,196,255,0.12)' }}>
                 <div className="px-6 py-3 flex items-center gap-3"
                   style={{ borderBottom: '1px solid rgba(64,196,255,0.08)', background: 'rgba(64,196,255,0.03)' }}>
                   <div>
@@ -1620,7 +1620,7 @@ export default function ConsumoAlimento() {
                   const tieneData = d.totalMid > 0
 
                   return (
-                    <div key={id} className="rounded-xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.6)', border: `1px solid ${cfg.color}25` }}>
+                    <div key={id} className="rounded-xl overflow-hidden" style={{ background: tema.bgCard, border: `1px solid ${cfg.color}25` }}>
                       <div className="px-5 py-3 flex items-center gap-3" style={{ borderBottom: `1px solid ${cfg.color}15`, background: `${cfg.color}07` }}>
                         <span className="text-lg">{cfg.icon}</span>
                         <div className="flex-1">
@@ -1656,7 +1656,7 @@ export default function ConsumoAlimento() {
             </div>
 
             {/* ── Movimientos de stock ── */}
-            <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(167,139,250,0.18)' }}>
+            <div className="rounded-2xl overflow-hidden" style={{ background: tema.bgCard, border: '1px solid rgba(167,139,250,0.18)' }}>
               <div className="px-6 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(167,139,250,0.12)', background: 'rgba(167,139,250,0.04)' }}>
                 <ClipboardList size={18} style={{ color: '#a78bfa' }} />
                 <div className="flex-1">
@@ -1853,7 +1853,7 @@ export default function ConsumoAlimento() {
 
             {/* ── Gráfico histórico ── */}
             {datosGrafico.length >= 2 && (
-              <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <div className="rounded-2xl overflow-hidden" style={{ background: tema.bgCard, border: '1px solid rgba(255,255,255,0.07)' }}>
                 <div className="px-6 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                   <div className="font-bold text-sm text-white">Consumo estimado vs. real — histórico</div>
                   <div className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>kg/día por par de censos</div>
@@ -2029,12 +2029,12 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCo
     }
   }
 
-  const inputSt = { background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }
+  const inputSt = { background: tema.bgCard, border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(5,8,16,0.85)', backdropFilter: 'blur(4px)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: tema.bgCard, backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-md rounded-2xl overflow-hidden max-h-[92vh] overflow-y-auto"
-        style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(167,139,250,0.3)', boxShadow: '0 0 60px rgba(167,139,250,0.12)' }}>
+        style={{ background: tema.bgCard, border: '1px solid rgba(167,139,250,0.3)', boxShadow: '0 0 60px rgba(167,139,250,0.12)' }}>
 
         {/* Header */}
         <div className="px-6 py-5"
@@ -2337,11 +2337,11 @@ function ModalReposicion({ fechaInicial, horaInicial, onConfirmar, onCerrar }) {
     })
   }
 
-  const inputSt = { background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }
+  const inputSt = { background: tema.bgCard, border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(5,8,16,0.85)', backdropFilter: 'blur(4px)' }}>
-      <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(64,196,255,0.25)', boxShadow: '0 0 60px rgba(64,196,255,0.08)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: tema.bgCard, backdropFilter: 'blur(4px)' }}>
+      <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: tema.bgCard, border: '1px solid rgba(64,196,255,0.25)', boxShadow: '0 0 60px rgba(64,196,255,0.08)' }}>
 
         {/* Header */}
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(64,196,255,0.12)', background: 'rgba(64,196,255,0.04)' }}>
@@ -2538,8 +2538,8 @@ function ModalIngreso({ stockActualKg, onConfirmar, onCerrar }) {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(5,8,16,0.85)', backdropFilter: 'blur(4px)' }}>
-      <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(0,230,118,0.25)', boxShadow: '0 0 60px rgba(0,230,118,0.08)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: tema.bgCard, backdropFilter: 'blur(4px)' }}>
+      <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: tema.bgCard, border: '1px solid rgba(0,230,118,0.25)', boxShadow: '0 0 60px rgba(0,230,118,0.08)' }}>
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(0,230,118,0.12)', background: 'rgba(0,230,118,0.04)' }}>
           <div className="font-bold text-white text-sm">📦 Registrar ingreso de alimento</div>
           <div className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>
@@ -2555,7 +2555,7 @@ function ModalIngreso({ stockActualKg, onConfirmar, onCerrar }) {
               onChange={e => setFecha(e.target.value)}
               required
               className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
-              style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }}
+              style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }}
             />
           </div>
           <div>
@@ -2571,7 +2571,7 @@ function ModalIngreso({ stockActualKg, onConfirmar, onCerrar }) {
               placeholder="Ej: 25"
               required
               className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
-              style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }}
+              style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }}
             />
           </div>
 
@@ -2636,12 +2636,12 @@ function ModalEstimacionRapida({ stockEstimadoActual, onConfirmar, onCerrar }) {
     onConfirmar({ tipo, kg: kgNum, notas: notas.trim() })
   }
 
-  const inputSt = { background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }
+  const inputSt = { background: tema.bgCard, border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(5,8,16,0.85)', backdropFilter: 'blur(4px)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: tema.bgCard, backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-sm rounded-2xl overflow-hidden"
-        style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(64,196,255,0.25)', boxShadow: '0 0 60px rgba(64,196,255,0.1)' }}>
+        style={{ background: tema.bgCard, border: '1px solid rgba(64,196,255,0.25)', boxShadow: '0 0 60px rgba(64,196,255,0.1)' }}>
 
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(64,196,255,0.12)', background: 'rgba(64,196,255,0.04)' }}>
           <div className="font-bold text-white text-sm">⚡ Ajuste de stock estimado</div>
@@ -2686,7 +2686,7 @@ function ModalEstimacionRapida({ stockEstimadoActual, onConfirmar, onCerrar }) {
                     style={{
                       background: signo === s
                         ? (s === -1 ? 'rgba(255,107,128,0.2)' : 'rgba(0,230,118,0.2)')
-                        : 'rgba(8,13,26,0.9)',
+                        : tema.bgCard,
                       color: signo === s ? (s === -1 ? '#ff6b80' : '#00e676') : '#3d5068',
                     }}>
                     {s === -1 ? '−' : '+'}

@@ -138,7 +138,7 @@ function JaulasDistribucion({ camada, jaulas, agregarJaula, editarJaula, elimina
             </div>
           ) : (
             // Fila normal
-            <div key={j.id} className="flex items-center justify-between rounded-lg px-3 py-2" style={{ background: 'rgba(13,21,40,0.6)', border: '1px solid rgba(30,51,82,0.6)' }}>
+            <div key={j.id} className="flex items-center justify-between rounded-lg px-3 py-2" style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.6)' }}>
               <div className="flex items-center gap-3">
                 <span className="text-xs font-mono" style={{ color: tema.textMuted }}>J{idx + 1}</span>
                 <span className="font-mono font-bold text-sm text-white">{j.total ?? 0}</span>
@@ -200,7 +200,6 @@ function JaulasDistribucion({ camada, jaulas, agregarJaula, editarJaula, elimina
   )
 }
 
-const cardStyle = { background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }
 const estadoConfig = {
   apareamiento: { badge: 'azul',    label: 'En apareamiento', icono: '💑' },
   preñez:       { badge: 'violeta', label: 'En preñez',       icono: '🫄' },
@@ -253,7 +252,7 @@ function ScoreVal({ label, value }) {
 
 function PerfilRow({ label, color, scores }) {
   return (
-    <div className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(5,8,16,0.4)', border: '1px solid rgba(30,51,82,0.5)' }}>
+    <div className="rounded-xl p-3 space-y-2" style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.5)' }}>
       <div className="text-xs font-bold uppercase tracking-widest" style={{ color }}>{label}</div>
       <div className="grid grid-cols-4 gap-2">
         <ScoreVal label="Vel. repro" value={scores.time} />
@@ -463,7 +462,7 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
                 }}
               />
             ) : (
-              <div className="rounded-xl p-3" style={{ background: 'rgba(5,8,16,0.4)', border: '1px solid rgba(30,51,82,0.5)' }}>
+              <div className="rounded-xl p-3" style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.5)' }}>
                 <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: tema.purple }}>
                   ♀ {madre.codigo}
                 </div>
@@ -475,7 +474,7 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
           {/* Macho */}
           {padre && (
             rendMacho && rendMacho.total_camadas > 0 ? (
-              <div className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(5,8,16,0.4)', border: '1px solid rgba(30,51,82,0.5)' }}>
+              <div className="rounded-xl p-3 space-y-2" style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.5)' }}>
                 <div className="text-xs font-bold uppercase tracking-widest" style={{ color: tema.blue }}>
                   ♂ {padre.codigo} · {rendMacho.total_camadas} camada{rendMacho.total_camadas !== 1 ? 's' : ''}
                 </div>
@@ -490,7 +489,7 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
                 </div>
               </div>
             ) : (
-              <div className="rounded-xl p-3" style={{ background: 'rgba(5,8,16,0.4)', border: '1px solid rgba(30,51,82,0.5)' }}>
+              <div className="rounded-xl p-3" style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.5)' }}>
                 <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: tema.blue }}>
                   ♂ {padre.codigo}
                 </div>
@@ -523,6 +522,7 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
 
 export default function Camadas() {
   const { tema, modoBrillo } = useTheme()
+  const cardStyle = { background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }
   const { camadas, animales, animalesExportados, jaulas, agregarCamada, editarCamada, eliminarCamada, confirmarSeparacion, agregarJaula, editarJaula, eliminarJaula, bio } = useBioterio()
   // En Híbridos los progenitores viven en animalesExportados — buscar en ambos
   const todosAnimales = useMemo(() => [...animales, ...animalesExportados], [animales, animalesExportados])
@@ -628,7 +628,7 @@ export default function Camadas() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-5 min-h-screen" style={{ background: '#050810' }}>
+    <div className="p-4 md:p-6 space-y-5 min-h-screen" style={{ background: tema.bgMain }}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

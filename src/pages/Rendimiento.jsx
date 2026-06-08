@@ -13,8 +13,6 @@ import { Trophy, UserMinus } from 'lucide-react'
 import Estadisticas from '../pages/Estadisticas'
 import { useTheme } from '../context/ThemeContext'
 
-const cardStyle = { background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }
-
 function BarraLatencia({ valor, max }) {
   const { tema } = useTheme()
   if (valor === null) return <span style={{ color: tema.textMuted }}>—</span>
@@ -153,6 +151,7 @@ function EdadMachoBadge({ macho }) {
 
 export default function Rendimiento() {
   const { tema, modoBrillo } = useTheme()
+  const cardStyle = { background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }
   const CONF_CONFIG = {
     ok:       { color: tema.accent, label: 'OK' },
     leve:     { color: '#ffd740', label: 'Leve' },
@@ -279,7 +278,7 @@ const btnSubTab = (v, label, color) => (
 
   if (subVista === 'estadisticas') {
     return (
-      <div className="p-6 space-y-6 min-0" style={{ background: '#050810' }}>
+      <div className="p-6 space-y-6 min-0" style={{ background: tema.bgMain }}>
         <div className="flex items-center gap-3">
           <div className="w-1.5 h-7 rounded-full" style={{ background: tema.accent, boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
           <h1 className="text-xl font-bold text-white">Rendimiento reproductivo</h1>
@@ -300,7 +299,7 @@ const btnSubTab = (v, label, color) => (
   }
 
   return (
-    <div className="p-6 space-y-6 min-h-screen" style={{ background: '#050810' }}>
+    <div className="p-6 space-y-6 min-h-screen" style={{ background: tema.bgMain }}>
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">

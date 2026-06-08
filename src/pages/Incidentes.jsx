@@ -197,7 +197,7 @@ export default function Incidentes() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="p-4 md:p-6 space-y-5 min-h-screen" style={{ background: '#050810' }}>
+    <div className="p-4 md:p-6 space-y-5 min-h-screen" style={{ background: tema.bgMain }}>
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -274,7 +274,7 @@ export default function Incidentes() {
       {/* ── ALERTAS GENEALÓGICAS ── */}
       {alertasGenea.length > 0 && (
         <div className="rounded-2xl overflow-hidden"
-          style={{ background: 'rgba(13,21,40,0.85)', border: '1px solid rgba(167,139,250,0.3)' }}>
+          style={{ background: tema.bgCard, border: '1px solid rgba(167,139,250,0.3)' }}>
           <div className="px-5 py-3 flex items-center gap-2 justify-between"
             style={{ borderBottom: '1px solid rgba(167,139,250,0.12)', background: 'rgba(167,139,250,0.05)' }}>
             <div className="flex items-center gap-2">
@@ -352,7 +352,7 @@ export default function Incidentes() {
           const nv = nivelIndice(indices.global)
           return (
             <div className="rounded-2xl p-4 flex flex-col items-center gap-1"
-              style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(255,107,128,0.2)' }}>
+              style={{ background: tema.bgCard, border: '1px solid rgba(255,107,128,0.2)' }}>
               <div className="text-xs font-mono flex items-center gap-1" style={{ color: tema.red }}>
                 <Activity size={10} /> Sanitario
               </div>
@@ -364,7 +364,7 @@ export default function Incidentes() {
 
         {/* Índice ambiental */}
         <div className="rounded-2xl p-4 flex flex-col items-center gap-1"
-          style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(255,179,0,0.2)' }}>
+          style={{ background: tema.bgCard, border: '1px solid rgba(255,179,0,0.2)' }}>
           <div className="text-xs font-mono flex items-center gap-1" style={{ color: tema.amber }}>
             <Thermometer size={10} /> Ambiental
           </div>
@@ -377,7 +377,7 @@ export default function Incidentes() {
 
         {/* Índice de riesgo genético */}
         <div className="rounded-2xl p-4 flex flex-col items-center gap-1"
-          style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(167,139,250,0.2)' }}>
+          style={{ background: tema.bgCard, border: '1px solid rgba(167,139,250,0.2)' }}>
           <div className="text-xs font-mono flex items-center gap-1" style={{ color: '#a78bfa' }}>
             <Dna size={10} /> Riesgo genético
           </div>
@@ -401,7 +401,7 @@ export default function Incidentes() {
         ]
         return (
           <div className="rounded-2xl overflow-hidden"
-            style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(255,179,0,0.2)' }}>
+            style={{ background: tema.bgCard, border: '1px solid rgba(255,179,0,0.2)' }}>
             <div className="px-5 py-3 flex items-center gap-3"
               style={{ borderBottom: '1px solid rgba(255,179,0,0.1)', background: 'rgba(255,179,0,0.04)' }}>
               <Thermometer size={13} style={{ color: tema.amber }} />
@@ -485,7 +485,7 @@ export default function Incidentes() {
 
       {/* ── ÏNDICE SANITARIO POR COLONIA ── */}
       <div className="rounded-2xl overflow-hidden"
-        style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(255,107,128,0.2)' }}>
+        style={{ background: tema.bgCard, border: '1px solid rgba(255,107,128,0.2)' }}>
         <div className="px-5 py-3 flex items-center gap-2"
           style={{ borderBottom: '1px solid rgba(255,107,128,0.1)', background: 'rgba(255,107,128,0.04)' }}>
           <Activity size={13} style={{ color: tema.red }} />
@@ -521,7 +521,7 @@ export default function Incidentes() {
       {/* ── ¿QUÉ HACER HOY? ── */}
       {recomendaciones.length > 0 && (
         <div className="rounded-2xl overflow-hidden"
-          style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(0,230,118,0.2)' }}>
+          style={{ background: tema.bgCard, border: '1px solid rgba(0,230,118,0.2)' }}>
           <div className="px-5 py-3 flex items-center gap-2"
             style={{ borderBottom: '1px solid rgba(0,230,118,0.1)', background: 'rgba(0,230,118,0.04)' }}>
             <Zap size={13} style={{ color: tema.accent }} />
@@ -590,7 +590,7 @@ export default function Incidentes() {
         <div className="space-y-4">
           {/* Panel temperatura resumido */}
           <div className="rounded-2xl overflow-hidden"
-            style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(255,179,0,0.25)' }}>
+            style={{ background: tema.bgCard, border: '1px solid rgba(255,179,0,0.25)' }}>
             <div className="px-5 py-3 flex items-center gap-2"
               style={{ borderBottom: '1px solid rgba(255,179,0,0.12)', background: 'rgba(255,179,0,0.05)' }}>
               <Thermometer size={13} style={{ color: tema.amber }} />
@@ -648,7 +648,7 @@ export default function Incidentes() {
 
           {/* Clasificación de rangos */}
           <div className="rounded-2xl overflow-hidden"
-            style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            style={{ background: tema.bgCard, border: '1px solid rgba(255,255,255,0.07)' }}>
             <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
               <div className="font-bold text-xs text-white">Clasificación de rangos de temperatura</div>
             </div>
@@ -670,7 +670,7 @@ export default function Incidentes() {
 
           {/* Correlaciones ambiente → incidentes */}
           <div className="rounded-2xl overflow-hidden"
-            style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            style={{ background: tema.bgCard, border: '1px solid rgba(255,255,255,0.07)' }}>
             <div className="px-5 py-4 flex items-center gap-2"
               style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
               <div className="font-bold text-xs text-white flex-1">
@@ -734,7 +734,7 @@ export default function Incidentes() {
 
           {/* ── Decisiones concretas del día ─────────────────────────────────── */}
           <div className="rounded-2xl overflow-hidden"
-            style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(64,196,255,0.25)' }}>
+            style={{ background: tema.bgCard, border: '1px solid rgba(64,196,255,0.25)' }}>
             <div className="px-5 py-3 flex items-center gap-2 justify-between"
               style={{ borderBottom: '1px solid rgba(64,196,255,0.12)', background: 'rgba(64,196,255,0.04)' }}>
               <div className="flex items-center gap-2">
@@ -801,7 +801,7 @@ export default function Incidentes() {
 
             return (
               <div className="rounded-2xl overflow-hidden"
-                style={{ background: 'rgba(13,21,40,0.9)', border: `1px solid ${bordeNiv}` }}>
+                style={{ background: tema.bgCard, border: `1px solid ${bordeNiv}` }}>
 
                 {/* Header */}
                 <div className="px-5 py-3 flex items-center gap-2 justify-between"
@@ -1008,7 +1008,7 @@ export default function Incidentes() {
 
           {/* Índice de riesgo genético */}
           <div className="rounded-2xl overflow-hidden"
-            style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(167,139,250,0.25)' }}>
+            style={{ background: tema.bgCard, border: '1px solid rgba(167,139,250,0.25)' }}>
             <div className="px-5 py-3 flex items-center gap-2"
               style={{ borderBottom: '1px solid rgba(167,139,250,0.12)', background: 'rgba(167,139,250,0.04)' }}>
               <Dna size={13} style={{ color: '#a78bfa' }} />
@@ -1033,7 +1033,7 @@ export default function Incidentes() {
 
           {/* Bloqueos sanitarios — reproductores en riesgo */}
           <div className="rounded-2xl overflow-hidden"
-            style={{ background: 'rgba(13,21,40,0.9)', border: `1px solid ${bloqueos.totalBloqueados > 0 ? 'rgba(255,107,128,0.3)' : 'rgba(255,179,0,0.2)'}` }}>
+            style={{ background: tema.bgCard, border: `1px solid ${bloqueos.totalBloqueados > 0 ? 'rgba(255,107,128,0.3)' : 'rgba(255,179,0,0.2)'}` }}>
             <div className="px-5 py-3 flex items-center gap-2 justify-between"
               style={{ borderBottom: `1px solid ${bloqueos.totalBloqueados > 0 ? 'rgba(255,107,128,0.12)' : 'rgba(255,179,0,0.1)'}`, background: `${bloqueos.totalBloqueados > 0 ? 'rgba(255,107,128,0.04)' : 'rgba(255,179,0,0.03)'}` }}>
               <div className="flex items-center gap-2">
@@ -1129,7 +1129,7 @@ export default function Incidentes() {
           {/* Correlaciones multi-ventana */}
           {correlacionesMultiventana.length > 0 && (
             <div className="rounded-2xl overflow-hidden"
-              style={{ background: 'rgba(13,21,40,0.9)', border: '1px solid rgba(255,179,0,0.2)' }}>
+              style={{ background: tema.bgCard, border: '1px solid rgba(255,179,0,0.2)' }}>
               <div className="px-5 py-3 flex items-center gap-2"
                 style={{ borderBottom: '1px solid rgba(255,179,0,0.1)', background: 'rgba(255,179,0,0.03)' }}>
                 <Activity size={13} style={{ color: tema.amber }} />
@@ -1179,7 +1179,7 @@ export default function Incidentes() {
               { label: 'Últimos 30 días',      v: stats.recientes, color: tema.blue },
             ].map(k => (
               <div key={k.label} className="rounded-xl px-4 py-4 text-center"
-                style={{ background: 'rgba(13,21,40,0.7)', border: `1px solid ${k.color}25` }}>
+                style={{ background: tema.bgCard, border: `1px solid ${k.color}25` }}>
                 <div className="text-3xl font-bold font-mono" style={{ color: k.color, lineHeight: 1 }}>{k.v}</div>
                 <div className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>{k.label}</div>
               </div>
@@ -1188,7 +1188,7 @@ export default function Incidentes() {
 
           {/* Gráfico tendencias */}
           <div className="rounded-2xl overflow-hidden"
-            style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            style={{ background: tema.bgCard, border: '1px solid rgba(255,255,255,0.07)' }}>
             <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
               <div className="flex-1">
                 <div className="font-bold text-xs text-white">Incidentes por mes — últimos {periodoTendencia} meses</div>
@@ -1233,7 +1233,7 @@ export default function Incidentes() {
 
           {/* Distribución por categoría */}
           <div className="rounded-2xl overflow-hidden"
-            style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            style={{ background: tema.bgCard, border: '1px solid rgba(255,255,255,0.07)' }}>
             <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
               <div className="font-bold text-xs text-white">Distribución por categoría</div>
             </div>
@@ -1275,7 +1275,7 @@ export default function Incidentes() {
                   <button key={b.id} onClick={() => setFiltroColonia(b.id)}
                     className="px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5"
                     style={{
-                      background: activo ? `${b.color}22` : 'rgba(13,21,40,0.6)',
+                      background: activo ? `${b.color}22` : tema.bgCard,
                       border: activo ? `1px solid ${b.color}55` : '1px solid rgba(30,51,82,0.6)',
                       color: activo ? b.color : '#4a5f7a',
                     }}>
@@ -1288,13 +1288,13 @@ export default function Incidentes() {
             <div className="flex flex-wrap gap-1.5">
               <button onClick={() => setFiltroCategoria('todos')}
                 className="px-2.5 py-1 rounded-lg text-xs font-semibold"
-                style={{ background: filtroCategoria === 'todos' ? 'rgba(138,155,176,0.2)' : 'rgba(13,21,40,0.6)', border: filtroCategoria === 'todos' ? '1px solid rgba(138,155,176,0.4)' : '1px solid rgba(30,51,82,0.6)', color: filtroCategoria === 'todos' ? '#8a9bb0' : '#4a5f7a' }}>
+                style={{ background: filtroCategoria === 'todos' ? 'rgba(138,155,176,0.2)' : tema.bgCard, border: filtroCategoria === 'todos' ? '1px solid rgba(138,155,176,0.4)' : '1px solid rgba(30,51,82,0.6)', color: filtroCategoria === 'todos' ? '#8a9bb0' : '#4a5f7a' }}>
                 Todas las categorías
               </button>
               {Object.entries(CATEGORIAS).map(([catId, cat]) => (
                 <button key={catId} onClick={() => setFiltroCategoria(catId)}
                   className="px-2.5 py-1 rounded-lg text-xs font-semibold"
-                  style={{ background: filtroCategoria === catId ? `${cat.color}22` : 'rgba(13,21,40,0.6)', border: filtroCategoria === catId ? `1px solid ${cat.color}55` : '1px solid rgba(30,51,82,0.6)', color: filtroCategoria === catId ? cat.color : '#4a5f7a' }}>
+                  style={{ background: filtroCategoria === catId ? `${cat.color}22` : tema.bgCard, border: filtroCategoria === catId ? `1px solid ${cat.color}55` : '1px solid rgba(30,51,82,0.6)', color: filtroCategoria === catId ? cat.color : '#4a5f7a' }}>
                   {cat.icon} {cat.label}
                 </button>
               ))}
@@ -1302,7 +1302,7 @@ export default function Incidentes() {
               {['todos', 'abiertos', 'resueltos'].map(e => (
                 <button key={e} onClick={() => setFiltroEstado(e)}
                   className="px-2.5 py-1 rounded-lg text-xs font-semibold"
-                  style={{ background: filtroEstado === e ? 'rgba(255,255,255,0.1)' : 'rgba(13,21,40,0.6)', border: filtroEstado === e ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(30,51,82,0.6)', color: filtroEstado === e ? '#c9d4e0' : '#4a5f7a' }}>
+                  style={{ background: filtroEstado === e ? 'rgba(255,255,255,0.1)' : tema.bgCard, border: filtroEstado === e ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(30,51,82,0.6)', color: filtroEstado === e ? '#c9d4e0' : '#4a5f7a' }}>
                   {e === 'todos' ? 'Todos' : e === 'abiertos' ? '🔴 Abiertos' : '✅ Resueltos'}
                 </button>
               ))}
@@ -1310,7 +1310,7 @@ export default function Incidentes() {
               {SEVERIDADES.map(s => (
                 <button key={s.id} onClick={() => setFiltroSeveridad(prev => prev === s.id ? 'todos' : s.id)}
                   className="px-2.5 py-1 rounded-lg text-xs font-semibold"
-                  style={{ background: filtroSeveridad === s.id ? s.bg : 'rgba(13,21,40,0.6)', border: filtroSeveridad === s.id ? `1px solid ${s.color}55` : '1px solid rgba(30,51,82,0.6)', color: filtroSeveridad === s.id ? s.color : '#4a5f7a' }}>
+                  style={{ background: filtroSeveridad === s.id ? s.bg : tema.bgCard, border: filtroSeveridad === s.id ? `1px solid ${s.color}55` : '1px solid rgba(30,51,82,0.6)', color: filtroSeveridad === s.id ? s.color : '#4a5f7a' }}>
                   {s.label}
                 </button>
               ))}
@@ -1327,7 +1327,7 @@ export default function Incidentes() {
             </div>
           ) : (
             <div className="rounded-2xl overflow-hidden"
-              style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }}>
+              style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.8)' }}>
               <div className="hidden md:grid px-5 py-2 text-xs font-semibold uppercase tracking-widest"
                 style={{ gridTemplateColumns: '90px 60px 90px 110px 1fr 80px', gap: '8px', borderBottom: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted, background: 'rgba(0,0,0,0.15)' }}>
                 <span>Fecha</span><span>Colonia</span><span>Categoría</span><span>Tipo</span><span>Descripción</span><span>Estado</span>
@@ -1458,7 +1458,7 @@ export default function Incidentes() {
           style={{ background: 'rgba(0,0,0,0.8)' }}
           onClick={e => { if (e.target === e.currentTarget) setConfirmarElim(null) }}>
           <div className="rounded-2xl p-6 space-y-4 w-full max-w-sm"
-            style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(255,61,87,0.3)' }}>
+            style={{ background: tema.bgCard, border: '1px solid rgba(255,61,87,0.3)' }}>
             <div className="text-center space-y-2">
               <div className="text-3xl">🗑️</div>
               <div className="font-bold text-white text-sm">Eliminar incidente</div>
@@ -1591,16 +1591,16 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
   }
 
   const inputBase = {
-    background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)',
+    background: tema.bgCard, border: '1px solid rgba(30,51,82,0.9)',
     color: tema.textPrimary, borderRadius: '10px', padding: '9px 12px',
     fontSize: '13px', outline: 'none', width: '100%', fontFamily: 'monospace',
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(5,8,16,0.88)', backdropFilter: 'blur(4px)' }}>
+      style={{ background: tema.bgCard, backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-lg rounded-2xl overflow-hidden max-h-[90dvh] overflow-y-auto"
-        style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(255,107,128,0.3)', boxShadow: '0 0 60px rgba(255,107,128,0.1)' }}>
+        style={{ background: tema.bgCard, border: '1px solid rgba(255,107,128,0.3)', boxShadow: '0 0 60px rgba(255,107,128,0.1)' }}>
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(255,107,128,0.12)', background: 'rgba(255,107,128,0.04)' }}>
           <div className="font-bold text-white text-sm">
             {esEdicion ? '✎ Editar incidente' : '🩺 Registrar incidente'}

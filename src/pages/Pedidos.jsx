@@ -263,7 +263,7 @@ function TabEstrategias({ estrategiasBiologicas, tema }) {
           return (
             <div key={esc.id} className="rounded-xl p-3"
               style={{
-                background: noViable ? 'rgba(8,13,26,0.2)' : esOptima ? 'rgba(0,230,118,0.05)' : 'rgba(8,13,26,0.3)',
+                background: noViable ? tema.bgCard : esOptima ? 'rgba(0,230,118,0.05)' : tema.bgCard,
                 border: `1.5px solid ${noViable ? tema.bgCardBorde : esOptima ? 'rgba(0,230,118,0.25)' : tema.bgCardBorde}`,
                 opacity: noViable ? 0.6 : 1,
               }}>
@@ -313,14 +313,14 @@ function TabEstrategias({ estrategiasBiologicas, tema }) {
                 </span>
                 <span className="text-xs px-1.5 py-0.5 rounded"
                   style={{
-                    background: esc.saturacion ? 'rgba(255,179,0,0.07)' : 'rgba(8,13,26,0.3)',
+                    background: esc.saturacion ? 'rgba(255,179,0,0.07)' : tema.bgCard,
                     border: `1px solid ${esc.saturacion ? 'rgba(255,179,0,0.2)' : tema.bgCardBorde}`,
                     color: esc.saturacion ? '#ffb300' : '#4a5f7a',
                   }}>
                   {esc.saturacion ? '⚠ saturación' : 'Sin saturación'}
                 </span>
                 <span className="text-xs px-1.5 py-0.5 rounded"
-                  style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}`, color: tema.textMuted }}>
+                  style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}`, color: tema.textMuted }}>
                   Impacto: {esc.impactoColonia}
                 </span>
               </div>
@@ -375,7 +375,7 @@ function TabMotorReproductivo({ capacidadReproductiva, pedido, tema }) {
         ? <div className="text-xs" style={{ color: '#3a5068' }}>{emptyMsg}</div>
         : items.slice(0, 5).map(({ animal, diasVida, razon, diasParaMadurar }, i) => (
           <div key={i} className="flex items-center justify-between rounded px-2 py-1 mb-0.5"
-            style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}` }}>
+            style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}>
             <span className="text-xs font-mono" style={{ color }}>
               {animal.sexo === 'hembra' ? '♀' : '♂'} {animal.codigo}
             </span>
@@ -408,7 +408,7 @@ function TabMotorReproductivo({ capacidadReproductiva, pedido, tema }) {
             { label: 'Total posible', val: totalEntregable, color: tema.textPrimary },
           ].map(({ label, val, color }) => (
             <div key={label} className="rounded-lg py-1.5"
-              style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}` }}>
+              style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}>
               <div className="font-bold" style={{ color }}>{val}</div>
               <div style={{ color: tema.textMuted }}>{label}</div>
             </div>
@@ -427,7 +427,7 @@ function TabMotorReproductivo({ capacidadReproductiva, pedido, tema }) {
             { label: '✅ Disponibles', h: hembrasDisponiblesRepro, m: machosDisponiblesRepro, color: tema.accent, desc: 'Para este pedido' },
           ].map(({ label, h, m, color, desc }) => (
             <div key={label} className="rounded-xl p-2.5"
-              style={{ background: 'rgba(8,13,26,0.35)', border: `1px solid ${tema.bgCardBorde}` }}>
+              style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}>
               <div className="text-xs font-bold mb-1" style={{ color }}>{label}</div>
               <div className="text-xs" style={{ color: tema.textPrimary }}>♀ {h} hembras · ♂ {m} machos</div>
               <div className="text-xs mt-0.5" style={{ color: '#3a5068' }}>{desc}</div>
@@ -440,7 +440,7 @@ function TabMotorReproductivo({ capacidadReproductiva, pedido, tema }) {
 
       {/* Total activos */}
       <div className="rounded-xl p-3 text-xs"
-        style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}` }}>
+        style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}>
         <div className="font-semibold mb-1" style={{ color: tema.textSecondary }}>Colonia activa total</div>
         <div className="flex gap-4">
           <span style={{ color: tema.purple }}>♀ {hembrasActivas} hembras (mín: {minimoH})</span>
@@ -489,7 +489,7 @@ function TabReproductores({ reproductoresSeleccionados, reproductoresProximos, t
           <div className="text-xs font-bold mb-1" style={{ color: tema.textMuted }}>Sugeridos</div>
           {hembrasSugeridas.map(({ animal, scoreRepro, nivelF, fPorc }) => (
             <div key={animal.id} className="flex items-center justify-between rounded px-2 py-1.5"
-              style={{ background: 'rgba(8,13,26,0.35)', border: `1px solid ${tema.bgCardBorde}` }}>
+              style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}>
               <span className="text-xs font-mono font-semibold" style={{ color: tema.purple }}>♀ {animal.codigo}</span>
               <div className="flex gap-3 text-xs">
                 <span style={{ color: tema.textPrimary }}>Score {scoreRepro}</span>
@@ -501,7 +501,7 @@ function TabReproductores({ reproductoresSeleccionados, reproductoresProximos, t
           ))}
           {machosSugeridos.map(({ animal, scoreRepro, nivelF, fPorc }) => (
             <div key={animal.id} className="flex items-center justify-between rounded px-2 py-1.5"
-              style={{ background: 'rgba(8,13,26,0.35)', border: `1px solid ${tema.bgCardBorde}` }}>
+              style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}>
               <span className="text-xs font-mono font-semibold" style={{ color: tema.blue }}>♂ {animal.codigo}</span>
               <div className="flex gap-3 text-xs">
                 <span style={{ color: tema.textPrimary }}>Score {scoreRepro}</span>
@@ -529,7 +529,7 @@ function TabColonia({ impactoColonia, impactoEstrategico, crecimientoColateral, 
             color: impactoColonia.riesgoNivel === 'critico' ? '#ff6b80' : impactoColonia.riesgoNivel === 'advertencia' ? '#ffb300' : '#00e676' },
         ].map(({ label, h, m, color }) => (
           <div key={label} className="rounded-xl p-2.5 text-xs"
-            style={{ background: 'rgba(8,13,26,0.35)', border: `1px solid ${tema.bgCardBorde}` }}>
+            style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}>
             <div className="font-semibold mb-1" style={{ color: tema.textMuted }}>{label}</div>
             <div style={{ color }}>♀ {h} hembras</div>
             <div style={{ color }}>♂ {m} machos</div>
@@ -562,7 +562,7 @@ function TabColonia({ impactoColonia, impactoEstrategico, crecimientoColateral, 
               { label: 'Futuras repro.', val: crecimientoColateral.futuraReproductorasH, color: tema.accent },
             ].map(({ label, val, color }) => (
               <div key={label} className="rounded-lg py-1.5"
-                style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}` }}>
+                style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}>
                 <div className="font-bold" style={{ color }}>{val}</div>
                 <div style={{ color: tema.textMuted }}>{label}</div>
               </div>
@@ -573,7 +573,7 @@ function TabColonia({ impactoColonia, impactoEstrategico, crecimientoColateral, 
 
       {/* Sanitario */}
       <div className="rounded-xl px-3 py-2 text-xs"
-        style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}` }}>
+        style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}>
         <span style={{ color: tema.textMuted }}>Índice sanitario: </span>
         <span style={{ color: indiceSanitario >= 75 ? '#00e676' : indiceSanitario >= 50 ? '#ffb300' : '#ff6b80' }}>
           {indiceSanitario}/100
@@ -633,7 +633,7 @@ function TabProduccion({ parejasNecesarias, animalesListos, produccionEnCurso, i
       {/* Stock actual */}
       <div className="rounded-lg px-3 py-2"
         style={{
-          background: animalesListos.cubiertoConStock ? 'rgba(0,230,118,0.05)' : 'rgba(8,13,26,0.3)',
+          background: animalesListos.cubiertoConStock ? 'rgba(0,230,118,0.05)' : tema.bgCard,
           border: `1px solid ${animalesListos.cubiertoConStock ? 'rgba(0,230,118,0.2)' : tema.bgCardBorde}`,
         }}>
         <div className="flex items-center justify-between text-xs">
@@ -666,7 +666,7 @@ function TabProduccion({ parejasNecesarias, animalesListos, produccionEnCurso, i
         </div>
       ) : (
         <div className="text-xs px-3 py-2 rounded-lg"
-          style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}`, color: '#3a5068' }}>
+          style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}`, color: '#3a5068' }}>
           Sin camadas activas que produzcan animales en el rango de edad requerido
         </div>
       )}
@@ -680,7 +680,7 @@ function TabProduccion({ parejasNecesarias, animalesListos, produccionEnCurso, i
           { label: 'Prob.',     val: `${parejasNecesarias.probabilidad}%`, color: tema.accent },
         ].map(({ label, val, color }) => (
           <div key={label} className="rounded-lg p-2 text-center"
-            style={{ background: 'rgba(8,13,26,0.35)', border: `1px solid ${tema.bgCardBorde}` }}>
+            style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}>
             <div className="font-mono font-bold" style={{ color }}>{val}</div>
             <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>{label}</div>
           </div>
@@ -715,7 +715,7 @@ function TabEscalonado({ pedidoEscalonado, tema }) {
         const diasHasta = tanda.fechas ? Math.round((new Date(tanda.fechaEntrega) - hoy) / 86400000) : null
         return (
           <div key={tanda.numero} className="rounded-xl p-3"
-            style={{ background: 'rgba(8,13,26,0.3)', border: `1px solid ${tema.bgCardBorde}` }}>
+            style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold" style={{ color: tema.blue }}>
                 📦 Tanda {tanda.numero} — {tanda.cantidad} animales
@@ -881,7 +881,7 @@ function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproduct
                     return (
                       <div key={i} className="rounded-xl p-3"
                         style={{
-                          background: paso.importante ? 'rgba(0,230,118,0.05)' : 'rgba(8,13,26,0.3)',
+                          background: paso.importante ? 'rgba(0,230,118,0.05)' : tema.bgCard,
                           border: `1px solid ${paso.importante ? 'rgba(0,230,118,0.2)' : tema.bgCardBorde}`,
                         }}>
                         <div className="flex items-start gap-3">
@@ -1028,7 +1028,7 @@ function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
                   onClick={() => setForm(f => ({ ...f, modalidad: m.id }))}
                   className="flex-1 py-2 rounded-xl text-xs font-bold"
                   style={{
-                    background: form.modalidad === m.id ? 'rgba(64,196,255,0.12)' : 'rgba(8,13,26,0.6)',
+                    background: form.modalidad === m.id ? 'rgba(64,196,255,0.12)' : tema.bgCard,
                     border: form.modalidad === m.id ? '1.5px solid rgba(64,196,255,0.4)' : '1px solid rgba(30,51,82,0.8)',
                     color: form.modalidad === m.id ? '#40c4ff' : '#4a5f7a', cursor: 'pointer',
                   }}>
@@ -1101,7 +1101,7 @@ function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
                   onClick={() => setForm(f => ({ ...f, sexo: s.id }))}
                   className="flex-1 py-2 rounded-xl text-xs font-bold"
                   style={{
-                    background: form.sexo === s.id ? 'rgba(0,230,118,0.12)' : 'rgba(8,13,26,0.6)',
+                    background: form.sexo === s.id ? 'rgba(0,230,118,0.12)' : tema.bgCard,
                     border: form.sexo === s.id ? '1.5px solid rgba(0,230,118,0.4)' : '1px solid rgba(30,51,82,0.8)',
                     color: form.sexo === s.id ? '#00e676' : '#4a5f7a', cursor: 'pointer',
                   }}>{s.label}</button>
@@ -1111,7 +1111,7 @@ function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
 
           {/* Solo vírgenes */}
           <div className="flex items-center gap-3 rounded-xl px-3 py-2.5"
-            style={{ background: form.soloVirgenes ? 'rgba(0,230,118,0.06)' : 'rgba(8,13,26,0.4)', border: `1px solid ${form.soloVirgenes ? 'rgba(0,230,118,0.25)' : 'rgba(30,51,82,0.7)'}` }}>
+            style={{ background: form.soloVirgenes ? 'rgba(0,230,118,0.06)' : tema.bgCard, border: `1px solid ${form.soloVirgenes ? 'rgba(0,230,118,0.25)' : 'rgba(30,51,82,0.7)'}` }}>
             <button type="button"
               onClick={() => setForm(f => ({ ...f, soloVirgenes: !f.soloVirgenes }))}
               className="w-10 h-5 rounded-full relative flex-shrink-0"
@@ -1149,7 +1149,7 @@ function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
                   onClick={() => setForm(f => ({ ...f, uso: u.id }))}
                   className="flex-1 py-2 rounded-xl text-xs font-bold"
                   style={{
-                    background: form.uso === u.id ? 'rgba(64,196,255,0.1)' : 'rgba(8,13,26,0.6)',
+                    background: form.uso === u.id ? 'rgba(64,196,255,0.1)' : tema.bgCard,
                     border: form.uso === u.id ? '1.5px solid rgba(64,196,255,0.35)' : '1px solid rgba(30,51,82,0.8)',
                     color: form.uso === u.id ? '#40c4ff' : '#4a5f7a', cursor: 'pointer',
                   }}>{u.label}</button>
@@ -1437,7 +1437,7 @@ export default function Pedidos() {
               <button key={f.id} onClick={() => setFiltroEstado(f.id)}
                 className="px-3 py-1 rounded-lg text-xs font-semibold"
                 style={{
-                  background: filtroEstado === f.id ? 'rgba(0,230,118,0.1)' : 'rgba(8,13,26,0.4)',
+                  background: filtroEstado === f.id ? 'rgba(0,230,118,0.1)' : tema.bgCard,
                   border: filtroEstado === f.id ? '1px solid rgba(0,230,118,0.3)' : '1px solid rgba(30,51,82,0.7)',
                   color: filtroEstado === f.id ? '#00e676' : '#4a5f7a',
                   cursor: 'pointer',

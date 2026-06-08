@@ -44,7 +44,7 @@ export default function Entregas() {
   }
 
   const iStyle = {
-    background: 'rgba(5,8,16,0.6)', border: '1px solid rgba(30,51,82,0.8)',
+    background: tema.bgCard, border: '1px solid rgba(30,51,82,0.8)',
     color: '#e2e8f0', borderRadius: '0.6rem', padding: '0.45rem 0.75rem',
     fontSize: '0.8125rem', outline: 'none', width: '100%',
   }
@@ -52,7 +52,7 @@ export default function Entregas() {
   return (
     <div
       className="p-4 md:p-6 space-y-5 min-h-screen"
-      style={{ background: '#050810' }}
+      style={{ background: tema.bgMain }}
       onClick={() => setMenuAbierto(null)}
     >
 
@@ -115,7 +115,7 @@ export default function Entregas() {
               <div
                 key={e.id}
                 className="rounded-xl px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-1"
-                style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)', opacity: estaEnProceso ? 0.5 : 1 }}
+                style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.8)', opacity: estaEnProceso ? 0.5 : 1 }}
               >
                 {/* Fecha */}
                 <div className="font-mono text-sm font-semibold" style={{ color: tema.amber, minWidth: '90px' }}>

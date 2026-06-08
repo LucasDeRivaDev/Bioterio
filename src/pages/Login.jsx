@@ -74,8 +74,8 @@ export default function Login() {
   // Si viene de invitación y ya tiene sesión activa → mostrar formulario de crear contraseña
   if (esInvitado && sesion) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#050810', backgroundImage: 'linear-gradient(rgba(0,230,118,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,230,118,0.03) 1px, transparent 1px)', backgroundSize: '40px 40px' }}>
-        <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.95)', border: '1px solid rgba(0,230,118,0.2)', boxShadow: '0 0 60px rgba(0,230,118,0.06)' }}>
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: tema.bgMain, backgroundImage: 'linear-gradient(rgba(0,230,118,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,230,118,0.03) 1px, transparent 1px)', backgroundSize: '40px 40px' }}>
+        <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: modoBrillo ? tema.bgCard : tema.bgCard, border: '1px solid rgba(0,230,118,0.2)', boxShadow: '0 0 60px rgba(0,230,118,0.06)' }}>
           <div className="px-8 py-7 text-center" style={{ borderBottom: '1px solid rgba(0,230,118,0.1)', background: 'rgba(0,230,118,0.03)' }}>
             <div className="text-3xl mb-3">🔑</div>
             <h1 className="text-xl font-bold text-white">Crear contraseña</h1>
@@ -97,7 +97,7 @@ export default function Login() {
                   onChange={(e) => { setPassNuevo(e.target.value); setError('') }}
                   placeholder="Mínimo 6 caracteres"
                   required
-                  style={{ width: '100%', background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, borderRadius: '12px', padding: '12px 16px', fontSize: '14px', outline: 'none' }}
+                  style={{ width: '100%', background: tema.bgCard, border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, borderRadius: '12px', padding: '12px 16px', fontSize: '14px', outline: 'none' }}
                 />
               </div>
               {error && (
@@ -164,7 +164,7 @@ export default function Login() {
                   width: 'auto',
                   display: 'block',
                   animation: 'floatLogin 4s ease-in-out infinite',
-                  mixBlendMode: modoBrillo ? 'multiply' : 'normal',
+                  mixBlendMode: modoBrillo ? 'multiply' : 'screen',
                   filter: modoBrillo ? 'none' : 'drop-shadow(0 0 14px rgba(0,230,118,0.28))',
                 }}
               />
@@ -272,7 +272,7 @@ export default function Login() {
             <img
               src={modoBrillo ? iterateTextLogoLight : iterateTextLogo}
               alt="ITeRatE"
-              style={{ width: '210px', maxWidth: '100%', height: 'auto', margin: '0 auto 4px', display: 'block', opacity: modoBrillo ? 0.9 : 0.72, filter: modoBrillo ? 'none' : 'drop-shadow(0 0 8px rgba(0,230,118,0.15))', mixBlendMode: modoBrillo ? 'multiply' : 'normal' }}
+              style={{ width: '210px', maxWidth: '100%', height: 'auto', margin: '0 auto 4px', display: 'block', opacity: modoBrillo ? 0.9 : 0.72, filter: modoBrillo ? 'none' : 'drop-shadow(0 0 8px rgba(0,230,118,0.15))', mixBlendMode: modoBrillo ? 'multiply' : 'screen' }}
             />
             <div className="flex items-center justify-center gap-1.5 text-xs" style={{ color: 'rgba(74,95,122,0.5)' }}>
               <span className="font-mono italic">Mus musculus · Ratón doméstico</span>

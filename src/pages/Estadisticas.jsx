@@ -41,13 +41,6 @@ function nivelScore(s) {
   return 'Baja'
 }
 
-// ── Estilos reutilizables ──────────────────────────────────────────────────────
-const card = {
-  background: 'rgba(13,21,40,0.9)',
-  border: '1px solid rgba(30,51,82,0.8)',
-  borderRadius: '16px',
-  padding: '20px',
-}
 
 // ── Tooltip personalizado ─────────────────────────────────────────────────────
 function TooltipOscuro({ active, payload, label }) {
@@ -56,7 +49,7 @@ function TooltipOscuro({ active, payload, label }) {
   return (
     <div
       className="rounded-xl px-3 py-2 text-xs"
-      style={{ background: 'rgba(8,13,26,0.97)', border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary }}
+      style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary }}
     >
       {label && <div className="font-bold mb-1" style={{ color: tema.textSecondary }}>{label}</div>}
       {payload.map((p, i) => (
@@ -76,7 +69,7 @@ function KPI({ label, valor, color = '#c9d4e0', sub }) {
   return (
     <div
       className="rounded-xl px-4 py-3 text-center"
-      style={{ background: 'rgba(13,21,40,0.8)', border: `1px solid ${color}28` }}
+      style={{ background: tema.bgCard, border: `1px solid ${color}28` }}
     >
       <div className="text-2xl font-mono font-bold" style={{ color }}>{valor}</div>
       <div className="text-xs mt-1 font-semibold uppercase tracking-widest" style={{ color: tema.textMuted }}>{label}</div>
@@ -141,6 +134,7 @@ function SinDatos() {
 // ── PÁGINA PRINCIPAL ──────────────────────────────────────────────────────────
 export default function Estadisticas() {
   const { tema, modoBrillo } = useTheme()
+  const card = { background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}`, borderRadius: '16px', padding: '20px' }
   const inputStyle = {
     background: tema.bgInput,
     border: '1px solid rgba(30,51,82,0.8)',
@@ -266,7 +260,7 @@ export default function Estadisticas() {
   const hayFiltros = desde || hasta || filtroMadreId || filtroPadreId
 
   return (
-    <div className="p-4 md:p-6 space-y-6" style={{ background: '#050810', minHeight: '100vh' }}>
+    <div className="p-4 md:p-6 space-y-6" style={{ background: tema.bgMain, minHeight: '100vh' }}>
 
       {/* Encabezado */}
       <div className="flex items-start justify-between flex-wrap gap-3">
@@ -290,7 +284,7 @@ export default function Estadisticas() {
       {/* Filtros */}
       <div
         className="rounded-2xl p-4 grid grid-cols-2 md:grid-cols-4 gap-3"
-        style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.6)' }}
+        style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.6)' }}
       >
         <div>
           <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>

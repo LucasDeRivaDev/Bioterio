@@ -14,7 +14,7 @@ export default function Modal({ titulo, onCerrar, children, ancho = 'max-w-lg' }
       {/* Overlay */}
       <div
         className="absolute inset-0 backdrop-blur-sm"
-        style={{ background: 'rgba(5,8,16,0.85)' }}
+        style={{ background: tema.bgCard }}
         onClick={onCerrar}
       />
       {/* Panel */}

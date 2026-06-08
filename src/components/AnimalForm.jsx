@@ -118,7 +118,7 @@ export default function AnimalForm({ animal, onGuardar, onCancelar }) {
                       boxShadow: `0 0 10px ${color}22`,
                     }
                   : {
-                      background: 'rgba(8,13,26,0.5)',
+                      background: tema.bgCard,
                       border: '1px solid rgba(30,51,82,0.6)',
                       color: tema.textMuted,
                     }

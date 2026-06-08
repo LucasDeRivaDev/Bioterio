@@ -14,11 +14,6 @@ import { useTheme } from '../context/ThemeContext'
 const colorEstado = { activo:'verde', en_apareamiento:'azul', en_cria:'violeta', retirado:'gris', fallecido:'rojo' }
 const labelEstado = { activo:'Activo', en_apareamiento:'En apareamiento', en_cria:'En cría', retirado:'Retirado', fallecido:'Fallecido' }
 
-const cardStyle = {
-  background: 'rgba(13,21,40,0.8)',
-  border: '1px solid rgba(30,51,82,0.8)',
-}
-
 // Labels de colonia para mostrar el origen de animales exportados
 const LABEL_COLONIA = {
   ratones_balbc: 'BAL/C',
@@ -27,6 +22,7 @@ const LABEL_COLONIA = {
 
 export default function Animales() {
   const { tema, modoBrillo } = useTheme()
+  const cardStyle = { background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }
   const {
     animales, animalesExportados, camadas,
     agregarAnimal, editarAnimal, eliminarAnimal,
@@ -101,7 +97,7 @@ export default function Animales() {
 
   if (subVista === 'emparejamientos') {
     return (
-      <div className="p-4 md:p-6 space-y-5 min-0" style={{ background: '#050810' }}>
+      <div className="p-4 md:p-6 space-y-5 min-0" style={{ background: tema.bgMain }}>
         <div className="flex items-center gap-3">
           <div className="w-1.5 h-7 rounded-full" style={{ background: tema.accent, boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
           <h1 className="text-2xl font-bold text-white">Reproductores</h1>
@@ -399,7 +395,7 @@ export default function Animales() {
   }
 
 return (
-    <div className="p-4 md:p-6 space-y-5 min-0" style={{ background: '#050810' }}>
+    <div className="p-4 md:p-6 space-y-5 min-0" style={{ background: tema.bgMain }}>
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
@@ -432,7 +428,7 @@ return (
       {esHibridos && (
         <div
           className="rounded-2xl overflow-hidden"
-          style={{ background: 'rgba(13,21,40,0.85)', border: '1.5px solid rgba(139,92,246,0.3)', boxShadow: '0 0 30px rgba(139,92,246,0.05)' }}
+          style={{ background: tema.bgCard, border: '1.5px solid rgba(139,92,246,0.3)', boxShadow: '0 0 30px rgba(139,92,246,0.05)' }}
         >
           {/* Header */}
           <div
@@ -841,11 +837,11 @@ function ModalExportarReproductor({ animalesYaExportados, onExportar, onCerrar }
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(5,8,16,0.88)', backdropFilter: 'blur(4px)' }}
+      style={{ background: tema.bgCard, backdropFilter: 'blur(4px)' }}
     >
       <div
         className="w-full max-w-lg rounded-2xl overflow-hidden flex flex-col"
-        style={{ background: 'rgba(13,21,40,0.98)', border: '1.5px solid rgba(139,92,246,0.3)', boxShadow: '0 0 60px rgba(139,92,246,0.12)', maxHeight: '85vh' }}
+        style={{ background: tema.bgCard, border: '1.5px solid rgba(139,92,246,0.3)', boxShadow: '0 0 60px rgba(139,92,246,0.12)', maxHeight: '85vh' }}
       >
         {/* Header */}
         <div

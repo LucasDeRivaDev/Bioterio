@@ -264,3 +264,63 @@ html.modo-claro select,
 html.modo-claro textarea {
   color-scheme: light;
 }
+
+/* ─── Modo claro: NUCLEAR — toda letra y signo en negro ─────────────────────
+   CSS !important sobrepisa inline styles. Los fondos (background) no se ven
+   afectados porque este override solo toca la propiedad `color`.               */
+html.modo-claro *,
+html.modo-claro *::before,
+html.modo-claro *::after {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
+/* Restaurar placeholder (pseudo-elemento independiente) */
+html.modo-claro ::placeholder {
+  color: #888888 !important;
+  opacity: 1 !important;
+}
+
+/* Restaurar texto de selección */
+html.modo-claro ::selection {
+  color: #000000 !important;
+  background: rgba(0,0,0,0.12) !important;
+}
+
+/* ─── Modo claro: fondos oscuros Tailwind → claro ──────────────────────────── */
+html.modo-claro .bg-gray-800,
+html.modo-claro .bg-gray-900,
+html.modo-claro .bg-slate-800,
+html.modo-claro .bg-slate-900       { background-color: #FFFFFF !important; }
+
+/* ─── Modo claro: bordes oscuros hardcodeados → neutros ────────────────────── */
+html.modo-claro [style*="border: 1px solid rgba(30,51,82"] { border-color: #D4D4CE !important; }
+html.modo-claro [style*="border-color: rgba(30,51,82"]     { border-color: #D4D4CE !important; }
+
+/* ─── Modo claro: fondos de cards oscuros hardcodeados → blanco ─────────────
+   Esto cubre casos donde el sed/perl no alcanzó o hay contextos
+   específicos de componentes no migrados.                                     */
+html.modo-claro [style*="background: rgba(13,21,40"]  { background: #FFFFFF !important; }
+html.modo-claro [style*="background-color: rgba(13,21,40"] { background-color: #FFFFFF !important; }
+html.modo-claro [style*="rgba(8,13,26"]               { background: #FFFFFF !important; }
+
+/* ─── Modo claro: fondo principal hardcodeado → #F4F4EF ─────────────────────
+   Para los divs de página que aún tienen background: #050810 inline.         */
+html.modo-claro [style*="background: rgb(5, 8, 16)"],
+html.modo-claro [style*="background: #050810"]        { background: #F4F4EF !important; }
+
+/* ─── Modo claro: bordes de color neon → neutro ────────────────────────────
+   CSS attribute selectors capturan inline styles con colores hardcodeados
+   que no pasan por el tema. Solo afectan border-color, no el layout.         */
+html.modo-claro [style*="0,230,118"] { border-color: rgba(0,0,0,0.12) !important; }
+html.modo-claro [style*="64,196,255"] { border-color: rgba(0,0,0,0.12) !important; }
+html.modo-claro [style*="255,179,0"] { border-color: rgba(0,0,0,0.12) !important; }
+html.modo-claro [style*="139,92,246"] { border-color: rgba(0,0,0,0.12) !important; }
+html.modo-claro [style*="167,139,250"] { border-color: rgba(0,0,0,0.12) !important; }
+html.modo-claro [style*="255,61,87"] { border-color: rgba(0,0,0,0.12) !important; }
+html.modo-claro [style*="30,51,82"] { border-color: rgba(0,0,0,0.10) !important; }
+
+/* ─── Modo claro: box-shadow neon → ninguno ──────────────────────────────── */
+html.modo-claro [style*="0 0 12px rgba(0,230,118"],
+html.modo-claro [style*="0 0 40px rgba(0,230,118"],
+html.modo-claro [style*="0 0 8px rgba(0,230,118"]   { box-shadow: none !important; }

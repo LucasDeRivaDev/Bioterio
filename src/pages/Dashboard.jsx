@@ -202,7 +202,7 @@ function StatCard({ valor, label, icono, color }) {
   return (
     <div
       className="rounded-xl p-4 flex items-center gap-4"
-      style={{ background: 'rgba(13,21,40,0.8)', border: `1px solid ${c.borde}` }}
+      style={{ background: tema.bgCard, border: `1px solid ${c.borde}` }}
     >
       <div
         className="w-11 h-11 rounded-xl flex items-center justify-center text-xl"
@@ -411,7 +411,7 @@ export default function Dashboard() {
   })
 
   return (
-    <div className="p-4 md:p-6 space-y-5 bg-dots min-h-screen" style={{ background: '#050810' }}>
+    <div className="p-4 md:p-6 space-y-5 bg-dots min-h-screen" style={{ background: tema.bgMain }}>
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -752,7 +752,7 @@ export default function Dashboard() {
           </div>
           <div
             className="rounded-xl overflow-hidden"
-            style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }}
+            style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.8)' }}
           >
             <div className="overflow-x-auto">
               <table className="w-full text-sm" style={{ minWidth: '480px' }}>
@@ -804,7 +804,7 @@ export default function Dashboard() {
       {animales.length === 0 && (
         <div
           className="rounded-xl p-12 text-center"
-          style={{ background: 'rgba(13,21,40,0.5)', border: '1px dashed rgba(30,51,82,0.8)' }}
+          style={{ background: tema.bgCard, border: '1px dashed rgba(30,51,82,0.8)' }}
         >
           <div className="flex justify-center mb-4"><Microscope size={48} style={{ color: tema.textMuted }} /></div>
           <div className="font-semibold text-white mb-1">Bioterio vacío</div>

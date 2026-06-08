@@ -245,7 +245,7 @@ function BloqueJaula({ bloque, camadas, onClick, onEliminar, modoSeleccion = fal
       disabled={false}
       className="rounded-xl overflow-hidden text-left w-full transition-all hover:scale-[1.02] active:scale-[0.98]"
       style={{
-        background: seleccionada ? 'rgba(255,61,87,0.08)' : 'rgba(13,21,40,0.9)',
+        background: seleccionada ? 'rgba(255,61,87,0.08)' : tema.bgCard,
         border: seleccionada ? '2px solid rgba(255,61,87,0.7)' : `1px solid ${cfgEfectivo.borde}`,
         boxShadow: seleccionada ? '0 0 16px rgba(255,61,87,0.15)' : `0 0 8px ${cfgEfectivo.bg}`,
         opacity: esEnApareamiento ? 0.6 : (modoSeleccion && !esSeleccionable ? 0.35 : 1),
@@ -259,7 +259,7 @@ function BloqueJaula({ bloque, camadas, onClick, onEliminar, modoSeleccion = fal
           className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold z-10"
           style={seleccionada
             ? { background: '#ff6b80', color: '#050810' }
-            : { border: '2px solid rgba(255,61,87,0.4)', background: 'rgba(5,8,16,0.6)' }}
+            : { border: '2px solid rgba(255,61,87,0.4)', background: tema.bgCard }}
         >
           {seleccionada && '✓'}
         </div>
@@ -495,7 +495,7 @@ function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, 
 
   // ── Estilos comunes ───────────────────────────────────────────────
   const iStyle = {
-    background: 'rgba(5,8,16,0.6)', border: '1px solid rgba(30,51,82,0.8)',
+    background: tema.bgCard, border: '1px solid rgba(30,51,82,0.8)',
     color: '#e2e8f0', borderRadius: '0.5rem', padding: '0.4rem 0.6rem',
     fontSize: '0.8125rem', fontFamily: 'monospace', width: '100%', outline: 'none',
   }
@@ -742,7 +742,7 @@ function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, 
             </p>
             {parts.map((p, i) => (
               <div key={i} className="rounded-xl p-3 space-y-2"
-                style={{ background: 'rgba(5,8,16,0.5)', border: '1px solid rgba(30,51,82,0.6)' }}>
+                style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.6)' }}>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold" style={{ color: i === 0 ? cfg.color : '#8a9bb0' }}>
                     {i === 0 ? 'Jaula actual' : `Nueva jaula ${i}`}
@@ -1009,7 +1009,7 @@ function ModalPlanificarApareamiento({ bloquesMacho, bloquesHembra, onGuardar, o
   const [guardando,        setGuardando]        = useState(false)
 
   const iStyle = {
-    background: 'rgba(5,8,16,0.6)', border: '1px solid rgba(30,51,82,0.8)',
+    background: tema.bgCard, border: '1px solid rgba(30,51,82,0.8)',
     color: '#e2e8f0', borderRadius: '0.5rem', padding: '0.4rem 0.6rem',
     fontSize: '0.8125rem', fontFamily: 'monospace', width: '100%', outline: 'none',
   }
@@ -1140,7 +1140,7 @@ function ModalSacrificio({ bloques, onConfirmar, onCerrar, animalesReservados = 
   })
 
   const iStyle = {
-    background: 'rgba(5,8,16,0.6)', border: '1px solid rgba(30,51,82,0.8)',
+    background: tema.bgCard, border: '1px solid rgba(30,51,82,0.8)',
     color: '#e2e8f0', borderRadius: '0.5rem', padding: '0.4rem 0.6rem',
     fontSize: '0.8125rem', width: '100%', outline: 'none',
   }
@@ -1271,7 +1271,7 @@ function ModalSacrificio({ bloques, onConfirmar, onCerrar, animalesReservados = 
               const error   = !esRepro && (cant < 1 || cant > b.total)
               return (
                 <div key={b.id} className="px-3 py-2 rounded-xl"
-                  style={{ background: 'rgba(5,8,16,0.5)', border: `1px solid ${error ? 'rgba(255,61,87,0.5)' : cfg.borde}` }}>
+                  style={{ background: tema.bgCard, border: `1px solid ${error ? 'rgba(255,61,87,0.5)' : cfg.borde}` }}>
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <span>{cfg.icono}</span>
@@ -1387,7 +1387,7 @@ function ModalEntrega({ bloques, onConfirmar, onCerrar, animalesReservados = new
   })
 
   const iStyle = {
-    background: 'rgba(5,8,16,0.6)', border: '1px solid rgba(30,51,82,0.8)',
+    background: tema.bgCard, border: '1px solid rgba(30,51,82,0.8)',
     color: '#e2e8f0', borderRadius: '0.5rem', padding: '0.4rem 0.6rem',
     fontSize: '0.8125rem', width: '100%', outline: 'none',
   }
@@ -1514,7 +1514,7 @@ function ModalEntrega({ bloques, onConfirmar, onCerrar, animalesReservados = new
               const error  = !esRepro && (cant < 1 || cant > b.total)
               return (
                 <div key={b.id} className="px-3 py-2 rounded-xl"
-                  style={{ background: 'rgba(5,8,16,0.5)', border: `1px solid ${error ? 'rgba(255,61,87,0.5)' : cfg.borde}` }}>
+                  style={{ background: tema.bgCard, border: `1px solid ${error ? 'rgba(255,61,87,0.5)' : cfg.borde}` }}>
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <span>{cfg.icono}</span>
@@ -1633,7 +1633,7 @@ function ModalPromoverReproductor({ bloques, animales, onConfirmar, onCerrar }) 
   const todosOk = errores.every((e) => !e)
 
   const iStyle = {
-    background: 'rgba(5,8,16,0.6)', border: '1px solid rgba(30,51,82,0.8)',
+    background: tema.bgCard, border: '1px solid rgba(30,51,82,0.8)',
     color: '#e2e8f0', borderRadius: '0.5rem', padding: '0.4rem 0.6rem',
     fontSize: '0.8125rem', fontFamily: 'monospace', width: '100%', outline: 'none',
   }
@@ -1668,7 +1668,7 @@ function ModalPromoverReproductor({ bloques, animales, onConfirmar, onCerrar }) 
             const err = errores[idx]
             return (
               <div key={b.id} className="rounded-xl p-3 space-y-2"
-                style={{ background: 'rgba(5,8,16,0.5)', border: `1px solid ${err ? 'rgba(255,61,87,0.4)' : cfg.borde}` }}>
+                style={{ background: tema.bgCard, border: `1px solid ${err ? 'rgba(255,61,87,0.4)' : cfg.borde}` }}>
 
                 {/* Header jaula */}
                 <div>
@@ -1741,7 +1741,7 @@ function ModalPromoverReproductor({ bloques, animales, onConfirmar, onCerrar }) 
 
 function CategoriaCard({ icono, titulo, subtitulo, total, grupos, gruposLabel, machos, hembras, color, descripcion }) {
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }}>
+    <div className="rounded-2xl overflow-hidden" style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.8)' }}>
       <div className="px-5 py-4 flex items-center gap-3" style={{ background: `${color}08`, borderBottom: `1px solid ${color}18` }}>
         <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ background: `${color}15`, border: `1px solid ${color}30` }}>
           {icono}
@@ -1803,7 +1803,7 @@ function ModalEliminarJaula({ bloque, onConfirmar, onCerrar }) {
       <div className="space-y-4">
 
         {/* Info de la jaula */}
-        <div className="px-4 py-3 rounded-xl" style={{ background: 'rgba(5,8,16,0.5)', border: `1px solid ${cfg.borde}` }}>
+        <div className="px-4 py-3 rounded-xl" style={{ background: tema.bgCard, border: `1px solid ${cfg.borde}` }}>
           <div className="flex items-center gap-3">
             <span className="text-2xl">{cfg.icono}</span>
             <div>
@@ -2251,7 +2251,7 @@ const btnTab = (v, label) => (
 
   if (subVista === 'entregas') {
     return (
-      <div className="p-4 md:p-6 space-y-5 min-0" style={{ background: '#050810' }}>
+      <div className="p-4 md:p-6 space-y-5 min-0" style={{ background: tema.bgMain }}>
         <div className="flex items-center gap-3">
           <div className="w-1.5 h-7 rounded-full" style={{ background: '#40c4ff', boxShadow: '0 0 8px rgba(64,196,255,0.5)' }} />
           <h1 className="text-xl font-bold text-white">Stock</h1>
@@ -2274,7 +2274,7 @@ const btnTab = (v, label) => (
 
 if (subVista === 'sacrificios') {
     return (
-      <div className="p-4 md:p-6 space-y-5 min-0" style={{ background: '#050810' }}>
+      <div className="p-4 md:p-6 space-y-5 min-0" style={{ background: tema.bgMain }}>
         <div className="flex items-center gap-3">
           <div className="w-1.5 h-7 rounded-full" style={{ background: '#40c4ff', boxShadow: '0 0 8px rgba(64,196,255,0.5)' }} />
           <h1 className="text-xl font-bold text-white">Stock</h1>
@@ -2296,7 +2296,7 @@ if (subVista === 'sacrificios') {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-5 min-0" style={{ background: '#050810' }}>
+    <div className="p-4 md:p-6 space-y-5 min-0" style={{ background: tema.bgMain }}>
 
       {/* Header */}
       <div className="flex items-center gap-3">
@@ -2313,7 +2313,7 @@ if (subVista === 'sacrificios') {
       {/* ── RESUMEN SUPERIOR ───────────────────────────────────────────────── */}
       <div
         className="rounded-2xl px-5 py-4 space-y-3"
-        style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }}
+        style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.8)' }}
       >
         {/* Totales */}
         <div className="flex items-center gap-3 flex-wrap">

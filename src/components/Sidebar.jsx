@@ -282,7 +282,9 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
       {/* Logo + bioterio activo */}
       <div className="px-4 py-4" style={{ borderBottom: `1px solid ${tema.bgSidebarBorde}` }}>
         <div className="flex items-center gap-3 mb-3">
-          <div style={{
+          <div style={modoBrillo ? {
+            display: 'inline-flex', flexShrink: 0,
+          } : {
             background: tema.bgCard,
             borderRadius: '10px',
             border: `1.5px solid ${tema.greenBorde}`,

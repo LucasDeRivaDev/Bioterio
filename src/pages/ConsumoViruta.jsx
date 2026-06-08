@@ -730,7 +730,7 @@ export default function ConsumoViruta() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#050810' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: tema.bgMain }}>
 
       {/* DEBUG migración — borrar después */}
       {msgMigracion && (
@@ -746,7 +746,7 @@ export default function ConsumoViruta() {
 
       {/* Header */}
       <div className="flex items-center gap-4 px-6 py-4 shrink-0"
-        style={{ borderBottom: '1px solid rgba(167,139,250,0.18)', background: 'rgba(13,21,40,0.6)' }}>
+        style={{ borderBottom: '1px solid rgba(167,139,250,0.18)', background: tema.bgCard }}>
         <button onClick={limpiarBioterio}
           className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-mono"
           style={{ background: 'rgba(167,139,250,0.07)', border: '1px solid rgba(167,139,250,0.2)', color: '#a78bfa' }}
@@ -789,7 +789,7 @@ export default function ConsumoViruta() {
           <>
             {/* ── Panel principal de predicción ── */}
             <div className="rounded-2xl overflow-hidden" style={{
-              background: 'rgba(13,21,40,0.9)',
+              background: tema.bgCard,
               border: `1.5px solid ${calibrado ? 'rgba(0,230,118,0.3)' : 'rgba(167,139,250,0.3)'}`,
               boxShadow: `0 0 40px ${calibrado ? 'rgba(0,230,118,0.05)' : 'rgba(167,139,250,0.05)'}`,
             }}>
@@ -970,7 +970,7 @@ export default function ConsumoViruta() {
             {/* ── Proyecciones futuras (30/60/90/180d) ── */}
             {proyecciones && stockActual !== null && (
               <div className="rounded-2xl overflow-hidden"
-                style={{ background: 'rgba(13,21,40,0.85)', border: '1.5px solid rgba(64,196,255,0.25)' }}>
+                style={{ background: tema.bgCard, border: '1.5px solid rgba(64,196,255,0.25)' }}>
                 <div className="px-6 py-3 flex items-center gap-2"
                   style={{ borderBottom: '1px solid rgba(64,196,255,0.12)', background: 'rgba(64,196,255,0.04)' }}>
                   <TrendingDown size={14} style={{ color: tema.blue }} />
@@ -1069,7 +1069,7 @@ export default function ConsumoViruta() {
 
             {/* ── Ciclo de cambios de cama ── */}
             <div className="rounded-2xl overflow-hidden"
-              style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(255,179,0,0.25)' }}>
+              style={{ background: tema.bgCard, border: '1px solid rgba(255,179,0,0.25)' }}>
               <div className="px-6 py-3 flex items-center gap-2"
                 style={{ borderBottom: '1px solid rgba(255,179,0,0.12)', background: 'rgba(255,179,0,0.04)' }}>
                 <Calendar size={14} style={{ color: tema.amber }} />
@@ -1216,7 +1216,7 @@ export default function ConsumoViruta() {
 
             {/* ── Movimientos de stock ── */}
             <div className="rounded-2xl overflow-hidden"
-              style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(167,139,250,0.2)' }}>
+              style={{ background: tema.bgCard, border: '1px solid rgba(167,139,250,0.2)' }}>
               <div className="px-6 py-4 flex items-center gap-3"
                 style={{ borderBottom: '1px solid rgba(167,139,250,0.12)', background: 'rgba(167,139,250,0.04)' }}>
                 <ClipboardList size={18} style={{ color: '#a78bfa' }} />
@@ -1371,7 +1371,7 @@ export default function ConsumoViruta() {
             {datosStock.length >= 2 && (
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="rounded-2xl overflow-hidden"
-                  style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                  style={{ background: tema.bgCard, border: '1px solid rgba(255,255,255,0.07)' }}>
                   <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                     <div className="font-bold text-xs text-white">Evolución del stock (censos)</div>
                     <div className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>bolsas disponibles por fecha de censo</div>
@@ -1398,7 +1398,7 @@ export default function ConsumoViruta() {
 
                 {datosConsumo.length >= 1 && (
                   <div className="rounded-2xl overflow-hidden"
-                    style={{ background: 'rgba(13,21,40,0.7)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                    style={{ background: tema.bgCard, border: '1px solid rgba(255,255,255,0.07)' }}>
                     <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                       <div className="font-bold text-xs text-white">Consumo real vs. estimado</div>
                       <div className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>bolsas entre censos consecutivos</div>
@@ -1528,7 +1528,7 @@ function TarjetaJaulas({ label, icon, color, unidades, filas, nota }) {
   const { tema } = useTheme()
   const total = filas.reduce((s, f) => s + f.n, 0)
   return (
-    <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.6)', border: `1px solid ${color}20` }}>
+    <div className="rounded-xl overflow-hidden" style={{ background: tema.bgCard, border: `1px solid ${color}20` }}>
       <div className="px-4 py-3 flex items-center gap-2"
         style={{ borderBottom: `1px solid ${color}12`, background: `${color}07` }}>
         <span>{icon}</span>
@@ -1630,9 +1630,9 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(5,8,16,0.85)', backdropFilter: 'blur(4px)' }}>
+      style={{ background: tema.bgCard, backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-sm rounded-2xl overflow-hidden"
-        style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(167,139,250,0.3)', boxShadow: '0 0 60px rgba(167,139,250,0.12)' }}>
+        style={{ background: tema.bgCard, border: '1px solid rgba(167,139,250,0.3)', boxShadow: '0 0 60px rgba(167,139,250,0.12)' }}>
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(167,139,250,0.12)', background: 'rgba(167,139,250,0.05)' }}>
           <div className="font-bold text-white text-sm">📊 Registrar censo de viruta</div>
           <div className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>
@@ -1649,7 +1649,7 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
               <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>Fecha</label>
               <input type="date" value={fecha} onChange={e => { setFecha(e.target.value); setCambioCama(null); setBioAfect([]) }} required
                 className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
-                style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }} />
+                style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }} />
             </div>
             <div>
               <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
@@ -1658,7 +1658,7 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
               </label>
               <input type="time" value={hora} onChange={e => setHora(e.target.value)} required
                 className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
-                style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }} />
+                style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }} />
             </div>
           </div>
 
@@ -1755,7 +1755,7 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
               onChange={e => { setBolsas(e.target.value); setError('') }}
               placeholder="Ej: 20.25" required
               className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
-              style={{ background: 'rgba(8,13,26,0.9)', border: `1px solid ${error ? 'rgba(255,61,87,0.5)' : 'rgba(30,51,82,0.9)'}`, color: tema.textPrimary, outline: 'none' }} />
+              style={{ background: tema.bgCard, border: `1px solid ${error ? 'rgba(255,61,87,0.5)' : 'rgba(30,51,82,0.9)'}`, color: tema.textPrimary, outline: 'none' }} />
             <div className="flex gap-2 mt-2">
               <span className="text-xs font-mono self-center" style={{ color: '#3d5068' }}>Fracción:</span>
               {FRACCIONES.map(f => (
@@ -1809,9 +1809,9 @@ function ModalConfirmarCambio({ censo, onConfirmar, onCerrar }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(5,8,16,0.85)', backdropFilter: 'blur(4px)' }}>
+      style={{ background: tema.bgCard, backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-sm rounded-2xl overflow-hidden"
-        style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(255,179,0,0.3)', boxShadow: '0 0 60px rgba(255,179,0,0.08)' }}>
+        style={{ background: tema.bgCard, border: '1px solid rgba(255,179,0,0.3)', boxShadow: '0 0 60px rgba(255,179,0,0.08)' }}>
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(255,179,0,0.12)', background: 'rgba(255,179,0,0.04)' }}>
           <div className="font-bold text-white text-sm">🔄 Confirmar cambio de cama</div>
           <div className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>
@@ -1932,9 +1932,9 @@ function ModalCompra({ stockActual, onConfirmar, onCerrar }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(5,8,16,0.85)', backdropFilter: 'blur(4px)' }}>
+      style={{ background: tema.bgCard, backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-sm rounded-2xl overflow-hidden"
-        style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(0,230,118,0.3)', boxShadow: '0 0 60px rgba(0,230,118,0.08)' }}>
+        style={{ background: tema.bgCard, border: '1px solid rgba(0,230,118,0.3)', boxShadow: '0 0 60px rgba(0,230,118,0.08)' }}>
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(0,230,118,0.12)', background: 'rgba(0,230,118,0.04)' }}>
           <div className="font-bold text-white text-sm">📦 Registrar compra / ingreso de viruta</div>
           <div className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>
@@ -1946,7 +1946,7 @@ function ModalCompra({ stockActual, onConfirmar, onCerrar }) {
             <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>Fecha de ingreso</label>
             <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} required
               className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
-              style={{ background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }} />
+              style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }} />
           </div>
           <div>
             <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
@@ -1956,7 +1956,7 @@ function ModalCompra({ stockActual, onConfirmar, onCerrar }) {
               onChange={e => { setBolsas(e.target.value); setError('') }}
               placeholder="Ej: 10" required
               className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
-              style={{ background: 'rgba(8,13,26,0.9)', border: `1px solid ${error ? 'rgba(255,61,87,0.5)' : 'rgba(30,51,82,0.9)'}`, color: tema.textPrimary, outline: 'none' }} />
+              style={{ background: tema.bgCard, border: `1px solid ${error ? 'rgba(255,61,87,0.5)' : 'rgba(30,51,82,0.9)'}`, color: tema.textPrimary, outline: 'none' }} />
             <div className="flex gap-2 mt-2">
               <span className="text-xs font-mono self-center" style={{ color: '#3d5068' }}>Fracción:</span>
               {FRACCIONES.map(f => (

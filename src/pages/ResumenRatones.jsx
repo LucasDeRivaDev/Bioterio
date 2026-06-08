@@ -128,7 +128,7 @@ function MenuRestaurar({ labelRestaurar, onRestaurar, onSoloBorrar, onCerrar }) 
   return (
     <div
       className="absolute right-0 top-8 z-50 rounded-xl overflow-hidden shadow-2xl"
-      style={{ background: 'rgba(13,21,40,0.98)', border: '1px solid rgba(30,51,82,0.9)', minWidth: '230px' }}
+      style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.9)', minWidth: '230px' }}
     >
       <button onClick={onRestaurar}
         className="w-full text-left px-4 py-3 text-sm transition-colors"
@@ -390,12 +390,12 @@ export default function ResumenRatones() {
   return (
     <div
       className="min-h-screen flex flex-col"
-      style={{ background: '#050810' }}
+      style={{ background: tema.bgMain }}
       onClick={() => setMenuAbierto(null)}
     >
       {/* Header */}
       <div className="flex items-center gap-4 px-6 py-4 shrink-0"
-        style={{ borderBottom: '1px solid rgba(64,196,255,0.15)', background: 'rgba(13,21,40,0.6)' }}>
+        style={{ borderBottom: '1px solid rgba(64,196,255,0.15)', background: tema.bgCard }}>
         <button onClick={limpiarBioterio}
           className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-mono transition-colors"
           style={{ background: 'rgba(64,196,255,0.07)', border: '1px solid rgba(64,196,255,0.2)', color: tema.blue }}
@@ -438,7 +438,7 @@ export default function ResumenRatones() {
           <>
             {/* ── STOCK TOTAL ── */}
             <div className="rounded-2xl overflow-hidden"
-              style={{ background: 'rgba(13,21,40,0.8)', border: '1.5px solid rgba(64,196,255,0.3)', boxShadow: '0 0 30px rgba(64,196,255,0.06)' }}>
+              style={{ background: tema.bgCard, border: '1.5px solid rgba(64,196,255,0.3)', boxShadow: '0 0 30px rgba(64,196,255,0.06)' }}>
               <div className="px-6 py-4 flex items-center gap-3"
                 style={{ borderBottom: '1px solid rgba(64,196,255,0.15)', background: 'rgba(64,196,255,0.05)' }}>
                 <span className="text-2xl">🐭</span>
@@ -531,7 +531,7 @@ export default function ResumenRatones() {
                     return (
                       <div key={n.id}
                         className="rounded-xl px-4 py-3 flex items-start gap-3"
-                        style={{ background: 'rgba(13,21,40,0.7)', border: `1px solid ${pCfg.borde}` }}
+                        style={{ background: tema.bgCard, border: `1px solid ${pCfg.borde}` }}
                       >
                         {/* Icono de tipo */}
                         <span className="text-lg shrink-0 mt-0.5">{tCfg.icono}</span>
@@ -610,7 +610,7 @@ export default function ResumenRatones() {
                 </div>
               ) : (
                 <div className="rounded-2xl overflow-hidden"
-                  style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }}
+                  style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.8)' }}
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="overflow-x-auto">
@@ -720,7 +720,7 @@ function FilaColonia({ cfg, grupo, totalGlobal, onEntrar }) {
   const { tema } = useTheme()
   const pct = totalGlobal > 0 ? Math.round((grupo.total / totalGlobal) * 100) : 0
   return (
-    <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.6)', border: `1px solid ${cfg.color}25` }}>
+    <div className="rounded-xl overflow-hidden" style={{ background: tema.bgCard, border: `1px solid ${cfg.color}25` }}>
       <div className="px-5 py-3 flex items-center gap-3"
         style={{ borderBottom: `1px solid ${cfg.color}15`, background: `${cfg.color}07` }}>
         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: cfg.color }} />

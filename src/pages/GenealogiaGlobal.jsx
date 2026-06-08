@@ -82,7 +82,7 @@ function PanelLineaHistorica() {
   return (
     <div
       className="rounded-2xl overflow-hidden"
-      style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(167,139,250,0.2)' }}
+      style={{ background: tema.bgCard, border: '1px solid rgba(167,139,250,0.2)' }}
     >
       <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(167,139,250,0.1)', background: 'rgba(167,139,250,0.04)' }}>
         <div className="flex items-center gap-2">
@@ -296,7 +296,7 @@ function SimuladorApareamientoPanel({ animales, pedigree }) {
   return (
     <div
       className="rounded-2xl overflow-hidden"
-      style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(64,196,255,0.2)' }}
+      style={{ background: tema.bgCard, border: '1px solid rgba(64,196,255,0.2)' }}
     >
       <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(64,196,255,0.1)', background: 'rgba(64,196,255,0.04)' }}>
         <div className="flex items-center gap-2">
@@ -583,7 +583,7 @@ export default function GenealogiaGlobal() {
 
   if (cargando) {
     return (
-      <div className="min-h-screen flex items-center justify-center gap-3" style={{ background: '#050810' }}>
+      <div className="min-h-screen flex items-center justify-center gap-3" style={{ background: tema.bgMain }}>
         <span className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: '#a78bfa', borderTopColor: 'transparent' }} />
         <span className="text-sm font-mono" style={{ color: tema.textMuted }}>Cargando datos genealógicos...</span>
       </div>
@@ -594,7 +594,7 @@ export default function GenealogiaGlobal() {
   const DIST_LABELS  = { nulo: 'Sin parentesco', bajo: 'Bajo (<6.25%)', leve: 'Leve (6.25–12.5%)', moderado: 'Moderado (12.5–25%)', alto: 'Alto (≥25%)' }
 
   return (
-    <div className="min-h-screen p-4 md:p-6 space-y-6" style={{ background: '#050810' }}>
+    <div className="min-h-screen p-4 md:p-6 space-y-6" style={{ background: tema.bgMain }}>
 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -641,7 +641,7 @@ export default function GenealogiaGlobal() {
             <div
               key={label}
               className="rounded-xl p-4"
-              style={{ background: 'rgba(13,21,40,0.8)', border: `1px solid ${color}25` }}
+              style={{ background: tema.bgCard, border: `1px solid ${color}25` }}
             >
               <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: tema.textMuted }}>{label}</div>
               <div className="text-2xl font-bold font-mono mb-0.5" style={{ color }}>{valor}</div>
@@ -667,7 +667,7 @@ export default function GenealogiaGlobal() {
             <div
               key={id}
               className="rounded-2xl overflow-hidden"
-              style={{ background: 'rgba(13,21,40,0.8)', border: `1px solid ${cfg.color}25` }}
+              style={{ background: tema.bgCard, border: `1px solid ${cfg.color}25` }}
             >
               <div className="px-5 py-4" style={{ borderBottom: `1px solid ${cfg.color}15`, background: `${cfg.color}06` }}>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -708,7 +708,7 @@ export default function GenealogiaGlobal() {
       <SimuladorApareamientoPanel animales={todosAnimales} pedigree={pedigreeGlobal} />
 
       {/* Tabla de animales con F y estado genealógico */}
-      <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(139,92,246,0.2)' }}>
+      <div className="rounded-2xl overflow-hidden" style={{ background: tema.bgCard, border: '1px solid rgba(139,92,246,0.2)' }}>
         <div className="px-5 py-4 flex items-center gap-4 flex-wrap" style={{ borderBottom: '1px solid rgba(139,92,246,0.1)', background: 'rgba(139,92,246,0.04)' }}>
           <div className="flex items-center gap-2">
             <span className="text-base">📋</span>

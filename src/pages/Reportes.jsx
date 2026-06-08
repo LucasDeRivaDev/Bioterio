@@ -22,10 +22,9 @@ function inicioSemana() {
   return lunes.toISOString().split('T')[0]
 }
 
-const cardStyle = { background: 'rgba(13,21,40,0.8)', border: '1px solid rgba(30,51,82,0.8)' }
-
 export default function Reportes() {
   const { tema, modoBrillo } = useTheme()
+  const cardStyle = { background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }
   const SECCIONES = [
     { key: 'estadisticas',    label: 'Estadísticas',    icon: <TrendingUp size={14} />,    color: tema.amber,  rgb: '255,179,0',   printBg: '#fefae8', printBorder: '#b8860b' },
     { key: 'reproductores',   label: 'Reproductores',   icon: <Microscope size={14} />,    color: tema.purple, rgb: '206,147,216', printBg: '#f5f0ff', printBorder: '#9d4edd' },
@@ -128,7 +127,7 @@ export default function Reportes() {
   const secActivas = SECCIONES.filter(s => secciones[s.key]).length
 
   return (
-    <div className="min-h-screen" style={{ background: '#050810' }}>
+    <div className="min-h-screen" style={{ background: tema.bgMain }}>
 
       {/* ── CSS de impresión ── */}
       <style>{`
