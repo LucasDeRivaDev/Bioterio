@@ -167,6 +167,7 @@ function SexoDisplay({ bloque, cfg }) {
 }
 
 function MiniCalidad({ icono, codigo, calidad, animal }) {
+  const { tema } = useTheme()
   const alertaColor = animal?.notas ? (animal.nota_tipo === 'critica' ? '#ff1744' : '#ffb300') : null
   if (!calidad) return (
     <div className="flex items-center justify-between">
@@ -177,7 +178,7 @@ function MiniCalidad({ icono, codigo, calidad, animal }) {
       <span className="text-xs" style={{ color: '#2a3a50' }}>—</span>
     </div>
   )
-  const nivel = nivelCalidad(calidad.score)
+  const nivel = nivelCalidad(calidad.score, tema)
   return (
     <div className="flex items-center justify-between gap-1">
       <span className="text-xs font-mono" style={{ color: alertaColor ?? '#6a7f95' }}>
@@ -961,15 +962,16 @@ function calidadMacho(machoId, camadas) {
   return { score: rend.score_promedio, camadas: rend.total_camadas }
 }
 
-function nivelCalidad(score) {
+function nivelCalidad(score, tema) {
   if (score >= 8) return { label: 'Alta',  color: tema.accent, bg: 'rgba(0,230,118,0.12)',  borde: 'rgba(0,230,118,0.3)' }
   if (score >= 6) return { label: 'Media', color: tema.amber, bg: 'rgba(255,179,0,0.12)',  borde: 'rgba(255,179,0,0.3)' }
   return            { label: 'Baja',  color: tema.red, bg: 'rgba(255,61,87,0.12)',   borde: 'rgba(255,61,87,0.3)' }
 }
 
 function CalidadBadge({ sexo, codigo, calidad, animal }) {
+  const { tema } = useTheme()
   const sinDatos = calidad === null
-  const nivel    = sinDatos ? null : nivelCalidad(calidad.score)
+  const nivel    = sinDatos ? null : nivelCalidad(calidad.score, tema)
   const alertaColor = animal?.notas ? (animal.nota_tipo === 'critica' ? '#ff1744' : '#ffb300') : null
   return (
     <div className="space-y-1">
@@ -1007,6 +1009,7 @@ function CalidadBadge({ sexo, codigo, calidad, animal }) {
 }
 
 function Row({ label, valor, color = '#8a9bb0' }) {
+  const { tema } = useTheme()
   return (
     <div className="flex items-center justify-between text-sm">
       <span className="text-xs uppercase tracking-widest font-semibold" style={{ color: tema.textMuted }}>{label}</span>
@@ -1018,6 +1021,7 @@ function Row({ label, valor, color = '#8a9bb0' }) {
 // ── Modal de planificación de apareamiento ────────────────────────────────────
 
 function ModalPlanificarApareamiento({ bloquesMacho, bloquesHembra, onGuardar, onCerrar }) {
+  const { tema } = useTheme()
   const [fechaPlanificada, setFechaPlanificada] = useState('')
   const [observaciones,    setObservaciones]    = useState('')
   const [guardando,        setGuardando]        = useState(false)
@@ -1760,6 +1764,7 @@ function ModalPromoverReproductor({ bloques, animales, onConfirmar, onCerrar }) 
 // ── Componentes de la vista Resumen (existentes, sin cambios) ─────────────────
 
 function CategoriaCard({ icono, titulo, subtitulo, total, grupos, gruposLabel, machos, hembras, color, descripcion }) {
+  const { tema } = useTheme()
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.8)' }}>
       <div className="px-5 py-4 flex items-center gap-3" style={{ background: `${color}08`, borderBottom: `1px solid ${color}18` }}>
