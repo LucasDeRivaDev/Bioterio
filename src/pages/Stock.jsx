@@ -505,8 +505,9 @@ function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, 
   const sufijoCamada = _fechaN
     ? String(_fechaN).substring(2, 4) + String(_fechaN).substring(5, 7) // AAMM ej. "2605"
     : 'XXXX'
-  const [sexoPromover,      setSexoPromover]      = useState('hembra')
-  const [codigoPromover,    setCodigoPromover]    = useState(`H-${sufijoCamada}`)
+  const sexoInferido = sexoBloque(bloque)
+  const [sexoPromover,      setSexoPromover]      = useState(sexoInferido ?? 'hembra')
+  const [codigoPromover,    setCodigoPromover]    = useState(`${(sexoInferido ?? 'hembra') === 'macho' ? 'M' : 'H'}-${sufijoCamada}`)
   const [guardandoPromover, setGuardandoPromover] = useState(false)
   const codigoExiste = Boolean(animales?.find((a) => a.codigo.trim().toLowerCase() === codigoPromover.trim().toLowerCase()))
   const promoverOk   = codigoPromover.trim().length > 0 && !codigoExiste
@@ -848,22 +849,29 @@ function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs uppercase tracking-widest font-semibold mb-1 block" style={{ color: tema.textMuted }}>Sexo</label>
-                <select
-                  value={sexoPromover}
-                  onChange={(e) => {
-                    const nuevoSexo    = e.target.value
-                    const prefijoActual = sexoPromover === 'macho' ? 'M' : 'H'
-                    const prefijoNuevo  = nuevoSexo    === 'macho' ? 'M' : 'H'
-                    if (codigoPromover === `${prefijoActual}-${sufijoCamada}`) {
-                      setCodigoPromover(`${prefijoNuevo}-${sufijoCamada}`)
-                    }
-                    setSexoPromover(nuevoSexo)
-                  }}
-                  style={iStyle}
-                >
-                  <option value="hembra">♀ Hembra</option>
-                  <option value="macho">♂ Macho</option>
-                </select>
+                {sexoInferido ? (
+                  <div className="rounded-lg px-3 py-2 text-sm font-semibold"
+                    style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.8)', color: sexoInferido === 'macho' ? tema.blue : tema.purple }}>
+                    {sexoInferido === 'macho' ? '♂ Macho' : '♀ Hembra'}
+                  </div>
+                ) : (
+                  <select
+                    value={sexoPromover}
+                    onChange={(e) => {
+                      const nuevoSexo    = e.target.value
+                      const prefijoActual = sexoPromover === 'macho' ? 'M' : 'H'
+                      const prefijoNuevo  = nuevoSexo    === 'macho' ? 'M' : 'H'
+                      if (codigoPromover === `${prefijoActual}-${sufijoCamada}`) {
+                        setCodigoPromover(`${prefijoNuevo}-${sufijoCamada}`)
+                      }
+                      setSexoPromover(nuevoSexo)
+                    }}
+                    style={iStyle}
+                  >
+                    <option value="hembra">♀ Hembra</option>
+                    <option value="macho">♂ Macho</option>
+                  </select>
+                )}
               </div>
               <div>
                 <label className="text-xs uppercase tracking-widest font-semibold mb-1 block" style={{ color: tema.textMuted }}>Código</label>
@@ -1631,7 +1639,9 @@ function ModalPromoverReproductor({ bloques, animales, onConfirmar, onCerrar }) 
     bloques.map((b) => {
       const fn = b.camada?.fecha_nacimiento
       const sufijo = fn ? String(fn).substring(2, 4) + String(fn).substring(5, 7) : 'XXXX'
-      return { bloqueId: b.id, sexo: 'hembra', codigo: `H-${sufijo}` }
+      const sexo = sexoBloque(b) ?? 'hembra'
+      const prefijo = sexo === 'macho' ? 'M' : 'H'
+      return { bloqueId: b.id, sexo, codigo: `${prefijo}-${sufijo}` }
     })
   )
 
@@ -1716,10 +1726,17 @@ function ModalPromoverReproductor({ bloques, animales, onConfirmar, onCerrar }) 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: tema.textMuted }}>Sexo</div>
-                    <select value={items[idx].sexo} onChange={(e) => updateItem(idx, 'sexo', e.target.value)} style={iStyle}>
-                      <option value="hembra">♀ Hembra</option>
-                      <option value="macho">♂ Macho</option>
-                    </select>
+                    {sexoBloque(b) ? (
+                      <div className="rounded-lg px-3 py-2 text-sm font-semibold"
+                        style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.8)', color: sexoBloque(b) === 'macho' ? tema.blue : tema.purple }}>
+                        {sexoBloque(b) === 'macho' ? '♂ Macho' : '♀ Hembra'}
+                      </div>
+                    ) : (
+                      <select value={items[idx].sexo} onChange={(e) => updateItem(idx, 'sexo', e.target.value)} style={iStyle}>
+                        <option value="hembra">♀ Hembra</option>
+                        <option value="macho">♂ Macho</option>
+                      </select>
+                    )}
                   </div>
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: tema.textMuted }}>Código</div>
