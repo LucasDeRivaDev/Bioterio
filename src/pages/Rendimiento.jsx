@@ -239,15 +239,19 @@ export default function Rendimiento() {
         const criasHembras = sus.reduce((s, c) => s + (c.crias_hembras ?? 0), 0)
         const scoreTotal   = perfil ? Math.round(sumaScoresHembra(perfil) * 10) / 10 : null
         const tendencia_camada = calcularTendenciaTamanoCamadas(sus)
-        return { h, total: sus.length, crias, criasMachos, criasHembras, perfil, conf, scoreTotal, tendencia_camada }
+        // Criterio eliminatorio: cualquier parto con ≤7 crías → aplazada
+        const susInsuf = sus.filter((c) => c.total_crias != null && c.total_crias <= 7)
+        const aplazada = susInsuf.length > 0
+        const minCrias = aplazada ? Math.min(...susInsuf.map((c) => c.total_crias)) : null
+        return { h, total: sus.length, crias, criasMachos, criasHembras, perfil, conf, scoreTotal, tendencia_camada, aplazada, minCrias }
       })
       .filter((x) => x.total > 0)
       .sort((a, b) => {
-        // Ordenar por suma de los 4 scores promedios de mayor a menor
+        // Aplazadas siempre al final del ranking
+        if (a.aplazada !== b.aplazada) return a.aplazada ? 1 : -1
         const stA = a.scoreTotal ?? 0
         const stB = b.scoreTotal ?? 0
         if (stB !== stA) return stB - stA
-        // Desempate: mayor cantidad de partos
         return b.total - a.total
       })
   }
@@ -548,20 +552,31 @@ const btnSubTab = (v, label, color) => (
             {vista === 'activos' ? 'Perfil de hembras — solo activas' : 'Perfil histórico de hembras'}
           </div>
           <div className="space-y-3">
-            {hembraStats.map(({ h, total, crias, criasMachos, criasHembras, perfil, conf, scoreTotal, tendencia_camada }, idx) => {
+            {hembraStats.map(({ h, total, crias, criasMachos, criasHembras, perfil, conf, scoreTotal, tendencia_camada, aplazada, minCrias }, idx) => {
               const confCfg = conf ? CONF_CONFIG[conf.nivel] : null
               const estadoCiclo = esActivo(h) ? getEstadoCicloHembra(h.id, todasCamadas) : 'normal'
               return (
-                <div key={h.id} className="rounded-xl overflow-hidden" style={cardStyle}>
+                <div key={h.id} className="rounded-xl overflow-hidden"
+                  style={{ ...cardStyle, ...(aplazada ? { borderColor: 'rgba(255,61,87,0.35)' } : {}) }}>
+                  {/* Banner aplazada */}
+                  {aplazada && (
+                    <div className="flex items-center gap-2 px-5 py-2"
+                      style={{ background: 'rgba(255,61,87,0.08)', borderBottom: '1px solid rgba(255,61,87,0.2)' }}>
+                      <span style={{ color: tema.red, fontWeight: 800, fontSize: '0.75rem', letterSpacing: '0.05em' }}>🔴 APLAZADA</span>
+                      <span style={{ color: tema.red, fontSize: '0.7rem', opacity: 0.8 }}>
+                        Camada insuficiente — mín. {minCrias} crías (umbral: 8)
+                      </span>
+                    </div>
+                  )}
                   {/* Header */}
                   <div className="flex items-center gap-4 px-5 py-3"
-                    style={{ borderBottom: '1px solid rgba(30,51,82,0.4)', background: 'rgba(206,147,216,0.03)' }}>
+                    style={{ borderBottom: '1px solid rgba(30,51,82,0.4)', background: aplazada ? 'rgba(255,61,87,0.02)' : 'rgba(206,147,216,0.03)' }}>
                     <div className="w-10 flex justify-center">
                       <Medalla pos={idx + 1} />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono font-bold text-lg" style={{ color: h.notas && h.nota_tipo === 'critica' ? '#ff6b80' : '#ce93d8' }}>{h.codigo}</span>
+                        <span className="font-mono font-bold text-lg" style={{ color: aplazada ? tema.red : (h.notas && h.nota_tipo === 'critica' ? '#ff6b80' : '#ce93d8') }}>{h.codigo}</span>
                         {h.notas && (
                           <span title={h.notas} style={{ color: h.nota_tipo === 'critica' ? '#ff1744' : '#ffb300', cursor: 'help' }}>⚠</span>
                         )}
@@ -607,10 +622,13 @@ const btnSubTab = (v, label, color) => (
                     {scoreTotal !== null && (
                       <div className="text-center px-3 hidden md:block">
                         <div className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: tema.textMuted }}>Score total</div>
-                        <div className="font-mono font-bold text-xl" style={{ color: tema.purple }}>
+                        <div className="font-mono font-bold text-xl" style={{ color: aplazada ? tema.red : tema.purple }}>
                           {scoreTotal}
                           <span className="text-xs font-normal ml-0.5" style={{ color: tema.textMuted }}>/40</span>
                         </div>
+                        {aplazada && (
+                          <div className="text-xs font-bold mt-0.5" style={{ color: tema.red }}>NO APTA</div>
+                        )}
                       </div>
                     )}
                   </div>

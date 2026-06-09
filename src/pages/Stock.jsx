@@ -178,19 +178,28 @@ function MiniCalidad({ icono, codigo, calidad, animal }) {
       <span className="text-xs" style={{ color: '#2a3a50' }}>—</span>
     </div>
   )
-  const nivel = nivelCalidad(calidad.score, tema)
+  const nivel = calidad.aplazada
+    ? { label: 'Baja', color: tema.red, bg: 'rgba(255,61,87,0.12)' }
+    : nivelCalidad(calidad.score, tema)
   return (
-    <div className="flex items-center justify-between gap-1">
-      <span className="text-xs font-mono" style={{ color: alertaColor ?? '#6a7f95' }}>
-        {icono} {codigo}
-        {alertaColor && <span title={animal.notas} style={{ color: alertaColor, marginLeft: '3px', cursor: 'help' }}>⚠</span>}
-      </span>
-      <span
-        className="text-xs font-bold px-1.5 py-0.5 rounded"
-        style={{ color: nivel.color, background: nivel.bg }}
-      >
-        {nivel.label}
-      </span>
+    <div className="space-y-0.5">
+      <div className="flex items-center justify-between gap-1">
+        <span className="text-xs font-mono" style={{ color: alertaColor ?? '#6a7f95' }}>
+          {icono} {codigo}
+          {alertaColor && <span title={animal.notas} style={{ color: alertaColor, marginLeft: '3px', cursor: 'help' }}>⚠</span>}
+        </span>
+        <span
+          className="text-xs font-bold px-1.5 py-0.5 rounded"
+          style={{ color: nivel.color, background: nivel.bg }}
+        >
+          {nivel.label}
+        </span>
+      </div>
+      {calidad.aplazada && (
+        <div className="text-xs px-0.5" style={{ color: tema.red, opacity: 0.75 }}>
+          ⚠ Camada insuf. ({calidad.minCrias} crías)
+        </div>
+      )}
     </div>
   )
 }
@@ -217,6 +226,7 @@ function BloqueJaula({ bloque, camadas, onClick, onEliminar, modoSeleccion = fal
   const calMadre = esStock && bloque.madre && camadas ? calidadHembra(bloque.madre.id, camadas) : null
   const calPadre = esStock && bloque.padre && camadas ? calidadMacho(bloque.padre.id, camadas)  : null
   const mostrarCalidad = esStock && (bloque.madre || bloque.padre)
+  const madreAplazada  = calMadre?.aplazada ?? false
 
   // Reserva de apareamiento — reproductores individuales
   const reserva = bloque.tipo === 'reproductor' && bloque.animal
@@ -446,6 +456,11 @@ function BloqueJaula({ bloque, camadas, onClick, onEliminar, modoSeleccion = fal
           >
             {bloque.madre && <MiniCalidad icono="♀" codigo={bloque.madre.codigo} calidad={calMadre} animal={bloque.madre} />}
             {bloque.padre && <MiniCalidad icono="♂" codigo={bloque.padre.codigo} calidad={calPadre} animal={bloque.padre} />}
+            {madreAplazada && (
+              <div className="text-xs px-1 pt-0.5" style={{ color: tema.red, opacity: 0.7 }}>
+                ⚠ Línea materna de bajo rendimiento
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -966,7 +981,11 @@ function calidadHembra(hembraId, camadas) {
   ].filter((v) => v != null)
   if (!vals.length) return null
   const promedio = vals.reduce((a, b) => a + b, 0) / vals.length
-  return { score: Math.round(promedio * 10) / 10, camadas: perfil.total_camadas }
+  // Criterio eliminatorio: cualquier parto con ≤7 crías → aplazada sin importar score total
+  const hist = camadas.filter((c) => c.id_madre === hembraId && c.fecha_nacimiento && c.total_crias != null)
+  const minCrias = hist.length > 0 ? Math.min(...hist.map((c) => c.total_crias)) : null
+  const aplazada = minCrias !== null && minCrias <= 7
+  return { score: Math.round(promedio * 10) / 10, camadas: perfil.total_camadas, aplazada, minCrias }
 }
 
 function calidadMacho(machoId, camadas) {
@@ -984,7 +1003,10 @@ function nivelCalidad(score, tema) {
 function CalidadBadge({ sexo, codigo, calidad, animal }) {
   const { tema } = useTheme()
   const sinDatos = calidad === null
-  const nivel    = sinDatos ? null : nivelCalidad(calidad.score, tema)
+  const nivel    = sinDatos ? null
+    : calidad.aplazada
+      ? { label: 'Baja', color: tema.red, bg: 'rgba(255,61,87,0.12)', borde: 'rgba(255,61,87,0.3)' }
+      : nivelCalidad(calidad.score, tema)
   const alertaColor = animal?.notas ? (animal.nota_tipo === 'critica' ? '#ff1744' : '#ffb300') : null
   return (
     <div className="space-y-1">
@@ -1011,6 +1033,13 @@ function CalidadBadge({ sexo, codigo, calidad, animal }) {
         </div>
       )}
     </div>
+    {!sinDatos && calidad.aplazada && (
+      <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg"
+        style={{ background: 'rgba(255,61,87,0.08)', border: '1px solid rgba(255,61,87,0.25)' }}>
+        <span style={{ color: tema.red, fontSize: '0.7rem', fontWeight: 700 }}>🔴 Camada insuficiente</span>
+        <span style={{ color: tema.red, fontSize: '0.7rem', opacity: 0.75 }}>({calidad.minCrias} crías mín.)</span>
+      </div>
+    )}
     {alertaColor && animal?.notas && (
       <div className="text-xs px-2 py-1 rounded-lg leading-snug"
         style={{ background: alertaColor === '#ff1744' ? 'rgba(255,23,68,0.07)' : 'rgba(255,179,0,0.07)', color: alertaColor }}>
