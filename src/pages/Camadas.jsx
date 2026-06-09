@@ -200,9 +200,55 @@ function JaulasDistribucion({ camada, jaulas, agregarJaula, editarJaula, elimina
   )
 }
 
+function IconoApareamiento() {
+  return (
+    <svg width="34" height="22" viewBox="0 0 34 22" fill="none">
+      {/* Rata izquierda — macho, cara hacia la derecha */}
+      <ellipse cx="8" cy="6" rx="2.5" ry="3" fill="#0d47a1"/>
+      <ellipse cx="8" cy="6" rx="1.5" ry="1.8" fill="#82b1ff"/>
+      <circle cx="7" cy="12" r="5" fill="#1565c0"/>
+      <circle cx="9.5" cy="11" r="1.1" fill="#e3f2fd"/>
+      <circle cx="12" cy="13" r="0.7" fill="#90caf9"/>
+      {/* Corazón central */}
+      <text x="17" y="15" textAnchor="middle" fontSize="11" fill="#ff4081">♥</text>
+      {/* Rata derecha — hembra, cara hacia la izquierda */}
+      <ellipse cx="26" cy="6" rx="2.5" ry="3" fill="#6a1b9a"/>
+      <ellipse cx="26" cy="6" rx="1.5" ry="1.8" fill="#e1bee7"/>
+      <circle cx="27" cy="12" r="5" fill="#8e24aa"/>
+      <circle cx="24.5" cy="11" r="1.1" fill="#f3e5f5"/>
+      <circle cx="22" cy="13" r="0.7" fill="#ce93d8"/>
+    </svg>
+  )
+}
+
+function IconoPreñez() {
+  return (
+    <svg width="28" height="24" viewBox="0 0 28 24" fill="none">
+      {/* Cola */}
+      <path d="M23 14 Q28 10 26 5" stroke="#ce93d8" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+      {/* Cuerpo — barriga grande y redonda */}
+      <ellipse cx="16" cy="16" rx="8.5" ry="6" fill="#8e24aa"/>
+      {/* Cabeza */}
+      <circle cx="6" cy="11" r="5" fill="#8e24aa"/>
+      {/* Oreja exterior */}
+      <ellipse cx="5" cy="6" rx="2.7" ry="3.1" fill="#6a1b9a"/>
+      {/* Oreja interior */}
+      <ellipse cx="5" cy="6" rx="1.6" ry="1.9" fill="#e1bee7"/>
+      {/* Ojo */}
+      <circle cx="4.5" cy="11" r="1" fill="#f3e5f5"/>
+      {/* Hocico */}
+      <circle cx="1" cy="12" r="0.7" fill="#f8bbd0"/>
+      {/* Reflejo suave en la barriga */}
+      <ellipse cx="18" cy="17.5" rx="5" ry="3.5" fill="#ce93d8" opacity="0.35"/>
+      {/* Corazoncito en la panza */}
+      <text x="16" y="19.5" textAnchor="middle" fontSize="7" fill="rgba(255,255,255,0.7)">♥</text>
+    </svg>
+  )
+}
+
 const estadoConfig = {
-  apareamiento: { badge: 'azul',    label: 'En apareamiento', icono: '💑' },
-  preñez:       { badge: 'violeta', label: 'En preñez',       icono: '🫄' },
+  apareamiento: { badge: 'azul',    label: 'En apareamiento', icono: <IconoApareamiento /> },
+  preñez:       { badge: 'violeta', label: 'En preñez',       icono: <IconoPreñez /> },
   lactancia:    { badge: 'naranja', label: 'Lactancia',       icono: '🤱' },
   completada:   { badge: 'verde',   label: 'Completada',      icono: '✅' },
   fallida:      { badge: 'rojo',    label: 'Parto fallido',   icono: '✕'  },
