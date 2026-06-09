@@ -33,6 +33,12 @@ const BIOTERIOS_OPCIONES = [
   { id: 'ratones_c57',      label: '🐭 C57BL/6' },
   { id: 'ratones_hibridos', label: '🧬 Híbridos F1' },
 ]
+const getEstadosPedido = (tema) => [
+  { id: 'pendiente',  label: 'Pendiente',  color: tema.amber },
+  { id: 'en_proceso', label: 'En proceso', color: tema.blue },
+  { id: 'completado', label: 'Completado', color: tema.accent },
+  { id: 'cancelado',  label: 'Cancelado',  color: tema.red },
+]
 // ─── Badge viabilidad ─────────────────────────────────────────────────────────
 function ViabilidadBadge({ score, small = false }) {
   const n = nivelViabilidad(score)
@@ -747,12 +753,7 @@ function TabEscalonado({ pedidoEscalonado, tema }) {
 
 // ─── PANEL DE ANÁLISIS ────────────────────────────────────────────────────────
 function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproductores, tema }) {
-  const ESTADOS_PEDIDO = [
-    { id: 'pendiente',  label: 'Pendiente',  color: tema.amber },
-    { id: 'en_proceso', label: 'En proceso', color: tema.blue },
-    { id: 'completado', label: 'Completado', color: tema.accent },
-    { id: 'cancelado',  label: 'Cancelado',  color: tema.red },
-  ]
+  const ESTADOS_PEDIDO = getEstadosPedido(tema)
   const [tabAbierta, setTabAbierta] = useState(null)
 
   const {
@@ -1197,7 +1198,7 @@ function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
 function TarjetaPedido({ pedido, seleccionado, onSeleccionar, onEditar, onEliminar, score, tema }) {
   const nivel    = nivelViabilidad(score ?? 0)
   const colorEst = colorEstadoPedido(pedido.estado)
-  const estadoObj = ESTADOS_PEDIDO.find(e => e.id === pedido.estado)
+  const estadoObj = getEstadosPedido(tema).find(e => e.id === pedido.estado)
 
   return (
     <div onClick={() => onSeleccionar(pedido.id)}
@@ -1245,12 +1246,7 @@ export default function Pedidos() {
         } = useBioterio()
   const { bioterioActivo } = useBioterioActivo()
   const { tema, modoBrillo } = useTheme()
-  const ESTADOS_PEDIDO = [
-    { id: 'pendiente',  label: 'Pendiente',  color: tema.amber },
-    { id: 'en_proceso', label: 'En proceso', color: tema.blue },
-    { id: 'completado', label: 'Completado', color: tema.accent },
-    { id: 'cancelado',  label: 'Cancelado',  color: tema.red },
-  ]
+  const ESTADOS_PEDIDO = getEstadosPedido(tema)
 
   const [pedidoSelId,       setPedidoSelId]       = useState(null)
   const [modalFormAbierto,  setModalFormAbierto]  = useState(false)

@@ -14,6 +14,18 @@ const LABEL_BIOTERIO = {
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
+const SECCIONES_BASE = [
+  { key: 'estadisticas',    label: 'Estadísticas',    printBg: '#fefae8', printBorder: '#b8860b' },
+  { key: 'reproductores',   label: 'Reproductores',   printBg: '#f5f0ff', printBorder: '#9d4edd' },
+  { key: 'emparejamientos', label: 'Emparejamientos', printBg: '#e8f4fd', printBorder: '#0277bd' },
+  { key: 'rendimiento',     label: 'Rendimiento',     printBg: '#e8f8f0', printBorder: '#2e7d52' },
+  { key: 'stock',           label: 'Stock',           printBg: '#e8f8f0', printBorder: '#2e7d52' },
+  { key: 'sacrificios',     label: 'Sacrificios',     printBg: '#fde8ec', printBorder: '#c62828' },
+  { key: 'entregas',        label: 'Entregas',        printBg: '#fefae8', printBorder: '#b8860b' },
+  { key: 'temperaturas',    label: 'Temperaturas',    printBg: '#e8f4fd', printBorder: '#0277bd' },
+  { key: 'incidentes',      label: 'Incidentes',      printBg: '#f5f0ff', printBorder: '#9d4edd' },
+]
+
 function inicioSemana() {
   const d = new Date()
   const day = d.getDay()
@@ -26,15 +38,15 @@ export default function Reportes() {
   const { tema, modoBrillo } = useTheme()
   const cardStyle = { background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }
   const SECCIONES = [
-    { key: 'estadisticas',    label: 'Estadísticas',    icon: <TrendingUp size={14} />,    color: tema.amber,  rgb: '255,179,0',   printBg: '#fefae8', printBorder: '#b8860b' },
-    { key: 'reproductores',   label: 'Reproductores',   icon: <Microscope size={14} />,    color: tema.purple, rgb: '206,147,216', printBg: '#f5f0ff', printBorder: '#9d4edd' },
-    { key: 'emparejamientos', label: 'Emparejamientos', icon: <Dna size={14} />,           color: tema.blue,   rgb: '64,196,255',  printBg: '#e8f4fd', printBorder: '#0277bd' },
-    { key: 'rendimiento',     label: 'Rendimiento',     icon: <BarChart2 size={14} />,     color: tema.accent, rgb: '0,230,118',   printBg: '#e8f8f0', printBorder: '#2e7d52' },
-    { key: 'stock',           label: 'Stock',           icon: <Archive size={14} />,       color: tema.accent, rgb: '0,230,118',   printBg: '#e8f8f0', printBorder: '#2e7d52' },
-    { key: 'sacrificios',     label: 'Sacrificios',     icon: <Skull size={14} />,         color: tema.red,    rgb: '255,107,128', printBg: '#fde8ec', printBorder: '#c62828' },
-    { key: 'entregas',        label: 'Entregas',        icon: <PackageCheck size={14} />,  color: tema.amber,  rgb: '255,179,0',   printBg: '#fefae8', printBorder: '#b8860b' },
-    { key: 'temperaturas',    label: 'Temperaturas',    icon: <Thermometer size={14} />,   color: tema.blue,   rgb: '64,196,255',  printBg: '#e8f4fd', printBorder: '#0277bd' },
-    { key: 'incidentes',      label: 'Incidentes',      icon: <FileWarning size={14} />,   color: tema.purple, rgb: '206,147,216', printBg: '#f5f0ff', printBorder: '#9d4edd' },
+    { ...SECCIONES_BASE[0], icon: <TrendingUp size={14} />,   color: tema.amber,  rgb: '255,179,0'   },
+    { ...SECCIONES_BASE[1], icon: <Microscope size={14} />,   color: tema.purple, rgb: '206,147,216' },
+    { ...SECCIONES_BASE[2], icon: <Dna size={14} />,          color: tema.blue,   rgb: '64,196,255'  },
+    { ...SECCIONES_BASE[3], icon: <BarChart2 size={14} />,    color: tema.accent, rgb: '0,230,118'   },
+    { ...SECCIONES_BASE[4], icon: <Archive size={14} />,      color: tema.accent, rgb: '0,230,118'   },
+    { ...SECCIONES_BASE[5], icon: <Skull size={14} />,        color: tema.red,    rgb: '255,107,128' },
+    { ...SECCIONES_BASE[6], icon: <PackageCheck size={14} />, color: tema.amber,  rgb: '255,179,0'   },
+    { ...SECCIONES_BASE[7], icon: <Thermometer size={14} />,  color: tema.blue,   rgb: '64,196,255'  },
+    { ...SECCIONES_BASE[8], icon: <FileWarning size={14} />,  color: tema.purple, rgb: '206,147,216' },
   ]
   const { animales, camadas, jaulas, sacrificios, entregas, temperaturas, incidentes, bio, bioterioActivo } = useBioterio()
   const hoyDate = new Date()
@@ -308,7 +320,7 @@ function DocImprimible({ tituloPeriodo, datos, animales, camadas, secciones, bio
 
   const LABEL_EST = { activo:'Activo', en_apareamiento:'Apareamiento', en_cria:'En cría', retirado:'Retirado', fallecido:'Fallecido' }
   const S = (k) => secciones[k] ?? false
-  const secActivas = SECCIONES.filter(s => secciones[s.key])
+  const secActivas = SECCIONES_BASE.filter(s => secciones[s.key])
 
   const base = { fontFamily: "'Segoe UI', Arial, sans-serif", color: '#111', background: '#fff', fontSize: '9pt', lineHeight: 1.45 }
 
