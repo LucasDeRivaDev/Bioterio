@@ -81,6 +81,7 @@ function KPI({ label, valor, color = '#c9d4e0', sub }) {
 // ── Encabezado de cada gráfico ────────────────────────────────────────────────
 function GraficoCard({ titulo, subtitulo, children, color = C.azul }) {
   const { tema } = useTheme()
+  const card = { background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}`, borderRadius: '16px', padding: '20px' }
   return (
     <div style={card}>
       <div className="mb-4">
@@ -134,7 +135,6 @@ function SinDatos() {
 // ── PÁGINA PRINCIPAL ──────────────────────────────────────────────────────────
 export default function Estadisticas() {
   const { tema, modoBrillo } = useTheme()
-  const card = { background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}`, borderRadius: '16px', padding: '20px' }
   const inputStyle = {
     background: tema.bgInput,
     border: '1px solid rgba(30,51,82,0.8)',
