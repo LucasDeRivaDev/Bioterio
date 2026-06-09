@@ -1120,6 +1120,19 @@ export function generarAlertasEstrales(animales, extendidos, bio = BIO) {
   return alertas
 }
 
+// ── Identificador biológico legible de una camada ────────────────────────────
+// Formato: "PADRE-MADRE-FECHA" (ej. M10-H11-2025-05-10)
+// Si faltan progenitores: "CAMADA-FECHA" (ej. CAMADA-2026-05-10)
+export function generarIdentificadorCamada(camada, animales = []) {
+  if (!camada) return 'CAMADA-SIN-DATOS'
+  const padre = animales.find((a) => a.id === camada.id_padre)
+  const madre = animales.find((a) => a.id === camada.id_madre)
+  const fecha = camada.fecha_nacimiento ? String(camada.fecha_nacimiento).substring(0, 10) : null
+  if (padre && madre && fecha) return `${padre.codigo}-${madre.codigo}-${fecha}`
+  if (fecha) return `CAMADA-${fecha}`
+  return `CAMADA-${camada.id?.slice(-6) ?? 'SIN-ID'}`
+}
+
 // ── Estado de ciclo reproductivo de una hembra ───────────────────────────────
 // Retorna: 'normal' | 'ultimo_ciclo' | 'fin_ciclo'
 //   normal      → menos de MAX_APAREAMIENTOS camadas

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { supabase } from '../lib/supabase'
-import { formatFecha, difDias, parseDate, hoy, calcularPerfilHembra, calcularConfiabilidadHembra, calcularRendimientoMacho, detectarBajaPerformanceMacho, getAnimalesReservados, getEstadoCicloHembra } from '../utils/calculos'
+import { formatFecha, difDias, parseDate, hoy, calcularPerfilHembra, calcularConfiabilidadHembra, calcularRendimientoMacho, detectarBajaPerformanceMacho, getAnimalesReservados, getEstadoCicloHembra, generarIdentificadorCamada } from '../utils/calculos'
 import { buildPedigree, calcularFIndividual, fPorcentaje, nivelConsanguinidad, getAncestores, estadoGenealogiaAnimal } from '../utils/genealogia'
 import { MAX_APAREAMIENTOS, MACHO_EDAD_LIMITE_DIAS, MACHO_EDAD_ALERTA_DIAS } from '../utils/constants'
 import Modal from '../components/Modal'
@@ -597,10 +597,10 @@ return (
                     className="transition-colors hover:bg-white/[0.01]"
                   >
                     <td className="px-4 py-3 font-mono font-bold">
-                      <span style={{ color: animal.notas && animal.nota_tipo === 'critica' ? '#ff6b80' : '#c9d4e0' }}>
+                      <span style={{ color: animal.notas && animal.nota_tipo === 'critica' && !/^Stock →/.test(animal.notas) ? '#ff6b80' : '#c9d4e0' }}>
                         {animal.codigo}
                       </span>
-                      {animal.notas && (
+                      {animal.notas && !/^Stock →/.test(animal.notas) && (
                         <span
                           title={animal.notas}
                           style={{ color: animal.nota_tipo === 'critica' ? '#ff1744' : '#ffb300', marginLeft: '5px', cursor: 'help' }}
@@ -720,8 +720,28 @@ return (
                   {expandido === animal.id && (
                     <tr style={{ borderBottom: '1px solid rgba(30,51,82,0.4)', background: tema.bgInput }}>
                       <td colSpan={8} className="px-6 py-4 space-y-4">
-                        {/* Nota del animal */}
-                        {animal.notas && (
+                        {/* Origen de camada — solo si fue promovido desde stock (note interna) */}
+                        {animal.notas && /^Stock →/.test(animal.notas) ? (
+                          <div
+                            className="rounded-xl px-4 py-3 flex items-center gap-3"
+                            style={{ background: 'rgba(30,51,82,0.25)', border: '1px solid rgba(30,51,82,0.55)' }}
+                          >
+                            <span style={{ color: tema.textMuted, fontSize: '14px' }}>🧬</span>
+                            <div>
+                              <div className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: tema.textMuted }}>
+                                Origen de camada
+                              </div>
+                              <div className="text-sm font-mono" style={{ color: tema.textSecondary }}>
+                                {generarIdentificadorCamada(animal, [...animales, ...animalesExportados])}
+                              </div>
+                              {animal.fecha_nacimiento && (
+                                <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>
+                                  Nacimiento: {formatFecha(animal.fecha_nacimiento)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ) : animal.notas ? (
                           <div
                             className="rounded-xl px-4 py-3 flex items-start gap-3"
                             style={{
@@ -736,6 +756,28 @@ return (
                                 {animal.nota_tipo === 'critica' ? 'Observación crítica' : 'Observación'}
                               </div>
                               <div className="text-sm leading-relaxed" style={{ color: tema.textPrimary }}>{animal.notas}</div>
+                            </div>
+                          </div>
+                        ) : null}
+                        {/* Origen de camada — para animales promovidos sin nota (registros nuevos) */}
+                        {!animal.notas && (animal.id_madre || animal.id_padre) && (
+                          <div
+                            className="rounded-xl px-4 py-3 flex items-center gap-3"
+                            style={{ background: 'rgba(30,51,82,0.25)', border: '1px solid rgba(30,51,82,0.55)' }}
+                          >
+                            <span style={{ color: tema.textMuted, fontSize: '14px' }}>🧬</span>
+                            <div>
+                              <div className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: tema.textMuted }}>
+                                Origen de camada
+                              </div>
+                              <div className="text-sm font-mono" style={{ color: tema.textSecondary }}>
+                                {generarIdentificadorCamada(animal, [...animales, ...animalesExportados])}
+                              </div>
+                              {animal.fecha_nacimiento && (
+                                <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>
+                                  Nacimiento: {formatFecha(animal.fecha_nacimiento)}
+                                </div>
+                              )}
                             </div>
                           </div>
                         )}

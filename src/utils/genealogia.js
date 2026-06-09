@@ -56,8 +56,8 @@ export function buildPedigree(animales, camadas = []) {
     let padreId = a.id_padre ?? null
 
     // Intento de recuperación desde notas si faltan padres
-    // Formato: "Stock → reproductor · camada ...XXXXXX"
-    if ((!madreId || !padreId) && a.notas) {
+    // Soporta formato legado: "Stock → reproductor · camada ...XXXXXX"
+    if ((!madreId || !padreId) && a.notas && /camada \.\.\./.test(a.notas)) {
       const match = a.notas.match(/camada \.\.\.([a-z0-9]{6})/i)
       if (match) {
         const camada = camadaPorSufijo[match[1]]

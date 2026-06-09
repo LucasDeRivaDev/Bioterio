@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useBioterio } from '../context/BiotheriumContext'
-import { generarTareas, formatFecha, calcularRangoParto, difDias, parseDate, hoy, generarAlertasEstrales, generarAlertasMachos } from '../utils/calculos'
+import { generarTareas, formatFecha, calcularRangoParto, difDias, parseDate, hoy, generarAlertasEstrales, generarAlertasMachos, generarIdentificadorCamada } from '../utils/calculos'
 import { INTERVALO_RENOVACION_DIAS } from '../utils/constants'
 import { getPlanes, completarPlan as completarPlanDB, eliminarPlan, getNotas, actualizarNota, eliminarNota as eliminarNotaDB } from '../utils/db'
 import { supabase } from '../lib/supabase'
@@ -354,7 +354,7 @@ export default function Dashboard() {
         if (edad < 40) return null
         const madre = animalesExportados.find((a) => a.id === c.id_madre)
         const padre = animalesExportados.find((a) => a.id === c.id_padre)
-        const progenitores = madre && padre ? `${madre.codigo} × ${padre.codigo}` : `camada ...${c.id.slice(-6)}`
+        const progenitores = madre && padre ? `${madre.codigo} × ${padre.codigo}` : generarIdentificadorCamada(c, animalesExportados)
         return {
           id: `f1-sacrificio-${c.id}`,
           tipo: 'sacrificio_f1',

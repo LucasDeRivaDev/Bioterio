@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
-import { difDias, parseDate, hoy, formatFecha, calcularPerfilHembra, calcularRendimientoMacho, getAnimalesReservados, getJaulasReservadas, getReservadosParaHibridos, getEstadoCicloHembra } from '../utils/calculos'
+import { difDias, parseDate, hoy, formatFecha, calcularPerfilHembra, calcularRendimientoMacho, getAnimalesReservados, getJaulasReservadas, getReservadosParaHibridos, getEstadoCicloHembra, generarIdentificadorCamada } from '../utils/calculos'
 import { generarId } from '../utils/storage'
 import { guardarPlan, eliminarPlan, getPlanes } from '../utils/db'
 import Modal from '../components/Modal'
@@ -412,8 +412,8 @@ function BloqueJaula({ bloque, camadas, onClick, onEliminar, modoSeleccion = fal
           </div>
         )}
 
-        {/* Nota visible directamente en la tarjeta */}
-        {bloque.tipo === 'reproductor' && bloque.animal.notas && (
+        {/* Nota visible directamente en la tarjeta — excluye notas internas de origen */}
+        {bloque.tipo === 'reproductor' && bloque.animal.notas && !/^Stock →/.test(bloque.animal.notas) && (
           <div
             className="text-xs leading-snug px-2 py-1 rounded-lg"
             style={{
@@ -501,7 +501,10 @@ function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, 
   const moverOk = destinoId && cantN > 0 && cantN <= bloque.total
 
   // ── Promover ──────────────────────────────────────────────────────
-  const sufijoCamada = bloque.camada?.id?.slice(-4).toUpperCase() ?? 'XXXX'
+  const _fechaN = bloque.camada?.fecha_nacimiento
+  const sufijoCamada = _fechaN
+    ? String(_fechaN).substring(2, 4) + String(_fechaN).substring(5, 7) // AAMM ej. "2605"
+    : 'XXXX'
   const [sexoPromover,      setSexoPromover]      = useState('hembra')
   const [codigoPromover,    setCodigoPromover]    = useState(`H-${sufijoCamada}`)
   const [guardandoPromover, setGuardandoPromover] = useState(false)
@@ -815,7 +818,7 @@ function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, 
                   const c = camadas.find((x) => x.id === j.camada_id)
                   return (
                     <option key={j.id} value={j.id}>
-                      {c ? `Camada ...${c.id.slice(-4)}` : `Jaula ...${j.id.slice(-4)}`} — {j.total} animales
+                      {c ? generarIdentificadorCamada(c, animales) : `Jaula ...${j.id.slice(-4)}`} — {j.total} animales
                     </option>
                   )
                 })}
@@ -898,8 +901,10 @@ function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, 
                 </div>
               )}
               <div className="flex items-center justify-between text-xs">
-                <span style={{ color: tema.textMuted }}>Origen</span>
-                <span className="font-mono" style={{ color: tema.textSecondary }}>Camada ...{bloque.camada?.id?.slice(-6)}</span>
+                <span style={{ color: tema.textMuted }}>Camada</span>
+                <span className="font-mono text-right" style={{ color: tema.textSecondary, maxWidth: '180px', wordBreak: 'break-all' }}>
+                  {generarIdentificadorCamada(bloque.camada, animales)}
+                </span>
               </div>
             </div>
 
@@ -1624,7 +1629,8 @@ function ModalPromoverReproductor({ bloques, animales, onConfirmar, onCerrar }) 
   const [guardando, setGuardando] = useState(false)
   const [items, setItems] = useState(() =>
     bloques.map((b) => {
-      const sufijo = b.camada?.id?.slice(-4).toUpperCase() ?? 'XXXX'
+      const fn = b.camada?.fecha_nacimiento
+      const sufijo = fn ? String(fn).substring(2, 4) + String(fn).substring(5, 7) : 'XXXX'
       return { bloqueId: b.id, sexo: 'hembra', codigo: `H-${sufijo}` }
     })
   )
@@ -1637,7 +1643,8 @@ function ModalPromoverReproductor({ bloques, animales, onConfirmar, onCerrar }) 
       const updated = { ...item, [field]: value }
       if (field === 'sexo') {
         const b = bloques[i]
-        const sufijo       = b.camada?.id?.slice(-4).toUpperCase() ?? 'XXXX'
+        const fn = b.camada?.fecha_nacimiento
+        const sufijo       = fn ? String(fn).substring(2, 4) + String(fn).substring(5, 7) : 'XXXX'
         const prefijoViejo = item.sexo  === 'macho' ? 'M' : 'H'
         const prefijoNuevo = value === 'macho' ? 'M' : 'H'
         if (item.codigo === `${prefijoViejo}-${sufijo}`) updated.codigo = `${prefijoNuevo}-${sufijo}`
@@ -2166,7 +2173,6 @@ export default function Stock() {
       fecha_nacimiento: bloque.camada?.fecha_nacimiento ?? null,
       id_madre: bloque.camada?.id_madre ?? null,
       id_padre: bloque.camada?.id_padre ?? null,
-      notas: `Stock → reproductor · camada ...${bloque.camada?.id?.slice(-6) ?? ''}`,
     })
 
     if (bloque.jaula?.id) {
@@ -2195,7 +2201,6 @@ export default function Stock() {
         fecha_nacimiento: bloque.camada?.fecha_nacimiento ?? null,
         id_madre: bloque.camada?.id_madre ?? null,
         id_padre: bloque.camada?.id_padre ?? null,
-        notas: `Stock → reproductor · camada ...${bloque.camada?.id?.slice(-6) ?? ''}`,
       })
 
       if (bloque.jaula?.id) {
