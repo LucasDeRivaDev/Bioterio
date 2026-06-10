@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import PWAUpdatePrompt from './components/PWAUpdatePrompt'
 import { BiotheriumProvider } from './context/BiotheriumContext'
 import { BioterioActivoProvider, useBioterioActivo } from './context/BioterioActivoContext'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
@@ -366,6 +367,7 @@ export default function App() {
           </BrowserRouter>
         </BioterioActivoProvider>
       </AuthProvider>
+      <PWAUpdatePrompt />
     </ThemeProvider>
   )
 }
