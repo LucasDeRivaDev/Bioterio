@@ -261,11 +261,15 @@ export default function ResumenRatones() {
     const hoyStr  = hoy()
     const lista   = []
 
+    // Para híbridos los progenitores viven en BAL/c o C57 — necesitamos todos los animales
+    const todosAnimalesRatones = GRUPOS.flatMap((gid) => rawData[gid].animalesTodos ?? [])
+
     GRUPOS.forEach((gid) => {
       const { camadas, animalesActivos } = rawData[gid]
+      const animalesParaBusqueda = gid === 'ratones_hibridos' ? todosAnimalesRatones : animalesActivos
 
       // 1. Tareas reproductivas (separación, parto, destete)
-      generarTareas(camadas, animalesActivos, BIO_RATONES).forEach((t) => {
+      generarTareas(camadas, animalesParaBusqueda, BIO_RATONES).forEach((t) => {
         lista.push({ ...t, bioterioId: gid })
       })
 

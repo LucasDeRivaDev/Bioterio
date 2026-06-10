@@ -339,7 +339,7 @@ export default function Dashboard() {
     )
   }
 
-  const todasTareas = useMemo(() => generarTareas(camadas, animales, bio), [camadas, animales, bio])
+  const todasTareas = useMemo(() => generarTareas(camadas, todosAnimales, bio), [camadas, todosAnimales, bio])
   const alertasEstrales = useMemo(() => generarAlertasEstrales(animales, extendidos, bio), [animales, extendidos, bio])
   const alertasMachos   = useMemo(() => generarAlertasMachos(animales, camadas), [animales, camadas])
 
