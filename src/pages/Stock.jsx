@@ -373,6 +373,17 @@ function BloqueJaula({ bloque, camadas, onClick, onEliminar, modoSeleccion = fal
         <SexoDisplay bloque={bloque} cfg={cfgEfectivo} />
         <div className="text-xs" style={{ color: tema.textMuted }}>
           {bloque.edad != null ? `${formatEdad(bloque.edad)} · ${bloque.edad}d` : '—'}
+          {(() => {
+            const fn = bloque.tipo === 'reproductor'
+              ? bloque.animal?.fecha_nacimiento
+              : bloque.camada?.fecha_nacimiento
+            if (!fn) return null
+            const d = new Date(fn + 'T12:00:00')
+            const dd = String(d.getDate()).padStart(2, '0')
+            const mm = String(d.getMonth() + 1).padStart(2, '0')
+            const yy = String(d.getFullYear()).slice(2)
+            return <span style={{ color: tema.textMuted, marginLeft: 6 }}>· nac. {dd}/{mm}/{yy}</span>
+          })()}
         </div>
 
         {/* Badge: reproductor reservado para apareamiento planificado */}
