@@ -31,7 +31,8 @@ function inicioSemana() {
   const day = d.getDay()
   const lunes = new Date(d)
   lunes.setDate(d.getDate() - day + (day === 0 ? -6 : 1))
-  return lunes.toISOString().split('T')[0]
+  // Formato local — toISOString() devuelve UTC y corre la fecha después de las 21:00 (ART)
+  return `${lunes.getFullYear()}-${String(lunes.getMonth() + 1).padStart(2, '0')}-${String(lunes.getDate()).padStart(2, '0')}`
 }
 
 export default function Reportes() {

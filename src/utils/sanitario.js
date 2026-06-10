@@ -1,3 +1,10 @@
+// Fecha de hoy YYYY-MM-DD en hora LOCAL (no usar toISOString: devuelve UTC).
+// Duplicado de hoy() en calculos.js — este módulo se mantiene sin imports.
+function hoyLocal() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 // ── Categorías y tipos de incidente ──────────────────────────────────────────
 
 export const CATEGORIAS = {
@@ -663,7 +670,7 @@ export function detectarCorrelaciones(temperaturas, incidentes, camadas, ventana
         nivel: 'alerta',
         fuerza: 'posible',
         evidencia: `${camadasActivas.length} camadas · ${muertes30.length} inc`,
-        fecha: new Date().toISOString().slice(0, 10),
+        fecha: hoyLocal(),
       })
     }
   }
@@ -928,7 +935,7 @@ export function generarAlertasSanitarias(incidentes, temperaturas, camadas, anim
 
 export function generarRecomendacionesHoy(incidentes, temperaturas, camadas, animales, bioterioId) {
   const recomendaciones = []
-  const hoy  = new Date().toISOString().slice(0, 10)
+  const hoy  = hoyLocal()
   const hace7 = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)
 
   const incBio   = bioterioId && bioterioId !== 'todos' ? incidentes.filter(i => i.bioterio_id === bioterioId) : incidentes
@@ -1510,7 +1517,7 @@ export function generarDecisionesHoy(
   saturacion = null
 ) {
   const decisiones = []
-  const hoy    = new Date().toISOString().slice(0, 10)
+  const hoy    = hoyLocal()
   const hace7  = new Date(Date.now() -  7 * 86400000).toISOString().slice(0, 10)
   const hace30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
   const hace90 = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)

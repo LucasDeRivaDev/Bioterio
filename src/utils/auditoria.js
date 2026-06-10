@@ -9,12 +9,16 @@ import { buildPedigree, estadisticasColonia } from './genealogia'
 // ── Presets de período ───────────────────────────────────────────────────────
 export function getPresetsPeriodo() {
   const hoy = new Date()
+  // Formato local YYYY-MM-DD — toISOString() devuelve UTC y corre la fecha después de las 21:00 (ART)
+  function fmtLocal(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
   function restarDias(n) {
     const d = new Date(hoy)
     d.setDate(d.getDate() - n)
-    return d.toISOString().split('T')[0]
+    return fmtLocal(d)
   }
-  const hoyStr = hoy.toISOString().split('T')[0]
+  const hoyStr = fmtLocal(hoy)
 
   return [
     {

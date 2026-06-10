@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useReducer, useState, useCallback
 import { supabase } from '../lib/supabase'
 import { generarId } from '../utils/storage'
 import { inicializarDB } from '../utils/db'
+import { hoy } from '../utils/calculos'
 import { useBioterioActivo } from './BioterioActivoContext'
 
 // ─── Reducer ─────────────────────────────────────────────────────────────────
@@ -766,7 +767,7 @@ export function BiotheriumProvider({ children }) {
       ...datos,
       id: generarId(),
       estado: 'pendiente',
-      created_at: new Date().toISOString().split('T')[0],
+      created_at: hoy(),
     }
     dispatch({ type: 'AGREGAR_PEDIDO', payload: nuevo })
     const { error } = await supabase.from('pedidos').insert(_pedidoToDb(nuevo))

@@ -30,9 +30,14 @@ export function formatFecha(fecha, opts = {}) {
   })
 }
 
-// Fecha de hoy sin hora (string YYYY-MM-DD)
+// Fecha de hoy sin hora (string YYYY-MM-DD) en hora LOCAL.
+// No usar toISOString(): devuelve UTC y después de las 21:00 (ART) salta al día siguiente.
 export function hoy() {
-  return new Date().toISOString().split('T')[0]
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${dd}`
 }
 
 // Convertir string YYYY-MM-DD a Date (mediodía para evitar offset)

@@ -11,6 +11,13 @@
 import { supabase } from '../lib/supabase'
 import { generarId } from './storage'
 
+// Fecha de hoy YYYY-MM-DD en hora LOCAL (no usar toISOString: devuelve UTC).
+// Duplicado de hoy() en calculos.js — no se importa para evitar import circular.
+function hoyLocal() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 // ── Caches en memoria ─────────────────────────────────────────────────────────
 
 /** @type {Map<string, object>}  animalId → { tipo, motivo, bioterioId, fecha } */
@@ -96,7 +103,7 @@ function planToDB(p, bioterioId) {
     bioterio_origen_macho:  p.macho?.bioterioOrigen  ?? p.bioterio_origen_macho  ?? null,
     bioterio_origen_hembra: p.hembra?.bioterioOrigen ?? p.bioterio_origen_hembra ?? null,
     completado:            p.completado ?? false,
-    created_at:            p.created_at ?? new Date().toISOString().slice(0, 10),
+    created_at:            p.created_at ?? hoyLocal(),
   }
 }
 
@@ -153,7 +160,7 @@ export async function reservarAnimal(animalId, tipo, motivo = '', bioterioId = '
     bioterio_id: bioterioId,
     tipo,
     motivo,
-    fecha: new Date().toISOString().slice(0, 10),
+    fecha: hoyLocal(),
   }
   const { error } = await supabase
     .from('reservas')
@@ -264,7 +271,7 @@ export async function eliminarNota(notaId, bioterioId) {
  * Reemplaza la función de calculos.js que leía de localStorage.
  */
 export function getAnimalesReservadosDB(bioterioActivo) {
-  const hoyStr = new Date().toISOString().slice(0, 10)
+  const hoyStr = hoyLocal()
   const mapa   = new Map()
   const planes = getPlanes(bioterioActivo)
   planes
@@ -280,7 +287,7 @@ export function getAnimalesReservadosDB(bioterioActivo) {
  * Retorna un Map<bloqueId, {fecha}> de jaulas de stock en planes activos futuros.
  */
 export function getJaulasReservadasDB(bioterioActivo) {
-  const hoyStr = new Date().toISOString().slice(0, 10)
+  const hoyStr = hoyLocal()
   const mapa   = new Map()
   const planes = getPlanes(bioterioActivo)
   planes
@@ -296,7 +303,7 @@ export function getJaulasReservadasDB(bioterioActivo) {
  * Retorna un Map de animales/jaulas de BAL/C o C57 reservados para F1.
  */
 export function getReservadosParaHibridosDB(bioterioId) {
-  const hoyStr = new Date().toISOString().slice(0, 10)
+  const hoyStr = hoyLocal()
   const mapa   = new Map()
   const planes = getPlanes('ratones_hibridos')
   planes

@@ -9,7 +9,7 @@ import { useBioterio }        from '../context/BiotheriumContext'
 import { useBioterioActivo }  from '../context/BioterioActivoContext'
 import { useTheme }           from '../context/ThemeContext'
 import { getBio }             from '../utils/constants'
-import { formatFecha }        from '../utils/calculos'
+import { formatFecha, hoy }   from '../utils/calculos'
 import {
   calcularParejasNecesarias, calcularFechasOptimas,
   seleccionarReproductoresOptimos, detectarAnimalesListos,
@@ -1348,7 +1348,7 @@ export default function Pedidos() {
   async function handleGuardar(form) {
     try {
       if (form.id) {
-        await editarPedido({ ...form, updated_at: new Date().toISOString().split('T')[0] })
+        await editarPedido({ ...form, updated_at: hoy() })
       } else {
         await agregarPedido(form)
       }
@@ -1368,7 +1368,7 @@ export default function Pedidos() {
   async function handleCambiarEstado(id, nuevoEstado) {
     const pedido = pedidos.find(p => p.id === id)
     if (!pedido) return
-    await editarPedido({ ...pedido, estado: nuevoEstado, updated_at: new Date().toISOString().split('T')[0] })
+    await editarPedido({ ...pedido, estado: nuevoEstado, updated_at: hoy() })
   }
 
   function handleReservarReproductores(pedido) {

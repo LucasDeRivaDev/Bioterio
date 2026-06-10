@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { generarId } from '../utils/storage'
 import { useTheme } from '../context/ThemeContext'
+import { hoy } from '../utils/calculos'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // IDs fijos en Supabase — independientes del bioterio activo
@@ -14,9 +15,9 @@ const RATONES_LEGACY    = ['ratones_balbc', 'ratones_c57', 'ratones_hibridos']
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function fechaHoy()  { return new Date().toISOString().split('T')[0] }
+function fechaHoy()  { return hoy() }
 function horaAhora() { return new Date().toTimeString().slice(0, 5) }
-function mesActual() { return new Date().toISOString().slice(0, 7) }
+function mesActual() { return hoy().slice(0, 7) }
 
 function labelMes(ym) {
   if (!ym) return ''

@@ -7,12 +7,16 @@ import sloganLight      from '../assets/iterate+sloganfondoclaro.png'
 import { useEffect, useState } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { supabase } from '../lib/supabase'
+import { hoy, parseDate, sumarDias } from '../utils/calculos'
 
 const GRUPOS_RATONES = ['ratones_balbc', 'ratones_c57', 'ratones_hibridos']
 
+// Fecha local de hace N días (YYYY-MM-DD) — parseDate usa T12:00, seguro ante offset UTC
+const haceDias = (n) => sumarDias(parseDate(hoy()), -n).toISOString().slice(0, 10)
+
 // ── Badge sanitario simplificado (sin camadas, solo incidentes) ───────────────
 function badgeSanitario(incidentes, bioterioId, tema) {
-  const hace90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  const hace90 = haceDias(90)
   const inc = incidentes.filter(i => i.bioterio_id === bioterioId && (i.fecha ?? '') >= hace90 && !i.resuelto)
   const graves    = inc.filter(i => i.severidad === 'grave').length
   const moderados = inc.filter(i => i.severidad === 'moderado').length
@@ -42,7 +46,7 @@ export default function SelectorBioterio() {
   }, [])
 
   useEffect(() => {
-    const hace90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    const hace90 = haceDias(90)
     supabase
       .from('incidentes')
       .select('bioterio_id, severidad, resuelto, fecha')
