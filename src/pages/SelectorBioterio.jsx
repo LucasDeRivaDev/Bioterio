@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { useBioterioActivo, BIOTERIOS_CONFIG } from '../context/BioterioActivoContext'
 import logoSloganDark   from '../assets/iterate+logo+slogan.png'
 import logoSloganLight  from '../assets/iterate+logo+sloganfondoclaro.png'
@@ -28,6 +29,7 @@ const CSS = `
 export default function SelectorBioterio() {
   const { setBioterioActivo } = useBioterioActivo()
   const { tema, modoBrillo } = useTheme()
+  const navigate = useNavigate()
   const [logoW, setLogoW] = useState(340)
   const [incidentesSalud, setIncidentesSalud] = useState([])
   const [abierto, setAbierto] = useState(null) // 'ratas' | 'ratones' | 'global'
@@ -67,6 +69,21 @@ export default function SelectorBioterio() {
     >
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
+      {/* Botón volver a landing */}
+      <button
+        onClick={() => navigate('/inicio')}
+        style={{
+          position: 'absolute', top: '1rem', left: '1rem',
+          display: 'flex', alignItems: 'center', gap: '0.4rem',
+          padding: '0.4rem 0.85rem', borderRadius: '0.6rem', cursor: 'pointer',
+          fontSize: '0.75rem', fontWeight: 600,
+          background: 'rgba(0,230,118,0.08)',
+          border: '1px solid rgba(0,230,118,0.25)',
+          color: '#00e676',
+        }}
+      >
+        ← Ver página de inicio
+      </button>
 
 {/* Logo + Título juntos */}
       <div className="flex flex-col items-center" style={{ gap: '16px' }}>
