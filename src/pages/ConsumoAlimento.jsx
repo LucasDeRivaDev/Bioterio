@@ -2032,7 +2032,7 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCo
   const inputSt = { background: tema.bgCard, border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: tema.bgCard, backdropFilter: 'blur(4px)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-md rounded-2xl overflow-hidden max-h-[92vh] overflow-y-auto"
         style={{ background: tema.bgCard, border: '1px solid rgba(167,139,250,0.3)', boxShadow: '0 0 60px rgba(167,139,250,0.12)' }}>
 
@@ -2340,7 +2340,7 @@ function ModalReposicion({ fechaInicial, horaInicial, onConfirmar, onCerrar }) {
   const inputSt = { background: tema.bgCard, border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: tema.bgCard, backdropFilter: 'blur(4px)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: tema.bgCard, border: '1px solid rgba(64,196,255,0.25)', boxShadow: '0 0 60px rgba(64,196,255,0.08)' }}>
 
         {/* Header */}
@@ -2538,7 +2538,7 @@ function ModalIngreso({ stockActualKg, onConfirmar, onCerrar }) {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: tema.bgCard, backdropFilter: 'blur(4px)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: tema.bgCard, border: '1px solid rgba(0,230,118,0.25)', boxShadow: '0 0 60px rgba(0,230,118,0.08)' }}>
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(0,230,118,0.12)', background: 'rgba(0,230,118,0.04)' }}>
           <div className="font-bold text-white text-sm">📦 Registrar ingreso de alimento</div>
@@ -2639,7 +2639,7 @@ function ModalEstimacionRapida({ stockEstimadoActual, onConfirmar, onCerrar }) {
   const inputSt = { background: tema.bgCard, border: '1px solid rgba(30,51,82,0.9)', color: tema.textPrimary, outline: 'none' }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: tema.bgCard, backdropFilter: 'blur(4px)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-sm rounded-2xl overflow-hidden"
         style={{ background: tema.bgCard, border: '1px solid rgba(64,196,255,0.25)', boxShadow: '0 0 60px rgba(64,196,255,0.1)' }}>
 
