@@ -38,9 +38,9 @@ Sistema web de gestión de una colonia de ratones de laboratorio (*Mus musculus*
 
 **Sistema de scores reproductivos (calculados en tiempo real, sin DB):**
 - Velocidad de reproducción: latencia **0–5d** → 10pts / 6–10d → 7pts / 11–15d → 5pts (latencia 0 = fecundación el mismo día del apareamiento, es score máximo)
-- Tamaño de camada: ≥10 → 10pts / 8–9 → 7pts / <8 → 5pts
-- Proporción sexual: más hembras → 10pts / igual → 7pts / más machos → 5pts
-- Supervivencia al destete: (destetados/nacidos) × 10, capeado a 10
+- Tamaño de camada: ≥10 → 10pts / 8–9 → 7pts / <8 → **0pts (CRÍTICO)**
+- Proporción sexual: igual → 10pts / más hembras → 8pts / más machos → 5pts
+- Supervivencia al destete: 100% → 10pts / 80–99% → 7pts / <80% → **0pts (CRÍTICO)**
 
 **Sistema de confiabilidad de hembras:**
 - Leve: 1 evento negativo (fallo o camada < 8)
@@ -212,6 +212,19 @@ extendidos
 - Tasa de éxito = `efectivos / (efectivos + fallidos)` — excluye "en curso" del denominador
 - Madres con solo fallos (sin parto exitoso) → calidad "Baja", no "En proceso"
 - Conteo de animales activos en sidebar y Dashboard: `activo | en_apareamiento | en_cria`
+- Criterio unificado de "preñadas" (`esCamadaPreniada` en calculos.js, usado por Dashboard y Sidebar): cópula sin parto/destete/fallo, y separada o ≥15d post-cópula
+
+**Fechas:**
+- `hoy()` en calculos.js usa getters locales (NO `toISOString()`, que devuelve UTC y corre la fecha después de las 21:00 ART). `db.js` y `sanitario.js` tienen un `hoyLocal()` duplicado para evitar imports circulares / mantener el módulo puro
+- Conversiones de fechas ya calculadas con `parseDate` (T12:00) + `sumarDias` pueden usar `toISOString()` sin riesgo
+
+**Tareas del Dashboard:**
+- Descartadas: por bioterio en LS (`appMosca_tareas_descartadas_{bioId}`), formato `{ [tareaId]: fechaDescarte }`, expiran a los 30 días (la tarea reaparece si sigue vigente). La key vieja global se migra automáticamente
+- IDs de edad de macho separados: `macho-edad-prox-*` (preventiva) y `macho-edad-limite-*` (crítica) — descartar una no oculta la otra
+- Preñez fantasma: tarea tipo `revision` (vencida) cuando hoy > partoMax + 3d sin `fecha_nacimiento` ni `failure_flag`
+
+**Entregas:**
+- Devolver con "mantener historial" marca la entrega `devuelta: true` — sigue visible en /entregas (badge ✓ Devuelta, sin botón Devolver) pero deja de descontar en todos los `stockCamada` (Stock, ConsumoViruta, ConsumoAlimento, ResumenRatones, Calendario, motorDecisiones)
 
 **Temperatura:**
 - Queries directas con IDs fijos: ratas = `'ratas'`; ratones = `IN ['ratones', 'ratones_balbc', 'ratones_c57', 'ratones_hibridos']`
@@ -222,7 +235,7 @@ extendidos
 - Límite de edad: 270d (9m). Alerta desde 240d (8m). Renovación cada 150d
 - `detectarBajaPerformanceMacho` requiere mínimo N+1 camadas. Retorna `null` sin lanzar error si no hay datos suficientes
 - Badges y alertas de acción ("sacrificar", "reemplazar") solo en `estado ∈ ['activo', 'en_apareamiento', 'en_cria']`
-- Recordatorio de renovación en localStorage (`appMosca_machos_reno_ts`). Botón ✓ lo reinicia
+- Recordatorio de renovación en Supabase tabla `configuracion`, clave por bioterio `machos_reno_ts_{bioterioActivo}` (fallback de lectura a la clave global vieja `machos_reno_ts`). Botón ✓ lo reinicia
 
 **Planes de apareamiento (localStorage):**
 - Key: `appMosca_apareamientos_{bioterioActivo}`. Creados desde Stock o Calendario
@@ -342,6 +355,26 @@ SQL completo para crear estas tablas está en `src/utils/sanitario.js` al final 
 ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS meta jsonb DEFAULT '{}';
 ```
 Necesario para que funcionen los campos: modalidad, soloVirgenes, cantidadPorTanda, frecuenciaDias, tandasTotal.
+
+**SQL pendiente para devolución de entregas (campo devuelta):**
+```sql
+ALTER TABLE entregas ADD COLUMN IF NOT EXISTS devuelta boolean DEFAULT false;
+```
+Necesario para que "Devolver al stock manteniendo historial" deje de descontar la entrega en stockCamada.
+
+**SQL pendiente para el formulario "Solicitar demo" de la landing (tabla contactos):**
+```sql
+CREATE TABLE IF NOT EXISTS contactos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  nombre text NOT NULL,
+  institucion text,
+  email text NOT NULL,
+  mensaje text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE contactos ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "insert publico" ON contactos FOR INSERT TO anon WITH CHECK (true);
+```
 
 ---
 
