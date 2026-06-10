@@ -25,6 +25,13 @@ const TASA_DEFAULT = 0.08
 
 const IDS_RATONES = ['ratones_balbc', 'ratones_c57', 'ratones_hibridos']
 
+const TODOS_BASE = [
+  { id: 'ratas',            especie: 'rata',  bio: BIO_RATAS,   label: 'Bioterio de Ratas',  icon: '🐀' },
+  { id: 'ratones_balbc',    especie: 'raton', bio: BIO_RATONES, label: 'Ratones Balb/C',     icon: '🐭' },
+  { id: 'ratones_c57',      especie: 'raton', bio: BIO_RATONES, label: 'Ratones C57',        icon: '🐭' },
+  { id: 'ratones_hibridos', especie: 'raton', bio: BIO_RATONES, label: 'Ratones Híbridos',   icon: '🐭' },
+]
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function edadDias(fn) {
@@ -350,12 +357,13 @@ async function migrarDesdeLocalStorage() {
 
 export default function ConsumoViruta() {
   const { tema, modoBrillo } = useTheme()
-  const TODOS = [
-    { id: 'ratas',            especie: 'rata',  bio: BIO_RATAS,   color: tema.accent, label: 'Bioterio de Ratas',  icon: '🐀' },
-    { id: 'ratones_balbc',    especie: 'raton', bio: BIO_RATONES, color: tema.blue,   label: 'Ratones Balb/C',     icon: '🐭' },
-    { id: 'ratones_c57',      especie: 'raton', bio: BIO_RATONES, color: '#a78bfa',   label: 'Ratones C57',        icon: '🐭' },
-    { id: 'ratones_hibridos', especie: 'raton', bio: BIO_RATONES, color: tema.amber,  label: 'Ratones Híbridos',   icon: '🐭' },
-  ]
+  const coloresBioterio = {
+    ratas:            tema.accent,
+    ratones_balbc:    tema.blue,
+    ratones_c57:      '#a78bfa',
+    ratones_hibridos: tema.amber,
+  }
+  const TODOS = TODOS_BASE.map(t => ({ ...t, color: coloresBioterio[t.id] }))
   const { limpiarBioterio } = useBioterioActivo()
 
   const [datos,          setDatos]          = useState(null)
@@ -1693,7 +1701,7 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
                 <div className="space-y-1 pt-1">
                   <div className="text-xs font-mono mb-1.5" style={{ color: tema.textMuted }}>Bioterios con cambio:</div>
                   <div className="grid grid-cols-2 gap-1.5">
-                    {TODOS.map(({ id, label, icon }) => (
+                    {TODOS_BASE.map(({ id, label, icon }) => (
                       <label key={id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer"
                         style={{
                           background: bioAfect.includes(id) ? 'rgba(64,196,255,0.1)' : 'rgba(255,255,255,0.03)',
@@ -1793,6 +1801,7 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
 // ── Modal: Confirmar cambio de cama ───────────────────────────────────────────
 
 function ModalConfirmarCambio({ censo, onConfirmar, onCerrar }) {
+  const { tema } = useTheme()
   const [tipo,     setTipo]     = useState(censo.cambioCama?.tipo ?? null)
   const [bioAfect, setBioAfect] = useState(censo.cambioCama?.bioteriosAfectados ?? [])
 
@@ -1849,7 +1858,7 @@ function ModalConfirmarCambio({ censo, onConfirmar, onCerrar }) {
             <div className="space-y-1.5">
               <div className="text-xs font-mono" style={{ color: tema.textMuted }}>Bioterios con cambio:</div>
               <div className="grid grid-cols-2 gap-1.5">
-                {TODOS.map(({ id, label, icon }) => (
+                {TODOS_BASE.map(({ id, label, icon }) => (
                   <label key={id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer"
                     style={{
                       background: bioAfect.includes(id) ? 'rgba(64,196,255,0.1)' : 'rgba(255,255,255,0.03)',
@@ -1907,6 +1916,7 @@ function ModalConfirmarCambio({ censo, onConfirmar, onCerrar }) {
 // ── Modal: Registrar compra ───────────────────────────────────────────────────
 
 function ModalCompra({ stockActual, onConfirmar, onCerrar }) {
+  const { tema } = useTheme()
   const [fecha,  setFecha]  = useState(hoy())
   const [bolsas, setBolsas] = useState('')
   const [error,  setError]  = useState('')

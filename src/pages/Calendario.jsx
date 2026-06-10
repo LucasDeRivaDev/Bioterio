@@ -1024,6 +1024,7 @@ function ModalPlanificarApareamiento({
 // ── Modal de nota / recordatorio ─────────────────────────────────────────────
 
 function ModalNota({ fecha, onGuardar, onCerrar }) {
+  const { tema } = useTheme()
   const [titulo,      setTitulo]      = useState('')
   const [descripcion, setDescripcion] = useState('')
 

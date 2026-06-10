@@ -297,6 +297,7 @@ function ScoreVal({ label, value }) {
 }
 
 function PerfilRow({ label, color, scores }) {
+  const { tema } = useTheme()
   return (
     <div className="rounded-xl p-3 space-y-2" style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.5)' }}>
       <div className="text-xs font-bold uppercase tracking-widest" style={{ color }}>{label}</div>
