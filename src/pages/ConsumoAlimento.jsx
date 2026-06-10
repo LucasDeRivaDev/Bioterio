@@ -1956,6 +1956,12 @@ function FilaCategoria({ label, dato, tasaMin, tasaMax, color }) {
 
 function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onConfirmarReposicion, onCerrar }) {
   const { tema } = useTheme()
+  const OPCIONES_BIOTERIOS = [
+    { id: 'ratas',            label: 'Ratas',    color: tema.accent },
+    { id: 'ratones_balbc',    label: 'BAL/C',    color: tema.blue },
+    { id: 'ratones_c57',      label: 'C57',      color: '#a78bfa' },
+    { id: 'ratones_hibridos', label: 'Híbridos', color: tema.amber },
+  ]
   const horaActual = () => {
     const d = new Date()
     return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
@@ -2298,6 +2304,13 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCo
 }
 
 function ModalReposicion({ fechaInicial, horaInicial, onConfirmar, onCerrar }) {
+  const { tema } = useTheme()
+  const OPCIONES_BIOTERIOS = [
+    { id: 'ratas',            label: 'Ratas',    color: tema.accent },
+    { id: 'ratones_balbc',    label: 'BAL/C',    color: tema.blue },
+    { id: 'ratones_c57',      label: 'C57',      color: '#a78bfa' },
+    { id: 'ratones_hibridos', label: 'Híbridos', color: tema.amber },
+  ]
   const [fecha,      setFecha]      = useState(fechaInicial ?? hoy())
   const [hora,       setHora]       = useState(() => {
     if (horaInicial) return horaInicial
