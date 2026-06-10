@@ -253,6 +253,17 @@ export function calcularRendimientoMacho(machoId, camadas) {
   }
 }
 
+/**
+ * Criterio unificado de "preñada" (usado por Dashboard y Sidebar):
+ * cópula registrada, sin parto/destete/fallo, y separada o ≥15d post-cópula.
+ */
+export function esCamadaPreniada(camada, hoyDate = parseDate(hoy()), bio = BIO) {
+  if (camada.fecha_nacimiento || camada.fecha_destete || camada.failure_flag) return false
+  if (!camada.fecha_copula) return false
+  if (camada.fecha_separacion) return true
+  return difDias(parseDate(camada.fecha_copula), hoyDate) >= bio.DURACION_APAREAMIENTO_DIAS
+}
+
 // ─── TAREAS DEL DÍA ──────────────────────────────────────────────────────────
 
 /**
@@ -299,6 +310,19 @@ export function generarTareas(camadas, animales, bio = BIO) {
           const { partoMin, partoMax, partoProbable } = rango
           const diasHastaMin = difDias(hoyDate, partoMin)
           const diasHastaMax = difDias(hoyDate, partoMax)
+
+          // Preñez fantasma: pasó la ventana de parto (+3 días) sin nacimiento ni fallo registrado
+          if (diasHastaMax < -3 && !camada.failure_flag) {
+            tareas.push({
+              id: `revision-prenez-${camada.id}`,
+              tipo: 'revision',
+              prioridad: 'vencida',
+              fecha: partoMax.toISOString().split('T')[0],
+              descripcion: `Preñez sin resultado — ${nombreMadre} × ${nombrePadre}`,
+              detalle: `La ventana de parto venció el ${formatFecha(partoMax)} sin nacimiento registrado. Registrar el parto o marcar el fallo reproductivo en la camada.`,
+              camadaId: camada.id,
+            })
+          }
 
           // Si estamos en la ventana de parto (desde partoMin hasta partoMax + 2 días)
           if (diasHastaMin <= 2 && diasHastaMax >= -2) {
@@ -443,7 +467,8 @@ export function generarTareas(camadas, animales, bio = BIO) {
       if (edadDias >= MACHO_EDAD_LIMITE_DIAS) {
         const meses = Math.floor(edadDias / 30.44)
         tareas.push({
-          id: `macho-edad-${macho.id}`,
+          // ID distinto al del aviso preventivo: descartar "próximo al límite" no debe ocultar esta alerta
+          id: `macho-edad-limite-${macho.id}`,
           tipo: 'evaluar_macho',
           prioridad: 'vencida',
           fecha: fechaLimite,
@@ -453,7 +478,7 @@ export function generarTareas(camadas, animales, bio = BIO) {
         })
       } else if (diasHastaLimite <= 7) {
         tareas.push({
-          id: `macho-edad-${macho.id}`,
+          id: `macho-edad-prox-${macho.id}`,
           tipo: 'evaluar_macho',
           prioridad: diasHastaLimite === 0 ? 'hoy' : 'proxima',
           fecha: fechaLimite,
@@ -490,7 +515,7 @@ export function scoreTamanoCamada(totalCrias) {
 
 /**
  * Score por proporción sexual.
- * Más hembras → 10 | Igual → 7 | Más machos → 5
+ * Igual → 10 | Más hembras → 8 | Más machos → 5
  */
 export function scoreProporcionSexual(machos, hembras) {
   if (machos == null || hembras == null) return null
@@ -718,60 +743,6 @@ export function generarEventosCalendario(camadas, animales, bio = BIO) {
   })
 
   return eventos
-}
-
-// Ciclo estral y gestión
-const ESTADOS_CICLO = ['L1', 'L2', 'L3', 'O', 'E']
-const DURACION_CICLO = 4
-
-export function getEstadoCicloActual(animalId, extendidos) {
-  if (!extendidos?.length) return null
-  const del = extendidos.filter(e => e.animal_id === animalId).sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''))
-  return del[0]?.estado_ciclo || null
-}
-
-export function getHistorialCiclos(animalId, extendidos) {
-  if (!extendidos?.length) return []
-  return extendidos.filter(e => e.animal_id === animalId).sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''))
-}
-
-export function predecirProximaReceptividad(animalId, extendidos) {
-  const del = getHistorialCiclos(animalId, extendidos)
-  if (!del.length) return null
-  const ult = del.find(e => e.estado_ciclo === 'O')
-  if (!ult) return null
-  return sumarDias(ult.fecha, DURACION_CICLO)
-}
-
-export function getProbabilidadReceptividad(animalId, extendidos) {
-  const del = extendidos?.filter(e => e.animal_id === animalId) || []
-  if (!del.length) return { probabilidad: 0, razon: 'Sin datos' }
-  const est = getEstadoCicloActual(animalId, extendidos)
-  if (est === 'O') return { probabilidad: 100, razon: 'En celo' }
-  if (est === 'E') return { probabilidad: 0, razon: 'Post-servicio' }
-  return { probabilidad: 30, razon: est || 'Desconocido' }
-}
-
-export function getDiaGestacional(animal) {
-  if (!animal.preanada || !animal.fecha_copula) return 0
-  return Math.max(0, difDias(animal.fecha_copula, hoy()))
-}
-
-export function getAlertasGestacion(animal) {
-  const alerts = []
-  if (!animal.preanada) return alerts
-  const dia = getDiaGestacional(animal)
-  if (dia === 18) alerts.push({ tipo: 'info', mensaje: 'Día 18 de gestación' })
-  if (dia === 21) alerts.push({ tipo: 'warning', mensaje: 'Día 21 - parto pronto' })
-  const resto = BIO.GESTACION_DIAS - dia
-  if (resto === 5) alerts.push({ tipo: 'info', mensaje: `Parto en ${resto} días` })
-  if (resto <= 0) alerts.push({ tipo: 'error', mensaje: 'Parto vencido' })
-  return alerts
-}
-
-export function getFechaPartoEsperado(fechaCopula) {
-  if (!fechaCopula) return null
-  return sumarDias(parseDate(fechaCopula), BIO.GESTACION_DIAS)
 }
 
 // ─── CONTROL DE MACHOS ───────────────────────────────────────────────────────

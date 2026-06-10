@@ -61,6 +61,7 @@ function reducer(estado, accion) {
       lista.sort((a, b) => (a.fecha ?? '').localeCompare(b.fecha ?? ''))
       return { ...estado, entregas: lista }
     }
+    case 'EDITAR_ENTREGA':   return { ...estado, entregas: estado.entregas.map((e) => e.id === accion.payload.id ? accion.payload : e) }
     case 'ELIMINAR_ENTREGA': return { ...estado, entregas: estado.entregas.filter((e) => e.id !== accion.payload) }
 
     case 'AGREGAR_JAULA':   return { ...estado, jaulas: [...estado.jaulas, accion.payload] }
@@ -69,7 +70,6 @@ function reducer(estado, accion) {
 
     case 'AGREGAR_TEMPERATURA':          return { ...estado, temperaturas: [...estado.temperaturas, accion.payload] }
     case 'ELIMINAR_TEMPERATURA':         return { ...estado, temperaturas: estado.temperaturas.filter((t) => t.id !== accion.payload) }
-    case 'ELIMINAR_TEMPERATURAS_MES':    return { ...estado, temperaturas: estado.temperaturas.filter((t) => !(t.date?.startsWith(accion.payload))) }
 
     case 'AGREGAR_INCIDENTE': {
       const lista = [...estado.incidentes, accion.payload]
@@ -198,6 +198,7 @@ export function BiotheriumProvider({ children }) {
       temperature_logs: () => supabase.from('temperature_logs').select('*').eq('bioterio_id', bioterioActivo).order('date', { ascending: false }).order('time', { ascending: false }),
       incidentes:       () => supabase.from('incidentes').select('*').order('fecha', { ascending: false }).order('created_at', { ascending: false }),
       extendidos:       () => supabase.from('extendidos').select('*').eq('bioterio_id', bioterioActivo).order('fecha', { ascending: true }),
+      pedidos:          () => supabase.from('pedidos').select('*').order('created_at', { ascending: false }),
     }
     const acciones = {
       animales:         'SET_ANIMALES',
@@ -208,12 +209,13 @@ export function BiotheriumProvider({ children }) {
       temperature_logs: 'SET_TEMPERATURAS',
       incidentes:       'SET_INCIDENTES',
       extendidos:       'SET_EXTENDIDOS',
+      pedidos:          'SET_PEDIDOS',
     }
     const query  = consultas[tabla]
     const accion = acciones[tabla]
     if (!query || !accion) return
     const { data } = await query()
-    if (data) dispatch({ type: accion, payload: data })
+    if (data) dispatch({ type: accion, payload: tabla === 'pedidos' ? data.map(_pedidoFromDb) : data })
   }, [bioterioActivo])
 
   useEffect(() => {
@@ -227,8 +229,10 @@ export function BiotheriumProvider({ children }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sacrificios',      filter: `bioterio_id=eq.${bioterioActivo}` }, () => recargarTabla('sacrificios'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'entregas',         filter: `bioterio_id=eq.${bioterioActivo}` }, () => recargarTabla('entregas'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'temperature_logs', filter: `bioterio_id=eq.${bioterioActivo}` }, () => recargarTabla('temperature_logs'))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'incidentes',       filter: `bioterio_id=eq.${bioterioActivo}` }, () => recargarTabla('incidentes'))
+      // incidentes y pedidos se cargan globales (todas las colonias) — el canal no filtra por bioterio
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'incidentes' }, () => recargarTabla('incidentes'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'extendidos',       filter: `bioterio_id=eq.${bioterioActivo}` }, () => recargarTabla('extendidos'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, () => recargarTabla('pedidos'))
       .subscribe()
 
     return () => { supabase.removeChannel(ch) }
@@ -585,7 +589,8 @@ export function BiotheriumProvider({ children }) {
   }
 
   // Devolver entrega al stock
-  // mantenerHistorial = true → restaura stock pero NO borra la entrega
+  // mantenerHistorial = true → restaura stock y marca la entrega como devuelta
+  //   (queda visible en el historial pero deja de descontar en stockCamada)
   // mantenerHistorial = false → restaura stock Y borra la entrega del historial
   async function devolverEntrega(entrega, mantenerHistorial) {
     if (entrega.camada_id) {
@@ -614,6 +619,10 @@ export function BiotheriumProvider({ children }) {
       dispatch({ type: 'ELIMINAR_ENTREGA', payload: entrega.id })
       const { error } = await supabase.from('entregas').delete().eq('id', entrega.id)
       if (error) console.error('Error al eliminar entrega del historial:', error)
+    } else {
+      dispatch({ type: 'EDITAR_ENTREGA', payload: { ...entrega, devuelta: true } })
+      const { error } = await supabase.from('entregas').update({ devuelta: true }).eq('id', entrega.id)
+      if (error) console.error('Error al marcar entrega como devuelta:', error)
     }
   }
 
@@ -696,19 +705,6 @@ export function BiotheriumProvider({ children }) {
       console.error('Error al eliminar extendido:', error)
       if (respaldo) dispatch({ type: 'AGREGAR_EXTENDIDO', payload: respaldo })
     }
-  }
-
-  async function eliminarTemperaturasMes(yearMonth) {
-    // yearMonth formato: "2026-04"
-    dispatch({ type: 'ELIMINAR_TEMPERATURAS_MES', payload: yearMonth })
-    const desde = `${yearMonth}-01`
-    const hasta = `${yearMonth}-31`
-    const { error } = await supabase
-      .from('temperature_logs')
-      .delete()
-      .gte('date', desde)
-      .lte('date', hasta)
-    if (error) console.error('Error al eliminar temperaturas del mes:', error)
   }
 
   // ── PEDIDOS ────────────────────────────────────────────────────────────────
@@ -851,7 +847,7 @@ export function BiotheriumProvider({ children }) {
       registrarSacrificio, eliminarSacrificio, eliminarSacrificioReproductor,
       registrarEntrega, entregarReproductor, devolverEntrega,
       agregarJaula, editarJaula, eliminarJaula,
-      agregarTemperatura, eliminarTemperaturasMes,
+      agregarTemperatura,
       agregarIncidente, editarIncidente, eliminarIncidente,
       agregarExtendido, editarExtendido, eliminarExtendido,
       agregarPedido, editarPedido, eliminarPedido,

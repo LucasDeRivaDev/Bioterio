@@ -150,7 +150,15 @@ export default function Entregas() {
                   )}
                 </div>
 
-                {/* Botón devolver */}
+                {/* Botón devolver / badge devuelta */}
+                {e.devuelta ? (
+                  <span
+                    className="px-3 py-1 rounded-lg text-xs font-semibold"
+                    style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.3)', color: tema.accent }}
+                  >
+                    ✓ Devuelta
+                  </span>
+                ) : (
                 <div className="relative" onClick={(ev) => ev.stopPropagation()}>
                   <button
                     disabled={estaEnProceso}
@@ -203,6 +211,7 @@ export default function Entregas() {
                     </div>
                   )}
                 </div>
+                )}
               </div>
             )
           })}

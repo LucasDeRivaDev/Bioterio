@@ -93,7 +93,7 @@ export function calcularStockReal(animales, camadas, jaulas, sacrificios, entreg
   }
   const entregasPorCamada = {}
   for (const e of entregas) {
-    if (e.camada_id) {
+    if (e.camada_id && !e.devuelta) {
       entregasPorCamada[e.camada_id] = (entregasPorCamada[e.camada_id] || 0) + (e.cantidad || 0)
     }
   }

@@ -31,6 +31,14 @@ let _notas = new Map()
 
 let _inicializado = false
 
+// Promesa que se resuelve cuando el cache está cargado por primera vez.
+// Los consumidores (Dashboard, Calendario) esperan dbReady() antes de leer
+// getPlanes()/getNotas() para evitar leer el cache vacío en el primer load.
+let _resolveReady
+const _ready = new Promise((resolve) => { _resolveReady = resolve })
+
+export function dbReady() { return _ready }
+
 // ── Inicialización (cargar desde Supabase) ────────────────────────────────────
 
 /**
@@ -79,6 +87,8 @@ export async function inicializarDB() {
     _inicializado = true
   } catch (err) {
     console.error('[db] Error inicializando desde Supabase:', err)
+  } finally {
+    _resolveReady()
   }
 }
 

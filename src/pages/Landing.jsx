@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 import { useTheme } from '../context/ThemeContext'
 import ITeRatELogo from '../components/ITeRatELogo'
 import iterateLogoOriginal  from '../assets/logoiterate.png'
@@ -112,20 +113,50 @@ export default function Landing() {
     return () => { document.title = prev }
   }, [])
 
-  function handleSubmit(e) {
+  // Guarda la solicitud de demo en la tabla `contactos` de Supabase.
+  // SQL necesaria (ver CLAUDE.md — SQL pendiente):
+  //   CREATE TABLE IF NOT EXISTS contactos (
+  //     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  //     nombre text NOT NULL,
+  //     institucion text,
+  //     email text NOT NULL,
+  //     mensaje text,
+  //     created_at timestamptz NOT NULL DEFAULT now()
+  //   );
+  //   ALTER TABLE contactos ENABLE ROW LEVEL SECURITY;
+  //   CREATE POLICY "insert publico" ON contactos FOR INSERT TO anon WITH CHECK (true);
+  async function handleSubmit(e) {
     e.preventDefault()
+    const form = e.currentTarget
     const btn = document.getElementById('submitBtn')
     const msg = document.getElementById('formMsg')
+    const datos = {
+      nombre:      form.nombre.value.trim(),
+      institucion: form.institucion.value.trim() || null,
+      email:       form.email.value.trim(),
+      mensaje:     form.mensaje.value.trim() || null,
+    }
     btn.textContent = 'Enviando...'
     btn.style.opacity = '0.6'
-    setTimeout(() => {
-      msg.style.display = 'block'
+    btn.disabled = true
+    const { error } = await supabase.from('contactos').insert(datos)
+    msg.style.display = 'block'
+    if (error) {
+      console.error('Error al enviar solicitud de demo:', error)
+      msg.style.background = 'rgba(255,61,87,0.08)'
+      msg.style.border = '1px solid rgba(255,61,87,0.3)'
+      msg.style.color = '#ff3d57'
+      msg.textContent = '✗ No se pudo enviar el mensaje. Probá de nuevo o escribinos por email.'
+      btn.textContent = 'Solicitar demo gratuito →'
+      btn.style.opacity = '1'
+      btn.disabled = false
+    } else {
       msg.style.background = 'rgba(0,0,0,0.05)'
       msg.style.border = '1px solid rgba(0,0,0,0.15)'
       msg.style.color = 'inherit'
       msg.textContent = '✓ ¡Mensaje recibido! Te contactamos a la brevedad.'
       btn.style.display = 'none'
-    }, 800)
+    }
   }
 
   function scrollTo(id) {

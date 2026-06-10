@@ -10,6 +10,7 @@ import {
 import iterateNavLogo      from '../assets/logoiterate.png'
 import iterateNavLogoLight from '../assets/logoiteratefondoclaro.png'
 import { useTheme } from '../context/ThemeContext'
+import { esCamadaPreniada, parseDate, hoy } from '../utils/calculos'
 
 const LINK_INICIO   = { to: '/inicio', label: 'Inicio',       icon: <Home size={15} /> }
 const LINK_DASHBOARD = { to: '/',      label: 'Panel de hoy', icon: <LayoutDashboard size={15} /> }
@@ -269,7 +270,8 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
 
   const hembrasActivas = animales.filter((a) => a.sexo === 'hembra' && (a.estado === 'activo' || a.estado === 'en_apareamiento' || a.estado === 'en_cria')).length
   const machosActivos  = animales.filter((a) => a.sexo === 'macho'  && (a.estado === 'activo' || a.estado === 'en_apareamiento' || a.estado === 'en_cria')).length
-  const prenadas       = camadas.filter((c) => c.fecha_copula && !c.fecha_nacimiento && !c.failure_flag).length
+  const hoyDate        = parseDate(hoy())
+  const prenadas       = camadas.filter((c) => esCamadaPreniada(c, hoyDate, bio)).length
 
   return (
     <aside

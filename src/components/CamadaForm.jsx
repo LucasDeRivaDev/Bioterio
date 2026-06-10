@@ -244,6 +244,20 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
       }
     }
 
+    // Coherencia de cantidades: machos + hembras no puede superar el total de crías
+    if (form.total_crias !== '' && form.crias_machos !== '' && form.crias_hembras !== '') {
+      const suma = Number(form.crias_machos) + Number(form.crias_hembras)
+      if (suma > Number(form.total_crias)) {
+        nuevos.total_crias = `Machos (${form.crias_machos}) + hembras (${form.crias_hembras}) = ${suma} supera el total de crías (${form.total_crias}).`
+      }
+    }
+    // Coherencia de cantidades: no se pueden destetar más crías de las que nacieron
+    if (form.total_destetados !== '' && form.total_crias !== '' && !nuevos.total_crias) {
+      if (Number(form.total_destetados) > Number(form.total_crias)) {
+        nuevos.total_destetados = `Los destetados (${form.total_destetados}) no pueden superar el total de crías nacidas (${form.total_crias}).`
+      }
+    }
+
     // Consanguinidad directa sin confirmación
     if (consanguinidad && !confirmarConsanguinidad) {
       nuevos._consanguinidad = 'Confirmá el apareamiento consanguíneo antes de guardar'
@@ -692,11 +706,14 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
                   onChange={(e) => cambiar(campo, e.target.value)}
                   min={0}
                   className="w-full px-3 py-2.5 text-sm focus:outline-none font-mono"
-                  style={inputStyle}
+                  style={{ ...inputStyle, borderColor: errores.total_crias ? 'rgba(255,61,87,0.5)' : undefined }}
                 />
               </LabInput>
             ))}
           </div>
+          {errores.total_crias && (
+            <p className="text-xs" style={{ color: tema.red }}>{errores.total_crias}</p>
+          )}
 
           {fechaDestetePred && (
             <div
@@ -710,14 +727,14 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            <LabInput label="Destetados">
+            <LabInput label="Destetados" error={errores.total_destetados}>
               <input
                 type="number"
                 value={form.total_destetados}
                 onChange={(e) => cambiar('total_destetados', e.target.value)}
                 min={0}
                 className="w-full px-3 py-2.5 text-sm focus:outline-none font-mono"
-                style={inputStyle}
+                style={{ ...inputStyle, borderColor: errores.total_destetados ? 'rgba(255,61,87,0.5)' : undefined }}
               />
             </LabInput>
             <LabInput label="Fecha destete real" error={errores.fecha_destete}>

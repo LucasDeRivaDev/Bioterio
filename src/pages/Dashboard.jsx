@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useBioterio } from '../context/BiotheriumContext'
-import { generarTareas, formatFecha, calcularRangoParto, difDias, parseDate, hoy, generarAlertasEstrales, generarAlertasMachos, generarIdentificadorCamada } from '../utils/calculos'
+import { generarTareas, formatFecha, calcularRangoParto, difDias, parseDate, hoy, generarAlertasEstrales, generarAlertasMachos, generarIdentificadorCamada, esCamadaPreniada } from '../utils/calculos'
 import { INTERVALO_RENOVACION_DIAS } from '../utils/constants'
-import { getPlanes, completarPlan as completarPlanDB, eliminarPlan, getNotas, actualizarNota, eliminarNota as eliminarNotaDB } from '../utils/db'
+import { getPlanes, completarPlan as completarPlanDB, eliminarPlan, getNotas, actualizarNota, eliminarNota as eliminarNotaDB, dbReady } from '../utils/db'
 import { supabase } from '../lib/supabase'
 import Badge from '../components/Badge'
 import {
@@ -223,20 +223,47 @@ function StatCard({ valor, label, icono, color }) {
 // helpers LS eliminados — ahora usa db.js
 
 // ── Tareas descartadas ────────────────────────────────────────────────────────
+// Por bioterio y con expiración: una tarea descartada reaparece a los 30 días si sigue vigente.
+// Formato nuevo: { [tareaId]: 'YYYY-MM-DD' } en appMosca_tareas_descartadas_{bioterioId}
 
-// Clave de localStorage para las tareas descartadas (permanente)
-const LS_KEY = 'appMosca_tareas_descartadas'
+const LS_KEY_DESCARTADAS = 'appMosca_tareas_descartadas'
+const DESCARTE_EXPIRA_DIAS = 30
+const BIOTERIOS_DESCARTE = ['ratas', 'ratones_balbc', 'ratones_c57', 'ratones_hibridos']
 
-// Renovación de machos — en Supabase para sincronizar entre usuarios
+function keyDescartadas(bioterioId) { return `${LS_KEY_DESCARTADAS}_${bioterioId}` }
 
-function cargarDescartadas() {
+// Migra la key vieja global (array de ids sin fecha) a las keys por bioterio,
+// asignando fecha de hoy para que expiren a los 30 días.
+function migrarDescartadasViejas() {
   try {
-    const raw = JSON.parse(localStorage.getItem(LS_KEY) || '[]')
-    // Soporte formato viejo { fecha, ids } → migrar a array simple
-    if (Array.isArray(raw)) return new Set(raw)
-    if (Array.isArray(raw.ids)) return new Set(raw.ids)
+    const viejo = JSON.parse(localStorage.getItem(LS_KEY_DESCARTADAS) || 'null')
+    const ids = Array.isArray(viejo) ? viejo : Array.isArray(viejo?.ids) ? viejo.ids : []
+    if (ids.length) {
+      const hoyStr = hoy()
+      BIOTERIOS_DESCARTE.forEach((bioId) => {
+        let mapa = {}
+        try { mapa = JSON.parse(localStorage.getItem(keyDescartadas(bioId)) || '{}') } catch {}
+        ids.forEach((id) => { if (!(id in mapa)) mapa[id] = hoyStr })
+        localStorage.setItem(keyDescartadas(bioId), JSON.stringify(mapa))
+      })
+    }
+    localStorage.removeItem(LS_KEY_DESCARTADAS)
   } catch {}
-  return new Set()
+}
+
+function cargarDescartadas(bioterioId) {
+  migrarDescartadasViejas()
+  const hoyDate = parseDate(hoy())
+  let mapa = {}
+  try { mapa = JSON.parse(localStorage.getItem(keyDescartadas(bioterioId)) || '{}') } catch {}
+  const vigentes = {}
+  Object.entries(mapa).forEach(([id, fecha]) => {
+    if (difDias(parseDate(fecha), hoyDate) < DESCARTE_EXPIRA_DIAS) vigentes[id] = fecha
+  })
+  if (Object.keys(vigentes).length !== Object.keys(mapa).length) {
+    localStorage.setItem(keyDescartadas(bioterioId), JSON.stringify(vigentes))
+  }
+  return vigentes
 }
 
 export default function Dashboard() {
@@ -245,14 +272,17 @@ export default function Dashboard() {
   // En Híbridos los progenitores viven en animalesExportados — buscar en ambos
   const todosAnimales = useMemo(() => [...animales, ...animalesExportados], [animales, animalesExportados])
 
-  // IDs de tareas descartadas por el usuario hoy (se resetean el día siguiente)
-  const [descartadas, setDescartadas] = useState(() => cargarDescartadas())
+  // Tareas descartadas del bioterio activo: { [tareaId]: fechaDescarte }
+  const [descartadas, setDescartadas] = useState({})
+
+  useEffect(() => {
+    if (bioterioActivo) setDescartadas(cargarDescartadas(bioterioActivo))
+  }, [bioterioActivo])
 
   function descartarTarea(id) {
     setDescartadas((prev) => {
-      const nuevo = new Set(prev)
-      nuevo.add(id)
-      localStorage.setItem(LS_KEY, JSON.stringify([...nuevo]))
+      const nuevo = { ...prev, [id]: hoy() }
+      localStorage.setItem(keyDescartadas(bioterioActivo), JSON.stringify(nuevo))
       return nuevo
     })
   }
@@ -260,31 +290,40 @@ export default function Dashboard() {
   const [mostrarRenovacion, setMostrarRenovacion] = useState(false)
 
   useEffect(() => {
+    if (!bioterioActivo) return
     async function cargarRenovacion() {
+      // Clave por bioterio, con fallback a la clave global vieja
       const { data } = await supabase
         .from('configuracion')
-        .select('valor')
-        .eq('clave', 'machos_reno_ts')
-        .maybeSingle()
-      const last = data?.valor?.fecha ?? null
+        .select('clave, valor')
+        .in('clave', [`machos_reno_ts_${bioterioActivo}`, 'machos_reno_ts'])
+      const porBio  = data?.find((d) => d.clave === `machos_reno_ts_${bioterioActivo}`)
+      const global  = data?.find((d) => d.clave === 'machos_reno_ts')
+      const last = porBio?.valor?.fecha ?? global?.valor?.fecha ?? null
       if (!last) { setMostrarRenovacion(true); return }
       setMostrarRenovacion(difDias(parseDate(last), parseDate(hoy())) >= INTERVALO_RENOVACION_DIAS)
     }
     cargarRenovacion()
-  }, [])
+  }, [bioterioActivo])
 
   // ── Planes de apareamiento ────────────────────────────────────────────────
   const [planesApareamiento, setPlanesApareamiento] = useState([])
 
   useEffect(() => {
-    if (bioterioActivo) setPlanesApareamiento(getPlanes(bioterioActivo))
+    if (!bioterioActivo) return
+    let cancelado = false
+    dbReady().then(() => { if (!cancelado) setPlanesApareamiento(getPlanes(bioterioActivo)) })
+    return () => { cancelado = true }
   }, [bioterioActivo])
 
   // ── Notas / recordatorios ─────────────────────────────────────────────────
   const [notasDash, setNotasDash] = useState([])
 
   useEffect(() => {
-    if (bioterioActivo) setNotasDash(getNotas(bioterioActivo))
+    if (!bioterioActivo) return
+    let cancelado = false
+    dbReady().then(() => { if (!cancelado) setNotasDash(getNotas(bioterioActivo)) })
+    return () => { cancelado = true }
   }, [bioterioActivo])
 
   const alertasApareamiento = useMemo(() => {
@@ -334,7 +373,7 @@ export default function Dashboard() {
   async function descartarRenovacion() {
     setMostrarRenovacion(false)
     await supabase.from('configuracion').upsert(
-      { clave: 'machos_reno_ts', valor: { fecha: hoy() }, updated_at: new Date().toISOString() },
+      { clave: `machos_reno_ts_${bioterioActivo}`, valor: { fecha: hoy() }, updated_at: new Date().toISOString() },
       { onConflict: 'clave' }
     )
   }
@@ -368,7 +407,7 @@ export default function Dashboard() {
       .filter(Boolean)
   }, [bioterioActivo, camadas, animalesExportados])
 
-  const tareas   = [...todasTareas, ...tareasF1].filter((t) => !descartadas.has(t.id))
+  const tareas   = [...todasTareas, ...tareasF1].filter((t) => !(t.id in descartadas))
   const vencidas = tareas.filter((t) => t.prioridad === 'vencida')
   const deHoy    = tareas.filter((t) => t.prioridad === 'hoy')
   const proximas = tareas.filter((t) => t.prioridad === 'proxima')
@@ -384,12 +423,7 @@ export default function Dashboard() {
     return difDias(parseDate(c.fecha_copula), hoyDate) < 15
   }).length
 
-  const enPreñez = camadas.filter((c) => {
-    if (c.fecha_nacimiento || c.fecha_destete || c.failure_flag) return false
-    if (!c.fecha_copula) return false
-    if (c.fecha_separacion) return true
-    return difDias(parseDate(c.fecha_copula), hoyDate) >= 15
-  }).length
+  const enPreñez = camadas.filter((c) => esCamadaPreniada(c, hoyDate, bio)).length
 
   const camadasConCrias = camadas.filter((c) => c.fecha_nacimiento && !c.fecha_destete).length
 

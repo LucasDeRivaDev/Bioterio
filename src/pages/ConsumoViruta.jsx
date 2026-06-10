@@ -48,7 +48,7 @@ function catStock(dias, bio) {
 
 function stockCamada(camada, sacrificios, entregas) {
   const sac = sacrificios.filter(s => s.camada_id === camada.id).reduce((a, x) => a + x.cantidad, 0)
-  const ent = entregas.filter(e => e.camada_id === camada.id).reduce((a, x) => a + x.cantidad, 0)
+  const ent = entregas.filter(e => e.camada_id === camada.id && !e.devuelta).reduce((a, x) => a + x.cantidad, 0)
   return Math.max(0, (camada.total_destetados ?? camada.total_crias ?? 0) - sac - ent)
 }
 

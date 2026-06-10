@@ -58,7 +58,7 @@ function clasificarEdad(dias) {
 
 function stockCamada(camada, sacrificios, entregas) {
   const sacCount = sacrificios.filter((s) => s.camada_id === camada.id).reduce((sum, s) => sum + s.cantidad, 0)
-  const entCount = entregas.filter((e) => e.camada_id === camada.id).reduce((sum, e) => sum + e.cantidad, 0)
+  const entCount = entregas.filter((e) => e.camada_id === camada.id && !e.devuelta).reduce((sum, e) => sum + e.cantidad, 0)
   const base = camada.total_destetados ?? camada.total_crias ?? 0
   return Math.max(0, base - sacCount - entCount)
 }

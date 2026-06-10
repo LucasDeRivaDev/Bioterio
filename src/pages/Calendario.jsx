@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import {
   getPlanes, guardarPlan, eliminarPlan,
   getNotas, guardarNota, actualizarNota, eliminarNota as eliminarNotaDB,
+  dbReady,
 } from '../utils/db'
 import { useTheme } from '../context/ThemeContext'
 
@@ -56,10 +57,16 @@ export default function Calendario() {
   const fStr   = (d) => `${anio}-${pad(mes + 1)}-${pad(d)}`
   const hoyStr = `${hoyJs.getFullYear()}-${pad(hoyJs.getMonth()+1)}-${pad(hoyJs.getDate())}`
 
-  // Cargar planes y notas desde el cache en memoria (ya cargado desde Supabase)
+  // Cargar planes y notas desde el cache en memoria, esperando a que termine
+  // la carga inicial desde Supabase (evita leer el cache vacío en el primer load)
   useEffect(() => {
-    setPlanes(getPlanes(bioterioActivo))
-    setNotas(getNotas(bioterioActivo))
+    let cancelado = false
+    dbReady().then(() => {
+      if (cancelado) return
+      setPlanes(getPlanes(bioterioActivo))
+      setNotas(getNotas(bioterioActivo))
+    })
+    return () => { cancelado = true }
   }, [bioterioActivo])
 
   // Cargar datos de BALB/C y C57 cuando estamos en Híbridos
@@ -616,7 +623,7 @@ function ModalPlanificarApareamiento({
   function buildBloquesStock(animalesDS, camadasDS, jaulasDS, sacrificiosDS, entregasDS) {
     function stockCamada(camada) {
       const sac = (sacrificiosDS ?? []).filter(s => s.camada_id === camada.id).reduce((s, x) => s + x.cantidad, 0)
-      const ent = (entregasDS    ?? []).filter(e => e.camada_id === camada.id).reduce((s, x) => s + x.cantidad, 0)
+      const ent = (entregasDS    ?? []).filter(e => e.camada_id === camada.id && !e.devuelta).reduce((s, x) => s + x.cantidad, 0)
       return Math.max(0, (camada.total_destetados ?? camada.total_crias ?? 0) - sac - ent)
     }
     const result = []
