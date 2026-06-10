@@ -2536,6 +2536,7 @@ function ModalReposicion({ fechaInicial, horaInicial, onConfirmar, onCerrar }) {
 }
 
 function ModalIngreso({ stockActualKg, onConfirmar, onCerrar }) {
+  const { tema } = useTheme()
   const [fecha, setFecha] = useState(hoy())
   const [kg, setKg]       = useState('')
 
@@ -2621,6 +2622,7 @@ function ModalIngreso({ stockActualKg, onConfirmar, onCerrar }) {
 // ── Modal de estimación rápida ────────────────────────────────────────────────
 
 function ModalEstimacionRapida({ stockEstimadoActual, onConfirmar, onCerrar }) {
+  const { tema } = useTheme()
   const [kg,    setKg]    = useState('')
   const [signo, setSigno] = useState(-1)   // -1 = resta, +1 = suma
   const [notas, setNotas] = useState('')
