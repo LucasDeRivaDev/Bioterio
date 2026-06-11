@@ -391,7 +391,7 @@ export default function ConsumoViruta() {
         resCompras,
       ] = await Promise.all([
         Promise.all(
-          TODOS.map(({ id }) => Promise.all([
+          TODOS_BASE.map(({ id }) => Promise.all([
             supabase.from('animales').select('*').eq('bioterio_id', id),
             supabase.from('camadas').select('*').eq('bioterio_id', id),
             supabase.from('jaulas').select('*').eq('bioterio_id', id),
@@ -405,7 +405,7 @@ export default function ConsumoViruta() {
 
       // Datos de animales por bioterio
       const nd = {}
-      TODOS.forEach(({ id, especie, bio }, i) => {
+      TODOS_BASE.forEach(({ id, especie, bio }, i) => {
         const [{ data: an }, { data: ca }, { data: ja }, { data: sa }, { data: en }] = resAnimales[i]
         const animales_   = an ?? []
         const camadas_    = ca ?? []
@@ -433,8 +433,8 @@ export default function ConsumoViruta() {
   // ── Totales globales ──────────────────────────────────────────────────────
   const totales = useMemo(() => {
     if (!datos) return null
-    const totalUnidades = TODOS.reduce((s, { id }) => s + datos[id].unidades, 0)
-    const totalJaulas   = TODOS.reduce((s, { id }) => s + datos[id].conteos.totalJaulas, 0)
+    const totalUnidades = TODOS_BASE.reduce((s, { id }) => s + datos[id].unidades, 0)
+    const totalJaulas   = TODOS_BASE.reduce((s, { id }) => s + datos[id].conteos.totalJaulas, 0)
     const contRatas     = datos['ratas']?.conteos ?? null
     const unidRatas     = datos['ratas']?.unidades ?? 0
     const contRatones   = IDS_RATONES.reduce(
@@ -510,7 +510,7 @@ export default function ConsumoViruta() {
       const causas     = []
       const horizStr   = addDias(hoyStr, dias)
 
-      TODOS.forEach(({ id, especie, bio, label, icon }) => {
+      TODOS_BASE.forEach(({ id, especie, bio, label, icon }) => {
         const bd = datos[id]
         if (!bd) return
         const cf = proyectarConteos(dias, bd.animales, bd.camadas, bd.jaulas, bd.sacrificios, bd.entregas, bio, especie)
@@ -531,8 +531,8 @@ export default function ConsumoViruta() {
         if (destetes> 0) causas.push({ icono: '📦', label: `+${destetes} destete${destetes>1?'s':''}`, color: tema.blue, bio: (icon ?? '') + ' ' + (label?.split(' ')[0] ?? id) })
       })
 
-      const jaulasHoy   = TODOS.reduce((s, { id }) => s + (datos[id]?.conteos.totalJaulas ?? 0), 0)
-      const unidadesHoy = TODOS.reduce((s, { id }) => s + (datos[id]?.unidades ?? 0), 0)
+      const jaulasHoy   = TODOS_BASE.reduce((s, { id }) => s + (datos[id]?.conteos.totalJaulas ?? 0), 0)
+      const unidadesHoy = TODOS_BASE.reduce((s, { id }) => s + (datos[id]?.unidades ?? 0), 0)
       const consumoSem  = unidadesTotal * tasa
       const consumoHoy  = unidadesHoy   * tasa
       const deltaJaulas = jaulasTotal   - jaulasHoy
@@ -541,7 +541,7 @@ export default function ConsumoViruta() {
 
       return { dias, horizStr, jaulasTotal, deltaJaulas, consumoSem, deltaConsumo, deltaPct, causas }
     })
-  }, [datos, tasa])
+  }, [datos, tasa, tema])
 
   // ── Duración real (stock ÷ consumo proyectado, no histórico) ─────────────────
   // Usa las 4 proyecciones como waypoints y hace aritmética piecewise.

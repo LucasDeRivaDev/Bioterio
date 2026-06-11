@@ -164,12 +164,12 @@ function MenuRestaurar({ labelRestaurar, onRestaurar, onSoloBorrar, onCerrar }) 
 
 export default function ResumenRatones() {
   const { tema } = useTheme()
-  const PRIORIDAD_CONFIG = {
+  const PRIORIDAD_CONFIG = useMemo(() => ({
     vencida: { label: 'Vencida', color: '#ff5252', bg: 'rgba(255,82,82,0.12)',    borde: 'rgba(255,82,82,0.35)',   orden: 0 },
     hoy:     { label: 'Hoy',     color: '#ff9800', bg: 'rgba(255,152,0,0.12)',    borde: 'rgba(255,152,0,0.35)',   orden: 1 },
     proxima: { label: 'Próxima', color: tema.amber, bg: 'rgba(255,179,0,0.10)',    borde: 'rgba(255,179,0,0.30)',   orden: 2 },
     info:    { label: 'Info',    color: tema.textSecondary, bg: 'rgba(138,155,176,0.08)', borde: 'rgba(138,155,176,0.25)', orden: 3 },
-  }
+  }), [tema])
   const { limpiarBioterio, setBioterioActivo } = useBioterioActivo()
 
   const [datos,    setDatos]    = useState(null)
@@ -325,7 +325,7 @@ export default function ResumenRatones() {
     })
 
     return lista
-  }, [rawData])
+  }, [rawData, PRIORIDAD_CONFIG])
 
   const notifFiltradas = useMemo(() =>
     filtroNotif === 'todas' ? notificaciones : notificaciones.filter((n) => n.bioterioId === filtroNotif),

@@ -149,6 +149,66 @@ function EdadMachoBadge({ macho }) {
   return null
 }
 
+const esActivo = (a) => ESTADOS_ACTIVOS.has(a.estado)
+
+function buildRankingMachos(lista, todasCamadas) {
+  return lista
+    .map((macho) => {
+      const m = calcularRendimientoMacho(macho.id, todasCamadas)
+      const camadasMacho = todasCamadas.filter((c) => c.id_padre === macho.id && c.fecha_nacimiento)
+      const totalMachos  = camadasMacho.reduce((s, c) => s + (c.crias_machos  ?? 0), 0)
+      const totalHembras = camadasMacho.reduce((s, c) => s + (c.crias_hembras ?? 0), 0)
+      return { macho, m, totalMachos, totalHembras }
+    })
+    .sort((a, b) => {
+      // Ordenar por score total (latencia + camada) de mayor a menor
+      const stA = a.m.score_total
+      const stB = b.m.score_total
+      if (stA === null && stB === null) return 0
+      if (stA === null) return 1
+      if (stB === null) return -1
+      if (stB !== stA) return stB - stA
+      // Desempate: mayor cantidad de camadas
+      return b.m.total_camadas - a.m.total_camadas
+    })
+}
+
+function sumaScoresHembra(perfil) {
+  if (!perfil) return 0
+  return (perfil.avg_time_score       ?? 0)
+       + (perfil.avg_litter_size_score ?? 0)
+       + (perfil.avg_sex_ratio_score   ?? 0)
+       + (perfil.avg_survival_score    ?? 0)
+}
+
+function buildHembraStats(lista, todasCamadas) {
+  return lista
+    .map((h) => {
+      const sus    = todasCamadas.filter((c) => c.id_madre === h.id && c.fecha_nacimiento)
+      const perfil = calcularPerfilHembra(h.id, todasCamadas)
+      const conf   = calcularConfiabilidadHembra(h.id, todasCamadas)
+      const crias        = sus.reduce((s, c) => s + (c.total_crias   ?? 0), 0)
+      const criasMachos  = sus.reduce((s, c) => s + (c.crias_machos  ?? 0), 0)
+      const criasHembras = sus.reduce((s, c) => s + (c.crias_hembras ?? 0), 0)
+      const scoreTotal   = perfil ? Math.round(sumaScoresHembra(perfil) * 10) / 10 : null
+      const tendencia_camada = calcularTendenciaTamanoCamadas(sus)
+      // Criterio eliminatorio: cualquier parto con ≤7 crías → aplazada
+      const susInsuf = sus.filter((c) => c.total_crias != null && c.total_crias <= 7)
+      const aplazada = susInsuf.length > 0
+      const minCrias = aplazada ? Math.min(...susInsuf.map((c) => c.total_crias)) : null
+      return { h, total: sus.length, crias, criasMachos, criasHembras, perfil, conf, scoreTotal, tendencia_camada, aplazada, minCrias }
+    })
+    .filter((x) => x.total > 0)
+    .sort((a, b) => {
+      // Aplazadas siempre al final del ranking
+      if (a.aplazada !== b.aplazada) return a.aplazada ? 1 : -1
+      const stA = a.scoreTotal ?? 0
+      const stB = b.scoreTotal ?? 0
+      if (stB !== stA) return stB - stA
+      return b.total - a.total
+    })
+}
+
 export default function Rendimiento() {
   const { tema } = useTheme()
   const cardStyle = { background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }
@@ -162,7 +222,6 @@ export default function Rendimiento() {
   const [vista, setVista] = useState('activos')
   const [subVista, setSubVista] = useState(null)
 
-  const esActivo = (a) => ESTADOS_ACTIVOS.has(a.estado)
 
   // En Híbridos los reproductores reales son los animales exportados de BAL/C y C57,
   // no las crías F1 que están en animales. En los demás bioterios se usa animales normal.
@@ -171,40 +230,24 @@ export default function Rendimiento() {
 
   // Para buscar el nombre de la madre en el historial de un macho necesitamos
   // poder buscar en ambos arrays (animales propios + exportados de Híbridos)
-  const todosAnimales = esHibridos ? [...animales, ...animalesExportados] : animales
+  const todosAnimales = useMemo(
+    () => esHibridos ? [...animales, ...animalesExportados] : animales,
+    [esHibridos, animales, animalesExportados]
+  )
 
   // camadasF1 contiene las camadas F1 de Híbridos donde estos animales participaron
   // (solo tiene datos cuando el bioterio activo es BAL/C o C57)
-  const todasCamadas = camadasF1.length > 0 ? [...camadas, ...camadasF1] : camadas
+  const todasCamadas = useMemo(
+    () => camadasF1.length > 0 ? [...camadas, ...camadasF1] : camadas,
+    [camadas, camadasF1]
+  )
 
   // ── Machos ──────────────────────────────────────────────────────────────────
-  const machosHistorico = animalesParaRanking.filter((a) => a.sexo === 'macho')
-  const machosActivos   = machosHistorico.filter(esActivo)
+  const machosHistorico = useMemo(() => animalesParaRanking.filter((a) => a.sexo === 'macho'), [animalesParaRanking])
+  const machosActivos   = useMemo(() => machosHistorico.filter(esActivo), [machosHistorico])
 
-  function buildRankingMachos(lista) {
-    return lista
-      .map((macho) => {
-        const m = calcularRendimientoMacho(macho.id, todasCamadas)
-        const camadasMacho = todasCamadas.filter((c) => c.id_padre === macho.id && c.fecha_nacimiento)
-        const totalMachos  = camadasMacho.reduce((s, c) => s + (c.crias_machos  ?? 0), 0)
-        const totalHembras = camadasMacho.reduce((s, c) => s + (c.crias_hembras ?? 0), 0)
-        return { macho, m, totalMachos, totalHembras }
-      })
-      .sort((a, b) => {
-        // Ordenar por score total (latencia + camada) de mayor a menor
-        const stA = a.m.score_total
-        const stB = b.m.score_total
-        if (stA === null && stB === null) return 0
-        if (stA === null) return 1
-        if (stB === null) return -1
-        if (stB !== stA) return stB - stA
-        // Desempate: mayor cantidad de camadas
-        return b.m.total_camadas - a.m.total_camadas
-      })
-  }
-
-  const rankingHistorico = useMemo(() => buildRankingMachos(machosHistorico), [machosHistorico, todasCamadas])
-  const rankingActivos   = useMemo(() => buildRankingMachos(machosActivos),   [machosActivos,   todasCamadas])
+  const rankingHistorico = useMemo(() => buildRankingMachos(machosHistorico, todasCamadas), [machosHistorico, todasCamadas])
+  const rankingActivos   = useMemo(() => buildRankingMachos(machosActivos, todasCamadas),   [machosActivos,   todasCamadas])
   const ranking = vista === 'activos' ? rankingActivos : rankingHistorico
 
   const maxLat = useMemo(() => {
@@ -220,48 +263,12 @@ export default function Rendimiento() {
   }
 
   // ── Hembras ─────────────────────────────────────────────────────────────────
-  function sumaScoresHembra(perfil) {
-    if (!perfil) return 0
-    return (perfil.avg_time_score       ?? 0)
-         + (perfil.avg_litter_size_score ?? 0)
-         + (perfil.avg_sex_ratio_score   ?? 0)
-         + (perfil.avg_survival_score    ?? 0)
-  }
-
-  function buildHembraStats(lista) {
-    return lista
-      .map((h) => {
-        const sus    = todasCamadas.filter((c) => c.id_madre === h.id && c.fecha_nacimiento)
-        const perfil = calcularPerfilHembra(h.id, todasCamadas)
-        const conf   = calcularConfiabilidadHembra(h.id, todasCamadas)
-        const crias        = sus.reduce((s, c) => s + (c.total_crias   ?? 0), 0)
-        const criasMachos  = sus.reduce((s, c) => s + (c.crias_machos  ?? 0), 0)
-        const criasHembras = sus.reduce((s, c) => s + (c.crias_hembras ?? 0), 0)
-        const scoreTotal   = perfil ? Math.round(sumaScoresHembra(perfil) * 10) / 10 : null
-        const tendencia_camada = calcularTendenciaTamanoCamadas(sus)
-        // Criterio eliminatorio: cualquier parto con ≤7 crías → aplazada
-        const susInsuf = sus.filter((c) => c.total_crias != null && c.total_crias <= 7)
-        const aplazada = susInsuf.length > 0
-        const minCrias = aplazada ? Math.min(...susInsuf.map((c) => c.total_crias)) : null
-        return { h, total: sus.length, crias, criasMachos, criasHembras, perfil, conf, scoreTotal, tendencia_camada, aplazada, minCrias }
-      })
-      .filter((x) => x.total > 0)
-      .sort((a, b) => {
-        // Aplazadas siempre al final del ranking
-        if (a.aplazada !== b.aplazada) return a.aplazada ? 1 : -1
-        const stA = a.scoreTotal ?? 0
-        const stB = b.scoreTotal ?? 0
-        if (stB !== stA) return stB - stA
-        return b.total - a.total
-      })
-  }
-
   const hembraStatsHistorico = useMemo(() =>
-    buildHembraStats(animalesParaRanking.filter((a) => a.sexo === 'hembra')),
+    buildHembraStats(animalesParaRanking.filter((a) => a.sexo === 'hembra'), todasCamadas),
   [animalesParaRanking, todasCamadas])
 
   const hembraStatsActivos = useMemo(() =>
-    buildHembraStats(animalesParaRanking.filter((a) => a.sexo === 'hembra' && esActivo(a))),
+    buildHembraStats(animalesParaRanking.filter((a) => a.sexo === 'hembra' && esActivo(a)), todasCamadas),
   [animalesParaRanking, todasCamadas])
 
   const hembraStats = vista === 'activos' ? hembraStatsActivos : hembraStatsHistorico

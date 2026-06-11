@@ -1945,7 +1945,7 @@ function ModalEliminarJaula({ bloque, onConfirmar, onCerrar }) {
 
 export default function Stock() {
   const { tema } = useTheme()
-  const CAT = getCAT(tema)
+  const CAT = useMemo(() => getCAT(tema), [tema])
   const { animales, animalesExportados, camadas, sacrificios, entregas, jaulas, bio, bioterioActivo, agregarAnimal, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, editarCamada, registrarSacrificio, registrarEntrega, entregarReproductor } = useBioterio()
   const esHibridos = bioterioActivo === 'ratones_hibridos'
   // Sacrificios de ratones se manejan desde el Resumen global de ratones
@@ -2054,7 +2054,7 @@ export default function Stock() {
     })
 
     return result
-  }, [todosAnimales, camadas, jaulas, sacrificios, entregas, bio, bioterioActivo])
+  }, [todosAnimales, animales, camadas, jaulas, sacrificios, entregas, bio, bioterioActivo])
 
   // ── Resumen por categoría ─────────────────────────────────────────────────
   const resumen = useMemo(() => {
@@ -2068,7 +2068,7 @@ export default function Stock() {
     const totalJaulas   = Object.values(cats).reduce((s, c) => s + c.jaulas, 0)
     const femEnApareamiento = bloques.filter(esFemEnApareamiento).length
     return { ...cats, totalAnimales, totalJaulas, femEnApareamiento }
-  }, [bloques])
+  }, [bloques, CAT])
 
   // ── Datos para la vista "Resumen" (categorías) ────────────────────────────
   // Usa `bloques` como fuente única de verdad — siempre en sync con Vista por jaulas

@@ -245,7 +245,6 @@ export default function CicloEstral({ animal }) {
   // Sync intencional: al cambiar la fecha se cargan/limpian los campos del formulario
   useEffect(() => {
     if (existente) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCitologia(existente.citologia || '')
       setClaridad(existente.claridad || '')
       setApertura(existente.apertura_vaginal || '')
@@ -259,6 +258,9 @@ export default function CicloEstral({ animal }) {
       setLordosis(''); setCopula(''); setEsperma('')
       setFaseManual(''); setNotas('')
     }
+    // Re-sincronizar solo cuando cambia el registro (id), no su contenido —
+    // si no, cualquier refresco de extendidos pisaría lo que el usuario está tipeando
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fecha, existente?.id])
 
   const faseSugerida = useMemo(

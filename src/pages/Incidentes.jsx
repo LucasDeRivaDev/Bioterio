@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { useBioterioActivo } from '../context/BioterioActivoContext'
-import { hoy, formatFecha } from '../utils/calculos'
+import { hoy, formatFecha, parseDate, sumarDias } from '../utils/calculos'
 import { buildPedigree, calcularFCoeficiente } from '../utils/genealogia'
 import {
   CATEGORIAS, CATEGORIAS_FORM, SEVERIDADES, LISTA_BIOTERIOS, NIVEL_ALERTA,
@@ -180,7 +180,7 @@ export default function Incidentes() {
   const stats = useMemo(() => {
     const abiertos  = incidentes.filter(i => !i.resuelto)
     const graves    = abiertos.filter(i => i.severidad === 'grave')
-    const hace30    = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
+    const hace30    = sumarDias(parseDate(hoy()), -30).toISOString().slice(0, 10)
     const recientes = incidentes.filter(i => i.fecha >= hace30)
     return { total: incidentes.length, abiertos: abiertos.length, graves: graves.length, recientes: recientes.length }
   }, [incidentes])

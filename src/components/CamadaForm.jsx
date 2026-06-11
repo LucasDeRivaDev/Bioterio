@@ -87,7 +87,10 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
 
   // En Híbridos, incluir también los animales exportados de BAL/C y C57
   const esHibridos    = bioterioActivo === 'ratones_hibridos'
-  const todosAnimales = esHibridos ? [...animales, ...animalesExportados] : animales
+  const todosAnimales = useMemo(
+    () => esHibridos ? [...animales, ...animalesExportados] : animales,
+    [esHibridos, animales, animalesExportados]
+  )
 
   // En modo normal: solo activos. En modo histórico: todos.
   const hembrasBase = todosAnimales.filter((a) => a.sexo === 'hembra')

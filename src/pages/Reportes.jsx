@@ -126,7 +126,7 @@ export default function Reportes() {
       tempPeriodo:  temperaturas.filter(t => enPeriodo(t.date)).sort((a,b) => a.date.localeCompare(b.date)),
       incPeriodo:   incidentes.filter(i => enPeriodo(i.fecha)),
     }
-  }, [animales, camadas, jaulas, sacrificios, entregas, temperaturas, incidentes, periodo, anio, mes, semDesde])
+  }, [animales, camadas, jaulas, sacrificios, entregas, temperaturas, incidentes, periodo, anio, mes, semDesde, bio])
 
   const tituloPeriodo = periodo === 'mensual'
     ? `${MESES[mes]} ${anio}`

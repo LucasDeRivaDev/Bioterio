@@ -29,7 +29,7 @@ export default function Entregas() {
           (e.fecha ?? '').includes(q)
         )
       })
-  }, [entregas, camadas, animales, busqueda])
+  }, [entregas, camadas, todosAnimales, busqueda])
 
   const totalAnimales = entregas.reduce((s, e) => s + (e.cantidad ?? 0), 0)
 

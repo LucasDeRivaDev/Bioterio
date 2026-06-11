@@ -192,6 +192,8 @@ function nivelRiesgo(nA, nJ, cfg, tema) {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
+const IDS_BIOTERIOS = ['ratas', 'ratones_balbc', 'ratones_c57', 'ratones_hibridos']
+
 export default function CapacidadGlobal() {
   const { tema } = useTheme()
   const TODOS = [
@@ -214,7 +216,7 @@ export default function CapacidadGlobal() {
     setCargando(true); setError(null)
     try {
       const res = await Promise.all(
-        TODOS.map(({ id }) => Promise.all([
+        IDS_BIOTERIOS.map((id) => Promise.all([
           supabase.from('animales').select('*').eq('bioterio_id', id),
           supabase.from('camadas').select('*').eq('bioterio_id', id),
           supabase.from('jaulas').select('*').eq('bioterio_id', id),
@@ -223,7 +225,7 @@ export default function CapacidadGlobal() {
         ]))
       )
       const nd = {}
-      TODOS.forEach(({ id }, i) => {
+      IDS_BIOTERIOS.forEach((id, i) => {
         const [{ data: an }, { data: ca }, { data: ja }, { data: sa }, { data: en }] = res[i]
         nd[id] = { an: an ?? [], ca: ca ?? [], ja: ja ?? [], sa: sa ?? [], en: en ?? [] }
       })
@@ -239,7 +241,7 @@ export default function CapacidadGlobal() {
   // Cargar configuración desde Supabase al montar
   useEffect(() => {
     async function cargarConfigs() {
-      const claves = TODOS.map(b => `capacidad_${b.id}`)
+      const claves = IDS_BIOTERIOS.map(id => `capacidad_${id}`)
       const { data } = await supabase.from('configuracion').select('clave, valor').in('clave', claves)
       if (data?.length) {
         setConfigs(prev => {

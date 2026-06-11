@@ -368,12 +368,15 @@ function SimuladorImpacto({ animales, stockReal, bioterioId, motorUnificado }) {
   const [animalSeleccionado, setAnimalSeleccionado] = useState('')
   const minimos = getMinimosCriticos(bioterioId)
 
-  const estadosActivos = ['activo', 'en_apareamiento', 'en_cria']
-  const reproductores = animales.filter(
-    a => a.bioterio_id === bioterioId && estadosActivos.includes(a.estado)
-  )
+  const reproductores = useMemo(() => {
+    const estadosActivos = ['activo', 'en_apareamiento', 'en_cria']
+    return animales.filter(a => a.bioterio_id === bioterioId && estadosActivos.includes(a.estado))
+  }, [animales, bioterioId])
 
-  const animal = reproductores.find(a => a.id === animalSeleccionado)
+  const animal = useMemo(
+    () => reproductores.find(a => a.id === animalSeleccionado) ?? null,
+    [reproductores, animalSeleccionado]
+  )
 
   // Perfil completo del animal seleccionado (viene del motor unificado)
   const perfil = animal

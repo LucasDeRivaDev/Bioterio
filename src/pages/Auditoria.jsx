@@ -3,7 +3,7 @@
 // Interpretativa · contextual · mobile-first · sin ruido
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useState, useCallback } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, CartesianGrid,
@@ -457,11 +457,12 @@ export default function Auditoria() {
   const [resultado, setResultado]     = useState(null)
 
   const preset = presets.find(p => p.id === presetId)
-  const periodosEfectivos = presetId === 'custom'
+  const periodosEfectivos = useMemo(() => presetId === 'custom'
     ? { desdeA: customA.desde, hastaA: customA.hasta, desdeB: customB.desde, hastaB: customB.hasta }
     : preset
       ? { desdeA: preset.desdeA, hastaA: preset.hastaA, desdeB: preset.desdeB, hastaB: preset.hastaB }
-      : null
+      : null,
+  [presetId, customA, customB, preset])
 
   // ── Fetch + cálculo ────────────────────────────────────────────────────────
   const analizar = useCallback(async () => {

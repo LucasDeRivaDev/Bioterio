@@ -597,7 +597,8 @@ export default function Camadas() {
   const [separando, setSeparando] = useState(null)       // id de camada en proceso de confirmar separación
   const [fechaSepInput, setFechaSepInput] = useState('')
 
-  const hoyDate = parseDate(hoy())
+  // Estable por render — evita invalidar los useMemo que dependen de la fecha
+  const hoyDate = useMemo(() => parseDate(hoy()), [])
 
   function nombreAnimal(id) {
     return todosAnimales.find((a) => a.id === id)?.codigo ?? '?'
@@ -645,7 +646,7 @@ export default function Camadas() {
 
       return { ...c, rango, fechaDestete, fechaMadurez, fechaSepEsperada, latencia, estado }
     })
-  }, [camadas, hoyDate])
+  }, [camadas, hoyDate, bio])
 
   const filtradas = useMemo(() => {
     const lista = filtro === 'todas' ? camadasEnriquecidas : camadasEnriquecidas.filter((c) => c.estado === filtro)

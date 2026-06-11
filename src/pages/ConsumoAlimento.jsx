@@ -685,7 +685,7 @@ export default function ConsumoAlimento() {
     })
 
     return resultado
-  }, [datosBioterios, calibracion])
+  }, [datosBioterios, calibracion, tema])
 
   // ── Tabla resumen del modelo por categoría (agregado multi-bioterio) ──
   const tablaModelo = useMemo(() => {
@@ -734,7 +734,7 @@ export default function ConsumoAlimento() {
         factor, confianza, animalDias, usandoGlobal,
       }
     }).filter(c => c.totalCount > 0 || c.animalDias > 0)
-  }, [datosBioterios, calibracion])
+  }, [datosBioterios, calibracion, tema])
 
   // ── Eventos especiales detectados ──
   const eventosEspeciales = useMemo(() => {
@@ -786,7 +786,7 @@ export default function ConsumoAlimento() {
     }
 
     return eventos
-  }, [datosBioterios, calibracion])
+  }, [datosBioterios, calibracion, tema])
 
   // ── Línea temporal de movimientos ──
   const movimientos = useMemo(() => {

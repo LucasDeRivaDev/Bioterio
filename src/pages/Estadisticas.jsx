@@ -157,7 +157,10 @@ export default function Estadisticas() {
   // Los dropdowns de filtro deben mostrar esos animales.
   const esHibridos = bioterioActivo === 'ratones_hibridos'
   const animalesParaFiltros = esHibridos ? animalesExportados : animales
-  const todasCamadas = camadasF1.length > 0 ? [...camadas, ...camadasF1] : camadas
+  const todasCamadas = useMemo(
+    () => camadasF1.length > 0 ? [...camadas, ...camadasF1] : camadas,
+    [camadas, camadasF1]
+  )
 
   const hembras = animalesParaFiltros.filter((a) => a.sexo === 'hembra')
   const machos  = animalesParaFiltros.filter((a) => a.sexo === 'macho')
@@ -255,7 +258,7 @@ export default function Estadisticas() {
       { name: '>10d (lento)',            value: grupos['>10d'],                    fill: C.rojo     },
       { name: 'En proceso/Parto fallido', value: grupos['En proceso/Parto fallido'], fill: C.gris  },
     ].filter((d) => d.value > 0)
-  }, [camadasFiltradas])
+  }, [camadasFiltradas, bio])
 
   const hayFiltros = desde || hasta || filtroMadreId || filtroPadreId
 

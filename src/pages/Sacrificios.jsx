@@ -91,7 +91,7 @@ export default function Sacrificios() {
         const padre  = camada ? todosAnimales.find((a) => a.id === camada.id_padre) : null
         return { ...s, camada, madre, padre }
       }),
-  [sacrificios, camadas, animales])
+  [sacrificios, camadas, todosAnimales])
 
   const totalSacrificados = sacrificios.filter(s => s.categoria !== 'reproductor').reduce((sum, s) => sum + s.cantidad, 0)
 
