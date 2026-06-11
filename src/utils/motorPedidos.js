@@ -196,7 +196,7 @@ export function calcularFechasOptimas(pedido, bio) {
 export function seleccionarReproductoresOptimos(pedido, animales, camadas, todosAnimalesBase = null) {
   const { bioterioId } = pedido
   const bio     = getBio(bioterioId)
-  const parejas = calcularParejasNecesarias(pedido, camadas, bio)
+  const parejas = calcularParejasNecesarias(pedido, camadas)
   const hembrasN = parejas.hembrasNecesarias
   const machosN  = parejas.machosNecesarios
 
@@ -675,11 +675,10 @@ export function evaluarRiesgoMultifactorialPedido({
  *   B) Mínimo       — sin buffer, menos impacto en colonia
  */
 export function simularEscenarios(pedido, camadas) {
-  const bio  = getBio(pedido.bioterioId)
   const hist = calcularProduccionHistorica(camadas, pedido.bioterioId)
 
   // Escenario A: buffer completo
-  const parejasA = calcularParejasNecesarias(pedido, camadas, bio)
+  const parejasA = calcularParejasNecesarias(pedido, camadas)
 
   // Escenario B: sin buffer (parejasBase exacta)
   const propSexo = pedido.sexo === 'hembras' ? hist.propHembras
@@ -1106,7 +1105,6 @@ function _scoreEscenario({ cumplimiento, saturada, rompeMinimo, indiceSanitario,
  * según la jerarquía de prioridades (supervivencia > mínimos > híbridos > pedidos ...).
  */
 export function simularEscenariosEstrategicos(pedido, camadas, animales, jaulas, indiceSanitario) {
-  const bio    = getBio(pedido.bioterioId)
   const hist   = calcularProduccionHistorica(camadas, pedido.bioterioId)
   const minimos = getMinimosCriticos(pedido.bioterioId)
   const estadosActivos = ['activo', 'en_apareamiento', 'en_cria']
@@ -1125,7 +1123,7 @@ export function simularEscenariosEstrategicos(pedido, camadas, animales, jaulas,
   }).length
 
   // ── Escenario A: Buffer completo ──────────────────────────────────────────
-  const parejasA = calcularParejasNecesarias(pedido, camadas, bio)
+  const parejasA = calcularParejasNecesarias(pedido, camadas)
   const jaulasA  = jaulasCount + parejasA.parejasNecesarias
   const saturadaA = jaulasA > 20
   const hResta_A  = hembrasTotal - parejasA.hembrasNecesarias
@@ -1675,7 +1673,7 @@ export function generarEstrategiasBiologicas(pedido, camadas, animales, jaulas, 
            (machosTotal  - m) < (minimos.machos_colonia  ?? 0)
   }
   function colateral(parejas) {
-    const p = calcularParejasNecesarias({ ...pedido, _parejas: parejas }, camadas, bio)
+    const p = calcularParejasNecesarias({ ...pedido, _parejas: parejas }, camadas)
     return calcularCrecimientoColateral(pedido, p, hist)
   }
 

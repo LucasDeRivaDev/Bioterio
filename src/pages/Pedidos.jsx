@@ -1261,7 +1261,7 @@ export default function Pedidos() {
     if (!pedidoSeleccionado) return null
     const bioPedido = getBio(pedidoSeleccionado.bioterioId)
 
-    const parejasNecesarias          = calcularParejasNecesarias(pedidoSeleccionado, camadas, bioPedido)
+    const parejasNecesarias          = calcularParejasNecesarias(pedidoSeleccionado, camadas)
     const fechasOptimas              = calcularFechasOptimas(pedidoSeleccionado, bioPedido)
     const reproductoresSeleccionados = seleccionarReproductoresOptimos(pedidoSeleccionado, animales, camadas)
     const animalesListos             = detectarAnimalesListos(pedidoSeleccionado, jaulas, camadas, sacrificios, entregas)
@@ -1323,7 +1323,7 @@ export default function Pedidos() {
     for (const p of pedidos) {
       try {
         const bioPedido = getBio(p.bioterioId)
-        const parejas   = calcularParejasNecesarias(p, camadas, bioPedido)
+        const parejas   = calcularParejasNecesarias(p, camadas)
         const fechas    = calcularFechasOptimas(p, bioPedido)
         const repros    = seleccionarReproductoresOptimos(p, animales, camadas)
         const aListos   = detectarAnimalesListos(p, jaulas, camadas, sacrificios, entregas)

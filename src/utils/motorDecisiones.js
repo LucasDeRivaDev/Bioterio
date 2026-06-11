@@ -951,7 +951,7 @@ export function simularImpactoSacrificio(animal, stockReal, minimos, bioterioId,
   const minimosDespues = verificarMinimosCriticos(stockSimulado, bioterioId)
 
   // Verificar bloqueos de jerarquía
-  const bloqueo = verificarJerarquiaAntesSacrificio(animal, stockReal, minimos, bioterioId)
+  const bloqueo = verificarJerarquiaAntesSacrificio(animal, stockReal, minimos)
 
   const impactos = []
 
@@ -1294,7 +1294,7 @@ export function calcularMotorRenovacionUnificado(
 
   // Perfil completo de cada reproductor
   const perfiles = reproductores.map(a =>
-    calcularPerfilReproductor(a, camadas, pedigree, incidentes, lineasProblematicas, bio)
+    calcularPerfilReproductor(a, camadas, pedigree, incidentes, lineasProblematicas)
   )
 
   // Déficit actual (colonia principal, sin híbridos)

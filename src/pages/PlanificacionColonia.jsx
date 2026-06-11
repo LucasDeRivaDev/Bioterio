@@ -687,8 +687,8 @@ export default function PlanificacionColonia() {
 
   // ¿Puede la colonia sostener producción?
   const sostenibilidad = useMemo(
-    () => evaluarSostenibilidadColonia(proyeccionAvanzada, stockReal, bioterioActivo),
-    [proyeccionAvanzada, stockReal, bioterioActivo]
+    () => evaluarSostenibilidadColonia(proyeccionAvanzada),
+    [proyeccionAvanzada]
   )
 
   // Índice genético enriquecido (incluye déficit, candidatos y proyección)

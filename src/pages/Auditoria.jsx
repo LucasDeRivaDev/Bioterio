@@ -676,7 +676,7 @@ export default function Auditoria() {
         const alertas       = generarAlertasReales(comp, mA, mB)
         const interpretacion = interpretarCambioContextual(comp, perfil, mA, mB)
         const acciones      = generarAccionesRecomendadas(comp, perfil, mA, mB, hipotesis)
-        const scoreSust     = calcularIndiceSustentabilidad(mA, mB, comp)
+        const scoreSust     = calcularIndiceSustentabilidad(mA, mB)
         const estado        = etiquetaEstado(scoreSust)
 
         const deltaIG   = comp.indiceGlobal?.delta ?? 0
