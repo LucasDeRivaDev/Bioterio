@@ -1796,8 +1796,13 @@ function ModalIncidente({ inicial, animales, camadas, sacrificios, entregas, bio
         linea_genetica: null,
         resuelto:       inicial?.resuelto ?? false,
       })
-    } catch {
-      setError('No se pudo guardar. Verificá la conexión.')
+    } catch (err) {
+      const codigo = err?.code
+      if (codigo === '42501') {
+        setError('Permiso denegado por la base de datos (RLS). Falta la política de la tabla incidentes — ejecutá supabase_migration_incidentes_rls.sql.')
+      } else {
+        setError(err?.message ? `No se pudo guardar: ${err.message}` : 'No se pudo guardar. Verificá la conexión.')
+      }
     } finally {
       setGuardando(false)
     }

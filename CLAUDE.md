@@ -408,6 +408,17 @@ ALTER TABLE entregas ADD COLUMN IF NOT EXISTS devuelta boolean DEFAULT false;
 ```
 Necesario para que "Devolver al stock manteniendo historial" deje de descontar la entrega en stockCamada.
 
+**SQL pendiente para RLS de incidentes (sin esto NO se pueden crear incidentes):**
+```sql
+ALTER TABLE incidentes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Solo usuarios autenticados" ON incidentes;
+CREATE POLICY "Solo usuarios autenticados"
+  ON incidentes FOR ALL
+  USING (auth.role() = 'authenticated')
+  WITH CHECK (auth.role() = 'authenticated');
+```
+La tabla `incidentes` quedó con RLS habilitado pero sin política → SELECT devuelve `[]` sin error e INSERT/UPDATE/DELETE fallan con `42501`. Archivo: `supabase_migration_incidentes_rls.sql`.
+
 **SQL pendiente para reducción de camada (campos en camadas):**
 ```sql
 ALTER TABLE camadas
