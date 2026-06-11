@@ -14,29 +14,31 @@ export default function Modal({ titulo, onCerrar, children, ancho = 'max-w-lg' }
       {/* Overlay */}
       <div
         className="absolute inset-0 backdrop-blur-sm"
-        style={{ background: tema.bgCard }}
+        style={{ background: 'rgba(0,0,0,0.55)' }}
         onClick={onCerrar}
       />
       {/* Panel */}
       <div
         className={`relative w-full ${ancho} max-h-[90vh] flex flex-col rounded-2xl overflow-hidden`}
         style={{
-          background: '#0d1528',
-          border: '1px solid rgba(0,230,118,0.2)',
-          boxShadow: '0 0 40px rgba(0,230,118,0.08), 0 24px 48px rgba(0,0,0,0.6)',
+          background: modoBrillo ? '#FFFFFF' : '#0d1528',
+          border: modoBrillo ? `1px solid ${tema.bgCardBorde}` : '1px solid rgba(0,230,118,0.2)',
+          boxShadow: modoBrillo
+            ? '0 24px 48px rgba(0,0,0,0.25)'
+            : '0 0 40px rgba(0,230,118,0.08), 0 24px 48px rgba(0,0,0,0.6)',
         }}
       >
         {/* Header */}
         <div
           className="flex items-center justify-between px-6 py-4"
-          style={{ borderBottom: '1px solid rgba(0,230,118,0.12)', background: 'rgba(0,230,118,0.03)' }}
+          style={{ borderBottom: `1px solid ${tema.accentBorde}`, background: tema.accentDim }}
         >
           <div className="flex items-center gap-3">
             <div
               className="w-1.5 h-5 rounded-full"
-              style={{ background: tema.accent, boxShadow: '0 0 8px rgba(0,230,118,0.6)' }}
+              style={{ background: tema.accent, boxShadow: modoBrillo ? 'none' : '0 0 8px rgba(0,230,118,0.6)' }}
             />
-            <h2 className="text-base font-semibold text-white tracking-wide">{titulo}</h2>
+            <h2 className="text-base font-semibold tracking-wide" style={{ color: tema.textPrimary }}>{titulo}</h2>
           </div>
           <button
             onClick={onCerrar}

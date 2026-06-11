@@ -6,7 +6,6 @@
 
 import { useState, useMemo } from 'react'
 import { useBioterio }        from '../context/BiotheriumContext'
-import { useBioterioActivo }  from '../context/BioterioActivoContext'
 import { useTheme }           from '../context/ThemeContext'
 import { getBio }             from '../utils/constants'
 import { formatFecha, hoy }   from '../utils/calculos'
@@ -181,7 +180,7 @@ function EstrategiaElegidaBanner({ optima, tema }) {
 // ─── ALERTAS CRÍTICAS ─────────────────────────────────────────────────────────
 function AlertasCriticas({ analisis, tema }) {
   const alertas = []
-  const { impactoColonia, capacidadReproductiva, viabilidad, indiceSanitario, riesgoMultifactorial } = analisis
+  const { impactoColonia, capacidadReproductiva, indiceSanitario, riesgoMultifactorial } = analisis
 
   if (impactoColonia?.riesgoNivel === 'critico')
     alertas.push({ nivel: 'critico', msg: impactoColonia.impactos[0]?.mensaje ?? 'Rompe mínimos de la colonia' })
@@ -361,14 +360,14 @@ function TabEstrategias({ estrategiasBiologicas, tema }) {
 }
 
 // ─── TAB MOTOR REPRODUCTIVO ───────────────────────────────────────────────────
-function TabMotorReproductivo({ capacidadReproductiva, pedido, tema }) {
+function TabMotorReproductivo({ capacidadReproductiva, tema }) {
   if (!capacidadReproductiva) return (
     <div className="text-xs text-center py-4" style={{ color: tema.textMuted }}>
       Completá la fecha de entrega para ver el análisis generacional
     </div>
   )
 
-  const { protegidos, disponiblesRepro, futurosReproductores, noAptos,
+  const { futurosReproductores, noAptos,
     hembrasProtegidas, machosProtegidos, hembrasDisponiblesRepro, machosDisponiblesRepro,
     stockLibre, futurosEntregables, totalEntregable,
     generacionRequerida, descripcionGeneracion, emoji,
@@ -757,11 +756,10 @@ function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproduct
   const [tabAbierta, setTabAbierta] = useState(null)
 
   const {
-    parejasNecesarias, fechasOptimas, reproductoresSeleccionados,
+    parejasNecesarias, reproductoresSeleccionados,
     animalesListos, impactoColonia, indiceSanitario, viabilidad,
-    impactoEstrategico, indiceImpactoFuturo,
+    impactoEstrategico,
     reproductoresProximos, produccionEnCurso, pedidoEscalonado,
-    riesgoMultifactorial,
     // Nuevas
     capacidadReproductiva, crecimientoColateral,
     estrategiasBiologicas, planOperativo, proximaAccion,
@@ -1196,7 +1194,6 @@ function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
 
 // ─── TARJETA EN LA LISTA ──────────────────────────────────────────────────────
 function TarjetaPedido({ pedido, seleccionado, onSeleccionar, onEditar, onEliminar, score, tema }) {
-  const nivel    = nivelViabilidad(score ?? 0)
   const colorEst = colorEstadoPedido(pedido.estado)
   const estadoObj = getEstadosPedido(tema).find(e => e.id === pedido.estado)
 
@@ -1244,8 +1241,7 @@ export default function Pedidos() {
   const { animales, camadas, jaulas, sacrificios, entregas, incidentes,
           pedidos, agregarPedido, editarPedido, eliminarPedido: eliminarPedidoCtx,
         } = useBioterio()
-  const { bioterioActivo } = useBioterioActivo()
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const ESTADOS_PEDIDO = getEstadosPedido(tema)
 
   const [pedidoSelId,       setPedidoSelId]       = useState(null)

@@ -242,20 +242,20 @@ function migrarDescartadasViejas() {
       const hoyStr = hoy()
       BIOTERIOS_DESCARTE.forEach((bioId) => {
         let mapa = {}
-        try { mapa = JSON.parse(localStorage.getItem(keyDescartadas(bioId)) || '{}') } catch {}
+        try { mapa = JSON.parse(localStorage.getItem(keyDescartadas(bioId)) || '{}') } catch { /* JSON inválido en localStorage — ignorar */ }
         ids.forEach((id) => { if (!(id in mapa)) mapa[id] = hoyStr })
         localStorage.setItem(keyDescartadas(bioId), JSON.stringify(mapa))
       })
     }
     localStorage.removeItem(LS_KEY_DESCARTADAS)
-  } catch {}
+  } catch { /* JSON inválido en localStorage — ignorar */ }
 }
 
 function cargarDescartadas(bioterioId) {
   migrarDescartadasViejas()
   const hoyDate = parseDate(hoy())
   let mapa = {}
-  try { mapa = JSON.parse(localStorage.getItem(keyDescartadas(bioterioId)) || '{}') } catch {}
+  try { mapa = JSON.parse(localStorage.getItem(keyDescartadas(bioterioId)) || '{}') } catch { /* JSON inválido en localStorage — ignorar */ }
   const vigentes = {}
   Object.entries(mapa).forEach(([id, fecha]) => {
     if (difDias(parseDate(fecha), hoyDate) < DESCARTE_EXPIRA_DIAS) vigentes[id] = fecha
@@ -267,7 +267,7 @@ function cargarDescartadas(bioterioId) {
 }
 
 export default function Dashboard() {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const { animales, animalesExportados, camadas, extendidos, confirmarSeparacion, bio, bioterioActivo } = useBioterio()
   // En Híbridos los progenitores viven en animalesExportados — buscar en ambos
   const todosAnimales = useMemo(() => [...animales, ...animalesExportados], [animales, animalesExportados])

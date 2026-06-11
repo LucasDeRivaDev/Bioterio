@@ -617,8 +617,7 @@ export function calcularConfiabilidadHembra(hembraId, camadas) {
   const combinados   = fallos.length + camadasBajas.length
 
   const ultimoFallo = [...fallos]
-    .sort((a, b) => (b.fecha_copula ?? '').localeCompare(a.fecha_copula ?? ''))
-    [0]
+    .sort((a, b) => (b.fecha_copula ?? '').localeCompare(a.fecha_copula ?? ''))[0]
 
   let nivel, mensaje
   if (combinados >= 3) {
@@ -873,7 +872,7 @@ export function generarAlertasMachos(animales, camadas, n = 3) {
  * Fases: L1 (diestro temprano) → L2 (diestro medio) → L3 (diestro tardío / proestro) → O (receptiva) → E (post-servicio)
  */
 export function sugerirFase(datos, historialPrevio = []) {
-  const { citologia, apertura_vaginal, copula, espermatozoides } = datos
+  const { citologia, copula, espermatozoides } = datos
 
   // Post-servicio: cópula confirmada o espermatozoides encontrados
   if (copula === 'confirmada') return 'E'

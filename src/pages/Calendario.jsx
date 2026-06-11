@@ -14,11 +14,6 @@ const DIAS  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
 
 // helpers eliminados — ahora se usa db.js (cache en memoria + Supabase)
 
-function edadDias(fechaNac) {
-  if (!fechaNac) return null
-  return difDias(parseDate(fechaNac), parseDate(hoy()))
-}
-
 function formatEdadCorta(dias) {
   if (dias === null) return '—'
   if (dias < 30)  return `${dias}d`
@@ -28,7 +23,7 @@ function formatEdadCorta(dias) {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function Calendario() {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const TIPOS = {
     nacimiento:       { label: 'Nacimiento',          color: tema.accent, bg: 'rgba(0,230,118,0.12)',   borde: 'rgba(0,230,118,0.3)'   },
     destete:          { label: 'Destete',             color: tema.amber, bg: 'rgba(255,179,0,0.12)',   borde: 'rgba(255,179,0,0.3)'   },
@@ -800,7 +795,7 @@ function ModalPlanificarApareamiento({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: tema.bgCard, backdropFilter: 'blur(4px)' }}
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
     >
       <div
         className="w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col"
@@ -1051,7 +1046,7 @@ function ModalNota({ fecha, onGuardar, onCerrar }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: tema.bgCard, backdropFilter: 'blur(4px)' }}
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
       onClick={(e) => { if (e.target === e.currentTarget) onCerrar() }}
     >
       <div

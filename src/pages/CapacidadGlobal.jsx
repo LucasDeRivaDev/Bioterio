@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useBioterioActivo } from '../context/BioterioActivoContext'
 import { BIO_RATAS, BIO_RATONES } from '../utils/constants'
 import {
-  difDias, parseDate, hoy, formatFecha,
+  difDias, parseDate, hoy,
   calcularRangoParto,
   calcularPerfilHembra, calcularConfiabilidadHembra, calcularRendimientoMacho,
 } from '../utils/calculos'
@@ -193,7 +193,7 @@ function nivelRiesgo(nA, nJ, cfg, tema) {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function CapacidadGlobal() {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const TODOS = [
     { id: 'ratas',            bio: BIO_RATAS,   color: tema.accent, label: 'Bioterio de Ratas',  icon: '🐀', short: 'Ratas'    },
     { id: 'ratones_balbc',    bio: BIO_RATONES, color: tema.blue,   label: 'Ratones Balb/C',     icon: '🐭', short: 'BAL/C'    },

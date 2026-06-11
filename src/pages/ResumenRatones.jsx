@@ -163,7 +163,7 @@ function MenuRestaurar({ labelRestaurar, onRestaurar, onSoloBorrar, onCerrar }) 
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function ResumenRatones() {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const PRIORIDAD_CONFIG = {
     vencida: { label: 'Vencida', color: '#ff5252', bg: 'rgba(255,82,82,0.12)',    borde: 'rgba(255,82,82,0.35)',   orden: 0 },
     hoy:     { label: 'Hoy',     color: '#ff9800', bg: 'rgba(255,152,0,0.12)',    borde: 'rgba(255,152,0,0.35)',   orden: 1 },

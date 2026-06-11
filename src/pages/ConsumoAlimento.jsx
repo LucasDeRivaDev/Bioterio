@@ -283,7 +283,7 @@ function composicionActual(datosBioterios) {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function ConsumoAlimento() {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const OPCIONES_BIOTERIOS = [
     { id: 'ratas',            label: 'Ratas',    color: tema.accent },
     { id: 'ratones_balbc',    label: 'BAL/C',    color: tema.blue },
@@ -306,7 +306,7 @@ export default function ConsumoAlimento() {
   const [modalCenso,        setModalCenso]        = useState(false)
   const [modalIngreso,      setModalIngreso]      = useState(false)
   const [modalReposicion,   setModalReposicion]   = useState(false)
-  const [reposPreCenso,     setReposPreCenso]     = useState(null)
+  const [, setReposPreCenso]                      = useState(null)
   const [modalEstimRapida,  setModalEstimRapida]  = useState(false)
 
   // ── Fetch paralelo de los 4 bioterios + tablas propias ──

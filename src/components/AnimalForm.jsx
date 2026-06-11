@@ -36,7 +36,7 @@ function LabInput({ label, sublabel, error, children }) {
 }
 
 export default function AnimalForm({ animal, onGuardar, onCancelar }) {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const inputStyle = {
     background: tema.bgInput,
     border: `1px solid ${tema.bgInputBorde}`,

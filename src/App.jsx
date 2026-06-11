@@ -77,7 +77,7 @@ function PantallaCargaDatos() {
 }
 
 // ── CSS global inyectado para modo claro (overrides estructurales) ───────────
-const CSS_MODO_CLARO = `
+export const CSS_MODO_CLARO = `
   html.modo-claro body { background: #edf2f7 !important; color: #0d1e30 !important; }
   html.modo-claro #root { background: #edf2f7 !important; }
   html.modo-claro .text-white { color: #0d1e30 !important; }
@@ -156,7 +156,7 @@ function AppLayout() {
             >
               ☰
             </button>
-            <span className="font-bold text-sm tracking-wide" style={{ color: tema.textPrimary }}>BIOTERIO</span>
+            <span className="font-bold text-sm tracking-wide" style={{ color: tema.textPrimary }}>ITeRatE</span>
             <div
               className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono shrink-0"
               style={{ background: 'rgba(0,230,118,0.07)', border: '1px solid rgba(0,230,118,0.2)', color: '#00e676' }}
@@ -240,19 +240,19 @@ function PantallaCrearPassword() {
       <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.95)', border: '1px solid rgba(0,230,118,0.2)', boxShadow: '0 0 60px rgba(0,230,118,0.06)' }}>
         <div className="px-8 py-7 text-center" style={{ borderBottom: '1px solid rgba(0,230,118,0.1)', background: 'rgba(0,230,118,0.03)' }}>
           <div className="text-3xl mb-3">🔑</div>
-          <h1 className="text-xl font-bold text-white">Crear contraseña</h1>
-          <p className="text-xs mt-1" style={{ color: '#4a5f7a' }}>Elegí una contraseña para tu cuenta</p>
+          <h1 className="text-xl font-bold" style={{ color: '#ffffff' }}>Crear contraseña</h1>
+          <p className="text-xs mt-1" style={{ color: '#8a9bb0' }}>Elegí una contraseña para tu cuenta</p>
         </div>
         {listo ? (
           <div className="px-8 py-10 text-center space-y-3">
             <div className="text-4xl">✅</div>
-            <div className="font-bold text-white">¡Contraseña creada!</div>
-            <div className="text-sm" style={{ color: '#4a5f7a' }}>Ya podés usar el sistema normalmente.</div>
+            <div className="font-bold" style={{ color: '#ffffff' }}>¡Contraseña creada!</div>
+            <div className="text-sm" style={{ color: '#8a9bb0' }}>Ya podés usar el sistema normalmente.</div>
           </div>
         ) : (
           <form onSubmit={guardar} className="px-8 py-7 space-y-4">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#4a5f7a' }}>Nueva contraseña</label>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#8a9bb0' }}>Nueva contraseña</label>
               <input
                 type="password"
                 value={pass}
@@ -278,8 +278,8 @@ function PantallaCrearPassword() {
   )
 }
 
-// ── Botón de brillo — fijo abajo a la izquierda, fuera del div filtrado ─────
-function BotonBrillo() {
+// ── Botón de brillo — fijo abajo a la derecha, fuera del div filtrado ───────
+export function BotonBrillo() {
   const { modoBrillo, toggleBrillo } = useTheme()
   return (
     <button
@@ -287,8 +287,8 @@ function BotonBrillo() {
       title={modoBrillo ? 'Cambiar a modo oscuro' : 'Cambiar a modo luminoso'}
       style={{
         position: 'fixed',
-        bottom: '20px',
-        left: '20px',
+        bottom: '128px',
+        right: '20px',
         zIndex: 9999,
         display: 'flex',
         alignItems: 'center',

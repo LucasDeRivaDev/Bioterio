@@ -61,7 +61,7 @@ function MenuRestaurar({ onRestaurar, onSoloBorrar, onCerrar, labelRestaurar, la
 // ── Página principal ──────────────────────────────────────────────────────────
 
 export default function Sacrificios() {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const cardStyle = { background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }
   const {
     animales, animalesExportados, camadas, sacrificios,
@@ -113,27 +113,6 @@ export default function Sacrificios() {
 
   function toggleMenu(id) {
     setMenuAbierto(prev => prev === id ? null : id)
-  }
-
-  const btnRestaurar = (id, onClick) => {
-    const enProceso = cargando === id
-    return (
-      <div className="relative inline-block">
-        <button
-          onClick={() => { if (!enProceso) toggleMenu(id) }}
-          className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-          style={{
-            background: 'rgba(0,230,118,0.08)',
-            border: '1px solid rgba(0,230,118,0.3)',
-            color: enProceso ? '#4a5f7a' : '#00e676',
-            cursor: enProceso ? 'default' : 'pointer',
-          }}
-        >
-          {enProceso ? '...' : '↩ Restaurar'}
-        </button>
-        {menuAbierto === id && onClick}
-      </div>
-    )
   }
 
   return (

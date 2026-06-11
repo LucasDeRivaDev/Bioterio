@@ -91,7 +91,7 @@ function reducer(estado, accion) {
   }
 }
 
-const BiotheriumCtx = createContext(null)
+export const BiotheriumCtx = createContext(null)
 
 export function BiotheriumProvider({ children }) {
   const { bioterioActivo, bio } = useBioterioActivo()

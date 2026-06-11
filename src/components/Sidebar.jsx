@@ -50,26 +50,10 @@ const GRUPOS = [
 
 function NavGrupo({ grupo, onCerrarMenu }) {
   const location = useLocation()
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const rutasGrupo = [grupo.to, ...grupo.hijos.map((h) => h.to)]
   const estaActivo = rutasGrupo.some((r) => location.pathname === r)
   const [abierto, setAbierto] = useState(estaActivo)
-
-  const estiloBase = {
-    display: 'flex', alignItems: 'center', gap: '10px',
-    padding: '8px 12px', borderRadius: '10px',
-    border: '1px solid transparent',
-    fontSize: '13px', fontWeight: 500, textDecoration: 'none',
-  }
-  const estiloActivo = {
-    ...estiloBase,
-    background: tema.greenDim,
-    color: tema.green,
-    border: `1px solid ${tema.greenBorde}`,
-    boxShadow: '0 0 12px rgba(0,180,100,0.1)',
-    fontWeight: 600,
-  }
-  const estiloInactivo = { ...estiloBase, color: tema.textSecondary }
 
   return (
     <div>
@@ -85,7 +69,7 @@ function NavGrupo({ grupo, onCerrarMenu }) {
           to={grupo.to}
           end
           onClick={onCerrarMenu}
-          style={({ isActive }) => ({
+          style={() => ({
             display: 'flex', alignItems: 'center', gap: '10px',
             flex: 1, padding: '8px 12px',
             color: estaActivo ? tema.accent : tema.textSecondary,
@@ -159,9 +143,9 @@ function ReportarError() {
 
   function enviar() {
     if (!descripcion.trim()) return
-    const asunto = encodeURIComponent(`[AppMosca] Error en: ${seccion || 'sin especificar'}`)
+    const asunto = encodeURIComponent(`[ITeRatE] Error en: ${seccion || 'sin especificar'}`)
     const cuerpo = encodeURIComponent(
-      `Sección: ${seccion || 'sin especificar'}\n\nDescripción:\n${descripcion.trim()}\n\n---\nEnviado desde AppMosca`
+      `Sección: ${seccion || 'sin especificar'}\n\nDescripción:\n${descripcion.trim()}\n\n---\nEnviado desde ITeRatE`
     )
     window.location.href = `mailto:LucasDeRiviaDev@gmail.com?subject=${asunto}&body=${cuerpo}`
     setEnviado(true)
@@ -302,7 +286,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
             />
           </div>
           <div>
-            <div className="font-bold text-sm tracking-wide" style={{ color: tema.textPrimary }}>BIOTERIO</div>
+            <div className="font-bold text-sm tracking-wide" style={{ color: tema.textPrimary }}>ITeRatE</div>
             <div className="text-xs font-mono" style={{ color: tema.green, opacity: 0.8 }}>v2.0</div>
             <div className="text-xs font-mono" style={{ color: tema.green, opacity: 0.55 }}>ACTIVO</div>
           </div>
@@ -359,7 +343,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 pb-3 space-y-1">
-        {[LINK_INICIO, null, LINK_DASHBOARD].map((item, i) =>
+        {[LINK_INICIO, null, LINK_DASHBOARD].map((item) =>
           item === null
             ? <div key="sep-top" style={{ height: "1px", background: tema.bgCardBorde, margin: "6px 4px" }} />
             : (

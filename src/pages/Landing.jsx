@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../context/ThemeContext'
 import ITeRatELogo from '../components/ITeRatELogo'
-import iterateLogoOriginal  from '../assets/logoiterate.png'
 import iterateTextLogo       from '../assets/iterate+slogan.png'
 import iterateTextLogoLight  from '../assets/iterate+sloganfondoclaro.png'
 import iterateTitleLogo      from '../assets/iterate+logo+slogan.png'
@@ -157,10 +156,6 @@ export default function Landing() {
       msg.textContent = '✓ ¡Mensaje recibido! Te contactamos a la brevedad.'
       btn.style.display = 'none'
     }
-  }
-
-  function scrollTo(id) {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   return (

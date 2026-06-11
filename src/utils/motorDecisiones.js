@@ -3,10 +3,9 @@
 // Saturación · Renovación · Capacidad · Reemplazos · Producción futura
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { getBio } from './constants'
-import { difDias, parseDate, calcularRangoParto, calcularDestete, calcularMadurez } from './calculos'
-import { calcularFCoeficiente, buildPedigree, estadisticasColonia } from './genealogia'
-import { getReservas as getReservasDB, esReservado as esReservadoDB, reservarAnimal as reservarAnimalDB, liberarReserva as liberarReservaDB, getReservadosPorTipo as getReservadosPorTipoDB } from './db'
+import { difDias, calcularRangoParto, calcularDestete } from './calculos'
+import { calcularFCoeficiente, buildPedigree } from './genealogia'
+import { getReservas as getReservasDB, esReservado as esReservadoDB, reservarAnimal as reservarAnimalDB, liberarReserva as liberarReservaDB } from './db'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SECCIÓN 1 — MÍNIMOS OBLIGATORIOS POR BIOTERIO
@@ -500,7 +499,7 @@ export function calcularCandidatosRenovacion(stockReal, animales, camadas, bio, 
  * Tipos de motivo: 'edad' | 'fertilidad' | 'consanguinidad' | 'familia' | 'sanidad'
  * Niveles:         'critico' | 'alerta' | 'info'
  */
-export function calcularPerfilReproductor(animal, camadas, pedigree, incidentes = [], lineasProblematicas = new Map(), bio = null) {
+export function calcularPerfilReproductor(animal, camadas, pedigree, incidentes = [], lineasProblematicas = new Map()) {
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
   const LIMITE_EDAD = 270
@@ -590,7 +589,7 @@ export function calcularPerfilReproductor(animal, camadas, pedigree, incidentes 
  * 8. Saturación
  * 9. Sacrificios
  */
-export function verificarJerarquiaAntesSacrificio(animal, stockReal, minimos, bioterioId) {
+export function verificarJerarquiaAntesSacrificio(animal, stockReal, minimos) {
   const bloqueos = []
   const advertencias = []
 
@@ -670,7 +669,6 @@ export function verificarJerarquiaAntesSacrificio(animal, stockReal, minimos, bi
 export function calcularIndiceEstabilidad({
   stockReal,
   minimos,
-  proyeccion,
   candidatosRenovacion = [],
   indiceGenetico = null,
   indiceSanitario = 100,
@@ -709,7 +707,6 @@ export function calcularIndiceEstabilidad({
     genetica = Math.round(indiceGenetico.score * 0.2)
   } else {
     // Estimación básica sin pedigree completo
-    const sinPadres = reproductores.machos.filter(m => !m.id_madre && !m.id_padre).length
     const total     = reproductores.machos.length + reproductores.hembras.length
     if (total > 0) {
       const sinHistorial = (reproductores.machos.filter(m => !m.id_madre).length +
@@ -1279,7 +1276,7 @@ export function detectarLineasProblematicas(animales, camadas, incidentes) {
  */
 export function calcularMotorRenovacionUnificado(
   stockReal, animales, camadas, bio, bioterioId,
-  indiceGenetico = null, indiceSanitario = 100, incidentes = [], todosPedigreeAnimales = null
+  incidentes = [], todosPedigreeAnimales = null
 ) {
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
@@ -1777,7 +1774,7 @@ export function sugerirPromocionesAutomaticas(
  *
  * @returns {{ puede: bool, nivel: string, conclusion: string, riesgos: Array, produccion90d: object }}
  */
-export function evaluarSostenibilidadColonia(proyeccionAvanzada, stockReal, bioterioId) {
+export function evaluarSostenibilidadColonia(proyeccionAvanzada) {
   const riesgos     = []
   let puedeProducir = true
 
@@ -1845,7 +1842,7 @@ export function evaluarSostenibilidadColonia(proyeccionAvanzada, stockReal, biot
  * @returns {Array<{ prioridad, tipo, icono, titulo, descripcion, accion }>}
  */
 export function generarAccionesHoyPlanificacion(
-  proyeccionAvanzada, sugerencias, minimosCfg, stockReal, bioterioId
+  proyeccionAvanzada, sugerencias, minimosCfg, stockReal
 ) {
   const acciones   = []
   const { reproductores } = stockReal
@@ -2146,8 +2143,6 @@ export function generarModoEstrategia(objetivo, {
   motorRenovacion,
   candidatos = [],
   proyeccionAvanzada = null,
-  animales = [],
-  camadas = [],
   bioterioId,
   pedidos = [],
 }) {
@@ -2220,7 +2215,7 @@ export function generarModoEstrategia(objetivo, {
       break
 
     // ── REDUCIR ───────────────────────────────────────────────────────────────
-    case 'reducir':
+    case 'reducir': {
       ajustes.maxSacrificiosPorPeriodo = 999
       ajustes.umbralSaturacion         = 15
       ajustes.pausarNuevosApareamamientos = true
@@ -2244,9 +2239,10 @@ export function generarModoEstrategia(objetivo, {
       restricciones.push('No iniciar nuevos apareamientos hasta bajar de 15 jaulas')
       restricciones.push('Sacrificar adultos de ≥10 semanas antes que jóvenes y crías')
       break
+    }
 
     // ── HÍBRIDOS ──────────────────────────────────────────────────────────────
-    case 'hibridos':
+    case 'hibridos': {
       ajustes.reservarMejoresPara = 'hibridos'
       ajustes.umbralF             = 0.0625
       const candidatosHibridos = candidatos
@@ -2273,9 +2269,10 @@ export function generarModoEstrategia(objetivo, {
       restricciones.push('No sacrificar animales con F < 6.25% — reservar para cruzas F1')
       restricciones.push('Priorizar líneas con mayor diversidad genética para reproducción')
       break
+    }
 
     // ── PEDIDOS ───────────────────────────────────────────────────────────────
-    case 'pedidos':
+    case 'pedidos': {
       const pendientes = pedidos.filter(p => ['pendiente', 'en_proceso'].includes(p.estado ?? p.status))
       if (pendientes.length === 0) {
         recomendaciones.push({
@@ -2301,9 +2298,10 @@ export function generarModoEstrategia(objetivo, {
         }
       }
       break
+    }
 
     // ── DIVERSIDAD ────────────────────────────────────────────────────────────
-    case 'diversidad':
+    case 'diversidad': {
       ajustes.umbralF              = 0.0625
       ajustes.priorizarDiversidad  = true
       const candidatosDiversos = candidatos
@@ -2336,6 +2334,7 @@ export function generarModoEstrategia(objetivo, {
       restricciones.push('Bloquear cruzas con F ≥ 6.25% bajo este modo')
       restricciones.push('Priorizar machos sin parentesco con las hembras activas')
       break
+    }
 
     default:
       recomendaciones.push({
@@ -2472,7 +2471,6 @@ export function calcularSaturacionReal(stockReal, bioterioId, reservas = {}) {
  */
 export function generarSugerenciasSacrificio({
   stockReal,
-  animales,
   camadas,
   bio,
   bioterioId,
@@ -2732,9 +2730,7 @@ export function generarSugerenciasSacrificio({
 export function responderQueReducirHoy({
   saturacionReal,
   sugerencias,
-  stockReal,
   proyeccionAvanzada,
-  bioterioId,
 }) {
   const { exceso, nivel, umbral, jaulas } = saturacionReal
 

@@ -1,8 +1,11 @@
 // Versión demo de BiotheriumContext — usa localStorage en vez de Supabase.
 // Contrato idéntico al original: mismos estados y funciones exportadas.
-import { createContext, useContext, useReducer } from 'react'
+// Provee sobre el MISMO contexto que BiotheriumContext para que las páginas
+// compartidas (que importan useBioterio del módulo real) funcionen en demo.
+import { useContext, useReducer } from 'react'
 import { generarId } from '../utils/storage'
 import { useBioterioActivo } from './BioterioActivoContext'
+import { BiotheriumCtx } from './BiotheriumContext'
 import { getSeedInicial } from '../data/seedDemo'
 
 // ─── Keys de localStorage ─────────────────────────────────────────────────────
@@ -49,7 +52,7 @@ function inicializar() {
 
 // ─── Reducer (idéntico al original) ──────────────────────────────────────────
 function reducer(estado, accion) {
-  let lista, nuevo
+  let lista
   switch (accion.type) {
     case 'SET_ANIMALES':         return { ...estado, animales:     accion.payload }
     case 'SET_CAMADAS':          return { ...estado, camadas:      accion.payload }
@@ -117,22 +120,9 @@ function reducer(estado, accion) {
   }
 }
 
-// ─── Función para persistir el estado después de cada acción ─────────────────
-function persistir(key, valor) {
-  guardar(LS[key], valor)
-}
-
-const BiotheriumCtx = createContext(null)
-
 export function BiotheriumDemoProvider({ children, onReset }) {
   const { bioterioActivo, bio } = useBioterioActivo()
   const [estado, dispatch] = useReducer(reducer, undefined, inicializar)
-
-  // Helper: dispatch + persist
-  function dp(type, payload, persistKey, nuevoValor) {
-    dispatch({ type, payload })
-    if (persistKey && nuevoValor !== undefined) persistir(persistKey, nuevoValor)
-  }
 
   // ── RESET DEMO ─────────────────────────────────────────────────────────────
   function resetearDemo() {
@@ -332,6 +322,12 @@ export function BiotheriumDemoProvider({ children, onReset }) {
     guardar(LS.incidentes, siguientes)
   }
 
+  async function editarIncidente(datos) {
+    const siguientes = estado.incidentes.map((i) => i.id === datos.id ? datos : i)
+    dispatch({ type: 'SET_INCIDENTES', payload: siguientes })
+    guardar(LS.incidentes, siguientes)
+  }
+
   async function eliminarIncidente(id) {
     const siguientes = estado.incidentes.filter((i) => i.id !== id)
     dispatch({ type: 'SET_INCIDENTES', payload: siguientes })
@@ -380,6 +376,8 @@ export function BiotheriumDemoProvider({ children, onReset }) {
       temperaturas: estado.temperaturas,
       incidentes:   estado.incidentes,
       extendidos:   estado.extendidos,
+      animalesExportados: [],
+      camadasF1: [],
       cargando: false,
       error: null,
       bio,
@@ -391,8 +389,10 @@ export function BiotheriumDemoProvider({ children, onReset }) {
       registrarEntrega, entregarReproductor, devolverEntrega,
       agregarJaula, editarJaula, eliminarJaula,
       agregarTemperatura,
-      agregarIncidente, eliminarIncidente,
+      agregarIncidente, editarIncidente, eliminarIncidente,
       agregarExtendido, editarExtendido, eliminarExtendido,
+      exportarAHibridos: async () => {},
+      devolverDeHibridos: async () => {},
     }}>
       {children}
     </BiotheriumCtx.Provider>

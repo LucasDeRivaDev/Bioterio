@@ -9,7 +9,7 @@ import {
   getCategoriaInfo, getTipoLabel, getSeveridadInfo,
   labelBioterio, colorBioterio,
   calcularIndiceSanitario, nivelIndice,
-  calcularIndiceAmbiental, nivelAmbiental, statsTemperatura, clasificarTemperatura, calcularExposicionTermica,
+  calcularIndiceAmbiental, nivelAmbiental, statsTemperatura, calcularExposicionTermica,
   calcularIndiceRiesgoGenetico, nivelRiesgoGenetico,
   calcularIndiceEstabilidadGlobal,
   detectarPatrones, detectarCorrelaciones, detectarCorrelacionesMultiventana,
@@ -29,7 +29,7 @@ const BIOTERIOS_SIN_TODOS = LISTA_BIOTERIOS.slice(1)
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function Incidentes() {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const { incidentes, animales, camadas, temperaturas, agregarIncidente, editarIncidente, eliminarIncidente } = useBioterio()
   const { bioterioActivo, bio } = useBioterioActivo()
 
@@ -193,7 +193,6 @@ export default function Incidentes() {
   const nvGlobal    = nivelIndice(indiceGlobal)
   const nvAmbiental = nivelAmbiental(indiceAmbiental)
   const nvGenetico  = nivelRiesgoGenetico(indiceGenetico)
-  const alertasUrgentes = alertas.filter(a => ['urgente', 'critico'].includes(a.nivel))
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -1598,7 +1597,7 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: tema.bgCard, backdropFilter: 'blur(4px)' }}>
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-lg rounded-2xl overflow-hidden max-h-[90dvh] overflow-y-auto"
         style={{ background: tema.bgCard, border: '1px solid rgba(255,107,128,0.3)', boxShadow: '0 0 60px rgba(255,107,128,0.1)' }}>
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(255,107,128,0.12)', background: 'rgba(255,107,128,0.04)' }}>

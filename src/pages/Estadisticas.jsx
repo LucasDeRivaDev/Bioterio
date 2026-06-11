@@ -94,7 +94,7 @@ function GraficoCard({ titulo, subtitulo, children, color = C.azul }) {
 }
 
 // ── Etiqueta personalizada para pie ──────────────────────────────────────────
-function LabelPie({ cx, cy, midAngle, innerRadius, outerRadius, percent, name, value }) {
+function LabelPie({ cx, cy, midAngle, innerRadius, outerRadius, percent, value }) {
   if (percent < 0.05) return null
   const RADIAN = Math.PI / 180
   const r = innerRadius + (outerRadius - innerRadius) * 0.55
@@ -134,7 +134,7 @@ function SinDatos() {
 
 // ── PÁGINA PRINCIPAL ──────────────────────────────────────────────────────────
 export default function Estadisticas() {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const inputStyle = {
     background: tema.bgInput,
     border: '1px solid rgba(30,51,82,0.8)',

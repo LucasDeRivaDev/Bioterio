@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider } from './context/AuthContext'
 import { BioterioActivoProvider, useBioterioActivo } from './context/BioterioActivoContext'
 import { BiotheriumDemoProvider } from './context/BiotheriumContextDemo'
 import { useBioterio } from './context/BiotheriumContextDemo'
+import { ThemeProvider, useTheme } from './context/ThemeContext'
+import { CSS_MODO_CLARO, BotonBrillo } from './App'
 import Sidebar from './components/Sidebar'
 import SelectorBioterio from './pages/SelectorBioterio'
 import Dashboard from './pages/Dashboard'
@@ -88,11 +91,12 @@ function BannerDemo() {
 
 // ── Layout principal de la demo ───────────────────────────────────────────────
 function DemoAppLayout() {
+  const { tema } = useTheme()
   const [sidebarAbierto, setSidebarAbierto] = useState(false)
   function cerrarSidebar() { setSidebarAbierto(false) }
 
   return (
-    <div className="flex flex-col" style={{ minHeight: '100dvh' }}>
+    <div className="flex flex-col" style={{ minHeight: '100dvh', background: tema.bgMain, backgroundImage: tema.bgMainGrad, backgroundSize: '40px 40px' }}>
       {/* Banner siempre visible arriba */}
       <BannerDemo />
 
@@ -121,16 +125,16 @@ function DemoAppLayout() {
           {/* Topbar mobile */}
           <div
             className="sticky top-0 z-20 flex items-center gap-3 px-4 py-3 md:hidden shrink-0"
-            style={{ background: '#050810', borderBottom: '1px solid rgba(0,230,118,0.12)' }}
+            style={{ background: tema.bgTopbar, borderBottom: `1px solid ${tema.bgTopbarBorde}` }}
           >
             <button
               onClick={() => setSidebarAbierto(true)}
               className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
-              style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676' }}
+              style={{ background: tema.accentDim, border: `1px solid ${tema.accentBorde}`, color: tema.accent }}
             >
               ☰
             </button>
-            <span className="font-bold text-white text-sm tracking-wide">BIOTERIO</span>
+            <span className="font-bold text-sm tracking-wide" style={{ color: tema.textPrimary }}>ITeRatE</span>
             <div
               className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono shrink-0"
               style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b' }}
@@ -167,24 +171,35 @@ function DemoAppLayout() {
 // ── Wrapper que decide si mostrar selector o layout ───────────────────────────
 function DemoRoot() {
   const { bioterioActivo } = useBioterioActivo()
-
-  // Sin bioterio elegido → selector (igual que en el app real)
-  if (!bioterioActivo) return <SelectorBioterio />
+  const { modoBrillo } = useTheme()
 
   return (
-    <BiotheriumDemoProvider>
-      <DemoAppLayout />
-    </BiotheriumDemoProvider>
+    <>
+      {/* CSS global inyectado para modo claro — igual que en el app real */}
+      {modoBrillo && <style dangerouslySetInnerHTML={{ __html: CSS_MODO_CLARO }} />}
+      {!bioterioActivo ? (
+        <SelectorBioterio />
+      ) : (
+        <BiotheriumDemoProvider>
+          <DemoAppLayout />
+        </BiotheriumDemoProvider>
+      )}
+      <BotonBrillo />
+    </>
   )
 }
 
 // ── App de demo (punto de entrada) ────────────────────────────────────────────
 export default function AppDemo() {
   return (
-    <BioterioActivoProvider>
-      <BrowserRouter>
-        <DemoRoot />
-      </BrowserRouter>
-    </BioterioActivoProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <BioterioActivoProvider>
+          <BrowserRouter>
+            <DemoRoot />
+          </BrowserRouter>
+        </BioterioActivoProvider>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }

@@ -32,7 +32,7 @@ export default function Login() {
     setCargando(true)
     try {
       await iniciarSesion(email.trim(), password)
-    } catch (err) {
+    } catch {
       setError('Email o contraseña incorrectos. Intentá de nuevo.')
     } finally {
       setCargando(false)
@@ -52,7 +52,7 @@ export default function Login() {
       setPassOk(true)
       // Limpiar el hash de la URL
       window.history.replaceState(null, '', window.location.pathname)
-    } catch (err) {
+    } catch {
       setError('No se pudo guardar la contraseña. Intentá de nuevo.')
     } finally {
       setCargando(false)
@@ -170,7 +170,7 @@ export default function Login() {
               />
             </div>
 
-            <h1 className="text-base font-bold tracking-wide" style={{ color: tema.textPrimary }}>BIOTERIO</h1>
+            <h1 className="text-base font-bold tracking-wide" style={{ color: tema.textPrimary }}>ITeRatE</h1>
             <p className="text-xs font-mono" style={{ color: tema.green, opacity: 0.8 }}>
               Sistema de Gestión de Colonia
             </p>
@@ -275,7 +275,7 @@ export default function Login() {
               style={{ width: '210px', maxWidth: '100%', height: 'auto', margin: '0 auto 4px', display: 'block', opacity: modoBrillo ? 0.9 : 0.72, filter: modoBrillo ? 'none' : 'drop-shadow(0 0 8px rgba(0,230,118,0.15))', mixBlendMode: modoBrillo ? 'multiply' : 'screen' }}
             />
             <div className="flex items-center justify-center gap-1.5 text-xs" style={{ color: 'rgba(74,95,122,0.5)' }}>
-              <span className="font-mono italic">Mus musculus · Ratón doméstico</span>
+              <span className="font-mono italic">Gestión de colonias de roedores de laboratorio</span>
             </div>
           </div>
         </div>

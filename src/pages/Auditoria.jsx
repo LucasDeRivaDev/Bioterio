@@ -81,7 +81,7 @@ function MiniKpi({ label, valor, color = '#c9d4e0' }) {
 
 // ── Sección colapsable ────────────────────────────────────────────────────────
 function Colapsable({ titulo, children, defaultOpen = false }) {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const [open, setOpen] = useState(defaultOpen)
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}>
@@ -102,7 +102,7 @@ function Colapsable({ titulo, children, defaultOpen = false }) {
 // Solo muestra filas con cambio relevante o condición de alerta.
 // Evita "deterioro" como palabra — usa dirección e icono.
 function FilaMetrica({ label, vA, vB, invertida = false, formato = v => v?.toFixed?.(1) ?? '—', umbral = 0.08 }) {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   if (vA == null && vB == null) return null
 
   const delta = vB != null && vA != null ? vB - vA : null
@@ -146,8 +146,8 @@ function NivelBadge({ nivel }) {
 
 // ── Sección técnica colapsable ────────────────────────────────────────────────
 function SeccionTecnica({ resultado, bioterio }) {
-  const { tema, modoBrillo } = useTheme()
-  const { mA, mB, comp, tendencias } = resultado
+  const { tema } = useTheme()
+  const { mA, mB, tendencias } = resultado
 
   const rA = mA.repro,      rB = mB.repro
   const pA = mA.prod,       pB = mB.prod

@@ -37,14 +37,12 @@ function promedio(arr) {
   return vals.reduce((s, v) => s + v, 0) / vals.length
 }
 
-// ── Constantes de estilo ──────────────────────────────────────────────────────
-const CARD_BG = 'rgba(13,21,40,0.95)'
-const BORDER  = '1px solid rgba(30,51,82,0.7)'
-
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function Temperatura() {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
+  const CARD_BG = tema.bgCard
+  const BORDER  = `1px solid ${tema.bgCardBorde}`
   const CFG = {
     ratas:   { color: tema.accent, dim: 'rgba(0,230,118,0.1)',  label: 'Bioterio de Ratas',   icon: '🐀' },
     ratones: { color: tema.blue, dim: 'rgba(64,196,255,0.1)', label: 'Bioterio de Ratones', icon: '🐭' },
@@ -318,7 +316,7 @@ export default function Temperatura() {
 
         {/* Header */}
         <div>
-          <h1 className="text-xl font-bold text-white tracking-wide">🌡️ Temperatura</h1>
+          <h1 className="text-xl font-bold tracking-wide" style={{ color: tema.textPrimary }}>🌡️ Temperatura</h1>
           <p className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>
             Registro ambiental por bioterio físico
           </p>
@@ -352,7 +350,7 @@ export default function Temperatura() {
                   style={{
                     background: activo ? `${c.color}0d` : 'transparent',
                     borderBottom: activo ? `2px solid ${c.color}` : '2px solid transparent',
-                    color: activo ? c.color : '#4a5f7a',
+                    color: activo ? c.color : tema.textMuted,
                   }}
                 >
                   <span>{c.icon}</span>

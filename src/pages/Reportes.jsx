@@ -36,7 +36,7 @@ function inicioSemana() {
 }
 
 export default function Reportes() {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const cardStyle = { background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }
   const SECCIONES = [
     { ...SECCIONES_BASE[0], icon: <TrendingUp size={14} />,   color: tema.amber,  rgb: '255,179,0'   },
@@ -110,7 +110,7 @@ export default function Reportes() {
       .filter(c => c.fecha_destete && c.incluir_en_stock !== false && !c.failure_flag && !jaulasIds.has(c.id))
       .map(c => {
         const sac   = sacrificios.filter(s => s.camada_id === c.id).reduce((s, x) => s + x.cantidad, 0)
-        const ent   = entregas.filter(e => e.camada_id === c.id).reduce((s, x) => s + x.cantidad, 0)
+        const ent   = entregas.filter(e => e.camada_id === c.id && !e.devuelta).reduce((s, x) => s + x.cantidad, 0)
         const total = Math.max(0, (c.total_destetados ?? c.total_crias ?? 0) - sac - ent)
         if (total <= 0) return null
         return { id: `v-${c.id}`, camada_id: c.id, total, machos: c.crias_machos, hembras: c.crias_hembras, notas: null, virtual: true }

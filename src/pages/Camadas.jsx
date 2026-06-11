@@ -7,7 +7,6 @@ import {
   calcularScoresCamada, calcularPerfilHembra, calcularRendimientoMacho,
   calcularConfiabilidadHembra,
 } from '../utils/calculos'
-import { BIO } from '../utils/constants'
 import Modal from '../components/Modal'
 import CamadaForm from '../components/CamadaForm'
 import Badge from '../components/Badge'
@@ -568,7 +567,7 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
 }
 
 export default function Camadas() {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const cardStyle = { background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }
   const { camadas, animales, animalesExportados, jaulas, agregarCamada, editarCamada, eliminarCamada, confirmarSeparacion, agregarJaula, editarJaula, eliminarJaula, bio } = useBioterio()
   // En Híbridos los progenitores viven en animalesExportados — buscar en ambos
@@ -622,7 +621,7 @@ export default function Camadas() {
       } else {
         const tieneSeparacion = !!c.fecha_separacion
         const diasDesdeCopula = c.fecha_copula ? difDias(parseDate(c.fecha_copula), hoyDate) : 0
-        const autoSeparada = !c.fecha_separacion && c.fecha_copula && diasDesdeCopula >= BIO.DURACION_APAREAMIENTO_DIAS
+        const autoSeparada = !c.fecha_separacion && c.fecha_copula && diasDesdeCopula >= bio.DURACION_APAREAMIENTO_DIAS
         estado = (tieneSeparacion || autoSeparada) ? 'preñez' : 'apareamiento'
       }
 
@@ -818,7 +817,7 @@ export default function Camadas() {
                       <DataItem
                         label="Separación esperada"
                         valor={formatFecha(camada.fechaSepEsperada)}
-                        sub={`${BIO.DURACION_APAREAMIENTO_DIAS}d post-cópula`}
+                        sub={`${bio.DURACION_APAREAMIENTO_DIAS}d post-cópula`}
                         color="#40c4ff"
                       />
                     ) : null}
@@ -843,7 +842,7 @@ export default function Camadas() {
                       <DataItem
                         label="Madurez reproductiva"
                         valor={formatFecha(camada.fechaMadurez)}
-                        sub="12 semanas"
+                        sub={`${Math.round(bio.MADUREZ_DIAS / 7)} semanas`}
                         color="#ce93d8"
                       />
                     )}

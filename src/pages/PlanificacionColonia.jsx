@@ -3,7 +3,6 @@ import { useBioterio } from '../context/BiotheriumContext'
 import { useBioterioActivo } from '../context/BioterioActivoContext'
 import { useTheme } from '../context/ThemeContext'
 import { calcularIndiceSanitario } from '../utils/sanitario'
-import { buildPedigree } from '../utils/genealogia'
 import {
   calcularStockReal,
   verificarMinimosCriticos,
@@ -11,8 +10,7 @@ import {
   calcularCandidatosRenovacion,
   calcularIndiceEstabilidad,
   calcularIndiceGeneticoRenovacion,
-  calcularDeficitFuturo,
-  getMinimosCriticos,
+    getMinimosCriticos,
   nivelEstabilidad,
   colorNivelF,
   reservarAnimal,
@@ -33,7 +31,7 @@ import {
   responderQueReducirHoy,
   detectarLineasProblematicas,
 } from '../utils/motorDecisiones'
-import { formatFecha, difDias } from '../utils/calculos'
+import { formatFecha } from '../utils/calculos'
 import {
   Shield, AlertTriangle, TrendingUp, Dna, Activity, BarChart2,
   ChevronDown, ChevronUp, CheckCircle2, XCircle, Clock, Zap,
@@ -90,7 +88,7 @@ function Chip({ children, color = '#00e676' }) {
 }
 
 function SeccionTitulo({ icono, titulo, subtitulo }) {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   return (
     <div className="flex items-center gap-3 mb-4">
       <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -107,7 +105,7 @@ function SeccionTitulo({ icono, titulo, subtitulo }) {
 // ── Tarjeta de horizonte temporal ───────────────────────────────────────────
 
 function TarjetaHorizonte({ dias, data, config }) {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const color = data.ok ? '#00e676' : data.alertas.some(a => a.tipo.includes('machos') || a.tipo.includes('hembras')) ? '#ff6b80' : '#ffb300'
   const emoji = data.ok ? '🟢' : '🔴'
 
@@ -165,7 +163,7 @@ function TarjetaHorizonte({ dias, data, config }) {
 // ── Tarjeta de candidato a renovación ──────────────────────────────────────
 
 function TarjetaCandidato({ candidato, index, onReservar, onLiberar, reservado, camadas }) {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const colorF = colorNivelF(candidato.nivelF)
   const camada = camadas.find(c => c.id === candidato.camadaId)
 
@@ -250,7 +248,7 @@ function TarjetaCandidato({ candidato, index, onReservar, onLiberar, reservado, 
 // ── Motor de renovación unificado — panel de acciones ───────────────────────
 
 function PanelMotorUnificado({ motorUnificado }) {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
 
   if (motorUnificado.accionesRecomendadas.length === 0) {
     return (
@@ -366,7 +364,7 @@ function PanelMotorUnificado({ motorUnificado }) {
 // Solo se bloquea la acción si ÉSTA provoca el déficit, no si ya existía.
 
 function SimuladorImpacto({ animales, stockReal, bioterioId, motorUnificado }) {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const [animalSeleccionado, setAnimalSeleccionado] = useState('')
   const minimos = getMinimosCriticos(bioterioId)
 
@@ -596,9 +594,9 @@ function SimuladorImpacto({ animales, stockReal, bioterioId, motorUnificado }) {
 export default function PlanificacionColonia() {
   const { animales, camadas, jaulas, sacrificios, entregas, incidentes, animalesExportados, camadasF1, pedidos } = useBioterio()
   const { bioterioActivo, bio } = useBioterioActivo()
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
 
-  const [tabHorizonte, setTabHorizonte]           = useState(90)
+  const [tabHorizonte]                            = useState(90)
   const [reservasKey, setReservasKey]             = useState(0)
   const [objetivoEstrategia, setObjetivoEstrategia] = useState('mantener')
 
@@ -658,12 +656,6 @@ export default function PlanificacionColonia() {
       motorUnificado,
     }),
     [stockReal, minimos, candidatos, indiceGenetico, indiceSanitario, todasCamadas, bioterioActivo, motorUnificado]
-  )
-
-  // Déficit futuro en 4 horizontes
-  const deficitFuturo = useMemo(
-    () => calcularDeficitFuturo(todosAnimales, todasCamadas, jaulas, sacrificios, entregas, bio, bioterioActivo),
-    [todosAnimales, todasCamadas, jaulas, sacrificios, entregas, bio, bioterioActivo]
   )
 
   // Proyección seleccionada (detalle de partos/destetes en el horizonte elegido)

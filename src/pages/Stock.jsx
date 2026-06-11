@@ -1,8 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { difDias, parseDate, hoy, formatFecha, calcularPerfilHembra, calcularRendimientoMacho, getAnimalesReservados, getJaulasReservadas, getReservadosParaHibridos, getEstadoCicloHembra, generarIdentificadorCamada } from '../utils/calculos'
-import { generarId } from '../utils/storage'
-import { guardarPlan, eliminarPlan, getPlanes } from '../utils/db'
+import { guardarPlan } from '../utils/db'
 import Modal from '../components/Modal'
 import { TestTube2, FlaskConical, Microscope, UserPlus } from 'lucide-react'
 import Sacrificios from '../pages/Sacrificios'
@@ -1945,7 +1944,7 @@ function ModalEliminarJaula({ bloque, onConfirmar, onCerrar }) {
 }
 
 export default function Stock() {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const CAT = getCAT(tema)
   const { animales, animalesExportados, camadas, sacrificios, entregas, jaulas, bio, bioterioActivo, agregarAnimal, editarAnimal, sacrificarReproductor, editarJaula, agregarJaula, eliminarJaula, editarCamada, registrarSacrificio, registrarEntrega, entregarReproductor } = useBioterio()
   const esHibridos = bioterioActivo === 'ratones_hibridos'
@@ -2113,10 +2112,6 @@ export default function Stock() {
   [bloques, filtroCat])
 
   // ── Selección + sacrificio ────────────────────────────────────────────────
-  const totalSeleccionado = useMemo(() =>
-    bloques.filter((b) => seleccionadas.has(b.id)).reduce((s, b) => s + b.total, 0),
-  [bloques, seleccionadas])
-
   // Detectar si la selección actual permite planificar un apareamiento
   const bloquesSelArray = useMemo(() =>
     bloques.filter((b) => seleccionadas.has(b.id)),

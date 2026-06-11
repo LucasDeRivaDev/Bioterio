@@ -70,7 +70,7 @@ function labelColonia(bioId) {
 }
 
 export default function CamadaForm({ camada, onGuardar, onCancelar }) {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const inputStyle = {
     background: tema.bgInput,
     border: '1px solid rgba(30,51,82,0.8)',
@@ -681,7 +681,7 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
             value={form.gestacion_real}
             onChange={(e) => cambiar('gestacion_real', e.target.value)}
             min={18} max={30}
-            placeholder="23 (por defecto)"
+            placeholder={`${bio.GESTACION_DIAS} (por defecto)`}
             className="w-full px-3 py-2.5 text-sm focus:outline-none font-mono"
             style={inputStyle}
           />

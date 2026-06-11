@@ -150,7 +150,7 @@ function EdadMachoBadge({ macho }) {
 }
 
 export default function Rendimiento() {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const cardStyle = { background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }
   const CONF_CONFIG = {
     ok:       { color: tema.accent, label: 'OK' },
@@ -375,7 +375,7 @@ const btnSubTab = (v, label, color) => (
           </div>
         </div>
         <div className="text-xs mt-2" style={{ color: 'rgba(64,196,255,0.4)' }}>
-          Latencia = (Fecha nacimiento − gestación) − Fecha cópula · Gestación default: 23d
+          Latencia = (Fecha nacimiento − gestación) − Fecha cópula · Gestación default: {bio.GESTACION_DIAS}d
         </div>
       </div>
 
@@ -395,7 +395,6 @@ const btnSubTab = (v, label, color) => (
           <div className="space-y-3">
             {ranking.map(({ macho, m, totalMachos, totalHembras }, idx) => {
               const hist     = historial(macho.id)
-              const edadInfo = esActivo(macho) ? edadMachoInfo(macho) : null
               const bajaPerf = esActivo(macho) ? detectarBajaPerformanceMacho(macho.id, todasCamadas) : null
               return (
                 <div key={macho.id} className="rounded-xl overflow-hidden" style={cardStyle}>

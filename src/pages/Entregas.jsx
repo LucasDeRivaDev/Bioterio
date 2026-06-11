@@ -4,7 +4,7 @@ import { formatFecha } from '../utils/calculos'
 import { useTheme } from '../context/ThemeContext'
 
 export default function Entregas() {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const { entregas, camadas, animales, animalesExportados, devolverEntrega } = useBioterio()
   // En Híbridos los progenitores viven en animalesExportados — buscar en ambos
   const todosAnimales = useMemo(() => [...animales, ...animalesExportados], [animales, animalesExportados])

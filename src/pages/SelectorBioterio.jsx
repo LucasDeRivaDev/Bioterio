@@ -166,9 +166,12 @@ export default function SelectorBioterio() {
           className="w-full rounded-2xl overflow-hidden"
           style={{ background: tema.bgCard, border: `1.5px solid ${abierto === 'ratones' ? (cl ? BA : 'rgba(64,196,255,0.45)') : (cl ? BL : 'rgba(64,196,255,0.2)')}` }}
         >
-          <button
-            className="w-full text-left px-6 py-4 flex items-center gap-3"
+          <div
+            role="button"
+            tabIndex={0}
+            className="w-full text-left px-6 py-4 flex items-center gap-3 cursor-pointer"
             onClick={() => toggle('ratones')}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle('ratones') } }}
           >
             <span className="text-3xl">🐭</span>
             <div className="flex-1">
@@ -187,7 +190,7 @@ export default function SelectorBioterio() {
               📊 Resumen
             </button>
             <span style={{ fontSize: '18px', transition: 'transform 0.2s', transform: abierto === 'ratones' ? 'rotate(90deg)' : 'rotate(0deg)', marginLeft: '8px' }}>›</span>
-          </button>
+          </div>
 
           <div style={{ maxHeight: abierto === 'ratones' ? '400px' : '0', overflow: 'hidden', transition: 'max-height 0.25s ease' }}>
             <div className="p-3 space-y-2" style={{ borderTop: `1px solid ${cl ? BT : 'rgba(64,196,255,0.12)'}` }}>

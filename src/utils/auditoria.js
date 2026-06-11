@@ -520,7 +520,6 @@ export function proyectarTendenciaLineal(tendencias, metrica, mesesFuturos = 6, 
   const slope   = computeSlope(valores)
   const valid   = valores.filter(v => v != null)
   const last    = valid.length > 0 ? valid[valid.length - 1] : 0
-  const n       = valores.length
 
   return Array.from({ length: mesesFuturos }, (_, i) => ({
     mes:   `+${i + 1}m`,
@@ -709,8 +708,8 @@ export function generarAlertasReales(comp, mA, mB) {
 
 // ── Índice de sustentabilidad (0–100) ─────────────────────────────────────────
 // Mide salud y estabilidad de la colonia — NO penaliza menor producción.
-export function calcularIndiceSustentabilidad(mA, mB, comp) {
-  const { repro, sanidad, genetica, renovacion, ambiente } = mB
+export function calcularIndiceSustentabilidad(mA, mB) {
+  const { repro, sanidad, genetica, renovacion } = mB
 
   // Fertilidad (30%): 80%+ = máximo, 0% = 0
   const fertScore = Math.min(100, (repro.fertilidad || 0) * 125)

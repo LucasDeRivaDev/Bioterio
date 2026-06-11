@@ -21,7 +21,7 @@ const LABEL_COLONIA = {
 }
 
 export default function Animales() {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const cardStyle = { background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }
   const {
     animales, animalesExportados, camadas,
@@ -75,7 +75,11 @@ export default function Animales() {
   }
 
   function nombreAnimal(id) {
-    return animales.find((a) => a.id === id)?.codigo ?? '—'
+    return (
+      animales.find((a) => a.id === id)?.codigo ??
+      animalesExportados.find((a) => a.id === id)?.codigo ??
+      '—'
+    )
   }
 
   const colorConfiabilidad = { ok: '#00e676', leve: '#ffd740', moderada: '#ff9100', critica: '#ff1744' }
@@ -563,7 +567,7 @@ return (
           <FiltroBtn activo={filtroSexo === 'macho'} onClick={() => setFiltroSexo('macho')}>♂ Machos</FiltroBtn>
         </div>
         <div className="flex gap-1.5">
-          {['todos','activo','en_cria','retirado'].map((e) => (
+          {['todos','activo','en_apareamiento','en_cria','retirado','fallecido'].map((e) => (
             <FiltroBtn key={e} activo={filtroEstado === e} onClick={() => setFiltroEstado(e)}>
               {e === 'todos' ? 'Todos' : labelEstado[e]}
             </FiltroBtn>
@@ -879,7 +883,7 @@ function ModalExportarReproductor({ animalesYaExportados, onExportar, onCerrar }
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: tema.bgCard, backdropFilter: 'blur(4px)' }}
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
     >
       <div
         className="w-full max-w-lg rounded-2xl overflow-hidden flex flex-col"

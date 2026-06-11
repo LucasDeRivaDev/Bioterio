@@ -207,7 +207,7 @@ function PrediccionPanel({ prediccion }) {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function CicloEstral({ animal }) {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const FASES = makeFases(tema)
   const iStyle = makeIStyle(tema)
   const { extendidos, agregarExtendido, eliminarExtendido, bio } = useBioterio()

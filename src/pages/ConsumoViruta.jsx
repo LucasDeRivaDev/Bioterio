@@ -356,7 +356,7 @@ async function migrarDesdeLocalStorage() {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function ConsumoViruta() {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const coloresBioterio = {
     ratas:            tema.accent,
     ratones_balbc:    tema.blue,
@@ -1339,7 +1339,6 @@ export default function ConsumoViruta() {
                         {!cc?.tipo && (() => {
                           const prob = probCambioReciente(item.fecha, item.hora)
                           if (prob < 0.45) return null
-                          const ctx = contextoCiclo(item.fecha, item.hora, tema)
                           return (
                             <span className="text-xs font-mono px-1.5 py-0.5 rounded-full"
                               style={{ background: 'rgba(255,179,0,0.08)', border: '1px solid rgba(255,179,0,0.22)', color: tema.amber }}>
@@ -1638,7 +1637,7 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: tema.bgCard, backdropFilter: 'blur(4px)' }}>
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-sm rounded-2xl overflow-hidden"
         style={{ background: tema.bgCard, border: '1px solid rgba(167,139,250,0.3)', boxShadow: '0 0 60px rgba(167,139,250,0.12)' }}>
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(167,139,250,0.12)', background: 'rgba(167,139,250,0.05)' }}>
@@ -1701,7 +1700,7 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
                 <div className="space-y-1 pt-1">
                   <div className="text-xs font-mono mb-1.5" style={{ color: tema.textMuted }}>Bioterios con cambio:</div>
                   <div className="grid grid-cols-2 gap-1.5">
-                    {TODOS_BASE.map(({ id, label, icon }) => (
+                    {TODOS_BASE.map(({ id, icon }) => (
                       <label key={id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer"
                         style={{
                           background: bioAfect.includes(id) ? 'rgba(64,196,255,0.1)' : 'rgba(255,255,255,0.03)',
@@ -1818,7 +1817,7 @@ function ModalConfirmarCambio({ censo, onConfirmar, onCerrar }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: tema.bgCard, backdropFilter: 'blur(4px)' }}>
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-sm rounded-2xl overflow-hidden"
         style={{ background: tema.bgCard, border: '1px solid rgba(255,179,0,0.3)', boxShadow: '0 0 60px rgba(255,179,0,0.08)' }}>
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(255,179,0,0.12)', background: 'rgba(255,179,0,0.04)' }}>
@@ -1858,7 +1857,7 @@ function ModalConfirmarCambio({ censo, onConfirmar, onCerrar }) {
             <div className="space-y-1.5">
               <div className="text-xs font-mono" style={{ color: tema.textMuted }}>Bioterios con cambio:</div>
               <div className="grid grid-cols-2 gap-1.5">
-                {TODOS_BASE.map(({ id, label, icon }) => (
+                {TODOS_BASE.map(({ id, icon }) => (
                   <label key={id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer"
                     style={{
                       background: bioAfect.includes(id) ? 'rgba(64,196,255,0.1)' : 'rgba(255,255,255,0.03)',
@@ -1942,7 +1941,7 @@ function ModalCompra({ stockActual, onConfirmar, onCerrar }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: tema.bgCard, backdropFilter: 'blur(4px)' }}>
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-sm rounded-2xl overflow-hidden"
         style={{ background: tema.bgCard, border: '1px solid rgba(0,230,118,0.3)', boxShadow: '0 0 60px rgba(0,230,118,0.08)' }}>
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(0,230,118,0.12)', background: 'rgba(0,230,118,0.04)' }}>

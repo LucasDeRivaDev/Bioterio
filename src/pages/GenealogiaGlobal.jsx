@@ -6,12 +6,10 @@ import {
   buildPedigree,
   estadisticasColonia,
   calcularFCoeficiente,
-  calcularFIndividual,
   fPorcentaje,
   nivelConsanguinidad,
   evaluarApareamientoGenetico,
   estadoGenealogiaAnimal,
-  ancestrosComunes,
   getAncestores,
   LABEL_PARENTESCO,
   CONSANGUINIDAD_LINEA,
@@ -218,7 +216,7 @@ function ArbolGeneraciones({ animal, pedigree }) {
               { nodo: abuMP, key: 'MP', hint: 'lado madre' },
               { nodo: abuPM, key: 'PM', hint: 'lado padre' },
               { nodo: abuPP, key: 'PP', hint: 'lado padre' },
-            ].map(({ nodo, key, hint }) => (
+            ].map(({ nodo, key }) => (
               <div key={key} className="flex items-center gap-1.5">
                 <span className="text-[8px] font-mono w-4" style={{ color: '#1e3152' }}>{key}</span>
                 <NodoArbol nodo={nodo ?? { desconocido: true }} size="small" />
@@ -499,7 +497,7 @@ function SimuladorApareamientoPanel({ animales, pedigree }) {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function GenealogiaGlobal() {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const { setBioterioActivo } = useBioterioActivo()
   const [datos, setDatos]       = useState({})
   const [todasCamadas, setTodasCamadas] = useState([])
@@ -738,7 +736,7 @@ export default function GenealogiaGlobal() {
               Sin animales activos en este bioterio
             </div>
           )}
-          {fValuesFiltrados.map(({ animal, f, estadoGen, confianza, explicacion, madreId, padreId }) => {
+          {fValuesFiltrados.map(({ animal, f, estadoGen, confianza, explicacion }) => {
             const n         = nivelConsanguinidad(f)
             const cfg       = BIOTERIOS_CONFIG[animal.bioterio_id]
             const infoLinea = CONSANGUINIDAD_LINEA[animal.bioterio_id]

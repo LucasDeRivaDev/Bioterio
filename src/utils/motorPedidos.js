@@ -3,10 +3,10 @@
 // Parejas · Fechas · Reproductores · Viabilidad · Escenarios · Calendario
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { difDias, parseDate, formatFecha, calcularPerfilHembra, calcularRendimientoMacho } from './calculos'
+import { difDias, parseDate, calcularPerfilHembra, calcularRendimientoMacho } from './calculos'
 import { getBio } from './constants'
 import { buildPedigree, calcularFCoeficiente } from './genealogia'
-import { getMinimosCriticos, getReservas, reservarAnimal, liberarReserva } from './motorDecisiones'
+import { getMinimosCriticos, getReservas } from './motorDecisiones'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SECCIÓN 1 — PRODUCCIÓN HISTÓRICA
@@ -25,7 +25,6 @@ export function calcularProduccionHistorica(camadas, bioterioId) {
 
   if (historia.length === 0) {
     // Valores bibliográficos por defecto
-    const bio = getBio(bioterioId)
     const promBiblio = bioterioId === 'ratas' ? 10 : 8
     return {
       promedioTamano:    promBiblio,
@@ -77,7 +76,7 @@ export function calcularProduccionHistorica(camadas, bioterioId) {
  *   parejasBase      = ceil(cantidad / animalesTipoSexo)
  *   parejasConBuffer = ceil(parejasBase / tasaExito)
  */
-export function calcularParejasNecesarias(pedido, camadas, bio) {
+export function calcularParejasNecesarias(pedido, camadas) {
   const { cantidad, sexo, bioterioId } = pedido
   const hist = calcularProduccionHistorica(camadas, bioterioId)
 
@@ -470,7 +469,6 @@ export function evaluarImpactoColonia(pedido, reproductoresSeleccionados, animal
  */
 export function calcularIndiceViabilidad({
   fechasOptimas,
-  parejasNecesarias,
   reproductoresSeleccionados,
   animalesListos,
   impactoColonia,
@@ -942,12 +940,11 @@ export function colorEstadoPedido(estado) {
  * híbridos · capacidad · sanidad · pedidos futuros · mínimos · estabilidad.
  */
 export function evaluarImpactoEstrategico({
-  pedido, animales, camadas, jaulas,
+  pedido,
   reproductoresSeleccionados, capacidadFutura, impactoColonia,
   indiceSanitario, pedidosTodos = [],
 }) {
   const { bioterioId } = pedido
-  const minimos = getMinimosCriticos(bioterioId)
   const ALERTA_DIAS = 240
 
   const riesgos = []
@@ -1397,7 +1394,7 @@ export function calcularProduccionEnCurso(pedido, camadas, sacrificios, entregas
  */
 export function calcularPedidoEscalonado(pedido) {
   if (pedido.modalidad !== 'escalonada') return null
-  const { fechaEntrega, cantidadPorTanda, frecuenciaDias, tandasTotal, bioterioId, edadSemanas, sexo } = pedido
+  const { fechaEntrega, cantidadPorTanda, frecuenciaDias, tandasTotal, bioterioId } = pedido
   if (!fechaEntrega || !cantidadPorTanda || !frecuenciaDias || !tandasTotal) return null
 
   const bio  = getBio(bioterioId)
@@ -1908,7 +1905,6 @@ export function generarPlanOperativo(pedido, estrategia, fechasOptimas, parejasI
   const fechas = estrategia?.fechasModificadas ?? fechasOptimas
   if (!fechas) return []
 
-  const tiempoExtra = estrategia?.tiempoExtra ?? 0
   const hembras     = estrategia?.hembrasNecesarias ?? parejasInfo?.hembrasNecesarias ?? '?'
   const machos      = estrategia?.machosNecesarios  ?? parejasInfo?.machosNecesarios  ?? '?'
   const criasEst    = estrategia?.crecimientoColateral?.criasTotal ?? parejasInfo?.animalesEstimados ?? '?'
