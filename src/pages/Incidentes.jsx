@@ -19,7 +19,7 @@ import {
   detectarAlertasGenealógicas,
 } from '../utils/sanitario'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { AlertTriangle, CheckCircle, Plus, Activity, TrendingUp, TrendingDown, Thermometer, Dna, Zap, Eye, EyeOff } from 'lucide-react'
+import { AlertTriangle, CheckCircle, Plus, Activity, TrendingUp, TrendingDown, Thermometer, Dna, Zap, Eye, EyeOff, Pencil, Trash2 } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 
 // ── Constantes UI ─────────────────────────────────────────────────────────────
@@ -1406,14 +1406,16 @@ export default function Incidentes() {
                           {inc.resuelto ? 'Resuelto' : 'Resolver'}
                         </button>
                         <button onClick={() => { setIncAEditar(inc); setModal(true) }}
-                          className="px-2 py-1 rounded-lg text-xs opacity-0 group-hover:opacity-100"
-                          style={{ background: 'rgba(64,196,255,0.06)', border: '1px solid rgba(64,196,255,0.2)', color: tema.blue }}>
-                          ✎
+                          title="Editar incidente"
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono transition-colors hover:brightness-125"
+                          style={{ background: 'rgba(64,196,255,0.1)', border: '1px solid rgba(64,196,255,0.35)', color: tema.blue }}>
+                          <Pencil size={11} /> Editar
                         </button>
                         <button onClick={() => setConfirmarElim(inc)}
-                          className="px-2 py-1 rounded-lg text-xs opacity-0 group-hover:opacity-100"
-                          style={{ background: 'rgba(255,61,87,0.06)', border: '1px solid rgba(255,61,87,0.2)', color: tema.red }}>
-                          ✕
+                          title="Eliminar incidente"
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono transition-colors hover:brightness-125"
+                          style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.35)', color: tema.red }}>
+                          <Trash2 size={11} /> Eliminar
                         </button>
                       </div>
                     </div>
