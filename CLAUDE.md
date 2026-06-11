@@ -51,9 +51,9 @@ Sistema web de gestión de una colonia de ratones de laboratorio (*Mus musculus*
 
 ## Stack tecnológico
 
-- **Frontend:** React 18 + Vite (Rolldown bundler)
+- **Frontend:** React 19 + Vite (Rolldown bundler)
 - **Estilos:** Tailwind CSS (CDN)
-- **Routing:** React Router v6
+- **Routing:** React Router v7
 - **Estado global:** useReducer + Context API
 - **Base de datos:** Supabase (PostgreSQL + Auth + RLS)
 - **Deploy:** Vercel (auto-deploy en push a `main`)
@@ -101,7 +101,7 @@ src/
 
 ```
 animales
-  id, codigo, sexo, estado, fecha_nacimiento, notas,
+  id, codigo, sexo, estado, fecha_nacimiento, notas, nota_tipo,
   fecha_sacrificio, motivo_sacrificio,
   exportado_hibridos (bool, default false)
 
@@ -119,12 +119,28 @@ sacrificios
   id, camada_id, cantidad, fecha, categoria, notas
 
 entregas
-  id, camada_id, animal_id, cantidad, fecha, observaciones, created_at
+  id, camada_id, animal_id, cantidad, machos, hembras, fecha,
+  observaciones, devuelta (bool, default false), created_at
   (camada_id es null cuando se entrega un reproductor)
   (animal_id guarda el id del reproductor entregado, para poder revertir la entrega)
 
 temperature_logs
   id (uuid, auto), date, time, current_temp, min_temp, max_temp, created_at, bioterio_id
+
+configuracion
+  clave (text, PK lógica vía upsert), valor
+  (recordatorio renovación machos, capacidades por bioterio, etc.)
+
+contactos
+  id (uuid), nombre, institucion, email, mensaje, created_at
+  (formulario "Solicitar demo" de la landing — INSERT público vía RLS)
+
+notas / planes_apareamiento / reservas
+  (migradas desde localStorage — acceso vía src/utils/db.js)
+
+viruta_censos / viruta_compras
+alimento_censos / alimento_ingresos / alimento_reposiciones / alimento_estimaciones
+  (censos y consumo — migradas desde localStorage con migración automática al cargar)
 
 extendidos
   id, animal_id, bioterio_id, fecha (date),
@@ -152,9 +168,9 @@ extendidos
 |---|---|
 | `calcularLatencia(camada)` | Días entre cópula y concepción estimada |
 | `scorePorLatencia(dias)` | 10/7/5 según latencia (0 = score máximo) |
-| `scoreTamanoCamada(n)` | 10/7/5 según crías nacidas |
-| `scoreProporcionSexual(m,h)` | 10/7/5 según distribución sexual |
-| `scoreSupervivencia(nacidas, destetadas)` | tasa × 10, capeado a 10 |
+| `scoreTamanoCamada(n)` | ≥10→10 / 8–9→7 / <8→0 (crítico) |
+| `scoreProporcionSexual(m,h)` | igual→10 / más hembras→8 / más machos→5 |
+| `scoreSupervivencia(nacidas, destetadas)` | 100%→10 / 80–99%→7 / <80%→0 (crítico) |
 | `calcularScoresCamada(camada)` | Todos los scores + loss_count + survival_rate |
 | `calcularPerfilHembra(id, camadas)` | Promedios históricos de los 4 scores |
 | `calcularConfiabilidadHembra(id, camadas)` | Nivel de alerta (ok/leve/moderada/critica) |
@@ -330,25 +346,26 @@ Perfil reproductivo por animal (4 scores + confiabilidad), sacrificio parcial de
 
 ---
 
-## ⚠️ PENDIENTE CRÍTICO: Migración localStorage → Supabase
+## ✅ Migración localStorage → Supabase: COMPLETADA
 
-> **NUNCA olvidar:** Todo dato de negocio DEBE ir a Supabase, no a localStorage.
+> **Regla vigente:** Todo dato de negocio DEBE ir a Supabase, no a localStorage.
 > localStorage se pierde al limpiar caché del navegador y no se sincroniza entre dispositivos.
 
-Las siguientes features aún guardan en localStorage y requieren tablas en Supabase:
+Migración hecha — las features que antes vivían en localStorage ya usan estas tablas:
 
-| Feature | LS Key | Tabla Supabase necesaria |
+| Feature | Tabla Supabase | Acceso |
 |---|---|---|
-| Notas/recordatorios dashboard | `appMosca_notas_{bioId}` | `notas` |
-| Planes de apareamiento | `appMosca_apareamientos_{bioId}` | `planes_apareamiento` |
-| Reservas de animales/jaulas | `appMosca_reservas` | `reservas` |
-| Censos de viruta | `appMosca_viruta_censos` | `censos_viruta` |
-| Compras de viruta | `appMosca_viruta_compras` | `ingresos_viruta` |
-| Censos de alimento | `appMosca_alimento_censos` | `censos_alimento` |
-| Ingresos de alimento | `appMosca_alimento_ingresos` | `ingresos_alimento` |
-| Reposiciones de alimento | `appMosca_alimento_reposiciones` | `reposiciones_alimento` |
+| Notas/recordatorios dashboard | `notas` | `src/utils/db.js` |
+| Planes de apareamiento | `planes_apareamiento` | `src/utils/db.js` |
+| Reservas de animales/jaulas | `reservas` | `src/utils/db.js` |
+| Censos de viruta | `viruta_censos` | `ConsumoViruta.jsx` (migración automática desde LS) |
+| Compras de viruta | `viruta_compras` | `ConsumoViruta.jsx` |
+| Censos de alimento | `alimento_censos` | `ConsumoAlimento.jsx` (migración automática desde LS) |
+| Ingresos de alimento | `alimento_ingresos` | `ConsumoAlimento.jsx` |
+| Reposiciones de alimento | `alimento_reposiciones` | `ConsumoAlimento.jsx` |
+| Estimaciones de alimento | `alimento_estimaciones` | `ConsumoAlimento.jsx` |
 
-SQL completo para crear estas tablas está en `src/utils/sanitario.js` al final del archivo (sección SQL — Referencia para Supabase).
+En localStorage solo quedan preferencias de UI (tema `appMosca_brillo`, ficha biológica, `bioterio_activo`, alertas descartadas).
 
 **SQL pendiente para pedidos (campo meta):**
 ```sql
@@ -380,7 +397,7 @@ CREATE POLICY "insert publico" ON contactos FOR INSERT TO anon WITH CHECK (true)
 
 ## Qué falta / pendiente
 
-- [ ] **Migrar localStorage → Supabase** (ver tabla arriba — PRIORITARIO)
+- [x] ~~Migrar localStorage → Supabase~~ → completada (ver tabla arriba)
 - [ ] Notificaciones push o por email cuando hay tareas vencidas
 - [ ] Módulo de reportes con exportación real (PDF/Excel)
 - [ ] Historial de cambios por animal/camada (auditoría)
