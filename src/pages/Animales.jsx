@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { supabase } from '../lib/supabase'
-import { formatFecha, difDias, parseDate, hoy, calcularPerfilHembra, calcularConfiabilidadHembra, calcularRendimientoMacho, detectarBajaPerformanceMacho, getAnimalesReservados, getEstadoCicloHembra, generarIdentificadorCamada } from '../utils/calculos'
+import { formatFecha, difDias, parseDate, hoy, calcularPerfilHembra, calcularConfiabilidadHembra, calcularEvaluacionMaterna, calcularRendimientoMacho, detectarBajaPerformanceMacho, getAnimalesReservados, getEstadoCicloHembra, generarIdentificadorCamada } from '../utils/calculos'
 import { buildPedigree, calcularFIndividual, fPorcentaje, nivelConsanguinidad, getAncestores, estadoGenealogiaAnimal } from '../utils/genealogia'
 import { MAX_APAREAMIENTOS, MACHO_EDAD_LIMITE_DIAS, MACHO_EDAD_ALERTA_DIAS } from '../utils/constants'
 import Modal from '../components/Modal'
@@ -294,6 +294,7 @@ export default function Animales() {
       const finCiclo    = estadoCiclo === 'fin_ciclo'
       const perfil = calcularPerfilHembra(animal.id, camadas)
       const conf   = calcularConfiabilidadHembra(animal.id, camadas)
+      const evalMat = calcularEvaluacionMaterna(animal.id, camadas)
       if (!perfil) return (
         <div className="space-y-2">
           {ultimoCiclo && (
@@ -325,6 +326,20 @@ export default function Animales() {
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold"
               style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.3)', color: tema.red }}>
               🔚 Fin de ciclo reproductivo — {totalApareaminetos} ciclos completados · crías destetadas · recomendada para sacrificio.
+            </div>
+          )}
+          {/* Clasificación materna */}
+          {evalMat && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-2"
+              style={{ background: `${evalMat.color}14`, border: `1.5px solid ${evalMat.color}${evalMat.descalificada ? '66' : '40'}` }}>
+              <span className="text-lg leading-none">{evalMat.emoji}</span>
+              <div className="flex-1">
+                <span className="text-xs font-extrabold uppercase tracking-wide" style={{ color: evalMat.color }}>{evalMat.label}</span>
+                {evalMat.descalificada && evalMat.motivoTexto && (
+                  <span className="block text-xs font-semibold mt-0.5" style={{ color: evalMat.color }}>{evalMat.motivoTexto}</span>
+                )}
+              </div>
+              <span className="text-xs font-mono px-2 py-0.5 rounded-full" style={{ background: `${evalMat.color}20`, color: evalMat.color }}>{evalMat.composite}/10</span>
             </div>
           )}
           <div className="flex items-center gap-3 mb-3">

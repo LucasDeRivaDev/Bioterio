@@ -368,6 +368,10 @@ export function BiotheriumProvider({ children }) {
       failure_type: datos.failure_type || null,
       notas: datos.notas || null,
       incluir_en_stock: datos.incluir_en_stock !== false,
+      crias_reducidas: datos.crias_reducidas != null && datos.crias_reducidas !== '' ? Number(datos.crias_reducidas) : null,
+      reduccion_fecha: datos.reduccion_fecha || null,
+      reduccion_motivo: datos.reduccion_motivo || null,
+      reduccion_notas: datos.reduccion_notas || null,
     }
     const { error } = await supabase.from('camadas').update(datosDB).eq('id', datos.id)
     if (error) {

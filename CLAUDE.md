@@ -40,7 +40,16 @@ Sistema web de gestión de una colonia de ratones de laboratorio (*Mus musculus*
 - Velocidad de reproducción: latencia **0–5d** → 10pts / 6–10d → 7pts / 11–15d → 5pts (latencia 0 = fecundación el mismo día del apareamiento, es score máximo)
 - Tamaño de camada: ≥10 → 10pts / 8–9 → 7pts / <8 → **0pts (CRÍTICO)**
 - Proporción sexual: igual → 10pts / más hembras → 8pts / más machos → 5pts
-- Supervivencia al destete: 100% → 10pts / 80–99% → 7pts / <80% → **0pts (CRÍTICO)**
+- Supervivencia al destete (por **número de pérdidas reales**, no porcentaje): 0 pérdidas → 10pts / 1 pérdida → 7pts (9pts si la camada efectiva = 12) / **2+ pérdidas → 0pts (CRÍTICO — falla materna)**
+  - **Reducción de camada por manejo** (`crias_reducidas`) NUNCA cuenta como mortalidad: `objetivo = nacidas − reducidas`
+  - **Excepción Wistar** (~12 pezones): si `objetivo > 12`, score 10 mientras lleguen ≥12 al destete; si llegan <12 → 0
+
+**Clasificación materna (5 categorías, `calcularEvaluacionMaterna`):**
+- 🏆 Excelente / ✅ Buena / 🟡 Aceptable / 🔴 Mala madre / ⛔ No apta para reproducción
+- Jerarquía: tamaño (0.40) > supervivencia (0.30) > velocidad (0.20) > prop. sexual (0.10)
+- **Descalificación automática** (no compensable): cualquier camada con tamaño=0 (<8 crías) → **No apta**; cualquier camada con supervivencia=0 (≥2 pérdidas) → **Mala madre**; ambas → No apta
+- No descalificada: composite ≥9 → Excelente / ≥7.5 → Buena / resto → Aceptable
+- Hembras descalificadas generan alerta en Stock y advertencia al promover hijas a reproductoras
 
 **Sistema de confiabilidad de hembras:**
 - Leve: 1 evento negativo (fallo o camada < 8)
@@ -110,7 +119,9 @@ camadas
   fecha_nacimiento, fecha_destete, gestacion_real,
   total_crias, crias_machos, crias_hembras, total_destetados,
   failure_flag (bool), failure_type (text), notas,
-  incluir_en_stock (bool, default true)
+  incluir_en_stock (bool, default true),
+  crias_reducidas (int), reduccion_fecha (date),
+  reduccion_motivo (text), reduccion_notas (text)
 
 jaulas
   id, camada_id, total, machos, hembras, notas
@@ -170,8 +181,9 @@ extendidos
 | `scorePorLatencia(dias)` | 10/7/5 según latencia (0 = score máximo) |
 | `scoreTamanoCamada(n)` | ≥10→10 / 8–9→7 / <8→0 (crítico) |
 | `scoreProporcionSexual(m,h)` | igual→10 / más hembras→8 / más machos→5 |
-| `scoreSupervivencia(nacidas, destetadas)` | 100%→10 / 80–99%→7 / <80%→0 (crítico) |
-| `calcularScoresCamada(camada)` | Todos los scores + loss_count + survival_rate |
+| `scoreSupervivencia(nacidas, destetadas, reducidas)` | Por pérdidas reales: 0→10 / 1→7 (9 si efectiva=12) / 2+→0. Descuenta reducción de manejo. Excepción Wistar >12 |
+| `calcularScoresCamada(camada)` | Todos los scores + loss_count (mortalidad real) + survival_rate + crias_reducidas |
+| `calcularEvaluacionMaterna(id, camadas)` | Clasifica la hembra en 5 categorías (Excelente→No apta) con descalificación automática. `CATEGORIAS_MADRE` exportado |
 | `calcularPerfilHembra(id, camadas)` | Promedios históricos de los 4 scores |
 | `calcularConfiabilidadHembra(id, camadas)` | Nivel de alerta (ok/leve/moderada/critica) |
 | `calcularRendimientoMacho(id, camadas)` | Score promedio + latencia promedio del macho |
@@ -281,6 +293,14 @@ extendidos
 - Reproductores activos se suman en Adultos (1 animal + 1 jaula, excepto hembras `en_apareamiento` que no suman jaula)
 - Camadas fallidas (`failure_flag: true`) se excluyen de los bloques virtuales
 
+**Evaluación materna y reducción de camada:**
+- `scoreSupervivencia` evalúa por número de pérdidas reales, no por porcentaje. `objetivo = nacidas − crias_reducidas`. Excepción Wistar para `objetivo > 12` (score 10 si ≥12 destetadas)
+- `calcularScoresCamada.loss_count` = mortalidad real (descuenta reducción). `crias_reducidas` expuesto en el resultado
+- `calcularEvaluacionMaterna` → 5 categorías con descalificación automática (tamaño=0 → No apta · supervivencia=0 → Mala madre). Banner en Camadas (AnalisisReproductivo) y Animales (PerfilAnimal)
+- Reducción de camada: toggle local `huboReduccion` en CamadaForm (no es campo de `form`). Persiste `crias_reducidas/reduccion_fecha/reduccion_motivo/reduccion_notas`. Validación: reducidas + destetadas ≤ nacidas
+- Stock: bloque con madre descalificada muestra badge "no promover hijas" + advertencia en la pestaña Promover (solo al promover hembras)
+- Tarea de supervivencia crítica usa `scoreSupervivencia === 0` (antes era rate < 80%)
+
 **Otros:**
 - Scores se calculan en tiempo real — no se guardan en DB
 - Separación de pareja: inline desde la lista de camadas, sin abrir modal
@@ -344,6 +364,15 @@ Perfil reproductivo por animal (4 scores + confiabilidad), sacrificio parcial de
   - **Sección "Entregas escalonadas":** cronograma de tandas con fecha de entrega, fecha de cópula y alerta de tiempo por tanda.
   - **BiotheriumContext:** campo `meta` jsonb en `_pedidoToDb`/`_pedidoFromDb` para persistir los campos extendidos. Requiere `ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS meta jsonb DEFAULT '{}';`
 
+### Junio 2026
+
+- **Evaluación materna + reducción de camada (11/06):** Reforma del algoritmo de selección de hembras:
+  - **`scoreSupervivencia(nacidas, destetadas, reducidas)`:** evaluación biológica por número de pérdidas reales (no porcentaje). 0→10 / 1→7 (9 si camada efectiva = 12) / 2+→0. La reducción de manejo se descuenta del objetivo. Excepción Wistar: si `objetivo > 12`, score 10 mientras lleguen ≥12 al destete.
+  - **`calcularEvaluacionMaterna(id, camadas)` + `CATEGORIAS_MADRE`:** clasifica en 🏆 Excelente / ✅ Buena / 🟡 Aceptable / 🔴 Mala madre / ⛔ No apta. Descalificación automática no compensable: tamaño=0 → No apta · supervivencia=0 → Mala madre. Composite ponderado (tamaño 0.4 > superv. 0.3 > vel. 0.2 > prop. 0.1).
+  - **Reducción de camada en CamadaForm:** sección con toggle ¿reducción? + cantidad / fecha / motivo / observaciones. Resumen en vivo (reducción vs mortalidad real vs a criar). Columnas DB `crias_reducidas/reduccion_fecha/reduccion_motivo/reduccion_notas`.
+  - **UI:** banner de clasificación materna en Camadas (AnalisisReproductivo) y Animales (PerfilAnimal). Panel de supervivencia diferencia "✂️ Reducción" de "Mort. real".
+  - **ITERATE — cierre del ciclo de selección:** Stock muestra badge en bloques cuya madre está descalificada ("no promover hijas") + advertencia en la pestaña Promover al promover una hembra hija de madre Mala/No apta.
+
 ---
 
 ## ✅ Migración localStorage → Supabase: COMPLETADA
@@ -378,6 +407,16 @@ Necesario para que funcionen los campos: modalidad, soloVirgenes, cantidadPorTan
 ALTER TABLE entregas ADD COLUMN IF NOT EXISTS devuelta boolean DEFAULT false;
 ```
 Necesario para que "Devolver al stock manteniendo historial" deje de descontar la entrega en stockCamada.
+
+**SQL pendiente para reducción de camada (campos en camadas):**
+```sql
+ALTER TABLE camadas
+  ADD COLUMN IF NOT EXISTS crias_reducidas integer,
+  ADD COLUMN IF NOT EXISTS reduccion_fecha date,
+  ADD COLUMN IF NOT EXISTS reduccion_motivo text,
+  ADD COLUMN IF NOT EXISTS reduccion_notas text;
+```
+Necesario para que la reducción de camada por manejo no se contabilice como mortalidad en los scores de supervivencia ni en la evaluación materna.
 
 **SQL pendiente para el formulario "Solicitar demo" de la landing (tabla contactos):**
 ```sql

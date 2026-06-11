@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
-import { difDias, parseDate, hoy, formatFecha, calcularPerfilHembra, calcularRendimientoMacho, getAnimalesReservados, getJaulasReservadas, getReservadosParaHibridos, getEstadoCicloHembra, generarIdentificadorCamada } from '../utils/calculos'
+import { difDias, parseDate, hoy, formatFecha, calcularPerfilHembra, calcularEvaluacionMaterna, calcularRendimientoMacho, getAnimalesReservados, getJaulasReservadas, getReservadosParaHibridos, getEstadoCicloHembra, generarIdentificadorCamada } from '../utils/calculos'
 import { guardarPlan } from '../utils/db'
 import Modal from '../components/Modal'
 import { TestTube2, FlaskConical, Microscope, UserPlus } from 'lucide-react'
@@ -226,6 +226,9 @@ function BloqueJaula({ bloque, camadas, onClick, onEliminar, modoSeleccion = fal
   const calPadre = esStock && bloque.padre && camadas ? calidadMacho(bloque.padre.id, camadas)  : null
   const mostrarCalidad = esStock && (bloque.madre || bloque.padre)
   const madreAplazada  = calMadre?.aplazada ?? false
+  // Madre descalificada (Mala madre / No apta) → sus hijas no deben promoverse a reproductoras
+  const evalMadre        = esStock && bloque.madre && camadas ? calcularEvaluacionMaterna(bloque.madre.id, camadas) : null
+  const madreDescalificada = evalMadre?.descalificada ?? false
 
   // Reserva de apareamiento — reproductores individuales
   const reserva = bloque.tipo === 'reproductor' && bloque.animal
@@ -466,9 +469,15 @@ function BloqueJaula({ bloque, camadas, onClick, onEliminar, modoSeleccion = fal
           >
             {bloque.madre && <MiniCalidad icono="♀" codigo={bloque.madre.codigo} calidad={calMadre} animal={bloque.madre} />}
             {bloque.padre && <MiniCalidad icono="♂" codigo={bloque.padre.codigo} calidad={calPadre} animal={bloque.padre} />}
-            {madreAplazada && (
+            {madreAplazada && !madreDescalificada && (
               <div className="text-xs px-1 pt-0.5" style={{ color: tema.red, opacity: 0.7 }}>
                 ⚠ Línea materna de bajo rendimiento
+              </div>
+            )}
+            {madreDescalificada && (
+              <div className="text-xs px-1.5 py-1 rounded-lg mt-0.5 font-semibold"
+                style={{ background: `${evalMadre.color}1a`, border: `1px solid ${evalMadre.color}55`, color: evalMadre.color }}>
+                {evalMadre.emoji} Madre {evalMadre.short} — no promover hijas a reproductoras
               </div>
             )}
           </div>
@@ -940,6 +949,27 @@ function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, 
                 </span>
               </div>
             </div>
+
+            {/* Advertencia: hija de madre descalificada */}
+            {(() => {
+              const sexoEfectivo = sexoInferido ?? sexoPromover
+              if (sexoEfectivo !== 'hembra' || !bloque.madre || !camadas) return null
+              const ev = calcularEvaluacionMaterna(bloque.madre.id, camadas)
+              if (!ev?.descalificada) return null
+              return (
+                <div className="rounded-xl px-3 py-2.5 flex items-start gap-2"
+                  style={{ background: `${ev.color}14`, border: `1.5px solid ${ev.color}66` }}>
+                  <span className="text-base leading-none mt-0.5">{ev.emoji}</span>
+                  <div className="text-xs" style={{ color: ev.color }}>
+                    <span className="font-bold uppercase tracking-wide">Madre {ev.short}</span>
+                    <span className="block mt-0.5 font-semibold">
+                      {bloque.madre.codigo} está descalificada ({ev.motivoTexto?.toLowerCase()}).
+                      Promover a sus hijas perpetúa una línea materna deficiente — no recomendado.
+                    </span>
+                  </div>
+                </div>
+              )
+            })()}
 
             <button
               onClick={async () => {

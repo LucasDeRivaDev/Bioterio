@@ -12,7 +12,16 @@ const vacioCamada = {
   total_destetados: '', fecha_destete: '', notas: '',
   failure_flag: false, failure_type: '',
   incluir_en_stock: true,
+  crias_reducidas: '', reduccion_fecha: '', reduccion_motivo: '', reduccion_notas: '',
 }
+
+const MOTIVOS_REDUCCION = [
+  { value: 'estandarizar_camada', label: 'Estandarizar tamaño de camada' },
+  { value: 'crias_debiles',       label: 'Crías débiles / malformadas' },
+  { value: 'capacidad_lactancia', label: 'Exceso sobre capacidad de lactancia' },
+  { value: 'protocolo',           label: 'Requerimiento de protocolo' },
+  { value: 'otro',                label: 'Otro' },
+]
 
 const TIPOS_FALLA = [
   { value: 'no_birth',         label: 'Sin parto' },
@@ -59,6 +68,10 @@ function normalizarCamada(c) {
     failure_flag:      c.failure_flag      ?? false,
     failure_type:      c.failure_type      ?? '',
     incluir_en_stock:  c.incluir_en_stock  ?? true,
+    crias_reducidas:   c.crias_reducidas   ?? '',
+    reduccion_fecha:   c.reduccion_fecha   ?? '',
+    reduccion_motivo:  c.reduccion_motivo  ?? '',
+    reduccion_notas:   c.reduccion_notas   ?? '',
   }
 }
 
@@ -81,6 +94,9 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
   const [form, setForm] = useState(camada ? normalizarCamada(camada) : vacioCamada)
   const [errores, setErrores] = useState({})
   const [modoHistorico, setModoHistorico] = useState(false)
+  const [huboReduccion, setHuboReduccion] = useState(
+    Boolean(camada && camada.crias_reducidas != null && Number(camada.crias_reducidas) > 0)
+  )
 
   // Mapa de animales con apareamiento planificado futuro
   const animalesReservados = getAnimalesReservados(bioterioActivo)
@@ -261,6 +277,22 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
       }
     }
 
+    // Reducción de camada
+    if (huboReduccion) {
+      const red = Number(form.crias_reducidas)
+      if (!form.crias_reducidas || red <= 0) {
+        nuevos.crias_reducidas = 'Indicá cuántas crías se redujeron (mayor a 0).'
+      } else if (form.total_crias !== '' && red >= Number(form.total_crias)) {
+        nuevos.crias_reducidas = `La reducción (${red}) no puede igualar o superar el total nacido (${form.total_crias}).`
+      } else if (
+        form.total_crias !== '' && form.total_destetados !== '' &&
+        !nuevos.total_destetados &&
+        red + Number(form.total_destetados) > Number(form.total_crias)
+      ) {
+        nuevos.crias_reducidas = `Reducidas (${red}) + destetadas (${form.total_destetados}) = ${red + Number(form.total_destetados)} supera el total nacido (${form.total_crias}).`
+      }
+    }
+
     // Consanguinidad directa sin confirmación
     if (consanguinidad && !confirmarConsanguinidad) {
       nuevos._consanguinidad = 'Confirmá el apareamiento consanguíneo antes de guardar'
@@ -286,6 +318,10 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
       total_destetados: form.total_destetados ? Number(form.total_destetados) : null,
       failure_flag:     Boolean(form.failure_flag),
       failure_type:     form.failure_flag && form.failure_type ? form.failure_type : null,
+      crias_reducidas:  huboReduccion && form.crias_reducidas ? Number(form.crias_reducidas) : null,
+      reduccion_fecha:  huboReduccion ? (form.reduccion_fecha  || null) : null,
+      reduccion_motivo: huboReduccion ? (form.reduccion_motivo || null) : null,
+      reduccion_notas:  huboReduccion ? (form.reduccion_notas  || null) : null,
     })
   }
 
@@ -749,6 +785,110 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
                 style={{ ...inputStyle, borderColor: errores.fecha_destete ? 'rgba(255,61,87,0.5)' : undefined }}
               />
             </LabInput>
+          </div>
+
+          {/* ── Reducción de camada por manejo ──────────────────────────── */}
+          <div
+            className="rounded-xl overflow-hidden"
+            style={{ border: huboReduccion ? '1px solid rgba(64,196,255,0.35)' : '1px solid rgba(30,51,82,0.6)' }}
+          >
+            <button
+              type="button"
+              onClick={() => setHuboReduccion((v) => !v)}
+              className="w-full flex items-center justify-between px-3 py-2.5 text-sm transition-all"
+              style={
+                huboReduccion
+                  ? { background: 'rgba(64,196,255,0.08)', color: tema.blue }
+                  : { background: 'rgba(138,155,176,0.04)', color: tema.textMuted }
+              }
+            >
+              <span className="flex items-center gap-2 font-semibold">
+                <span>✂️</span> ¿Se realizó reducción de camada?
+                {huboReduccion && <span className="text-xs opacity-70 font-normal">(no se contabiliza como mortalidad)</span>}
+              </span>
+              <span
+                className="w-9 h-5 rounded-full flex items-center transition-all px-0.5 shrink-0"
+                style={{ background: huboReduccion ? 'rgba(64,196,255,0.4)' : 'rgba(30,51,82,0.8)' }}
+              >
+                <span
+                  className="w-4 h-4 rounded-full transition-all"
+                  style={{
+                    background: huboReduccion ? '#40c4ff' : '#4a5f7a',
+                    transform: huboReduccion ? 'translateX(16px)' : 'translateX(0)',
+                  }}
+                />
+              </span>
+            </button>
+
+            {huboReduccion && (
+              <div className="px-3 py-3 space-y-3" style={{ borderTop: '1px solid rgba(64,196,255,0.2)' }}>
+                <div className="grid grid-cols-2 gap-3">
+                  <LabInput label="Crías reducidas" required error={errores.crias_reducidas}>
+                    <input
+                      type="number"
+                      value={form.crias_reducidas}
+                      onChange={(e) => cambiar('crias_reducidas', e.target.value)}
+                      min={1}
+                      className="w-full px-3 py-2.5 text-sm focus:outline-none font-mono"
+                      style={{ ...inputStyle, borderColor: errores.crias_reducidas ? 'rgba(255,61,87,0.5)' : 'rgba(64,196,255,0.3)' }}
+                    />
+                  </LabInput>
+                  <LabInput label="Fecha de reducción">
+                    <input
+                      type="date"
+                      value={form.reduccion_fecha}
+                      onChange={(e) => cambiar('reduccion_fecha', e.target.value)}
+                      className="w-full px-3 py-2.5 text-sm focus:outline-none"
+                      style={{ ...inputStyle, borderColor: 'rgba(64,196,255,0.3)' }}
+                    />
+                  </LabInput>
+                </div>
+                <LabInput label="Motivo" sublabel="opcional">
+                  <select
+                    value={form.reduccion_motivo}
+                    onChange={(e) => cambiar('reduccion_motivo', e.target.value)}
+                    className="w-full px-3 py-2.5 text-sm focus:outline-none"
+                    style={{ ...inputStyle, width: '100%', borderColor: 'rgba(64,196,255,0.3)' }}
+                  >
+                    <option value="">— Seleccioná —</option>
+                    {MOTIVOS_REDUCCION.map(({ value, label }) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                </LabInput>
+                <LabInput label="Observaciones" sublabel="opcional">
+                  <textarea
+                    value={form.reduccion_notas}
+                    onChange={(e) => cambiar('reduccion_notas', e.target.value)}
+                    rows={2}
+                    placeholder="Detalle de la reducción..."
+                    className="w-full px-3 py-2.5 text-sm resize-none focus:outline-none"
+                    style={{ ...inputStyle, borderColor: 'rgba(64,196,255,0.3)' }}
+                  />
+                </LabInput>
+                {/* Resumen: mortalidad real vs reducción */}
+                {form.total_crias !== '' && form.total_destetados !== '' && form.crias_reducidas !== '' && (() => {
+                  const nac = Number(form.total_crias)
+                  const red = Number(form.crias_reducidas)
+                  const dest = Number(form.total_destetados)
+                  const mortReal = Math.max(0, (nac - red) - dest)
+                  return (
+                    <div className="rounded-lg px-3 py-2 text-xs grid grid-cols-3 gap-2" style={{ background: 'rgba(64,196,255,0.06)', border: '1px solid rgba(64,196,255,0.2)' }}>
+                      {[
+                        { l: 'Reducción manejo', v: red, c: tema.blue },
+                        { l: 'Mortalidad real', v: mortReal, c: mortReal > 0 ? '#ff6b80' : tema.accent },
+                        { l: 'A criar', v: nac - red, c: tema.textSecondary },
+                      ].map(({ l, v, c }) => (
+                        <div key={l} className="text-center">
+                          <div className="uppercase tracking-widest font-semibold" style={{ color: tema.textMuted }}>{l}</div>
+                          <div className="font-mono font-bold text-sm" style={{ color: c }}>{v}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })()}
+              </div>
+            )}
           </div>
 
           {/* Toggle incluir en stock */}

@@ -195,14 +195,17 @@ function buildHembraStats(lista, todasCamadas) {
       const susScoreCamadaCero = sus.filter((c) => scoreTamanoCamada(c.total_crias) === 0)
       const malaMadre = susScoreCamadaCero.length > 0
       const susSupervivenciaBaja = sus.filter((c) => {
-        const score = scoreSupervivencia(c.total_crias, c.total_destetados)
+        const score = scoreSupervivencia(c.total_crias, c.total_destetados, c.crias_reducidas ?? 0)
         return score != null && score < 10
       })
       const bajaSupervivencia = susSupervivenciaBaja.length > 0
       const calificacionBaja = malaMadre || bajaSupervivencia
       const minCrias = malaMadre ? Math.min(...susScoreCamadaCero.map((c) => c.total_crias)) : null
       const minSupervivencia = bajaSupervivencia
-        ? Math.min(...susSupervivenciaBaja.map((c) => c.total_destetados / c.total_crias))
+        ? Math.min(...susSupervivenciaBaja.map((c) => {
+            const objetivo = c.total_crias - (c.crias_reducidas ?? 0)
+            return objetivo > 0 ? Math.min(1, c.total_destetados / objetivo) : 1
+          }))
         : null
       const scoreTotal = malaMadre ? -1 : scoreTotalBase
       return {

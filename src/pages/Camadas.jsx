@@ -5,7 +5,7 @@ import {
   formatFecha, calcularRangoParto, calcularDestete, calcularMadurez, calcularFechaSeparacion,
   calcularLatencia, interpretarLatencia, difDias, parseDate, hoy,
   calcularScoresCamada, calcularPerfilHembra, calcularRendimientoMacho,
-  calcularConfiabilidadHembra,
+  calcularConfiabilidadHembra, calcularEvaluacionMaterna,
 } from '../utils/calculos'
 import Modal from '../components/Modal'
 import CamadaForm from '../components/CamadaForm'
@@ -323,6 +323,7 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
 
   const perfilMadre    = calcularPerfilHembra(camada.id_madre, todasCamadas)
   const confiabilidad  = calcularConfiabilidadHembra(camada.id_madre, todasCamadas)
+  const evaluacion     = calcularEvaluacionMaterna(camada.id_madre, todasCamadas)
   const rendMacho      = calcularRendimientoMacho(camada.id_padre, todasCamadas)
 
   const madre = animales.find((a) => a.id === camada.id_madre)
@@ -359,6 +360,47 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
         </span>
       </div>
 
+      {/* Clasificación materna */}
+      {evaluacion && (
+        <div
+          className="rounded-xl px-4 py-3 flex items-start gap-3"
+          style={{
+            background: `${evaluacion.color}12`,
+            border: `1.5px solid ${evaluacion.color}${evaluacion.descalificada ? '66' : '40'}`,
+          }}
+        >
+          <span className="text-2xl leading-none mt-0.5">{evaluacion.emoji}</span>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-extrabold uppercase tracking-wide" style={{ color: evaluacion.color }}>
+                {evaluacion.label}
+              </span>
+              <span className="text-xs font-mono px-2 py-0.5 rounded-full" style={{ background: `${evaluacion.color}20`, color: evaluacion.color }}>
+                {evaluacion.composite}/10 · {evaluacion.total_camadas}c
+              </span>
+            </div>
+            {evaluacion.descalificada && evaluacion.motivoTexto && (
+              <p className="text-xs mt-1 font-semibold" style={{ color: evaluacion.color }}>
+                ⚠ Descalificada: {evaluacion.motivoTexto}. No debe usarse para perpetuar la línea.
+              </p>
+            )}
+            <div className="grid grid-cols-4 gap-2 mt-2">
+              {[
+                { l: 'Tamaño',  v: evaluacion.avg_litter_size_score },
+                { l: 'Superv.', v: evaluacion.avg_survival_score },
+                { l: 'Vel.',    v: evaluacion.avg_time_score },
+                { l: 'Prop.',   v: evaluacion.avg_sex_ratio_score },
+              ].map(({ l, v }) => (
+                <div key={l} className="text-center">
+                  <div className="text-xs uppercase tracking-widest font-semibold" style={{ color: tema.textMuted }}>{l}</div>
+                  <div className="font-mono font-bold text-sm" style={{ color: v === 0 ? '#ff1744' : tema.textSecondary }}>{v ?? '—'}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Supervivencia */}
       {haySurvivencia && (
         <div
@@ -370,14 +412,17 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
         >
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold uppercase tracking-widest" style={{ color: scores.survival_score === 0 ? '#ff1744' : scores.loss_count > 0 ? '#ff6b80' : '#00e676' }}>
-              {scores.survival_score === 0 ? '🔴 CRÍTICO — Alta pérdida de crías. Evaluar hembra.' : scores.loss_count > 0 ? '⚠ Pérdida parcial detectada' : '✓ Supervivencia completa'}
+              {scores.survival_score === 0 ? '🔴 CRÍTICO — Falla materna (≥2 pérdidas). Evaluar hembra.' : scores.loss_count > 0 ? '⚠ Pérdida parcial detectada' : '✓ Supervivencia completa'}
             </span>
           </div>
-          <div className="grid grid-cols-4 gap-3">
+          <div className={`grid gap-3 ${scores.crias_reducidas > 0 ? 'grid-cols-5' : 'grid-cols-4'}`}>
             {[
               { label: 'Nacidas',    val: camada.total_crias,      color: tema.textSecondary },
+              ...(scores.crias_reducidas > 0
+                ? [{ label: '✂️ Reducción', val: scores.crias_reducidas, color: tema.blue }]
+                : []),
               { label: 'Destetadas', val: camada.total_destetados,  color: tema.accent },
-              { label: 'Pérdidas',   val: scores.loss_count,        color: scores.loss_count > 0 ? '#ff6b80' : '#4a5f7a' },
+              { label: 'Mort. real', val: scores.loss_count,        color: scores.loss_count > 0 ? '#ff6b80' : '#4a5f7a' },
               { label: 'Tasa',       val: scores.survival_rate != null ? `${Math.round(scores.survival_rate * 100)}%` : '—', color: colorScore(scores.survival_score) },
             ].map(({ label, val, color }) => (
               <div key={label} className="text-center">

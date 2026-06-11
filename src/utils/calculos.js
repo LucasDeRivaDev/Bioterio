@@ -401,23 +401,27 @@ export function generarTareas(camadas, animales, bio = BIO) {
       })
     }
 
-    // 5. Alerta crítica: supervivencia < 80% → alta pérdida de crías
+    // 5. Alerta crítica: supervivencia score 0 → ≥2 pérdidas reales (falla materna)
+    //    La reducción de camada por manejo NO cuenta como mortalidad.
     if (
       camada.total_destetados != null &&
       camada.total_crias != null &&
       camada.total_crias > 0 &&
       !camada.failure_flag
     ) {
-      const rate = camada.total_destetados / camada.total_crias
-      if (rate < 0.8) {
-        const perdidas = camada.total_crias - camada.total_destetados
+      const reducidas = camada.crias_reducidas ?? 0
+      const survScore = scoreSupervivencia(camada.total_crias, camada.total_destetados, reducidas)
+      if (survScore === 0) {
+        const objetivo = camada.total_crias - reducidas
+        const perdidas = Math.max(0, objetivo - camada.total_destetados)
+        const reduccionNota = reducidas > 0 ? ` (${reducidas} por reducción de manejo, no computadas)` : ''
         tareas.push({
           id: `supervivencia-critica-${camada.id}`,
           tipo: 'evaluar_hembra',
           prioridad: 'vencida',
           fecha: camada.fecha_destete ?? camada.fecha_nacimiento,
-          descripcion: `Alta pérdida de crías — Evaluar hembra ${nombreMadre}`,
-          detalle: `Supervivencia ${Math.round(rate * 100)}% (${perdidas} pérdida${perdidas !== 1 ? 's' : ''} de ${camada.total_crias}) — Score CRÍTICO (0). Revisar / considerar descarte.`,
+          descripcion: `Falla materna — Evaluar hembra ${nombreMadre}`,
+          detalle: `${perdidas} pérdida${perdidas !== 1 ? 's' : ''} reales durante la lactancia${reduccionNota} — Score supervivencia CRÍTICO (0). Clasificada como "Mala madre" — considerar descarte.`,
           camadaId: camada.id,
           madreId: camada.id_madre,
         })
@@ -525,14 +529,41 @@ export function scoreProporcionSexual(machos, hembras) {
 }
 
 /**
- * Score de supervivencia al destete.
- * 100% → 10 | 80–99% → 7 | <80% → 0 (CRÍTICO)
+ * Score de supervivencia al destete, evaluado por número de pérdidas reales
+ * (criterio biológico) y no por porcentaje.
+ *
+ * Las crías retiradas por REDUCCIÓN DE CAMADA (manejo) nunca cuentan como
+ * mortalidad: se descuentan del objetivo antes de evaluar.
+ *
+ *   objetivo = nacidas − reducidas   (crías que la madre debía llevar al destete)
+ *
+ * Para camadas con objetivo ≤ 12:
+ *   0 pérdidas              → 10
+ *   1 pérdida               → 9 si objetivo = 12, si no 7  (puede ser un accidente)
+ *   2 o más pérdidas        → 0  (falla materna — CRÍTICO)
+ *
+ * Excepción fisiológica (ratas Wistar ≈ 12 pezones funcionales):
+ *   si objetivo > 12 y llegan ≥ 12 al destete → 10 (no se penaliza)
+ *   si objetivo > 12 y llegan < 12 al destete → 0  (evaluación normal: crítico)
+ *
+ * @param {number} totalCrias       crías nacidas
+ * @param {number} totalDestetados  crías destetadas
+ * @param {number} criasReducidas   crías retiradas por reducción de camada (manejo)
  */
-export function scoreSupervivencia(totalCrias, totalDestetados) {
+export function scoreSupervivencia(totalCrias, totalDestetados, criasReducidas = 0) {
   if (totalCrias == null || totalCrias === 0 || totalDestetados == null) return null
-  const rate = totalDestetados / totalCrias
-  if (rate >= 1) return 10
-  if (rate >= 0.8) return 7
+  const reducidas = criasReducidas ?? 0
+  const objetivo = totalCrias - reducidas
+  if (objetivo <= 0) return null
+
+  // Excepción Wistar para camadas grandes
+  if (objetivo > 12) {
+    return totalDestetados >= 12 ? 10 : 0
+  }
+
+  const mortalidad = objetivo - totalDestetados
+  if (mortalidad <= 0) return 10
+  if (mortalidad === 1) return objetivo >= 12 ? 9 : 7
   return 0
 }
 
@@ -541,27 +572,33 @@ export function scoreSupervivencia(totalCrias, totalDestetados) {
  * Todos los scores son independientes — no se calcula total.
  */
 export function calcularScoresCamada(camada) {
+  const reducidas   = camada.crias_reducidas ?? 0
   const latencia    = calcularLatencia(camada)
   const timeScore   = scorePorLatencia(latencia)
   const litterScore = scoreTamanoCamada(camada.total_crias)
   const sexScore    = scoreProporcionSexual(camada.crias_machos, camada.crias_hembras)
-  const survScore   = scoreSupervivencia(camada.total_crias, camada.total_destetados)
+  const survScore   = scoreSupervivencia(camada.total_crias, camada.total_destetados, reducidas)
 
-  const lossCount = (camada.total_crias != null && camada.total_destetados != null)
-    ? Math.max(0, camada.total_crias - camada.total_destetados)
+  // Crías que la madre debía criar (descontando reducción de manejo)
+  const objetivo = (camada.total_crias != null) ? camada.total_crias - reducidas : null
+
+  // Mortalidad REAL: pérdidas durante la lactancia, sin contar la reducción de manejo
+  const lossCount = (objetivo != null && camada.total_destetados != null)
+    ? Math.max(0, objetivo - camada.total_destetados)
     : null
 
-  const survivalRate = (camada.total_crias > 0 && camada.total_destetados != null)
-    ? camada.total_destetados / camada.total_crias
+  const survivalRate = (objetivo > 0 && camada.total_destetados != null)
+    ? Math.min(1, camada.total_destetados / objetivo)
     : null
 
   return {
-    time_score:       timeScore,
+    time_score:        timeScore,
     litter_size_score: litterScore,
-    sex_ratio_score:  sexScore,
-    survival_score:   survScore,
-    loss_count:       lossCount,
-    survival_rate:    survivalRate,
+    sex_ratio_score:   sexScore,
+    survival_score:    survScore,
+    loss_count:        lossCount,
+    survival_rate:     survivalRate,
+    crias_reducidas:   reducidas,
     latencia,
   }
 }
@@ -588,6 +625,102 @@ export function calcularPerfilHembra(hembraId, camadas) {
     avg_litter_size_score: avg('litter_size_score'),
     avg_sex_ratio_score:   avg('sex_ratio_score'),
     avg_survival_score:    avg('survival_score'),
+  }
+}
+
+// ─── EVALUACIÓN MATERNA (CLASIFICACIÓN DE HEMBRAS) ───────────────────────────
+
+/**
+ * Categorías de calidad materna, de mejor a peor.
+ * Las dos últimas (mala / no_apta) implican descalificación reproductiva.
+ */
+export const CATEGORIAS_MADRE = {
+  excelente: { key: 'excelente', label: 'Excelente madre',           short: 'Excelente', emoji: '🏆', color: '#00e676' },
+  buena:     { key: 'buena',     label: 'Buena madre',               short: 'Buena',     emoji: '✅', color: '#4ade80' },
+  aceptable: { key: 'aceptable', label: 'Madre aceptable',           short: 'Aceptable', emoji: '🟡', color: '#ffb300' },
+  mala:      { key: 'mala',      label: 'Mala madre',                short: 'Mala',      emoji: '🔴', color: '#ff6b80' },
+  no_apta:   { key: 'no_apta',   label: 'No apta para reproducción', short: 'No apta',   emoji: '⛔', color: '#ff1744' },
+}
+
+/**
+ * Clasifica una hembra reproductora en una de las 5 categorías de calidad materna.
+ *
+ * Jerarquía de importancia: tamaño de camada > supervivencia > velocidad > prop. sexual.
+ *
+ * DESCALIFICACIÓN AUTOMÁTICA (no compensable por otros parámetros):
+ *  - Cualquier camada con score de tamaño = 0 (< 8 crías)       → No apta
+ *  - Cualquier camada con score de supervivencia = 0 (≥2 pérdidas) → Mala madre
+ *  - Si ocurren ambas                                            → No apta
+ *
+ * Caso no descalificado → score compuesto ponderado:
+ *   tamaño 0.40 · supervivencia 0.30 · velocidad 0.20 · prop. sexual 0.10
+ *     ≥ 9   → Excelente
+ *     ≥ 7.5 → Buena
+ *     resto → Aceptable
+ *
+ * Solo considera camadas con parto registrado. Retorna null si no hay ninguna.
+ */
+export function calcularEvaluacionMaterna(hembraId, camadas) {
+  const hist = camadas.filter((c) => c.id_madre === hembraId && c.fecha_nacimiento)
+  if (hist.length === 0) return null
+
+  const scores = hist.map((c) => calcularScoresCamada(c))
+
+  function avg(key) {
+    const vals = scores.map((s) => s[key]).filter((v) => v != null)
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null
+  }
+  const round = (v) => (v == null ? null : Math.round(v * 10) / 10)
+
+  const avgLitter   = avg('litter_size_score')
+  const avgSurvival = avg('survival_score')
+  const avgTime     = avg('time_score')
+  const avgSex      = avg('sex_ratio_score')
+
+  const composite =
+    (avgLitter   ?? 0) * 0.40 +
+    (avgSurvival ?? 0) * 0.30 +
+    (avgTime     ?? 0) * 0.20 +
+    (avgSex      ?? 0) * 0.10
+
+  const fallaTamano        = scores.some((s) => s.litter_size_score === 0)
+  const fallaSupervivencia = scores.some((s) => s.survival_score === 0)
+
+  let categoria, descalificada = false, motivo = null
+  if (fallaTamano && fallaSupervivencia) {
+    categoria = 'no_apta'; descalificada = true; motivo = 'ambos'
+  } else if (fallaTamano) {
+    categoria = 'no_apta'; descalificada = true; motivo = 'tamano'
+  } else if (fallaSupervivencia) {
+    categoria = 'mala'; descalificada = true; motivo = 'supervivencia'
+  } else if (composite >= 9) {
+    categoria = 'excelente'
+  } else if (composite >= 7.5) {
+    categoria = 'buena'
+  } else {
+    categoria = 'aceptable'
+  }
+
+  const motivoTexto = motivo === 'ambos'
+    ? 'Camada(s) con < 8 crías y pérdidas excesivas durante la lactancia'
+    : motivo === 'tamano'
+      ? 'Produjo camada(s) con menos de 8 crías'
+      : motivo === 'supervivencia'
+        ? 'Pérdida de 2 o más crías durante la lactancia'
+        : null
+
+  return {
+    total_camadas:         hist.length,
+    avg_litter_size_score: round(avgLitter),
+    avg_survival_score:    round(avgSurvival),
+    avg_time_score:        round(avgTime),
+    avg_sex_ratio_score:   round(avgSex),
+    composite:             round(composite),
+    categoria,
+    descalificada,
+    motivo,
+    motivoTexto,
+    ...CATEGORIAS_MADRE[categoria],
   }
 }
 
