@@ -419,6 +419,13 @@ CREATE POLICY "Solo usuarios autenticados"
 ```
 La tabla `incidentes` quedó con RLS habilitado pero sin política → SELECT devuelve `[]` sin error e INSERT/UPDATE/DELETE fallan con `42501`. Archivo: `supabase_migration_incidentes_rls.sql`.
 
+**SQL pendiente para tipo de `incidentes.animal_ids` (sin esto falla con crías en stock):**
+```sql
+ALTER TABLE incidentes
+  ALTER COLUMN animal_ids TYPE text[] USING animal_ids::text[];
+```
+`animal_ids` debe ser `text[]` porque guarda tanto UUIDs de reproductores como pseudo-ids `stock:<camada_id>:<sexo>` de grupos de crías. Con `uuid[]` falla: `invalid input syntax for type uuid`. La columna singular `animal_id` sigue siendo uuid (FK). Archivo: `supabase_migration_incidentes_animal_ids.sql`.
+
 **SQL pendiente para reducción de camada (campos en camadas):**
 ```sql
 ALTER TABLE camadas
