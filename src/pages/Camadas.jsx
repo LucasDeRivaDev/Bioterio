@@ -566,6 +566,24 @@ function AnalisisReproductivo({ camada, todasCamadas, animales }) {
   )
 }
 
+function FiltroBtn({ activo, count, onClick, children }) {
+  const { tema } = useTheme()
+  return (
+    <button
+      onClick={onClick}
+      className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
+      style={
+        activo
+          ? { background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.3)', color: tema.accent }
+          : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }
+      }
+    >
+      {children}
+      <span className="font-mono opacity-60">({count})</span>
+    </button>
+  )
+}
+
 export default function Camadas() {
   const { tema } = useTheme()
   const cardStyle = { background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }
@@ -644,25 +662,6 @@ export default function Camadas() {
     setModal(null)
   }
 
-  function FiltroBtn({ valor, children }) {
-    const activo = filtro === valor
-    const count = valor === 'todas' ? camadasEnriquecidas.length : camadasEnriquecidas.filter((c) => c.estado === valor).length
-    return (
-      <button
-        onClick={() => setFiltro(valor)}
-        className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
-        style={
-          activo
-            ? { background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.3)', color: tema.accent }
-            : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }
-        }
-      >
-        {children}
-        <span className="font-mono opacity-60">({count})</span>
-      </button>
-    )
-  }
-
   function DataItem({ label, valor, sub, color = '#8a9bb0' }) {
     return (
       <div>
@@ -699,12 +698,23 @@ export default function Camadas() {
 
       {/* Filtros */}
       <div className="flex flex-wrap gap-2">
-        <FiltroBtn valor="todas">Todas</FiltroBtn>
-        <FiltroBtn valor="apareamiento">En apareamiento</FiltroBtn>
-        <FiltroBtn valor="preñez">En preñez</FiltroBtn>
-        <FiltroBtn valor="lactancia">Lactancia</FiltroBtn>
-        <FiltroBtn valor="completada">Completadas</FiltroBtn>
-        <FiltroBtn valor="fallida">Fallidas</FiltroBtn>
+        {[
+          ['todas', 'Todas'],
+          ['apareamiento', 'En apareamiento'],
+          ['preñez', 'En preñez'],
+          ['lactancia', 'Lactancia'],
+          ['completada', 'Completadas'],
+          ['fallida', 'Fallidas'],
+        ].map(([valor, label]) => (
+          <FiltroBtn
+            key={valor}
+            activo={filtro === valor}
+            count={valor === 'todas' ? camadasEnriquecidas.length : camadasEnriquecidas.filter((c) => c.estado === valor).length}
+            onClick={() => setFiltro(valor)}
+          >
+            {label}
+          </FiltroBtn>
+        ))}
       </div>
 
       {/* Lista */}

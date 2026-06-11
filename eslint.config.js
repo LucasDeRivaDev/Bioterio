@@ -26,4 +26,12 @@ export default defineConfig([
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },
   },
+  {
+    // Los contextos exportan Provider + hook useX + constantes en el mismo archivo
+    // (patrón estándar de Context API). Solo afecta al hot-reload en desarrollo.
+    files: ['src/context/**/*.jsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])

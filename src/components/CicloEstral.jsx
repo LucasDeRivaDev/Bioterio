@@ -242,8 +242,10 @@ export default function CicloEstral({ animal }) {
     [historial, fecha]
   )
 
+  // Sync intencional: al cambiar la fecha se cargan/limpian los campos del formulario
   useEffect(() => {
     if (existente) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCitologia(existente.citologia || '')
       setClaridad(existente.claridad || '')
       setApertura(existente.apertura_vaginal || '')

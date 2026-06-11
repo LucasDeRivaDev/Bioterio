@@ -66,6 +66,8 @@ export default function Calendario() {
 
   // Cargar datos de BALB/C y C57 cuando estamos en Híbridos
   useEffect(() => {
+    // Sync intencional: limpiar/marcar cargando al entrar o salir del modo Híbridos
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!esHibridos) { setDatosHibridos(null); return }
     setCargandoHibridos(true)
     Promise.all([
@@ -574,6 +576,24 @@ export default function Calendario() {
 const CAT_LABELS = { crias: 'Crías', jovenes: 'Jóvenes', adultos: 'Adultos' }
 const CAT_ICONOS = { crias: '🐣', jovenes: '🐭', adultos: '🐁' }
 
+// Tab selector de tipo (reproductor / jaula de stock)
+function TabTipo({ valor, actual, color, onChange }) {
+  const { tema } = useTheme()
+  const activo = actual === valor
+  const labels = { reproductor: '♂♀ Reproductor', stock: '📦 Jaula de stock' }
+  return (
+    <button
+      onClick={() => onChange(valor)}
+      className="flex-1 py-1 rounded-lg text-xs font-semibold transition-all"
+      style={activo
+        ? { background: `${color}18`, border: `1px solid ${color}45`, color }
+        : { background: 'transparent', border: '1px solid rgba(30,51,82,0.5)', color: tema.textMuted }}
+    >
+      {labels[valor]}
+    </button>
+  )
+}
+
 function ModalPlanificarApareamiento({
   animales, camadas, jaulas, sacrificios, entregas, bio,
   fecha, onGuardar, onCerrar,
@@ -732,23 +752,6 @@ function ModalPlanificarApareamiento({
   function getNombreFuente(f) {
     if (!f) return '—'
     return f.codigo ?? '?'
-  }
-
-  // Componente de tab selector de tipo
-  function TabTipo({ valor, actual, color, onChange }) {
-    const activo = actual === valor
-    const labels = { reproductor: '♂♀ Reproductor', stock: '📦 Jaula de stock' }
-    return (
-      <button
-        onClick={() => onChange(valor)}
-        className="flex-1 py-1 rounded-lg text-xs font-semibold transition-all"
-        style={activo
-          ? { background: `${color}18`, border: `1px solid ${color}45`, color }
-          : { background: 'transparent', border: '1px solid rgba(30,51,82,0.5)', color: tema.textMuted }}
-      >
-        {labels[valor]}
-      </button>
-    )
   }
 
   // Fila de bloque de stock seleccionable

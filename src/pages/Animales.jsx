@@ -20,6 +20,23 @@ const LABEL_COLONIA = {
   ratones_c57:   'C57',
 }
 
+function FiltroBtn({ activo, onClick, children }) {
+  const { tema } = useTheme()
+  return (
+    <button
+      onClick={onClick}
+      className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+      style={
+        activo
+          ? { background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.3)', color: tema.accent }
+          : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }
+      }
+    >
+      {children}
+    </button>
+  )
+}
+
 export default function Animales() {
   const { tema } = useTheme()
   const cardStyle = { background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }
@@ -380,22 +397,6 @@ export default function Animales() {
     if (modal === 'nuevo') agregarAnimal(datos)
     else editarAnimal({ ...datos, id: modal.id })
     setModal(null)
-  }
-
-  function FiltroBtn({ activo, onClick, children }) {
-    return (
-      <button
-        onClick={onClick}
-        className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-        style={
-          activo
-            ? { background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.3)', color: tema.accent }
-            : { background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }
-        }
-      >
-        {children}
-      </button>
-    )
   }
 
 return (
@@ -858,22 +859,26 @@ function ModalExportarReproductor({ animalesYaExportados, onExportar, onCerrar }
 
   const idsYaExportados = new Set(animalesYaExportados.map((a) => a.id))
 
+  // Recargar la lista al cambiar la colonia de origen. El setState síncrono
+  // es intencional: resetea la selección y muestra el estado "cargando".
   useEffect(() => {
+    let cancelado = false
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelec(null)
-    cargar()
-  }, [origen])
-
-  async function cargar() {
     setCargando(true)
-    const { data } = await supabase
+    supabase
       .from('animales')
       .select('*')
       .eq('bioterio_id', origen)
       .in('estado', ['activo', 'en_cria'])
       .order('fecha_nacimiento', { ascending: true })
-    setAnimales(data ?? [])
-    setCargando(false)
-  }
+      .then(({ data }) => {
+        if (cancelado) return
+        setAnimales(data ?? [])
+        setCargando(false)
+      })
+    return () => { cancelado = true }
+  }, [origen])
 
   const disponibles = animales.filter((a) => !idsYaExportados.has(a.id))
 
@@ -945,7 +950,7 @@ function ModalExportarReproductor({ animalesYaExportados, onExportar, onCerrar }
             disponibles.map((a) => {
               const activo   = seleccionado?.id === a.id
               const diasNac  = a.fecha_nacimiento
-                ? Math.floor((Date.now() - new Date(a.fecha_nacimiento + 'T12:00:00').getTime()) / 86400000)
+                ? difDias(parseDate(a.fecha_nacimiento), parseDate(hoy()))
                 : null
               const edad     = diasNac == null ? '—' : diasNac < 30 ? `${diasNac}d` : diasNac < 112 ? `${Math.floor(diasNac / 7)}sem` : `${Math.floor(diasNac / 30)}m`
               const colorSexo = a.sexo === 'macho' ? '#40c4ff' : '#ce93d8'

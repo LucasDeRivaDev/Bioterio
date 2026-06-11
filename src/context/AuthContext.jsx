@@ -12,6 +12,8 @@ export function AuthProvider({ children }) {
     // Detectar link de invitación ANTES de que Supabase lo procese
     const hash = window.location.hash
     if (hash.includes('type=invite') || hash.includes('type=signup')) {
+      // Sync intencional: el flag debe setearse antes de que Supabase procese el hash
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setNecesitaPassword(true)
     }
 

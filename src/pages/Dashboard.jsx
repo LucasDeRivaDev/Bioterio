@@ -276,6 +276,8 @@ export default function Dashboard() {
   const [descartadas, setDescartadas] = useState({})
 
   useEffect(() => {
+    // Sync intencional: recargar las descartadas de localStorage al cambiar de bioterio
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (bioterioActivo) setDescartadas(cargarDescartadas(bioterioActivo))
   }, [bioterioActivo])
 
