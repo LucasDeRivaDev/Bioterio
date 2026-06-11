@@ -1328,8 +1328,8 @@ export default function Incidentes() {
             <div className="rounded-2xl overflow-hidden"
               style={{ background: tema.bgCard, border: '1px solid rgba(30,51,82,0.8)' }}>
               <div className="hidden md:grid px-5 py-2 text-xs font-semibold uppercase tracking-widest"
-                style={{ gridTemplateColumns: '90px 60px 90px 110px 1fr 80px', gap: '8px', borderBottom: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted, background: 'rgba(0,0,0,0.15)' }}>
-                <span>Fecha</span><span>Colonia</span><span>Categoría</span><span>Tipo</span><span>Descripción</span><span>Estado</span>
+                style={{ gridTemplateColumns: '90px 60px 90px 110px 1fr auto', gap: '8px', borderBottom: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted, background: 'rgba(0,0,0,0.15)' }}>
+                <span>Fecha</span><span>Colonia</span><span>Categoría</span><span>Tipo</span><span>Descripción</span><span className="text-right md:whitespace-nowrap">Acciones</span>
               </div>
 
               <div className="divide-y" style={{ borderColor: 'rgba(30,51,82,0.4)' }}>
@@ -1346,7 +1346,7 @@ export default function Incidentes() {
                   return (
                     <div key={inc.id}
                       className="px-5 py-3.5 flex flex-col md:grid md:items-start gap-2 group hover:bg-white/[0.01]"
-                      style={{ gridTemplateColumns: '90px 60px 90px 110px 1fr 80px', opacity: inc.resuelto ? 0.6 : 1 }}>
+                      style={{ gridTemplateColumns: '90px 60px 90px 110px 1fr auto', opacity: inc.resuelto ? 0.6 : 1 }}>
 
                       <div className="font-mono text-xs font-semibold" style={{ color: tema.amber }}>
                         {formatFecha(inc.fecha)}
@@ -1397,7 +1397,7 @@ export default function Incidentes() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5 md:justify-end">
                         <button onClick={() => toggleResuelto(inc)}
                           title={inc.resuelto ? 'Marcar como abierto' : 'Marcar como resuelto'}
                           className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-mono"
