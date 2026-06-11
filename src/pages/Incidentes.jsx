@@ -1,11 +1,11 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { useBioterioActivo } from '../context/BioterioActivoContext'
-import { hoy, formatFecha, parseDate, sumarDias } from '../utils/calculos'
+import { hoy, formatFecha, parseDate, sumarDias, difDias } from '../utils/calculos'
 import { buildPedigree, calcularFCoeficiente } from '../utils/genealogia'
 import {
   CATEGORIAS, CATEGORIAS_FORM, SEVERIDADES, LISTA_BIOTERIOS, NIVEL_ALERTA,
-  CATS_GENEALOGICAS, getTiposForm,
+  getTiposForm,
   getCategoriaInfo, getTipoLabel, getSeveridadInfo,
   labelBioterio, colorBioterio,
   calcularIndiceSanitario, nivelIndice,
@@ -30,7 +30,7 @@ const BIOTERIOS_SIN_TODOS = LISTA_BIOTERIOS.slice(1)
 
 export default function Incidentes() {
   const { tema } = useTheme()
-  const { incidentes, animales, camadas, temperaturas, agregarIncidente, editarIncidente, eliminarIncidente } = useBioterio()
+  const { incidentes, animales, camadas, sacrificios, entregas, temperaturas, agregarIncidente, editarIncidente, eliminarIncidente } = useBioterio()
   const { bioterioActivo, bio } = useBioterioActivo()
 
   const [filtroColonia,   setFiltroColonia]   = useState('todos')
@@ -1337,11 +1337,11 @@ export default function Incidentes() {
                   const catInfo = getCategoriaInfo(inc.tipo_categoria)
                   const sevInfo = getSeveridadInfo(inc.severidad)
                   const tipoLbl = getTipoLabel(inc.tipo_categoria, inc.tipo_incidente)
-                  const animal  = animales.find(a => a.id === inc.animal_id)
                   const camada  = camadas.find(c => c.id === inc.camada_id)
-                  const padre   = inc.padre_id ? animales.find(a => a.id === inc.padre_id) : null
-                  const madre   = inc.madre_id ? animales.find(a => a.id === inc.madre_id) : null
-                  const tieneGenea = padre || madre || inc.linea_genetica
+                  const animalIds = inc.animal_ids?.length ? inc.animal_ids : (inc.animal_id ? [inc.animal_id] : [])
+                  const animalesChips = animalIds
+                    .map((id) => chipAnimalIncidente(id, animales, camadas, inc.fecha, bio))
+                    .filter(Boolean)
 
                   return (
                     <div key={inc.id}
@@ -1376,22 +1376,16 @@ export default function Incidentes() {
                           {inc.descripcion || <span style={{ color: '#3d5068' }}>Sin descripción</span>}
                         </div>
                         <div className="flex flex-wrap gap-1.5 mt-1">
-                          {animal && (
-                            <span className="text-xs font-mono px-1.5 py-0.5 rounded"
-                              style={{ background: animal.sexo === 'macho' ? 'rgba(64,196,255,0.08)' : 'rgba(167,139,250,0.08)', color: animal.sexo === 'macho' ? '#40c4ff' : '#a78bfa', border: `1px solid ${animal.sexo === 'macho' ? 'rgba(64,196,255,0.25)' : 'rgba(167,139,250,0.25)'}` }}>
-                              {animal.sexo === 'macho' ? '♂' : '♀'} {animal.codigo ?? `#${animal.id.slice(0,6)}`}
+                          {animalesChips.map((a) => (
+                            <span key={a.id} className="text-xs font-mono px-1.5 py-0.5 rounded"
+                              style={{ background: `${a.color}14`, color: a.color, border: `1px solid ${a.color}35` }}>
+                              {a.sexo === 'macho' ? '♂' : a.sexo === 'hembra' ? '♀' : '•'} {a.label}
                             </span>
-                          )}
+                          ))}
                           {camada && (
                             <span className="text-xs font-mono px-1.5 py-0.5 rounded"
                               style={{ background: 'rgba(255,179,0,0.08)', color: tema.amber, border: '1px solid rgba(255,179,0,0.25)' }}>
-                              Camada {formatFecha(camada.fecha_copula, { day: '2-digit', month: '2-digit' })}
-                            </span>
-                          )}
-                          {tieneGenea && (
-                            <span className="text-xs font-mono px-1.5 py-0.5 rounded"
-                              style={{ background: 'rgba(167,139,250,0.08)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.25)' }}>
-                              🧬 {[padre && `♂${padre.codigo}`, madre && `♀${madre.codigo}`, inc.linea_genetica].filter(Boolean).join(' · ')}
+                              {labelCamadaIncidente(camada, camadas, animales)}
                             </span>
                           )}
                           {inc.duracion_dias && (
@@ -1437,7 +1431,10 @@ export default function Incidentes() {
           inicial={incAEditar}
           animales={animales}
           camadas={camadas}
+          sacrificios={sacrificios}
+          entregas={entregas}
           bioterioActivo={bioterioActivo}
+          bio={bio}
           onGuardar={async (datos) => {
             if (incAEditar) {
               await editarIncidente({ ...incAEditar, ...datos })
@@ -1488,10 +1485,118 @@ export default function Incidentes() {
 
 // ── Modal: Registrar / editar incidente ───────────────────────────────────────
 
-// Categorías que habilitan selector de múltiples animales
-const CATS_MULTI_ANIMAL = ['sanitario', 'reproductivo']
+const ESTADOS_ACTIVOS_INC = new Set(['activo', 'en_apareamiento', 'en_cria'])
 
-function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar, onCerrar }) {
+function fechaAnimalFin(animal, sacrificios = [], entregas = []) {
+  const fechas = [
+    animal.fecha_sacrificio,
+    animal.fecha_baja,
+    animal.fecha_muerte,
+    animal.fecha_fallecimiento,
+    ...sacrificios.filter((s) => s.animal_id === animal.id).map((s) => s.fecha),
+    ...entregas.filter((e) => e.animal_id === animal.id && !e.devuelta).map((e) => e.fecha),
+  ].filter(Boolean).sort()
+  return fechas[0] ?? null
+}
+
+function animalExistiaEnFecha(animal, fecha, sacrificios = [], entregas = []) {
+  if (animal.fecha_nacimiento && animal.fecha_nacimiento > fecha) return false
+  const fin = fechaAnimalFin(animal, sacrificios, entregas)
+  return !fin || fin >= fecha
+}
+
+function formatEdadIncidente(fechaNacimiento, fechaRef) {
+  if (!fechaNacimiento) return 'edad s/d'
+  const dias = difDias(parseDate(fechaNacimiento), parseDate(fechaRef))
+  if (dias < 0) return 'no nacido'
+  if (dias < 21) return `${dias}d`
+  if (dias < 84) return `${Math.floor(dias / 7)}sem`
+  return `${Math.floor(dias / 30)}m`
+}
+
+function categoriaAnimalReal(animal) {
+  if (animal.tipo === 'virtual_stock') return animal.categoriaLabel
+  return animal.sexo === 'macho' ? 'Macho reproductor' : 'Hembra reproductora'
+}
+
+function estadoLabelIncidente(estado) {
+  const labels = {
+    activo: 'activo',
+    en_apareamiento: 'en apareamiento',
+    en_cria: 'en cria',
+    fallecido: 'fallecido',
+    retirado: 'entregado',
+    sacrificado: 'sacrificado',
+  }
+  return labels[estado] ?? estado ?? 's/d'
+}
+
+function stockCamadaEnFecha(camada, sacrificios, entregas, fecha) {
+  if (!camada.fecha_nacimiento || camada.fecha_nacimiento > fecha) return 0
+  const base = camada.total_destetados ?? camada.total_crias ?? 0
+  const sacCount = sacrificios
+    .filter((s) => s.camada_id === camada.id && (!s.fecha || s.fecha <= fecha))
+    .reduce((sum, s) => sum + (s.cantidad || 0), 0)
+  const entCount = entregas
+    .filter((e) => e.camada_id === camada.id && !e.devuelta && (!e.fecha || e.fecha <= fecha))
+    .reduce((sum, e) => sum + (e.cantidad || 0), 0)
+  return Math.max(0, base - sacCount - entCount)
+}
+
+function categoriaStockIncidente(camada, fecha, bio) {
+  const edad = camada.fecha_nacimiento ? difDias(parseDate(camada.fecha_nacimiento), parseDate(fecha)) : 0
+  if (edad < 42) return { id: 'crias', label: 'Cria' }
+  if (edad < (bio?.STOCK_ADULTOS_DIAS ?? 84)) return { id: 'joven', label: 'Joven' }
+  return { id: 'adulto', label: 'Adulto' }
+}
+
+function numeroCamadaMadre(camada, camadas) {
+  if (!camada?.id_madre) return null
+  const ordenadas = camadas
+    .filter((c) => c.id_madre === camada.id_madre)
+    .sort((a, b) => (a.fecha_copula ?? '').localeCompare(b.fecha_copula ?? ''))
+  return ordenadas.findIndex((c) => c.id === camada.id) + 1
+}
+
+function labelCamadaIncidente(camada, camadas, animales) {
+  const n = numeroCamadaMadre(camada, camadas)
+  const padre = animales.find((a) => a.id === camada.id_padre)
+  const partes = [
+    `Camada ${n || '?'}`,
+    padre?.codigo || 'Padre s/d',
+    camada.total_crias != null ? `${camada.total_crias} crias` : null,
+    camada.fecha_copula ? `Copula ${formatFecha(camada.fecha_copula)}` : null,
+    camada.fecha_nacimiento ? `Parto ${formatFecha(camada.fecha_nacimiento)}` : null,
+  ].filter(Boolean)
+  return partes.join(' - ')
+}
+
+function chipAnimalIncidente(id, animales, camadas, fecha, bio) {
+  if (!id) return null
+  if (id.startsWith('stock:')) {
+    const [, camadaId, sexo] = id.split(':')
+    const camada = camadas.find((c) => c.id === camadaId)
+    if (!camada) return null
+    const cat = categoriaStockIncidente(camada, fecha, bio)
+    const labelSexo = sexo === 'macho' ? 'Macho' : sexo === 'hembra' ? 'Hembra' : 'Cria'
+    return {
+      id,
+      sexo,
+      label: `${labelSexo} ${cat.label.toLowerCase()} - camada ${numeroCamadaMadre(camada, camadas) || '?'}`,
+      color: sexo === 'macho' ? '#40c4ff' : sexo === 'hembra' ? '#a78bfa' : '#ffb300',
+    }
+  }
+  const animal = animales.find((a) => a.id === id)
+  if (!animal) return null
+  return {
+    id,
+    sexo: animal.sexo,
+    label: `${animal.codigo ?? `#${animal.id.slice(0, 6)}`} - ${categoriaAnimalReal(animal)}`,
+    color: animal.sexo === 'macho' ? '#40c4ff' : '#a78bfa',
+  }
+}
+
+function ModalIncidente({ inicial, animales, camadas, sacrificios, entregas, bioterioActivo, bio, onGuardar, onCerrar }) {
   const { tema } = useTheme()
   const [fecha,          setFecha]          = useState(inicial?.fecha ?? hoy())
   const [categoria,      setCategoria]      = useState(inicial?.tipo_categoria ?? '')
@@ -1499,10 +1604,7 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
   const [severidad,      setSeveridad]      = useState(inicial?.severidad ?? 'leve')
   const [descripcion,    setDescripcion]    = useState(inicial?.descripcion ?? '')
   const [camadaId,       setCamadaId]       = useState(inicial?.camada_id ?? '')
-  const [padreId,        setPadreId]        = useState(inicial?.padre_id ?? '')
-  const [madreId,        setMadreId]        = useState(inicial?.madre_id ?? '')
   const [duracionDias,   setDuracionDias]   = useState(inicial?.duracion_dias ?? '')
-  const [lineaGenetica,  setLineaGenetica]  = useState(inicial?.linea_genetica ?? '')
   const [guardando,      setGuardando]      = useState(false)
   const [error,          setError]          = useState('')
 
@@ -1516,40 +1618,121 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
 
   const tipos      = categoria ? getTiposForm(categoria) : []
   const esEdicion  = !!inicial
-  const esGenealogica  = CATS_GENEALOGICAS.includes(categoria)
-  const esMultiAnimal  = CATS_MULTI_ANIMAL.includes(categoria)
+  const esHistorico = fecha < hoy()
 
-  const machos     = animales.filter(a => a.sexo === 'macho' && ['activo','en_apareamiento','en_cria'].includes(a.estado))
-  const hembras    = animales.filter(a => a.sexo === 'hembra' && ['activo','en_apareamiento','en_cria'].includes(a.estado))
-  const animalesDisp = animales.filter(a => ['activo','en_apareamiento','en_cria'].includes(a.estado))
-  const camadasDisp  = camadas.filter(c => !c.failure_flag && c.fecha_nacimiento && !c.fecha_destete)
+  const animalesRealesDisp = useMemo(() => {
+    return animales
+      .filter((a) => {
+        if (bioterioActivo && a.bioterio_id && a.bioterio_id !== bioterioActivo) return false
+        return esHistorico ? animalExistiaEnFecha(a, fecha, sacrificios, entregas) : ESTADOS_ACTIVOS_INC.has(a.estado)
+      })
+      .map((a) => ({
+        ...a,
+        value: a.id,
+        realId: a.id,
+        tipo: 'real',
+        edadLabel: formatEdadIncidente(a.fecha_nacimiento, fecha),
+        categoriaLabel: categoriaAnimalReal(a),
+        estadoLabel: estadoLabelIncidente(a.estado),
+      }))
+  }, [animales, bioterioActivo, entregas, esHistorico, fecha, sacrificios])
+
+  const stockVirtualDisp = useMemo(() => {
+    const result = []
+    camadas.forEach((camada) => {
+      if (bioterioActivo && camada.bioterio_id && camada.bioterio_id !== bioterioActivo) return
+      if (!camada.fecha_nacimiento || camada.fecha_nacimiento > fecha) return
+      if (!esHistorico && camada.fecha_destete && camada.incluir_en_stock === false) return
+      const stock = stockCamadaEnFecha(camada, sacrificios, entregas, fecha)
+      if (stock <= 0) return
+      const cat = categoriaStockIncidente(camada, fecha, bio)
+      const padre = animales.find((a) => a.id === camada.id_padre)
+      const madre = animales.find((a) => a.id === camada.id_madre)
+      const sexos = [
+        { sexo: 'macho', count: camada.crias_machos ?? null, suffix: 'M' },
+        { sexo: 'hembra', count: camada.crias_hembras ?? null, suffix: 'H' },
+      ].filter((s) => s.count == null || s.count > 0)
+      const grupos = sexos.length ? sexos : [{ sexo: 'sin_sexo', count: stock, suffix: 'S' }]
+      grupos.forEach((grupo) => {
+        const count = grupo.count ?? stock
+        if (count <= 0) return
+        result.push({
+          id: `stock:${camada.id}:${grupo.sexo}`,
+          value: `stock:${camada.id}:${grupo.sexo}`,
+          tipo: 'virtual_stock',
+          camadaId: camada.id,
+          codigo: `${camada.id.slice(-4).toUpperCase()}-${grupo.suffix}`,
+          sexo: grupo.sexo,
+          estado: esHistorico ? 'historico' : 'stock',
+          estadoLabel: esHistorico ? 'historico' : 'stock',
+          edadLabel: formatEdadIncidente(camada.fecha_nacimiento, fecha),
+          categoriaLabel: `${grupo.sexo === 'macho' ? 'Macho' : grupo.sexo === 'hembra' ? 'Hembra' : 'Cria'} ${cat.label.toLowerCase()}`,
+          count,
+          camada,
+          padre,
+          madre,
+        })
+      })
+    })
+    return result
+  }, [animales, bio, bioterioActivo, camadas, entregas, esHistorico, fecha, sacrificios])
+
+  const animalesDisp = useMemo(() => (
+    [...animalesRealesDisp, ...stockVirtualDisp].sort((a, b) => {
+      const aReal = a.tipo === 'real'
+      const bReal = b.tipo === 'real'
+      if (aReal && !bReal) return -1
+      if (!aReal && bReal) return 1
+      return (a.codigo ?? '').localeCompare(b.codigo ?? '')
+    })
+  ), [animalesRealesDisp, stockVirtualDisp])
+
+  const animalDirectoSeleccionado = [...animalesImplicados][0] ?? ''
+  const animalDirectoId = animalDirectoSeleccionado.startsWith('stock:') ? '' : animalDirectoSeleccionado
+  const hembraSeleccionadaId = useMemo(() => {
+    const direct = animalesRealesDisp.find((a) => a.id === animalDirectoId && a.sexo === 'hembra')
+    if (direct) return direct.id
+    const desdeMulti = [...animalesImplicados]
+      .map((id) => animalesRealesDisp.find((a) => a.id === id))
+      .find((a) => a?.sexo === 'hembra')
+    return desdeMulti?.id ?? ''
+  }, [animalDirectoId, animalesImplicados, animalesRealesDisp])
+
+  const camadasDisp = useMemo(() => {
+    const base = camadas.filter((c) => {
+      if (bioterioActivo && c.bioterio_id && c.bioterio_id !== bioterioActivo) return false
+      if (hembraSeleccionadaId && c.id_madre !== hembraSeleccionadaId) return false
+      if (c.fecha_copula && c.fecha_copula > fecha) return false
+      return true
+    })
+    return base.sort((a, b) => (a.fecha_copula ?? '').localeCompare(b.fecha_copula ?? ''))
+  }, [bioterioActivo, camadas, fecha, hembraSeleccionadaId])
 
   // Lista de animales para el panel multi-select, filtrada por búsqueda
   const animalesFiltrados = useMemo(() => {
     const q = busquedaAnimal.trim().toLowerCase()
-    const ACTIVOS = ['activo', 'en_apareamiento', 'en_cria']
-    const todos = [...animales].sort((a, b) => {
-      const aAct = ACTIVOS.includes(a.estado)
-      const bAct = ACTIVOS.includes(b.estado)
-      if (aAct && !bAct) return -1
-      if (!aAct && bAct) return 1
-      return (a.codigo ?? '').localeCompare(b.codigo ?? '')
-    })
+    const todos = animalesDisp
     if (!q) return todos
     return todos.filter(a =>
       (a.codigo ?? '').toLowerCase().includes(q) ||
+      (a.estadoLabel ?? '').toLowerCase().includes(q) ||
+      (a.categoriaLabel ?? '').toLowerCase().includes(q) ||
       a.id.toLowerCase().startsWith(q)
     )
-  }, [animales, busquedaAnimal])
+  }, [animalesDisp, busquedaAnimal])
 
-  // Cuando se selecciona una camada: auto-poblar padre/madre en vínculo genealógico
+  // Si cambia la hembra o la fecha, evitar dejar seleccionada una camada ajena.
   useEffect(() => {
-    if (!camadaId) return
-    const camada = camadas.find(c => c.id === camadaId)
-    if (!camada) return
-    if (camada.id_padre && !padreId) setPadreId(camada.id_padre)
-    if (camada.id_madre && !madreId) setMadreId(camada.id_madre)
-  }, [camadaId]) // eslint-disable-line
+    if (camadaId && !camadasDisp.some((c) => c.id === camadaId)) setCamadaId('')
+  }, [camadaId, camadasDisp])
+
+  useEffect(() => {
+    const validos = new Set(animalesDisp.map((a) => a.value))
+    setAnimalesImplicados(prev => {
+      const next = new Set([...prev].filter((id) => validos.has(id)))
+      return next.size === prev.size ? prev : next
+    })
+  }, [animalesDisp])
 
   function toggleAnimal(id) {
     setAnimalesImplicados(prev => {
@@ -1566,6 +1749,7 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
     if (!tipoInc)   { setError('Seleccioná el tipo de incidente.'); return }
     setGuardando(true); setError('')
     const idsArray = [...animalesImplicados]
+    const realIdsArray = idsArray.filter((id) => !id.startsWith('stock:'))
     try {
       await onGuardar({
         fecha,
@@ -1573,13 +1757,13 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
         tipo_incidente: tipoInc,
         severidad,
         descripcion:    descripcion.trim() || null,
-        animal_id:      idsArray[0] ?? null,
+        animal_id:      realIdsArray[0] ?? null,
         animal_ids:     idsArray,
         camada_id:      camadaId      || null,
-        padre_id:       padreId       || null,
-        madre_id:       madreId       || null,
+        padre_id:       null,
+        madre_id:       null,
         duracion_dias:  duracionDias !== '' ? Number(duracionDias) : null,
-        linea_genetica: lineaGenetica.trim() || null,
+        linea_genetica: null,
         resuelto:       inicial?.resuelto ?? false,
       })
     } catch {
@@ -1616,6 +1800,16 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
             <div className="col-span-1">
               <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>Fecha</label>
               <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} required style={inputBase} />
+              <div className="mt-1">
+                <span className="text-xs font-mono px-2 py-0.5 rounded-lg"
+                  style={{
+                    background: esHistorico ? 'rgba(64,196,255,0.1)' : 'rgba(0,230,118,0.08)',
+                    border: `1px solid ${esHistorico ? 'rgba(64,196,255,0.28)' : 'rgba(0,230,118,0.22)'}`,
+                    color: esHistorico ? '#40c4ff' : tema.accent,
+                  }}>
+                  {esHistorico ? '📜 Histórico' : 'Actual'}
+                </span>
+              </div>
             </div>
             <div className="col-span-1">
               <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>
@@ -1645,7 +1839,7 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
             <div className="grid grid-cols-3 md:grid-cols-5 gap-1.5">
               {Object.entries(CATEGORIAS_FORM).map(([catId, cat]) => (
                 <button key={catId} type="button"
-                  onClick={() => { setCategoria(prev => prev === catId ? '' : catId); setTipoInc(''); setPadreId(''); setMadreId('') }}
+                  onClick={() => { setCategoria(prev => prev === catId ? '' : catId); setTipoInc('') }}
                   className="py-2 px-1.5 rounded-xl text-xs font-semibold text-center"
                   style={{ background: categoria === catId ? `${cat.color}22` : 'rgba(255,255,255,0.04)', border: `1px solid ${categoria === catId ? cat.color + '55' : 'rgba(255,255,255,0.1)'}`, color: categoria === catId ? cat.color : '#4a5f7a' }}>
                   <div className="text-base">{cat.icon}</div>
@@ -1671,173 +1865,118 @@ function ModalIncidente({ inicial, animales, camadas, bioterioActivo, onGuardar,
             </div>
           )}
 
-          {/* Asociación genealógica — solo Sanitario y Reproductivo */}
-          {esGenealogica && (
-            <div className="rounded-xl p-4 space-y-3"
-              style={{ background: 'rgba(167,139,250,0.05)', border: '1px solid rgba(167,139,250,0.2)' }}>
-              <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#a78bfa' }}>
-                🧬 Vínculo genealógico <span className="font-mono font-normal normal-case" style={{ color: tema.textMuted }}>(opcional — mejora las alertas)</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-mono mb-1" style={{ color: '#6a8099' }}>♂ Padre implicado</label>
-                  <select value={padreId} onChange={e => setPadreId(e.target.value)} style={inputBase}>
-                    <option value="">— Ninguno —</option>
-                    {machos.map(a => (
-                      <option key={a.id} value={a.id}>♂ {a.codigo ?? `#${a.id.slice(0,6)}`}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-mono mb-1" style={{ color: '#6a8099' }}>♀ Madre implicada</label>
-                  <select value={madreId} onChange={e => setMadreId(e.target.value)} style={inputBase}>
-                    <option value="">— Ninguna —</option>
-                    {hembras.map(a => (
-                      <option key={a.id} value={a.id}>♀ {a.codigo ?? `#${a.id.slice(0,6)}`}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-mono mb-1" style={{ color: '#6a8099' }}>Línea genética <span style={{ color: '#3d5068' }}>(ej: BALB/c F12, C57 lote 3)</span></label>
-                <input type="text" value={lineaGenetica} onChange={e => setLineaGenetica(e.target.value)}
-                  placeholder="Nombre de la línea o lote..." style={inputBase} />
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>
+                Animal directo <span style={{ color: '#3d5068' }}>(opc.)</span>
+              </label>
+              <select
+                value={animalDirectoSeleccionado}
+                onChange={e => setAnimalesImplicados(e.target.value ? new Set([e.target.value]) : new Set())}
+                style={inputBase}>
+                <option value="">— Ninguno —</option>
+                {animalesDisp.map(a => (
+                  <option key={a.value} value={a.value}>
+                    {a.sexo === 'macho' ? '♂' : a.sexo === 'hembra' ? '♀' : '•'} {a.codigo ?? `#${a.id.slice(0, 6)}`} — {a.categoriaLabel} · {a.estadoLabel} · {a.edadLabel}
+                  </option>
+                ))}
+              </select>
             </div>
-          )}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>
+                Camada asociada <span style={{ color: '#3d5068' }}>(opc.)</span>
+              </label>
+              <select value={camadaId} onChange={e => setCamadaId(e.target.value)} style={inputBase}>
+                <option value="">— Ninguna —</option>
+                {camadasDisp.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {labelCamadaIncidente(c, camadas, animales)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-          {/* ── Animales implicados (multi-select) — solo Sanitario / Reproductivo ── */}
-          {esMultiAnimal ? (
-            <div className="rounded-xl p-4 space-y-3"
-              style={{ background: 'rgba(255,107,128,0.04)', border: '1px solid rgba(255,107,128,0.2)' }}>
-              {/* Header */}
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.red }}>
-                  🐭 Animales implicados
-                  {animalesImplicados.size > 0 && (
-                    <span className="ml-2 font-mono font-normal normal-case" style={{ color: '#ff9100' }}>
-                      {animalesImplicados.size} seleccionado{animalesImplicados.size !== 1 ? 's' : ''}
-                    </span>
-                  )}
-                </div>
+          <div className="rounded-xl p-4 space-y-3"
+            style={{ background: 'rgba(255,107,128,0.04)', border: '1px solid rgba(255,107,128,0.2)' }}>
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.red }}>
+                Animales implicados
                 {animalesImplicados.size > 0 && (
-                  <button type="button" onClick={() => setAnimalesImplicados(new Set())}
-                    className="text-xs font-mono px-2 py-0.5 rounded-lg"
-                    style={{ color: tema.textMuted, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    Limpiar todo
-                  </button>
+                  <span className="ml-2 font-mono font-normal normal-case" style={{ color: '#ff9100' }}>
+                    {animalesImplicados.size} seleccionado{animalesImplicados.size !== 1 ? 's' : ''}
+                  </span>
                 )}
               </div>
-
-              {/* Chips de seleccionados */}
               {animalesImplicados.size > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {[...animalesImplicados].map(id => {
-                    const a = animales.find(x => x.id === id)
-                    if (!a) return null
-                    const col = a.sexo === 'macho' ? '#40c4ff' : '#a78bfa'
-                    return (
-                      <span key={id} className="flex items-center gap-1 text-xs font-mono px-2 py-0.5 rounded-full"
-                        style={{ background: `${col}18`, color: col, border: `1px solid ${col}40` }}>
-                        {a.sexo === 'macho' ? '♂' : '♀'} {a.codigo ?? a.id.slice(0, 6)}
-                        <button type="button" onClick={() => toggleAnimal(id)}
-                          style={{ color: 'inherit', opacity: 0.7, marginLeft: 2, lineHeight: 1 }}>×</button>
-                      </span>
-                    )
-                  })}
-                </div>
+                <button type="button" onClick={() => setAnimalesImplicados(new Set())}
+                  className="text-xs font-mono px-2 py-0.5 rounded-lg"
+                  style={{ color: tema.textMuted, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                  Limpiar todo
+                </button>
               )}
+            </div>
 
-              {/* Búsqueda */}
-              <input type="text" value={busquedaAnimal}
-                onChange={e => setBusquedaAnimal(e.target.value)}
-                placeholder="Buscar por código (ej: H31, M8)..."
-                style={inputBase} />
-
-              {/* Lista scrolleable */}
-              <div className="max-h-44 overflow-y-auto space-y-1 pr-0.5"
-                style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}>
-                {animalesFiltrados.length === 0 ? (
-                  <div className="py-3 text-center text-xs font-mono" style={{ color: tema.textMuted }}>
-                    Sin animales que coincidan.
-                  </div>
-                ) : animalesFiltrados.map(a => {
-                  const sel = animalesImplicados.has(a.id)
-                  const col = a.sexo === 'macho' ? '#40c4ff' : '#a78bfa'
-                  const ACTIVOS = ['activo', 'en_apareamiento', 'en_cria']
-                  const estaActivo = ACTIVOS.includes(a.estado)
+            {animalesImplicados.size > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {[...animalesImplicados].map(id => {
+                  const a = animalesDisp.find(x => x.value === id)
+                  if (!a) return null
+                  const col = a.sexo === 'macho' ? '#40c4ff' : a.sexo === 'hembra' ? '#a78bfa' : '#ffb300'
                   return (
-                    <button key={a.id} type="button" onClick={() => toggleAnimal(a.id)}
-                      className="w-full text-left py-1.5 px-3 rounded-lg text-xs font-mono flex items-center gap-2"
-                      style={{ background: sel ? `${col}18` : 'rgba(255,255,255,0.03)', border: `1px solid ${sel ? col + '40' : 'rgba(255,255,255,0.07)'}`, color: sel ? col : '#8a9bb0' }}>
-                      <span style={{ color: col, minWidth: 12 }}>{a.sexo === 'macho' ? '♂' : '♀'}</span>
-                      <span style={{ color: sel ? col : '#c9d4e0', fontWeight: 600 }}>{a.codigo ?? `#${a.id.slice(0, 6)}`}</span>
-                      <span style={{ opacity: 0.5, fontSize: 11 }}>
-                        {a.estado === 'en_apareamiento' ? 'en apareamiento' : a.estado === 'en_cria' ? 'en cría' : a.estado}
-                      </span>
-                      {!estaActivo && (
-                        <span className="text-xs px-1 rounded"
-                          style={{ background: 'rgba(255,255,255,0.06)', color: tema.textMuted, fontSize: 10 }}>
-                          inactivo
-                        </span>
-                      )}
-                      {sel && <span className="ml-auto font-bold" style={{ color: col }}>✓</span>}
-                    </button>
+                    <span key={id} className="flex items-center gap-1 text-xs font-mono px-2 py-0.5 rounded-full"
+                      style={{ background: `${col}18`, color: col, border: `1px solid ${col}40` }}>
+                      {a.sexo === 'macho' ? '♂' : a.sexo === 'hembra' ? '♀' : '•'} {a.codigo ?? a.id.slice(0, 6)}
+                      <button type="button" onClick={() => toggleAnimal(id)}
+                        style={{ color: 'inherit', opacity: 0.7, marginLeft: 2, lineHeight: 1 }}>×</button>
+                    </span>
                   )
                 })}
               </div>
+            )}
 
-              {/* Camada implicada */}
-              <div>
-                <label className="block text-xs font-mono mb-1" style={{ color: '#6a8099' }}>
-                  Camada implicada <span style={{ color: '#3d5068' }}>(opc. — auto-completa padre/madre)</span>
-                </label>
-                <select value={camadaId} onChange={e => setCamadaId(e.target.value)} style={inputBase}>
-                  <option value="">— Ninguna —</option>
-                  {camadasDisp.map(c => (
-                    <option key={c.id} value={c.id}>
-                      Cópula {formatFecha(c.fecha_copula, { day: '2-digit', month: '2-digit' })}
-                      {c.total_crias ? ` · ${c.total_crias} crías` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <input type="text" value={busquedaAnimal}
+              onChange={e => setBusquedaAnimal(e.target.value)}
+              placeholder="Buscar por código, estado o categoría..."
+              style={inputBase} />
+
+            <div className="max-h-44 overflow-y-auto space-y-1 pr-0.5"
+              style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}>
+              {animalesFiltrados.length === 0 ? (
+                <div className="py-3 text-center text-xs font-mono" style={{ color: tema.textMuted }}>
+                  Sin animales que coincidan.
+                </div>
+              ) : animalesFiltrados.map(a => {
+                const sel = animalesImplicados.has(a.value)
+                const col = a.sexo === 'macho' ? '#40c4ff' : a.sexo === 'hembra' ? '#a78bfa' : '#ffb300'
+                const estaActivo = ESTADOS_ACTIVOS_INC.has(a.estado) || a.estado === 'stock'
+                return (
+                  <button key={a.value} type="button" onClick={() => toggleAnimal(a.value)}
+                    className="w-full text-left py-1.5 px-3 rounded-lg text-xs font-mono flex items-center gap-2"
+                    style={{ background: sel ? `${col}18` : 'rgba(255,255,255,0.03)', border: `1px solid ${sel ? col + '40' : 'rgba(255,255,255,0.07)'}`, color: sel ? col : '#8a9bb0' }}>
+                    <span style={{ color: col, minWidth: 12 }}>{a.sexo === 'macho' ? '♂' : a.sexo === 'hembra' ? '♀' : '•'}</span>
+                    <span style={{ color: sel ? col : '#c9d4e0', fontWeight: 600 }}>{a.codigo ?? `#${a.id.slice(0, 6)}`}</span>
+                    <span style={{ opacity: 0.65, fontSize: 11 }}>{a.categoriaLabel}</span>
+                    <span style={{ opacity: 0.5, fontSize: 11 }}>{a.estadoLabel}</span>
+                    <span style={{ opacity: 0.5, fontSize: 11 }}>{a.edadLabel}</span>
+                    {!estaActivo && (
+                      <span className="text-xs px-1 rounded"
+                        style={{ background: 'rgba(255,255,255,0.06)', color: tema.textMuted, fontSize: 10 }}>
+                        histórico
+                      </span>
+                    )}
+                    {a.count > 1 && (
+                      <span className="text-xs px-1 rounded"
+                        style={{ background: 'rgba(255,179,0,0.08)', color: tema.amber, fontSize: 10 }}>
+                        x{a.count}
+                      </span>
+                    )}
+                    {sel && <span className="ml-auto font-bold" style={{ color: col }}>✓</span>}
+                  </button>
+                )
+              })}
             </div>
-          ) : (
-            /* ── Single select para otras categorías ── */
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>
-                  Animal directo <span style={{ color: '#3d5068' }}>(opc.)</span>
-                </label>
-                <select
-                  value={[...animalesImplicados][0] ?? ''}
-                  onChange={e => setAnimalesImplicados(e.target.value ? new Set([e.target.value]) : new Set())}
-                  style={inputBase}>
-                  <option value="">— Ninguno —</option>
-                  {animalesDisp.map(a => (
-                    <option key={a.id} value={a.id}>
-                      {a.sexo === 'macho' ? '♂' : '♀'} {a.codigo ?? `#${a.id.slice(0, 6)}`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: tema.textMuted }}>
-                  Camada <span style={{ color: '#3d5068' }}>(opc.)</span>
-                </label>
-                <select value={camadaId} onChange={e => setCamadaId(e.target.value)} style={inputBase}>
-                  <option value="">— Ninguna —</option>
-                  {camadasDisp.map(c => (
-                    <option key={c.id} value={c.id}>
-                      Cópula {formatFecha(c.fecha_copula, { day: '2-digit', month: '2-digit' })}
-                      {c.total_crias ? ` · ${c.total_crias} crías` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          )}
+          </div>
 
           {/* Descripción */}
           <div>

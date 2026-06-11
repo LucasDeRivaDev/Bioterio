@@ -641,9 +641,9 @@ export default function PlanificacionColonia() {
   const motorUnificado = useMemo(
     () => calcularMotorRenovacionUnificado(
       stockReal, animales, todasCamadas, bio, bioterioActivo,
-      indiceGenetico, indiceSanitario, incidentes, todosAnimales
+      incidentes, todosAnimales
     ),
-    [stockReal, animales, todasCamadas, bio, bioterioActivo, indiceGenetico, indiceSanitario, incidentes, todosAnimales]
+    [stockReal, animales, todasCamadas, bio, bioterioActivo, incidentes, todosAnimales]
   )
 
   // Índice de estabilidad — usa el motor unificado para la componente renovación
