@@ -1340,7 +1340,7 @@ export default function Incidentes() {
                   const camada  = camadas.find(c => c.id === inc.camada_id)
                   const animalIds = inc.animal_ids?.length ? inc.animal_ids : (inc.animal_id ? [inc.animal_id] : [])
                   const animalesChips = animalIds
-                    .map((id) => chipAnimalIncidente(id, animales, camadas, inc.fecha, bio))
+                    .map((id) => chipAnimalIncidente(id, animales, camadas, inc.fecha, bio, sacrificios, entregas))
                     .filter(Boolean)
 
                   return (
@@ -1571,18 +1571,44 @@ function labelCamadaIncidente(camada, camadas, animales) {
   return partes.join(' - ')
 }
 
-function chipAnimalIncidente(id, animales, camadas, fecha, bio) {
+// Pluraliza el sexo de un grupo de crías según la cantidad
+function sexoPluralIncidente(sexo, count) {
+  if (sexo === 'macho')  return count === 1 ? 'macho'  : 'machos'
+  if (sexo === 'hembra') return count === 1 ? 'hembra' : 'hembras'
+  return count === 1 ? 'cría' : 'crías'
+}
+
+// Cruza de los padres de una camada (ej. "H5×M4"). Usa el código real de cada reproductor.
+function cruzaCamada(camada, animales) {
+  const madre = animales.find((a) => a.id === camada.id_madre)
+  const padre = animales.find((a) => a.id === camada.id_padre)
+  return `${madre?.codigo ?? 's/d'}×${padre?.codigo ?? 's/d'}`
+}
+
+// Etiqueta legible de un grupo de crías en stock (ej. "5 hembras de H5×M4 · nac. 20/03/25")
+function labelStockGrupo(camada, sexo, count, animales) {
+  const nac = camada.fecha_nacimiento ? formatFecha(camada.fecha_nacimiento) : 's/f'
+  return `${count} ${sexoPluralIncidente(sexo, count)} de ${cruzaCamada(camada, animales)} · nac. ${nac}`
+}
+
+// Cantidad de crías de un sexo dado en una camada (declarada o, si falta, stock a la fecha)
+function countSexoCamada(camada, sexo, fecha, sacrificios, entregas) {
+  if (sexo === 'macho'  && camada.crias_machos  != null) return camada.crias_machos
+  if (sexo === 'hembra' && camada.crias_hembras != null) return camada.crias_hembras
+  return stockCamadaEnFecha(camada, sacrificios, entregas, fecha)
+}
+
+function chipAnimalIncidente(id, animales, camadas, fecha, bio, sacrificios = [], entregas = []) {
   if (!id) return null
   if (id.startsWith('stock:')) {
     const [, camadaId, sexo] = id.split(':')
     const camada = camadas.find((c) => c.id === camadaId)
     if (!camada) return null
-    const cat = categoriaStockIncidente(camada, fecha, bio)
-    const labelSexo = sexo === 'macho' ? 'Macho' : sexo === 'hembra' ? 'Hembra' : 'Cria'
+    const count = countSexoCamada(camada, sexo, fecha, sacrificios, entregas)
     return {
       id,
       sexo,
-      label: `${labelSexo} ${cat.label.toLowerCase()} - camada ${numeroCamadaMadre(camada, camadas) || '?'}`,
+      label: labelStockGrupo(camada, sexo, count, animales),
       color: sexo === 'macho' ? '#40c4ff' : sexo === 'hembra' ? '#a78bfa' : '#ffb300',
     }
   }
@@ -1661,12 +1687,16 @@ function ModalIncidente({ inicial, animales, camadas, sacrificios, entregas, bio
           value: `stock:${camada.id}:${grupo.sexo}`,
           tipo: 'virtual_stock',
           camadaId: camada.id,
-          codigo: `${camada.id.slice(-4).toUpperCase()}-${grupo.suffix}`,
+          // Nombre legible: cruza de los padres (ej. "H5×M4"). El sexo/cantidad/fecha
+          // se muestran en columnas aparte. Etiqueta completa en `etiquetaLarga`.
+          codigo: cruzaCamada(camada, animales),
+          etiquetaLarga: labelStockGrupo(camada, grupo.sexo, count, animales),
+          nacimiento: camada.fecha_nacimiento ? formatFecha(camada.fecha_nacimiento) : null,
           sexo: grupo.sexo,
           estado: esHistorico ? 'historico' : 'stock',
           estadoLabel: esHistorico ? 'historico' : 'stock',
           edadLabel: formatEdadIncidente(camada.fecha_nacimiento, fecha),
-          categoriaLabel: `${grupo.sexo === 'macho' ? 'Macho' : grupo.sexo === 'hembra' ? 'Hembra' : 'Cria'} ${cat.label.toLowerCase()}`,
+          categoriaLabel: `${grupo.sexo === 'macho' ? 'Macho' : grupo.sexo === 'hembra' ? 'Hembra' : 'Cría'} ${cat.label.toLowerCase()}`,
           count,
           camada,
           padre,
@@ -1923,10 +1953,13 @@ function ModalIncidente({ inicial, animales, camadas, sacrificios, entregas, bio
                   const a = animalesDisp.find(x => x.value === id)
                   if (!a) return null
                   const col = a.sexo === 'macho' ? '#40c4ff' : a.sexo === 'hembra' ? '#a78bfa' : '#ffb300'
+                  const etiqueta = a.tipo === 'virtual_stock'
+                    ? `${a.count} ${sexoPluralIncidente(a.sexo, a.count)} de ${a.codigo}`
+                    : (a.codigo ?? a.id.slice(0, 6))
                   return (
                     <span key={id} className="flex items-center gap-1 text-xs font-mono px-2 py-0.5 rounded-full"
                       style={{ background: `${col}18`, color: col, border: `1px solid ${col}40` }}>
-                      {a.sexo === 'macho' ? '♂' : a.sexo === 'hembra' ? '♀' : '•'} {a.codigo ?? a.id.slice(0, 6)}
+                      {a.sexo === 'macho' ? '♂' : a.sexo === 'hembra' ? '♀' : '•'} {etiqueta}
                       <button type="button" onClick={() => toggleAnimal(id)}
                         style={{ color: 'inherit', opacity: 0.7, marginLeft: 2, lineHeight: 1 }}>×</button>
                     </span>
@@ -1957,6 +1990,7 @@ function ModalIncidente({ inicial, animales, camadas, sacrificios, entregas, bio
                     <span style={{ color: col, minWidth: 12 }}>{a.sexo === 'macho' ? '♂' : a.sexo === 'hembra' ? '♀' : '•'}</span>
                     <span style={{ color: sel ? col : '#c9d4e0', fontWeight: 600 }}>{a.codigo ?? `#${a.id.slice(0, 6)}`}</span>
                     <span style={{ opacity: 0.65, fontSize: 11 }}>{a.categoriaLabel}</span>
+                    {a.nacimiento && <span style={{ opacity: 0.5, fontSize: 11 }}>nac. {a.nacimiento}</span>}
                     <span style={{ opacity: 0.5, fontSize: 11 }}>{a.estadoLabel}</span>
                     <span style={{ opacity: 0.5, fontSize: 11 }}>{a.edadLabel}</span>
                     {!estaActivo && (
