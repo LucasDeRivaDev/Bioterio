@@ -5,7 +5,7 @@ import {
   scorePorLatencia, formatFecha, difDias, parseDate, hoy,
   calcularPerfilHembra, calcularConfiabilidadHembra,
   detectarBajaPerformanceMacho, calcularTendenciaTamanoCamadas,
-  getEstadoCicloHembra,
+  getEstadoCicloHembra, scoreTamanoCamada, scoreSupervivencia,
 } from '../utils/calculos'
 import { MACHO_EDAD_LIMITE_DIAS, MACHO_EDAD_ALERTA_DIAS } from '../utils/constants'
 import Badge from '../components/Badge'
@@ -190,18 +190,31 @@ function buildHembraStats(lista, todasCamadas) {
       const crias        = sus.reduce((s, c) => s + (c.total_crias   ?? 0), 0)
       const criasMachos  = sus.reduce((s, c) => s + (c.crias_machos  ?? 0), 0)
       const criasHembras = sus.reduce((s, c) => s + (c.crias_hembras ?? 0), 0)
-      const scoreTotal   = perfil ? Math.round(sumaScoresHembra(perfil) * 10) / 10 : null
+      const scoreTotalBase = perfil ? Math.round(sumaScoresHembra(perfil) * 10) / 10 : null
       const tendencia_camada = calcularTendenciaTamanoCamadas(sus)
-      // Criterio eliminatorio: cualquier parto con ≤7 crías → aplazada
-      const susInsuf = sus.filter((c) => c.total_crias != null && c.total_crias <= 7)
-      const aplazada = susInsuf.length > 0
-      const minCrias = aplazada ? Math.min(...susInsuf.map((c) => c.total_crias)) : null
-      return { h, total: sus.length, crias, criasMachos, criasHembras, perfil, conf, scoreTotal, tendencia_camada, aplazada, minCrias }
+      const susScoreCamadaCero = sus.filter((c) => scoreTamanoCamada(c.total_crias) === 0)
+      const malaMadre = susScoreCamadaCero.length > 0
+      const susSupervivenciaBaja = sus.filter((c) => {
+        const score = scoreSupervivencia(c.total_crias, c.total_destetados)
+        return score != null && score < 10
+      })
+      const bajaSupervivencia = susSupervivenciaBaja.length > 0
+      const calificacionBaja = malaMadre || bajaSupervivencia
+      const minCrias = malaMadre ? Math.min(...susScoreCamadaCero.map((c) => c.total_crias)) : null
+      const minSupervivencia = bajaSupervivencia
+        ? Math.min(...susSupervivenciaBaja.map((c) => c.total_destetados / c.total_crias))
+        : null
+      const scoreTotal = malaMadre ? -1 : scoreTotalBase
+      return {
+        h, total: sus.length, crias, criasMachos, criasHembras, perfil, conf,
+        scoreTotal, tendencia_camada, calificacionBaja, malaMadre,
+        bajaSupervivencia, minCrias, minSupervivencia,
+      }
     })
     .filter((x) => x.total > 0)
     .sort((a, b) => {
-      // Aplazadas siempre al final del ranking
-      if (a.aplazada !== b.aplazada) return a.aplazada ? 1 : -1
+      // Las hembras con criterio de baja quedan siempre al final del ranking.
+      if (a.calificacionBaja !== b.calificacionBaja) return a.calificacionBaja ? 1 : -1
       const stA = a.scoreTotal ?? 0
       const stB = b.scoreTotal ?? 0
       if (stB !== stA) return stB - stA
@@ -558,31 +571,39 @@ const btnSubTab = (v, label, color) => (
             {vista === 'activos' ? 'Perfil de hembras — solo activas' : 'Perfil histórico de hembras'}
           </div>
           <div className="space-y-3">
-            {hembraStats.map(({ h, total, crias, criasMachos, criasHembras, perfil, conf, scoreTotal, tendencia_camada, aplazada, minCrias }, idx) => {
+            {hembraStats.map(({
+              h, total, crias, criasMachos, criasHembras, perfil, conf, scoreTotal,
+              tendencia_camada, calificacionBaja, malaMadre,
+              minCrias, minSupervivencia,
+            }, idx) => {
               const confCfg = conf ? CONF_CONFIG[conf.nivel] : null
               const estadoCiclo = esActivo(h) ? getEstadoCicloHembra(h.id, todasCamadas) : 'normal'
               return (
                 <div key={h.id} className="rounded-xl overflow-hidden"
-                  style={{ ...cardStyle, ...(aplazada ? { borderColor: 'rgba(255,61,87,0.35)' } : {}) }}>
-                  {/* Banner aplazada */}
-                  {aplazada && (
+                  style={{ ...cardStyle, ...(calificacionBaja ? { borderColor: 'rgba(255,61,87,0.35)' } : {}) }}>
+                  {/* Banner de baja calificación */}
+                  {calificacionBaja && (
                     <div className="flex items-center gap-2 px-5 py-2"
                       style={{ background: 'rgba(255,61,87,0.08)', borderBottom: '1px solid rgba(255,61,87,0.2)' }}>
-                      <span style={{ color: tema.red, fontWeight: 800, fontSize: '0.75rem', letterSpacing: '0.05em' }}>🔴 APLAZADA</span>
+                      <span style={{ color: tema.red, fontWeight: 800, fontSize: '0.75rem', letterSpacing: '0.05em' }}>
+                        {malaMadre ? '🔴 MALA MADRE' : '🔴 CALIFICACIÓN BAJA'}
+                      </span>
                       <span style={{ color: tema.red, fontSize: '0.7rem', opacity: 0.8 }}>
-                        Camada insuficiente — mín. {minCrias} crías (umbral: 8)
+                        {malaMadre
+                          ? `Score tamaño camada = 0 — mín. ${minCrias} crías`
+                          : `Score supervivencia < 10 — mín. ${Math.round(minSupervivencia * 100)}%`}
                       </span>
                     </div>
                   )}
                   {/* Header */}
                   <div className="flex items-center gap-4 px-5 py-3"
-                    style={{ borderBottom: '1px solid rgba(30,51,82,0.4)', background: aplazada ? 'rgba(255,61,87,0.02)' : 'rgba(206,147,216,0.03)' }}>
+                    style={{ borderBottom: '1px solid rgba(30,51,82,0.4)', background: calificacionBaja ? 'rgba(255,61,87,0.02)' : 'rgba(206,147,216,0.03)' }}>
                     <div className="w-10 flex justify-center">
                       <Medalla pos={idx + 1} />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono font-bold text-lg" style={{ color: aplazada ? tema.red : (h.notas && h.nota_tipo === 'critica' ? '#ff6b80' : '#ce93d8') }}>{h.codigo}</span>
+                        <span className="font-mono font-bold text-lg" style={{ color: calificacionBaja ? tema.red : (h.notas && h.nota_tipo === 'critica' ? '#ff6b80' : '#ce93d8') }}>{h.codigo}</span>
                         {h.notas && (
                           <span title={h.notas} style={{ color: h.nota_tipo === 'critica' ? '#ff1744' : '#ffb300', cursor: 'help' }}>⚠</span>
                         )}
@@ -628,12 +649,14 @@ const btnSubTab = (v, label, color) => (
                     {scoreTotal !== null && (
                       <div className="text-center px-3 hidden md:block">
                         <div className="text-xs uppercase tracking-widest font-semibold mb-1" style={{ color: tema.textMuted }}>Score total</div>
-                        <div className="font-mono font-bold text-xl" style={{ color: aplazada ? tema.red : tema.purple }}>
+                        <div className="font-mono font-bold text-xl" style={{ color: calificacionBaja ? tema.red : tema.purple }}>
                           {scoreTotal}
                           <span className="text-xs font-normal ml-0.5" style={{ color: tema.textMuted }}>/40</span>
                         </div>
-                        {aplazada && (
-                          <div className="text-xs font-bold mt-0.5" style={{ color: tema.red }}>NO APTA</div>
+                        {calificacionBaja && (
+                          <div className="text-xs font-bold mt-0.5" style={{ color: tema.red }}>
+                            {malaMadre ? 'NO APTA' : 'BAJA'}
+                          </div>
                         )}
                       </div>
                     )}
