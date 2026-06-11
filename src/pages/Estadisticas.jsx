@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
-import { calcularLatencia, calcularPerfilHembra } from '../utils/calculos'
+import { calcularLatencia, calcularEvaluacionMaterna, CATEGORIAS_MADRE } from '../utils/calculos'
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer,
@@ -16,31 +16,6 @@ const C = {
   violeta:  '#ce93d8',
   gris:     '#4a5f7a',
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function scorePromedioHembra(id, camadas) {
-  const perfil = calcularPerfilHembra(id, camadas)
-  if (!perfil) {
-    // Sin partos exitosos — si hay fallos registrados la calidad es Baja, no "Sin datos"
-    const tieneFallos = camadas.some((c) => c.id_madre === id && c.failure_flag)
-    return tieneFallos ? 0 : null
-  }
-  const vals = [
-    perfil.avg_time_score,
-    perfil.avg_litter_size_score,
-    perfil.avg_sex_ratio_score,
-    perfil.avg_survival_score,
-  ].filter((v) => v != null)
-  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null
-}
-
-function nivelScore(s) {
-  if (s === null) return 'Sin datos'
-  if (s >= 8) return 'Alta'
-  if (s >= 6) return 'Media'
-  return 'Baja'
-}
-
 
 // ── Tooltip personalizado ─────────────────────────────────────────────────────
 function TooltipOscuro({ active, payload, label }) {
@@ -198,34 +173,42 @@ export default function Estadisticas() {
     }
   }, [camadasFiltradas])
 
-  // ── 2. Calidad de Madres ───────────────────────────────────────────────────
+  // ── 2. Calidad de Madres (clasificación real de 5 categorías) ──────────────
   const dataCalidad = useMemo(() => {
     const idsMadres = [...new Set(camadasFiltradas.map((c) => c.id_madre).filter(Boolean))]
-    const niveles = { Alta: 0, Media: 0, Baja: 0, 'En proceso': 0 }
+    const conteo = { excelente: 0, buena: 0, aceptable: 0, mala: 0, no_apta: 0, en_proceso: 0 }
     idsMadres.forEach((id) => {
-      const s = scorePromedioHembra(id, todasCamadas) // score histórico completo
-      const nivel = nivelScore(s)
-      niveles[nivel === 'Sin datos' ? 'En proceso' : nivel]++
+      const ev = calcularEvaluacionMaterna(id, todasCamadas) // historial completo del animal
+      if (!ev) conteo.en_proceso++
+      else conteo[ev.categoria]++
     })
     return [
-      { name: 'Alta',       value: niveles['Alta'],       fill: C.verde    },
-      { name: 'Media',      value: niveles['Media'],      fill: C.amarillo },
-      { name: 'Baja',       value: niveles['Baja'],       fill: C.rojo     },
-      { name: 'En proceso', value: niveles['En proceso'], fill: C.gris     },
+      { name: CATEGORIAS_MADRE.excelente.short, value: conteo.excelente, fill: CATEGORIAS_MADRE.excelente.color },
+      { name: CATEGORIAS_MADRE.buena.short,     value: conteo.buena,     fill: CATEGORIAS_MADRE.buena.color },
+      { name: CATEGORIAS_MADRE.aceptable.short, value: conteo.aceptable, fill: CATEGORIAS_MADRE.aceptable.color },
+      { name: CATEGORIAS_MADRE.mala.short,      value: conteo.mala,      fill: CATEGORIAS_MADRE.mala.color },
+      { name: CATEGORIAS_MADRE.no_apta.short,   value: conteo.no_apta,   fill: CATEGORIAS_MADRE.no_apta.color },
+      { name: 'En proceso',                     value: conteo.en_proceso, fill: C.gris },
     ].filter((d) => d.value > 0)
   }, [camadasFiltradas, todasCamadas])
 
   // ── 3. Supervivencia ───────────────────────────────────────────────────────
+  // La reducción de camada por manejo NO cuenta como mortalidad:
+  //   objetivo = nacidas − reducidas (crías que la madre debía llevar al destete)
   const dataSupervivencia = useMemo(() => {
     const conDatos = camadasFiltradas.filter(
       (c) => c.fecha_nacimiento && c.total_crias > 0 && c.total_destetados != null
     )
-    const sinPerdida  = conDatos.filter((c) => c.total_destetados >= c.total_crias).length
-    const conPerdida  = conDatos.filter((c) => c.total_destetados < c.total_crias).length
+    const objetivoDe = (c) => Math.max(0, c.total_crias - (c.crias_reducidas ?? 0))
+    const sinPerdida  = conDatos.filter((c) => c.total_destetados >= objetivoDe(c)).length
+    const conPerdida  = conDatos.filter((c) => c.total_destetados < objetivoDe(c)).length
     const sinDatos    = camadasFiltradas.length - conDatos.length
     const tasaPromedio = conDatos.length > 0
       ? Math.round(
-          conDatos.reduce((s, c) => s + (c.total_destetados / c.total_crias), 0)
+          conDatos.reduce((s, c) => {
+            const obj = objetivoDe(c)
+            return s + (obj > 0 ? Math.min(1, c.total_destetados / obj) : 1)
+          }, 0)
           / conDatos.length * 100
         )
       : null
@@ -342,7 +325,7 @@ export default function Estadisticas() {
           label="Supervivencia"
           valor={dataSupervivencia.tasaPromedio !== null ? `${dataSupervivencia.tasaPromedio}%` : '—'}
           color={dataSupervivencia.tasaPromedio >= 90 ? C.verde : dataSupervivencia.tasaPromedio >= 70 ? C.amarillo : C.rojo}
-          sub="destetados / nacidos (prom.)"
+          sub="destetados / objetivo (excl. reducción)"
         />
         <KPI
           label="Lat. óptima"
@@ -390,7 +373,7 @@ export default function Estadisticas() {
         {/* 2. Calidad de Madres */}
         <GraficoCard
           titulo="Calidad de Madres"
-          subtitulo="Score histórico promedio por reproductora activa en el período"
+          subtitulo="Clasificación materna (historial completo): Excelente → No apta"
           color={C.violeta}
         >
           {dataCalidad.length === 0 ? <SinDatos /> : (
