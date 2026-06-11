@@ -105,7 +105,6 @@ function reducer(estado, accion) {
 
     case 'AGREGAR_TEMPERATURA':       return { ...estado, temperaturas: [...estado.temperaturas, accion.payload] }
     case 'ELIMINAR_TEMPERATURA':      return { ...estado, temperaturas: estado.temperaturas.filter((t) => t.id !== accion.payload) }
-    case 'ELIMINAR_TEMPERATURAS_MES': return { ...estado, temperaturas: estado.temperaturas.filter((t) => !t.date?.startsWith(accion.payload)) }
 
     case 'AGREGAR_INCIDENTE': {
       lista = [...estado.incidentes, accion.payload]
@@ -317,6 +316,11 @@ export function BiotheriumDemoProvider({ children, onReset }) {
       const siguientes = estado.entregas.filter((e) => e.id !== entrega.id)
       dispatch({ type: 'SET_ENTREGAS', payload: siguientes })
       guardar(LS.entregas, siguientes)
+    } else {
+      // Marcar devuelta: sigue visible en el historial pero deja de descontar en stockCamada
+      const siguientes = estado.entregas.map((e) => e.id === entrega.id ? { ...e, devuelta: true } : e)
+      dispatch({ type: 'SET_ENTREGAS', payload: siguientes })
+      guardar(LS.entregas, siguientes)
     }
   }
 
@@ -338,12 +342,6 @@ export function BiotheriumDemoProvider({ children, onReset }) {
   async function agregarTemperatura(datos) {
     const nuevo = { ...datos, id: generarId(), bioterio_id: bioterioActivo }
     const siguientes = [...estado.temperaturas, nuevo]
-    dispatch({ type: 'SET_TEMPERATURAS', payload: siguientes })
-    guardar(LS.temperaturas, siguientes)
-  }
-
-  async function eliminarTemperaturasMes(yearMonth) {
-    const siguientes = estado.temperaturas.filter((t) => !t.date?.startsWith(yearMonth))
     dispatch({ type: 'SET_TEMPERATURAS', payload: siguientes })
     guardar(LS.temperaturas, siguientes)
   }
@@ -392,7 +390,7 @@ export function BiotheriumDemoProvider({ children, onReset }) {
       registrarSacrificio, eliminarSacrificio, eliminarSacrificioReproductor,
       registrarEntrega, entregarReproductor, devolverEntrega,
       agregarJaula, editarJaula, eliminarJaula,
-      agregarTemperatura, eliminarTemperaturasMes,
+      agregarTemperatura,
       agregarIncidente, eliminarIncidente,
       agregarExtendido, editarExtendido, eliminarExtendido,
     }}>
