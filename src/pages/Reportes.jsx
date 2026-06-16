@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
+import { useBioterioActivo } from '../context/BioterioActivoContext'
 import { formatFecha, calcularLatencia } from '../utils/calculos'
-import { TrendingUp, Microscope, Dna, BarChart2, Archive, Skull, PackageCheck, Thermometer, FileWarning, Printer, Calendar, CalendarDays } from 'lucide-react'
+import { getMinimosCriticos } from '../utils/motorDecisiones'
+import { TrendingUp, Microscope, Dna, BarChart2, Archive, Skull, PackageCheck, Thermometer, FileWarning, Printer, Calendar, CalendarDays, GitBranch, ShoppingCart, ClipboardCheck, Leaf, Layers } from 'lucide-react'
 import iterateTitleLogoLight from '../assets/iterate+logo+sloganfondoclaro.png'
 import { useTheme } from '../context/ThemeContext'
 
@@ -24,6 +26,16 @@ const SECCIONES_BASE = [
   { key: 'entregas',        label: 'Entregas',        printBg: '#fefae8', printBorder: '#b8860b' },
   { key: 'temperaturas',    label: 'Temperaturas',    printBg: '#e8f4fd', printBorder: '#0277bd' },
   { key: 'incidentes',      label: 'Incidentes',      printBg: '#f5f0ff', printBorder: '#9d4edd' },
+  { key: 'planificacion',   label: 'Planificación',   printBg: '#e8faf0', printBorder: '#1b5e20' },
+  { key: 'pedidos',         label: 'Pedidos',         printBg: '#fffde7', printBorder: '#f57f17' },
+  { key: 'auditoria',       label: 'Auditoría',       printBg: '#ede7f6', printBorder: '#4527a0' },
+]
+
+const SECCIONES_GLOBAL = [
+  { key: 'alimento_global',  label: 'Consumo de alimento',       sub: 'Ratas + Ratones · estimación diaria', icon: '🌾', color: 'rgba(255,179,0,0.6)'  },
+  { key: 'viruta_global',    label: 'Consumo de viruta / camas', sub: 'Calculado por jaulas activas',         icon: '🪵', color: 'rgba(139,92,246,0.6)' },
+  { key: 'capacidad_global', label: 'Capacidad y predicción',    sub: 'Saturación · candidatos · simulador',  icon: '📊', color: 'rgba(255,61,87,0.6)'  },
+  { key: 'genealogia_global',label: 'Genealogía y consanguinidad', sub: 'Árbol genealógico · coeficiente F', icon: '🧬', color: 'rgba(167,139,250,0.6)'},
 ]
 
 function inicioSemana() {
@@ -38,18 +50,22 @@ function inicioSemana() {
 export default function Reportes() {
   const { tema } = useTheme()
   const cardStyle = { background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }
+  const { setBioterioActivo } = useBioterioActivo()
   const SECCIONES = [
-    { ...SECCIONES_BASE[0], icon: <TrendingUp size={14} />,   color: tema.amber,  rgb: '255,179,0'   },
-    { ...SECCIONES_BASE[1], icon: <Microscope size={14} />,   color: tema.purple, rgb: '206,147,216' },
-    { ...SECCIONES_BASE[2], icon: <Dna size={14} />,          color: tema.blue,   rgb: '64,196,255'  },
-    { ...SECCIONES_BASE[3], icon: <BarChart2 size={14} />,    color: tema.accent, rgb: '0,230,118'   },
-    { ...SECCIONES_BASE[4], icon: <Archive size={14} />,      color: tema.accent, rgb: '0,230,118'   },
-    { ...SECCIONES_BASE[5], icon: <Skull size={14} />,        color: tema.red,    rgb: '255,107,128' },
-    { ...SECCIONES_BASE[6], icon: <PackageCheck size={14} />, color: tema.amber,  rgb: '255,179,0'   },
-    { ...SECCIONES_BASE[7], icon: <Thermometer size={14} />,  color: tema.blue,   rgb: '64,196,255'  },
-    { ...SECCIONES_BASE[8], icon: <FileWarning size={14} />,  color: tema.purple, rgb: '206,147,216' },
+    { ...SECCIONES_BASE[0],  icon: <TrendingUp size={14} />,    color: tema.amber,  rgb: '255,179,0'   },
+    { ...SECCIONES_BASE[1],  icon: <Microscope size={14} />,    color: tema.purple, rgb: '206,147,216' },
+    { ...SECCIONES_BASE[2],  icon: <Dna size={14} />,           color: tema.blue,   rgb: '64,196,255'  },
+    { ...SECCIONES_BASE[3],  icon: <BarChart2 size={14} />,     color: tema.accent, rgb: '0,230,118'   },
+    { ...SECCIONES_BASE[4],  icon: <Archive size={14} />,       color: tema.accent, rgb: '0,230,118'   },
+    { ...SECCIONES_BASE[5],  icon: <Skull size={14} />,         color: tema.red,    rgb: '255,107,128' },
+    { ...SECCIONES_BASE[6],  icon: <PackageCheck size={14} />,  color: tema.amber,  rgb: '255,179,0'   },
+    { ...SECCIONES_BASE[7],  icon: <Thermometer size={14} />,   color: tema.blue,   rgb: '64,196,255'  },
+    { ...SECCIONES_BASE[8],  icon: <FileWarning size={14} />,   color: tema.purple, rgb: '206,147,216' },
+    { ...SECCIONES_BASE[9],  icon: <Layers size={14} />,        color: tema.accent, rgb: '0,230,118'   },
+    { ...SECCIONES_BASE[10], icon: <ShoppingCart size={14} />,  color: tema.amber,  rgb: '255,179,0'   },
+    { ...SECCIONES_BASE[11], icon: <ClipboardCheck size={14} />,color: '#a78bfa',   rgb: '167,139,250' },
   ]
-  const { animales, camadas, jaulas, sacrificios, entregas, temperaturas, incidentes, bio, bioterioActivo } = useBioterio()
+  const { animales, camadas, jaulas, sacrificios, entregas, temperaturas, incidentes, pedidos, bio, bioterioActivo } = useBioterio()
   const hoyDate = new Date()
 
   const [periodo, setPeriodo]   = useState('mensual')
@@ -280,6 +296,28 @@ export default function Reportes() {
           ))}
         </div>
 
+        {/* Vista Global — secciones que se abren fuera del informe */}
+        <div className="rounded-2xl p-5 space-y-3" style={cardStyle}>
+          <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.textMuted }}>Vista global — acceso directo</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {SECCIONES_GLOBAL.map(({ key, label, sub, icon, color }) => (
+              <button
+                key={key}
+                onClick={() => setBioterioActivo(key)}
+                className="w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-all"
+                style={{ background: tema.bgCard, border: `1px solid rgba(30,51,82,0.5)` }}
+              >
+                <span style={{ fontSize: '18px' }}>{icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-sm" style={{ color: tema.textPrimary }}>{label}</div>
+                  <div className="text-xs font-mono truncate" style={{ color: tema.textMuted }}>{sub}</div>
+                </div>
+                <span style={{ color: tema.textMuted }}>›</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <p className="text-xs" style={{ color: tema.textMuted }}>
           💡 En el diálogo de impresión seleccioná <strong style={{ color: tema.textPrimary }}>"Guardar como PDF"</strong> y tamaño <strong style={{ color: tema.textPrimary }}>A4</strong>.
         </p>
@@ -292,6 +330,7 @@ export default function Reportes() {
           datos={datos}
           animales={animales}
           camadas={camadas}
+          pedidos={pedidos}
           secciones={secciones}
           bioterioActivo={bioterioActivo}
         />
@@ -304,7 +343,7 @@ export default function Reportes() {
 // Documento imprimible
 // ─────────────────────────────────────────────────────────────────────────────
 
-function DocImprimible({ tituloPeriodo, datos, animales, camadas, secciones, bioterioActivo }) {
+function DocImprimible({ tituloPeriodo, datos, animales, camadas, pedidos = [], secciones, bioterioActivo }) {
   const ahora = new Date().toLocaleDateString('es-AR', {
     day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
   })
@@ -624,6 +663,100 @@ function DocImprimible({ tituloPeriodo, datos, animales, camadas, secciones, bio
               </table>
             )
           }
+        </Seccion>
+      )}
+
+      {/* ── Planificación ── */}
+      {S('planificacion') && (() => {
+        const minimos = getMinimosCriticos(bioterioActivo)
+        const estadosVivos = ['activo', 'en_apareamiento', 'en_cria']
+        const repros = animales.filter(a => a.bioterio_id === bioterioActivo && estadosVivos.includes(a.estado))
+        const machos = repros.filter(a => a.sexo === 'macho').length
+        const hembras = repros.filter(a => a.sexo === 'hembra').length
+        const filas = [
+          { label: 'Machos reproductores', actual: machos, minimo: minimos.machos_colonia },
+          { label: 'Hembras reproductoras', actual: hembras, minimo: minimos.hembras_colonia },
+          { label: 'Hembras F1 (si aplica)', actual: repros.filter(a => a.sexo === 'hembra' && a.exportado_hibridos).length, minimo: minimos.hembras_hibridos },
+          { label: 'Machos F1 (si aplica)', actual: repros.filter(a => a.sexo === 'macho' && a.exportado_hibridos).length, minimo: minimos.machos_hibridos },
+        ]
+        return (
+          <Seccion title="Planificación de Colonia" icon="📋" printBg="#e8faf0" printBorder="#1b5e20">
+            <table className="rpt-table">
+              <thead><tr><th>Categoría</th><th>Actual</th><th>Mínimo</th><th>Estado</th></tr></thead>
+              <tbody>
+                {filas.map(f => (
+                  <tr key={f.label}>
+                    <td>{f.label}</td>
+                    <td><strong>{f.actual}</strong></td>
+                    <td>{f.minimo}</td>
+                    <td className={f.actual >= f.minimo ? 'rpt-ok' : 'rpt-err'}>
+                      {f.minimo === 0 ? '—' : f.actual >= f.minimo ? '✓ OK' : `⚠ Déficit de ${f.minimo - f.actual}`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p style={{ fontSize: '7pt', color: '#888', marginTop: '3pt' }}>
+              * Para proyecciones avanzadas, escenarios y candidatos a renovación, consultar el módulo Planificación en la app.
+            </p>
+          </Seccion>
+        )
+      })()}
+
+      {/* ── Pedidos ── */}
+      {S('pedidos') && (
+        <Seccion title={`Pedidos de Producción (${pedidos.length} total)`} icon="🛒" printBg="#fffde7" printBorder="#f57f17">
+          {pedidos.length === 0
+            ? <p className="rpt-empty">Sin pedidos registrados.</p>
+            : (
+              <table className="rpt-table">
+                <thead><tr>
+                  <th>Solicitante</th><th>Cant.</th><th>Sexo</th><th>Edad (sem)</th>
+                  <th>Uso</th><th>Entrega</th><th>Estado</th><th>Notas</th>
+                </tr></thead>
+                <tbody>
+                  {pedidos.map(p => {
+                    const est = { pendiente: 'Pendiente', confirmado: 'Confirmado', entregado: 'Entregado', cancelado: 'Cancelado' }
+                    const cls = p.estado === 'entregado' ? 'rpt-ok' : p.estado === 'cancelado' ? 'rpt-err' : ''
+                    return (
+                      <tr key={p.id}>
+                        <td><strong>{p.solicitante || '—'}</strong></td>
+                        <td>{p.cantidad ?? '—'}</td>
+                        <td>{p.sexo === 'macho' ? '♂' : p.sexo === 'hembra' ? '♀' : 'Ambos'}</td>
+                        <td>{p.edadSemanas ?? '—'}</td>
+                        <td>{p.uso || '—'}</td>
+                        <td>{formatFecha(p.fechaEntrega) || '—'}</td>
+                        <td className={cls}>{est[p.estado] ?? p.estado ?? '—'}</td>
+                        <td>{p.notas || '—'}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )
+          }
+        </Seccion>
+      )}
+
+      {/* ── Auditoría ── */}
+      {S('auditoria') && (
+        <Seccion title="Auditoría Comparativa" icon="🔍" printBg="#ede7f6" printBorder="#4527a0">
+          <div className="rpt-kpi-grid">
+            {[
+              { v: animales.filter(a => a.bioterio_id === bioterioActivo && ['activo','en_apareamiento','en_cria'].includes(a.estado)).length, l: 'Reproductores activos' },
+              { v: camadas.filter(c => c.bioterio_id === bioterioActivo && !c.failure_flag && c.fecha_nacimiento).length, l: 'Partos exitosos (total)' },
+              { v: camadas.filter(c => c.bioterio_id === bioterioActivo && c.failure_flag).length, l: 'Fallos reproductivos (total)' },
+              { v: camadas.length > 0 ? `${Math.round(camadas.filter(c => c.bioterio_id === bioterioActivo && !c.failure_flag && c.fecha_nacimiento).length / Math.max(1, camadas.filter(c => c.bioterio_id === bioterioActivo && (c.failure_flag || c.fecha_nacimiento)).length) * 100)}%` : '—', l: 'Tasa éxito histórica' },
+            ].map(({ v, l }) => (
+              <div key={l} className="rpt-kpi-box">
+                <div className="v">{v}</div>
+                <div className="l">{l}</div>
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize: '7pt', color: '#888', marginTop: '3pt' }}>
+            * Para análisis comparativo por períodos A/B, métricas de tendencia y detalle reproductivo, usar el módulo Auditoría en la app.
+          </p>
         </Seccion>
       )}
 
