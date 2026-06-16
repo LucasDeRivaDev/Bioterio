@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useBioterio } from '../context/BiotheriumContext'
 import { formatFecha } from '../utils/calculos'
 import { useTheme } from '../context/ThemeContext'
@@ -61,6 +62,7 @@ function MenuRestaurar({ onRestaurar, onSoloBorrar, onCerrar, labelRestaurar, la
 // ── Página principal ──────────────────────────────────────────────────────────
 
 export default function Sacrificios() {
+  const navigate = useNavigate()
   const { tema } = useTheme()
   const cardStyle = { background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }
   const {
@@ -125,6 +127,13 @@ export default function Sacrificios() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/stock')}
+            className="px-4 py-2 rounded-2xl text-xs font-bold transition-all hover:opacity-80"
+            style={{ background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }}
+          >
+            ← Stock
+          </button>
           <div className="w-1.5 h-7 rounded-full" style={{ background: '#ff6b80', boxShadow: '0 0 8px rgba(255,107,128,0.5)' }} />
           <div>
             <h1 className="text-xl font-bold text-white">Historial de sacrificios</h1>

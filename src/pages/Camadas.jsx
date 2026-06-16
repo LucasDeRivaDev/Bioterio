@@ -630,6 +630,7 @@ function FiltroBtn({ activo, count, onClick, children }) {
 }
 
 export default function Camadas() {
+  const navigate = useNavigate()
   const { tema } = useTheme()
   const cardStyle = { background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }
   const { camadas, animales, animalesExportados, jaulas, agregarCamada, editarCamada, eliminarCamada, confirmarSeparacion, agregarJaula, editarJaula, eliminarJaula, bio } = useBioterio()
@@ -723,6 +724,13 @@ export default function Camadas() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/animales')}
+            className="px-4 py-2 rounded-2xl text-xs font-bold transition-all hover:opacity-80"
+            style={{ background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }}
+          >
+            ← Reproductores
+          </button>
           <div className="w-1.5 h-7 rounded-full" style={{ background: tema.accent, boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
           <div>
             <h1 className="text-xl font-bold text-white">Emparejamientos</h1>

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useBioterio } from '../context/BiotheriumContext'
 import { calcularLatencia, calcularEvaluacionMaterna, CATEGORIAS_MADRE } from '../utils/calculos'
 import {
@@ -109,6 +110,7 @@ function SinDatos() {
 
 // ── PÁGINA PRINCIPAL ──────────────────────────────────────────────────────────
 export default function Estadisticas() {
+  const navigate = useNavigate()
   const { tema } = useTheme()
   const inputStyle = {
     background: tema.bgInput,
@@ -250,11 +252,20 @@ export default function Estadisticas() {
 
       {/* Encabezado */}
       <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-white tracking-wide">Estadísticas</h1>
-          <p className="text-xs mt-1" style={{ color: tema.textMuted }}>
-            Indicadores reproductivos de la colonia
-          </p>
+        <div className="flex items-start gap-3">
+          <button
+            onClick={() => navigate('/rendimiento')}
+            className="px-4 py-2 rounded-2xl text-xs font-bold transition-all hover:opacity-80 mt-0.5"
+            style={{ background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }}
+          >
+            ← Rendimiento
+          </button>
+          <div>
+            <h1 className="text-xl font-bold text-white tracking-wide">Estadísticas</h1>
+            <p className="text-xs mt-1" style={{ color: tema.textMuted }}>
+              Indicadores reproductivos de la colonia
+            </p>
+          </div>
         </div>
         {hayFiltros && (
           <button
