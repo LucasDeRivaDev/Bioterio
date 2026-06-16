@@ -205,11 +205,10 @@ export default function Incidentes() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/')}
-            title="Volver al Panel de hoy"
-            className="flex items-center justify-center w-8 h-8 rounded-lg transition-opacity hover:opacity-70 active:opacity-50 flex-shrink-0"
-            style={{ background: tema.bgCard, color: tema.textMuted, border: `1px solid ${tema.border}` }}
+            className="px-4 py-2 rounded-2xl text-xs font-bold transition-all hover:opacity-80"
+            style={{ background: 'transparent', border: `1px solid rgba(30,51,82,0.6)`, color: tema.textMuted }}
           >
-            ←
+            ← Panel de hoy
           </button>
           <div className="w-1.5 h-7 rounded-full" style={{ background: '#ff6b80', boxShadow: '0 0 8px rgba(255,107,128,0.5)' }} />
           <div>

@@ -324,3 +324,41 @@ html.modo-claro [style*="30,51,82"] { border-color: rgba(0,0,0,0.10) !important;
 html.modo-claro [style*="0 0 12px rgba(0,230,118"],
 html.modo-claro [style*="0 0 40px rgba(0,230,118"],
 html.modo-claro [style*="0 0 8px rgba(0,230,118"]   { box-shadow: none !important; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   HOVER LUMINOSO — aplica a botones y cards clicables con color visible
+   filter: brightness() funciona sobre cualquier color inline sin modificar
+   cada componente individualmente.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+button {
+  transition: filter 0.15s ease, box-shadow 0.15s ease;
+}
+button:hover:not(:disabled) {
+  filter: brightness(1.35);
+}
+button:active:not(:disabled) {
+  filter: brightness(0.9);
+}
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Cards y secciones clicables — agregar clase .card-hover al elemento */
+.card-hover {
+  transition: filter 0.15s ease, transform 0.15s ease;
+  cursor: pointer;
+}
+.card-hover:hover {
+  filter: brightness(1.2);
+}
+.card-hover:active {
+  filter: brightness(0.95);
+  transform: scale(0.995);
+}
+
+/* Modo claro: el brightness ya sube sobre colores más claros,
+   se reduce ligeramente para no quemar */
+html.modo-claro button:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
