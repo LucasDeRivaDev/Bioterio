@@ -1,11 +1,16 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { useBioterioActivo } from '../context/BioterioActivoContext'
-import { formatFecha, calcularLatencia } from '../utils/calculos'
-import { getMinimosCriticos } from '../utils/motorDecisiones'
-import { TrendingUp, Microscope, Dna, BarChart2, Archive, Skull, PackageCheck, Thermometer, FileWarning, Printer, Calendar, CalendarDays, GitBranch, ShoppingCart, ClipboardCheck, Leaf, Layers } from 'lucide-react'
+import { formatFecha, calcularLatencia, hoy } from '../utils/calculos'
+import { getMinimosCriticos, MINIMOS_CRITICOS } from '../utils/motorDecisiones'
+import { buildPedigree, calcularFCoeficiente } from '../utils/genealogia'
+import { supabase } from '../lib/supabase'
+import { TrendingUp, Microscope, Dna, BarChart2, Archive, Skull, PackageCheck, Thermometer, FileWarning, Printer, Calendar, CalendarDays, ShoppingCart, ClipboardCheck, Layers, Leaf, GitBranch } from 'lucide-react'
 import iterateTitleLogoLight from '../assets/iterate+logo+sloganfondoclaro.png'
 import { useTheme } from '../context/ThemeContext'
+
+const IDS_BIOTERIOS = ['ratas', 'ratones_balbc', 'ratones_c57', 'ratones_hibridos']
+const LABEL_BIO = { ratas: 'Ratas', ratones_balbc: 'BAL/C', ratones_c57: 'C57', ratones_hibridos: 'Híbridos' }
 
 const LABEL_BIOTERIO = {
   ratas:            'Ratas',
@@ -26,9 +31,13 @@ const SECCIONES_BASE = [
   { key: 'entregas',        label: 'Entregas',        printBg: '#fefae8', printBorder: '#b8860b' },
   { key: 'temperaturas',    label: 'Temperaturas',    printBg: '#e8f4fd', printBorder: '#0277bd' },
   { key: 'incidentes',      label: 'Incidentes',      printBg: '#f5f0ff', printBorder: '#9d4edd' },
-  { key: 'planificacion',   label: 'Planificación',   printBg: '#e8faf0', printBorder: '#1b5e20' },
-  { key: 'pedidos',         label: 'Pedidos',         printBg: '#fffde7', printBorder: '#f57f17' },
-  { key: 'auditoria',       label: 'Auditoría',       printBg: '#ede7f6', printBorder: '#4527a0' },
+  { key: 'planificacion',   label: 'Planificación',       printBg: '#e8faf0', printBorder: '#1b5e20' },
+  { key: 'pedidos',         label: 'Pedidos',             printBg: '#fffde7', printBorder: '#f57f17' },
+  { key: 'auditoria',       label: 'Auditoría',           printBg: '#ede7f6', printBorder: '#4527a0' },
+  { key: 'consumo_alimento',label: 'Consumo de alimento', printBg: '#fff8e1', printBorder: '#f9a825' },
+  { key: 'consumo_viruta',  label: 'Consumo de viruta',   printBg: '#f3e5f5', printBorder: '#7b1fa2' },
+  { key: 'capacidad',       label: 'Capacidad global',    printBg: '#fce4ec', printBorder: '#c62828' },
+  { key: 'genealogia',      label: 'Genealogía / F',      printBg: '#ede7f6', printBorder: '#6a1b9a' },
 ]
 
 const SECCIONES_GLOBAL = [
@@ -64,8 +73,41 @@ export default function Reportes() {
     { ...SECCIONES_BASE[9],  icon: <Layers size={14} />,        color: tema.accent, rgb: '0,230,118'   },
     { ...SECCIONES_BASE[10], icon: <ShoppingCart size={14} />,  color: tema.amber,  rgb: '255,179,0'   },
     { ...SECCIONES_BASE[11], icon: <ClipboardCheck size={14} />,color: '#a78bfa',   rgb: '167,139,250' },
+    { ...SECCIONES_BASE[12], icon: <Leaf size={14} />,          color: tema.amber,  rgb: '255,179,0'   },
+    { ...SECCIONES_BASE[13], icon: <Layers size={14} />,        color: '#a78bfa',   rgb: '167,139,250' },
+    { ...SECCIONES_BASE[14], icon: <BarChart2 size={14} />,     color: tema.red,    rgb: '255,107,128' },
+    { ...SECCIONES_BASE[15], icon: <GitBranch size={14} />,     color: '#a78bfa',   rgb: '167,139,250' },
   ]
   const { animales, camadas, jaulas, sacrificios, entregas, temperaturas, incidentes, pedidos, bio, bioterioActivo } = useBioterio()
+
+  const [datosGlobales, setDatosGlobales] = useState(null)
+  useEffect(() => {
+    async function cargar() {
+      const [
+        { data: censoAlim },
+        { data: ingresosAlim },
+        { data: censoViruta },
+        { data: comprasViruta },
+        { data: animalesGlobal },
+        { data: camadasGlobal },
+        { data: jaulasGlobal },
+        { data: sacrificiosGlobal },
+        { data: entregasGlobal },
+      ] = await Promise.all([
+        supabase.from('alimento_censos').select('*').order('fecha'),
+        supabase.from('alimento_ingresos').select('*').order('fecha'),
+        supabase.from('viruta_censos').select('*').order('fecha'),
+        supabase.from('viruta_compras').select('*').order('fecha'),
+        supabase.from('animales').select('id,codigo,sexo,estado,fecha_nacimiento,id_madre,id_padre,bioterio_id,notas,exportado_hibridos'),
+        supabase.from('camadas').select('id,id_madre,id_padre,fecha_copula,fecha_nacimiento,bioterio_id,failure_flag,total_crias,total_destetados'),
+        supabase.from('jaulas').select('*'),
+        supabase.from('sacrificios').select('camada_id,cantidad,bioterio_id'),
+        supabase.from('entregas').select('camada_id,cantidad,bioterio_id,devuelta'),
+      ])
+      setDatosGlobales({ censoAlim: censoAlim ?? [], ingresosAlim: ingresosAlim ?? [], censoViruta: censoViruta ?? [], comprasViruta: comprasViruta ?? [], animalesGlobal: animalesGlobal ?? [], camadasGlobal: camadasGlobal ?? [], jaulasGlobal: jaulasGlobal ?? [], sacrificiosGlobal: sacrificiosGlobal ?? [], entregasGlobal: entregasGlobal ?? [] })
+    }
+    cargar()
+  }, [])
   const hoyDate = new Date()
 
   const [periodo, setPeriodo]   = useState('mensual')
@@ -331,6 +373,7 @@ export default function Reportes() {
           animales={animales}
           camadas={camadas}
           pedidos={pedidos}
+          datosGlobales={datosGlobales}
           secciones={secciones}
           bioterioActivo={bioterioActivo}
         />
@@ -343,7 +386,7 @@ export default function Reportes() {
 // Documento imprimible
 // ─────────────────────────────────────────────────────────────────────────────
 
-function DocImprimible({ tituloPeriodo, datos, animales, camadas, pedidos = [], secciones, bioterioActivo }) {
+function DocImprimible({ tituloPeriodo, datos, animales, camadas, pedidos = [], datosGlobales, secciones, bioterioActivo }) {
   const ahora = new Date().toLocaleDateString('es-AR', {
     day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
   })
@@ -759,6 +802,144 @@ function DocImprimible({ tituloPeriodo, datos, animales, camadas, pedidos = [], 
           </p>
         </Seccion>
       )}
+
+      {/* ── Consumo de Alimento ── */}
+      {S('consumo_alimento') && (() => {
+        if (!datosGlobales) return <Seccion title="Consumo de Alimento" icon="🌾" printBg="#fff8e1" printBorder="#f9a825"><p className="rpt-empty">Cargando datos...</p></Seccion>
+        const { censoAlim, ingresosAlim } = datosGlobales
+        const filas = ['ratas', 'ratones'].map(bio => {
+          const censos = censoAlim.filter(c => c.bioterio_id === bio).sort((a, b) => a.fecha.localeCompare(b.fecha))
+          const ultimo = censos[censos.length - 1] ?? null
+          const ingresos = ingresosAlim.filter(i => i.bioterio_id === bio && ultimo && i.fecha >= ultimo.fecha)
+          const stockKg = ultimo ? +(ultimo.kg + ingresos.reduce((s, i) => s + (i.kg ?? 0), 0)).toFixed(2) : null
+          return { label: bio === 'ratas' ? 'Ratas' : 'Ratones', fechaCenso: ultimo?.fecha ?? null, stockKg }
+        })
+        return (
+          <Seccion title="Consumo de Alimento — Vista Global" icon="🌾" printBg="#fff8e1" printBorder="#f9a825">
+            <table className="rpt-table">
+              <thead><tr><th>Bioterio</th><th>Último censo</th><th>Stock actual (kg)</th></tr></thead>
+              <tbody>
+                {filas.map(f => (
+                  <tr key={f.label}>
+                    <td><strong>{f.label}</strong></td>
+                    <td>{formatFecha(f.fechaCenso) || '—'}</td>
+                    <td>{f.stockKg !== null ? `${f.stockKg} kg` : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p style={{ fontSize: '7pt', color: '#888', marginTop: '3pt' }}>* Stock = último censo + ingresos desde esa fecha. Para predicción de duración y modelo adaptativo, ver módulo Consumo en la app.</p>
+          </Seccion>
+        )
+      })()}
+
+      {/* ── Consumo de Viruta ── */}
+      {S('consumo_viruta') && (() => {
+        if (!datosGlobales) return <Seccion title="Consumo de Viruta" icon="🪵" printBg="#f3e5f5" printBorder="#7b1fa2"><p className="rpt-empty">Cargando datos...</p></Seccion>
+        const { censoViruta, comprasViruta } = datosGlobales
+        const censos = censoViruta.sort((a, b) => a.fecha.localeCompare(b.fecha))
+        const ultimo = censos[censos.length - 1] ?? null
+        const comprasPost = ultimo ? comprasViruta.filter(c => c.fecha >= ultimo.fecha) : []
+        const stockActual = ultimo !== null ? ultimo.bolsas + comprasPost.reduce((s, c) => s + (c.bolsas ?? 0), 0) : null
+        return (
+          <Seccion title="Consumo de Viruta / Camas" icon="🪵" printBg="#f3e5f5" printBorder="#7b1fa2">
+            <div className="rpt-kpi-grid">
+              {[
+                { v: ultimo ? formatFecha(ultimo.fecha) : '—', l: 'Último censo' },
+                { v: ultimo?.bolsas != null ? `${ultimo.bolsas} bolsas` : '—', l: 'Stock en censo' },
+                { v: comprasPost.length > 0 ? `+${comprasPost.reduce((s,c)=>s+(c.bolsas??0),0)} bolsas` : 'Sin ingresos', l: 'Ingresos desde censo' },
+                { v: stockActual !== null ? `${stockActual} bolsas` : '—', l: 'Stock actual estimado' },
+              ].map(({ v, l }) => (
+                <div key={l} className="rpt-kpi-box"><div className="v">{v}</div><div className="l">{l}</div></div>
+              ))}
+            </div>
+            <p style={{ fontSize: '7pt', color: '#888', marginTop: '3pt' }}>* Para proyección por jaulas activas y próximo cambio de cama, ver módulo Consumo de Viruta en la app.</p>
+          </Seccion>
+        )
+      })()}
+
+      {/* ── Capacidad Global ── */}
+      {S('capacidad') && (() => {
+        if (!datosGlobales) return <Seccion title="Capacidad Global" icon="📊" printBg="#fce4ec" printBorder="#c62828"><p className="rpt-empty">Cargando datos...</p></Seccion>
+        const { animalesGlobal } = datosGlobales
+        const estadosVivos = ['activo', 'en_apareamiento', 'en_cria']
+        const filas = IDS_BIOTERIOS.map(bioId => {
+          const repros = animalesGlobal.filter(a => a.bioterio_id === bioId && estadosVivos.includes(a.estado))
+          const min = MINIMOS_CRITICOS[bioId] ?? MINIMOS_CRITICOS.ratas
+          const machos  = repros.filter(a => a.sexo === 'macho').length
+          const hembras = repros.filter(a => a.sexo === 'hembra').length
+          const ok = machos >= min.machos_colonia && hembras >= min.hembras_colonia
+          return { label: LABEL_BIO[bioId], machos, hembras, minM: min.machos_colonia, minH: min.hembras_colonia, ok }
+        })
+        return (
+          <Seccion title="Capacidad Global por Bioterio" icon="📊" printBg="#fce4ec" printBorder="#c62828">
+            <table className="rpt-table">
+              <thead><tr><th>Bioterio</th><th>♂ Machos</th><th>Mín ♂</th><th>♀ Hembras</th><th>Mín ♀</th><th>Estado</th></tr></thead>
+              <tbody>
+                {filas.map(f => (
+                  <tr key={f.label}>
+                    <td><strong>{f.label}</strong></td>
+                    <td>{f.machos}</td><td>{f.minM}</td>
+                    <td>{f.hembras}</td><td>{f.minH}</td>
+                    <td className={f.ok ? 'rpt-ok' : 'rpt-err'}>{f.ok ? '✓ OK' : '⚠ Déficit'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p style={{ fontSize: '7pt', color: '#888', marginTop: '3pt' }}>* Para simulador de impacto, proyecciones y candidatos a renovación, ver módulo Capacidad en la app.</p>
+          </Seccion>
+        )
+      })()}
+
+      {/* ── Genealogía / Coeficiente F ── */}
+      {S('genealogia') && (() => {
+        if (!datosGlobales) return <Seccion title="Genealogía" icon="🧬" printBg="#ede7f6" printBorder="#6a1b9a"><p className="rpt-empty">Cargando datos...</p></Seccion>
+        const { animalesGlobal, camadasGlobal } = datosGlobales
+        const estadosVivos = ['activo', 'en_apareamiento', 'en_cria']
+        const activos = animalesGlobal.filter(a => estadosVivos.includes(a.estado))
+        const pedigree = buildPedigree([...animalesGlobal], [...camadasGlobal])
+        const fPct = f => f > 0 ? `${(f * 100).toFixed(1)}%` : '0%'
+        const conF = activos
+          .map(a => {
+            const f = a.id_madre && a.id_padre ? calcularFCoeficiente(a.id_madre, a.id_padre, pedigree) : 0
+            return { ...a, f }
+          })
+          .filter(a => a.f > 0)
+          .sort((a, b) => b.f - a.f)
+          .slice(0, 15)
+        const sinPadres = activos.filter(a => !a.id_madre || !a.id_padre).length
+        return (
+          <Seccion title="Genealogía y Consanguinidad" icon="🧬" printBg="#ede7f6" printBorder="#6a1b9a">
+            <div className="rpt-kpi-grid">
+              {[
+                { v: activos.length,                                                           l: 'Reproductores activos' },
+                { v: conF.length,                                                              l: 'Con F > 0%' },
+                { v: conF.filter(a => a.f >= 0.125).length,                                  l: 'Con F ≥ 12.5%' },
+                { v: sinPadres,                                                                l: 'Sin genealogía completa' },
+              ].map(({ v, l }) => (
+                <div key={l} className="rpt-kpi-box"><div className="v">{v}</div><div className="l">{l}</div></div>
+              ))}
+            </div>
+            {conF.length > 0 && (
+              <table className="rpt-table" style={{ marginTop: '4pt' }}>
+                <thead><tr><th>Código</th><th>Sexo</th><th>Bioterio</th><th>F</th><th>Riesgo</th></tr></thead>
+                <tbody>
+                  {conF.map(a => (
+                    <tr key={a.id}>
+                      <td><strong>{a.codigo}</strong></td>
+                      <td>{a.sexo === 'hembra' ? '♀' : '♂'}</td>
+                      <td>{LABEL_BIO[a.bioterio_id] ?? a.bioterio_id}</td>
+                      <td className={a.f >= 0.125 ? 'rpt-err' : a.f > 0 ? 'rpt-wrn' : ''}>{fPct(a.f)}</td>
+                      <td className={a.f >= 0.25 ? 'rpt-err' : a.f >= 0.125 ? 'rpt-wrn' : ''}>{a.f >= 0.25 ? 'Alto' : a.f >= 0.125 ? 'Moderado' : 'Leve'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {conF.length === 0 && <p className="rpt-empty">Sin animales activos con consanguinidad detectada.</p>}
+          </Seccion>
+        )
+      })()}
 
       {/* Footer */}
       <div style={{ borderTop: '0.5pt solid #bbb', marginTop: '16pt', paddingTop: '5pt', fontSize: '7pt', color: '#888', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
