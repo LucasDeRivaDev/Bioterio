@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useBioterio } from '../context/BiotheriumContext'
 import { useBioterioActivo } from '../context/BioterioActivoContext'
 import { hoy, formatFecha, parseDate, sumarDias, difDias } from '../utils/calculos'
@@ -29,6 +30,7 @@ const BIOTERIOS_SIN_TODOS = LISTA_BIOTERIOS.slice(1)
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function Incidentes() {
+  const navigate = useNavigate()
   const { tema } = useTheme()
   const { incidentes, animales, camadas, sacrificios, entregas, temperaturas, agregarIncidente, editarIncidente, eliminarIncidente } = useBioterio()
   const { bioterioActivo, bio } = useBioterioActivo()
@@ -201,6 +203,14 @@ export default function Incidentes() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/')}
+            title="Volver al Panel de hoy"
+            className="flex items-center justify-center w-8 h-8 rounded-lg transition-opacity hover:opacity-70 active:opacity-50 flex-shrink-0"
+            style={{ background: tema.bgCard, color: tema.textMuted, border: `1px solid ${tema.border}` }}
+          >
+            ←
+          </button>
           <div className="w-1.5 h-7 rounded-full" style={{ background: '#ff6b80', boxShadow: '0 0 8px rgba(255,107,128,0.5)' }} />
           <div>
             <h1 className="text-xl font-bold text-white">Vigilancia sanitaria</h1>

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useBioterio } from '../context/BiotheriumContext'
 import { generarEventosCalendario, parseDate, difDias, hoy } from '../utils/calculos'
 import { supabase } from '../lib/supabase'
@@ -23,6 +24,7 @@ function formatEdadCorta(dias) {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function Calendario() {
+  const navigate = useNavigate()
   const { tema } = useTheme()
   const TIPOS = {
     nacimiento:       { label: 'Nacimiento',          color: tema.accent, bg: 'rgba(0,230,118,0.12)',   borde: 'rgba(0,230,118,0.3)'   },
@@ -206,6 +208,14 @@ export default function Calendario() {
     <div className="p-4 md:p-6 space-y-5 min-h-screen" style={{ background: tema.bgMain }}>
       {/* Header */}
       <div className="flex items-center gap-3">
+        <button
+          onClick={() => navigate('/')}
+          title="Volver al Panel de hoy"
+          className="flex items-center justify-center w-8 h-8 rounded-lg transition-opacity hover:opacity-70 active:opacity-50"
+          style={{ background: tema.bgCard, color: tema.textMuted, border: `1px solid ${tema.border}` }}
+        >
+          ←
+        </button>
         <div className="w-1.5 h-7 rounded-full" style={{ background: tema.accent, boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
         <h1 className="text-xl font-bold text-white">Calendario</h1>
       </div>

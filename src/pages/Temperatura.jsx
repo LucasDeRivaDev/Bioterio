@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { generarId } from '../utils/storage'
 import { useTheme } from '../context/ThemeContext'
@@ -40,6 +41,7 @@ function promedio(arr) {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function Temperatura() {
+  const navigate = useNavigate()
   const { tema } = useTheme()
   const CARD_BG = tema.bgCard
   const BORDER  = `1px solid ${tema.bgCardBorde}`
@@ -315,11 +317,21 @@ export default function Temperatura() {
       <div className="no-print flex flex-col gap-5 p-4 md:p-6 max-w-4xl mx-auto" style={{ color: '#e2e8f0' }}>
 
         {/* Header */}
-        <div>
-          <h1 className="text-xl font-bold tracking-wide" style={{ color: tema.textPrimary }}>🌡️ Temperatura</h1>
-          <p className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>
-            Registro ambiental por bioterio físico
-          </p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/')}
+            title="Volver al Panel de hoy"
+            className="flex items-center justify-center w-8 h-8 rounded-lg transition-opacity hover:opacity-70 active:opacity-50 flex-shrink-0"
+            style={{ background: tema.bgCard, color: tema.textMuted, border: `1px solid ${tema.border}` }}
+          >
+            ←
+          </button>
+          <div>
+            <h1 className="text-xl font-bold tracking-wide" style={{ color: tema.textPrimary }}>🌡️ Temperatura</h1>
+            <p className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>
+              Registro ambiental por bioterio físico
+            </p>
+          </div>
         </div>
 
         {/* Error de carga */}
