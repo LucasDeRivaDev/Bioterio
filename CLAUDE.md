@@ -275,6 +275,7 @@ extendidos
 **Censos y consumo (viruta/alimento):**
 - Censos = única fuente del aprendizaje adaptativo. Ingresos/compras suman al stock sin alterar historial
 - `stockActual = ultimoCenso + sum(ingresos donde fecha >= ultimoCenso.fecha)`
+- **Compra de viruta con conteo físico (`ConsumoViruta.jsx`):** `ModalCompra` pide, además de las bolsas ingresadas, un campo obligatorio "¿Cuántas bolsas hay disponibles ahora?". `registrarCompra(fecha, bolsas, stockDisponible)` inserta la compra en `viruta_compras` **y además** crea un censo en `viruta_censos` (misma fecha, `hora: horaActual()`, `bolsas: stockDisponible`, sin `cambioCama`). El conteo físico informado por el usuario siempre tiene prioridad sobre el cálculo teórico y pasa a ser la nueva base de `stockActual` y de todas las proyecciones futuras (mismo mecanismo que un censo manual).
 - LS keys viruta: `appMosca_viruta_censos` + `appMosca_viruta_compras`
 - `cambioCama` embebido en cada censo: `{ tipo: 'si'|'no'|'parcial', bioteriosAfectados: string[] }`
 - Calibración ponderada por confirmaciones: ×1.5 (ambos confirmados) / ×1.0 (uno) / ×0.6 (ninguno)
@@ -372,6 +373,10 @@ Perfil reproductivo por animal (4 scores + confiabilidad), sacrificio parcial de
   - **Reducción de camada en CamadaForm:** sección con toggle ¿reducción? + cantidad / fecha / motivo / observaciones. Resumen en vivo (reducción vs mortalidad real vs a criar). Columnas DB `crias_reducidas/reduccion_fecha/reduccion_motivo/reduccion_notas`.
   - **UI:** banner de clasificación materna en Camadas (AnalisisReproductivo) y Animales (PerfilAnimal). Panel de supervivencia diferencia "✂️ Reducción" de "Mort. real".
   - **ITERATE — cierre del ciclo de selección:** Stock muestra badge en bloques cuya madre está descalificada ("no promover hijas") + advertencia en la pestaña Promover al promover una hembra hija de madre Mala/No apta.
+
+### Julio 2026
+
+- **Compra de viruta con conteo físico obligatorio (27/07):** `ModalCompra` (`ConsumoViruta.jsx`) ahora exige, además de la cantidad comprada, el campo "¿Cuántas bolsas hay disponibles ahora?". Al confirmar, `registrarCompra` inserta el movimiento de compra en `viruta_compras` y crea automáticamente un censo en `viruta_censos` con ese valor como stock real. El conteo físico del usuario prioriza sobre el cálculo teórico (censo + compras) y pasa a ser la nueva base de `stockActual` y de todas las proyecciones/consumos futuros.
 
 ---
 

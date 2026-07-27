@@ -664,11 +664,19 @@ export default function ConsumoViruta() {
     setModalConfirmar(false); setCensoAConfirmar(null)
   }
 
-  async function registrarCompra(fecha, bolsas) {
-    const nueva = { id: generarId(), fecha, bolsas }
-    const { error: e } = await supabase.from('viruta_compras').insert(nueva)
-    if (e) { console.error('Error al guardar compra viruta:', e); return }
-    setCompras(prev => [...prev, nueva].sort((a, b) => a.fecha.localeCompare(b.fecha)))
+  async function registrarCompra(fecha, bolsas, stockDisponible) {
+    const nuevaCompra = { id: generarId(), fecha, bolsas }
+    const { error: e1 } = await supabase.from('viruta_compras').insert(nuevaCompra)
+    if (e1) { console.error('Error al guardar compra viruta:', e1); return }
+
+    // El conteo físico post-compra pasa a ser la nueva base real del stock,
+    // con prioridad sobre el cálculo teórico (censo + compras).
+    const nuevoCenso = { id: generarId(), fecha, hora: horaActual(), bolsas: stockDisponible, cambioCama: null }
+    const { error: e2 } = await supabase.from('viruta_censos').insert(censoToDB(nuevoCenso))
+    if (e2) { console.error('Error al guardar censo post-compra:', e2); return }
+
+    setCompras(prev => [...prev, nuevaCompra].sort((a, b) => a.fecha.localeCompare(b.fecha)))
+    setCensos(prev => [...prev, nuevoCenso].sort((a, b) => a.fecha.localeCompare(b.fecha)))
     setModalCompra(false)
   }
 
@@ -1257,7 +1265,7 @@ export default function ConsumoViruta() {
                 <div className="rounded-xl px-4 py-3 text-xs font-mono"
                   style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', color: tema.textMuted }}>
                   <span style={{ color: '#a78bfa' }}>📊 Censo</span>: conteo real de bolsas disponibles (fuente del cálculo de consumo)&nbsp;·&nbsp;
-                  <span style={{ color: tema.accent }}>📦 Compra</span>: bolsas que ingresaron al stock (no alteran el cálculo de consumo histórico)
+                  <span style={{ color: tema.accent }}>📦 Compra</span>: bolsas que ingresaron al stock — el conteo posterior a la compra registra además un censo automático con el nuevo stock real
                 </div>
               </div>
 
@@ -1916,9 +1924,11 @@ function ModalConfirmarCambio({ censo, onConfirmar, onCerrar }) {
 
 function ModalCompra({ stockActual, onConfirmar, onCerrar }) {
   const { tema } = useTheme()
-  const [fecha,  setFecha]  = useState(hoy())
-  const [bolsas, setBolsas] = useState('')
-  const [error,  setError]  = useState('')
+  const [fecha,          setFecha]          = useState(hoy())
+  const [bolsas,         setBolsas]         = useState('')
+  const [stockDisponible,setStockDisponible]= useState('')
+  const [error,          setError]          = useState('')
+  const [errorStock,     setErrorStock]     = useState('')
 
   const FRACCIONES = [0, 0.25, 0.5, 0.75]
 
@@ -1933,11 +1943,15 @@ function ModalCompra({ stockActual, onConfirmar, onCerrar }) {
     const b = parseFloat(bolsas)
     if (isNaN(b) || b <= 0) { setError('Ingresá una cantidad válida mayor a 0.'); return }
     if (Math.round(b * 4) !== b * 4) { setError('Solo se permiten enteros, medias y cuartos de bolsa (0.25).'); return }
-    onConfirmar(fecha, b)
+    const disp = parseFloat(stockDisponible)
+    if (isNaN(disp) || disp < 0) { setErrorStock('Ingresá cuántas bolsas hay disponibles ahora.'); return }
+    if (Math.round(disp * 4) !== disp * 4) { setErrorStock('Solo se permiten enteros, medias y cuartos de bolsa (0.25).'); return }
+    onConfirmar(fecha, b, disp)
   }
 
   const bolsasNum  = parseFloat(bolsas)
-  const nuevoStock = stockActual !== null && !isNaN(bolsasNum) ? stockActual + bolsasNum : null
+  const dispNum    = parseFloat(stockDisponible)
+  const nuevoStock = !isNaN(dispNum) ? dispNum : null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -1947,7 +1961,7 @@ function ModalCompra({ stockActual, onConfirmar, onCerrar }) {
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(0,230,118,0.12)', background: 'rgba(0,230,118,0.04)' }}>
           <div className="font-bold text-white text-sm">📦 Registrar compra / ingreso de viruta</div>
           <div className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>
-            Bolsas nuevas que ingresaron al stock — no altera el historial de consumo
+            Registra la compra y actualiza el stock con el conteo físico posterior
           </div>
         </div>
         <form onSubmit={confirmar} className="px-6 py-5 space-y-4">
@@ -1979,18 +1993,33 @@ function ModalCompra({ stockActual, onConfirmar, onCerrar }) {
             {error && <div className="mt-1.5 text-xs font-mono" style={{ color: tema.red }}>⚠ {error}</div>}
           </div>
 
-          {nuevoStock !== null && (
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
+              ¿Cuántas bolsas hay disponibles ahora?
+            </label>
+            <input type="number" min="0" step="0.25" value={stockDisponible}
+              onChange={e => { setStockDisponible(e.target.value); setErrorStock('') }}
+              placeholder="Conteo físico real" required
+              className="w-full px-3 py-2.5 rounded-xl text-sm font-mono"
+              style={{ background: tema.bgCard, border: `1px solid ${errorStock ? 'rgba(255,61,87,0.5)' : 'rgba(30,51,82,0.9)'}`, color: tema.textPrimary, outline: 'none' }} />
+            <div className="mt-1.5 text-xs font-mono" style={{ color: tema.textMuted }}>
+              Conteo físico luego de la compra — tiene prioridad sobre el cálculo teórico y pasa a ser la nueva base de las predicciones.
+            </div>
+            {errorStock && <div className="mt-1.5 text-xs font-mono" style={{ color: tema.red }}>⚠ {errorStock}</div>}
+          </div>
+
+          {(stockActual !== null || !isNaN(bolsasNum) || nuevoStock !== null) && (
             <div className="rounded-xl px-4 py-3 text-xs font-mono"
               style={{ background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.2)' }}>
-              <div style={{ color: tema.textMuted }}>Stock actual: <span className="text-white">{stockActual} bolsas</span></div>
-              <div style={{ color: tema.textMuted }}>+ Compra: <span style={{ color: tema.accent }}>+{bolsasNum} bolsas</span></div>
-              <div className="mt-1 font-bold" style={{ color: tema.accent }}>Nuevo stock: {nuevoStock} bolsas</div>
-            </div>
-          )}
-          {stockActual === null && !isNaN(bolsasNum) && (
-            <div className="rounded-xl px-4 py-3 text-xs font-mono"
-              style={{ background: 'rgba(255,179,0,0.06)', border: '1px solid rgba(255,179,0,0.2)', color: tema.amber }}>
-              ⚠ Sin censos registrados. Registrá un censo después para calcular el consumo correctamente.
+              {stockActual !== null && (
+                <div style={{ color: tema.textMuted }}>Stock calculado hasta ahora: <span className="text-white">{stockActual} bolsas</span></div>
+              )}
+              {!isNaN(bolsasNum) && (
+                <div style={{ color: tema.textMuted }}>Compra registrada: <span style={{ color: tema.accent }}>+{bolsasNum} bolsas</span></div>
+              )}
+              {nuevoStock !== null && (
+                <div className="mt-1 font-bold" style={{ color: tema.accent }}>Nuevo stock (conteo real): {nuevoStock} bolsas</div>
+              )}
             </div>
           )}
 
