@@ -232,6 +232,15 @@ const BIOTERIOS_DESCARTE = ['ratas', 'ratones_balbc', 'ratones_c57', 'ratones_hi
 
 function keyDescartadas(bioterioId) { return `${LS_KEY_DESCARTADAS}_${bioterioId}` }
 
+// ID estable para las tarjetas de "Control de machos". Las alertas por edad usan
+// EL MISMO id que su tarea equivalente (macho-edad-*), así descartar una oculta ambas.
+// Baja performance no tiene tarea propia → id dedicado, descartable desde su tarjeta.
+function idAlertaMacho(a) {
+  if (a.tipo === 'edad_limite') return `macho-edad-limite-${a.machoId}`
+  if (a.tipo === 'edad_proxima') return `macho-edad-prox-${a.machoId}`
+  return `macho-perf-${a.machoId}`
+}
+
 // Migra la key vieja global (array de ids sin fecha) a las keys por bioterio,
 // asignando fecha de hoy para que expiren a los 30 días.
 function migrarDescartadasViejas() {
@@ -268,7 +277,7 @@ function cargarDescartadas(bioterioId) {
 
 export default function Dashboard() {
   const { tema } = useTheme()
-  const { animales, animalesExportados, camadas, extendidos, confirmarSeparacion, bio, bioterioActivo } = useBioterio()
+  const { animales, animalesExportados, camadas, extendidos, sacrificios, entregas, confirmarSeparacion, bio, bioterioActivo } = useBioterio()
   // En Híbridos los progenitores viven en animalesExportados — buscar en ambos
   const todosAnimales = useMemo(() => [...animales, ...animalesExportados], [animales, animalesExportados])
 
@@ -384,7 +393,15 @@ export default function Dashboard() {
   const alertasEstrales = useMemo(() => generarAlertasEstrales(animales, extendidos, bio), [animales, extendidos, bio])
   const alertasMachos   = useMemo(() => generarAlertasMachos(animales, camadas), [animales, camadas])
 
-  // Alertas de crías F1 listas para sacrificio (solo en Híbridos, ≥40 días)
+  // Las tarjetas de machos respetan el mismo descarte que sus tareas equivalentes
+  // (mismo id estable) — marcar como leída en un lado las oculta en ambos.
+  const alertasMachosVisibles = useMemo(
+    () => alertasMachos.filter((a) => !(idAlertaMacho(a) in descartadas)),
+    [alertasMachos, descartadas]
+  )
+
+  // Alertas de crías F1 listas para sacrificio (solo en Híbridos, ≥40 días).
+  // Descuenta crías ya sacrificadas o entregadas: si no queda stock, la alerta no corresponde.
   const tareasF1 = useMemo(() => {
     if (bioterioActivo !== 'ratones_hibridos') return []
     const hoyDate = parseDate(hoy())
@@ -393,6 +410,11 @@ export default function Dashboard() {
       .map((c) => {
         const edad = difDias(parseDate(c.fecha_nacimiento), hoyDate)
         if (edad < 40) return null
+        const base = c.total_destetados ?? c.total_crias ?? 0
+        const sacadas  = sacrificios.filter((s) => s.camada_id === c.id).reduce((acc, s) => acc + (s.cantidad ?? 0), 0)
+        const entrega_ = entregas.filter((e) => e.camada_id === c.id && !e.devuelta).reduce((acc, e) => acc + (e.cantidad ?? 0), 0)
+        const restantes = base - sacadas - entrega_
+        if (restantes <= 0) return null
         const madre = animalesExportados.find((a) => a.id === c.id_madre)
         const padre = animalesExportados.find((a) => a.id === c.id_padre)
         const progenitores = madre && padre ? `${madre.codigo} × ${padre.codigo}` : generarIdentificadorCamada(c, animalesExportados)
@@ -402,12 +424,12 @@ export default function Dashboard() {
           prioridad: edad >= 55 ? 'vencida' : edad >= 50 ? 'hoy' : 'proxima',
           fecha: c.fecha_nacimiento,
           descripcion: `Crías F1 listas para sacrificio — ${progenitores}`,
-          detalle: `${edad} días de edad. Recomendado sacrificio antes de los 55 días.`,
+          detalle: `${edad} días de edad · quedan ${restantes} crías en stock. Recomendado sacrificio antes de los 55 días.`,
           camadaId: c.id,
         }
       })
       .filter(Boolean)
-  }, [bioterioActivo, camadas, animalesExportados])
+  }, [bioterioActivo, camadas, animalesExportados, sacrificios, entregas])
 
   const tareas   = [...todasTareas, ...tareasF1].filter((t) => !(t.id in descartadas))
   const vencidas = tareas.filter((t) => t.prioridad === 'vencida')
@@ -526,7 +548,7 @@ export default function Dashboard() {
       )}
 
       {/* ── Control de machos reproductores ──────────────────────────────────── */}
-      {(mostrarRenovacion || alertasMachos.length > 0) && (
+      {(mostrarRenovacion || alertasMachosVisibles.length > 0) && (
         <div>
           <div className="text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: tema.blue }}>
             <UserMinus size={13} /> Control de machos
@@ -562,7 +584,7 @@ export default function Dashboard() {
             )}
 
             {/* Alertas por animal */}
-            {alertasMachos.map((a, i) => {
+            {alertasMachosVisibles.map((a, i) => {
               const esLimite     = a.tipo === 'edad_limite'
               const esProxima    = a.tipo === 'edad_proxima'
               const esPerf       = a.tipo === 'baja_performance'
@@ -596,6 +618,14 @@ export default function Dashboard() {
                   >
                     {esLimite ? 'LÍMITE' : esProxima ? 'PRÓXIMO' : 'RENDIMIENTO'}
                   </span>
+                  <button
+                    onClick={() => descartarTarea(idAlertaMacho(a))}
+                    title="Marcar como completada / descartar"
+                    className="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 self-start transition-all hover:brightness-125"
+                    style={{ background: `${color}12`, border: `1px solid ${color}30`, color }}
+                  >
+                    ✓
+                  </button>
                 </div>
               )
             })}
