@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useBioterio } from '../context/BiotheriumContext'
 import { useBioterioActivo } from '../context/BioterioActivoContext'
-import { formatFecha, calcularLatencia, hoy } from '../utils/calculos'
+import { formatFecha, calcularLatencia } from '../utils/calculos'
 import { getMinimosCriticos, MINIMOS_CRITICOS } from '../utils/motorDecisiones'
 import { buildPedigree, calcularFCoeficiente } from '../utils/genealogia'
 import { supabase } from '../lib/supabase'
@@ -45,6 +45,7 @@ const SECCIONES_GLOBAL = [
   { key: 'viruta_global',    label: 'Consumo de viruta / camas', sub: 'Calculado por jaulas activas',         icon: '🪵', color: 'rgba(139,92,246,0.6)' },
   { key: 'capacidad_global', label: 'Capacidad y predicción',    sub: 'Saturación · candidatos · simulador',  icon: '📊', color: 'rgba(255,61,87,0.6)'  },
   { key: 'genealogia_global',label: 'Genealogía y consanguinidad', sub: 'Árbol genealógico · coeficiente F', icon: '🧬', color: 'rgba(167,139,250,0.6)'},
+  { key: 'reporte_mensual',  label: 'Reporte mensual',            sub: 'Resumen ejecutivo para dirección · PDF', icon: '📄', color: 'rgba(0,230,118,0.6)' },
 ]
 
 function inicioSemana() {
@@ -342,7 +343,7 @@ export default function Reportes() {
         <div className="rounded-2xl p-5 space-y-3" style={cardStyle}>
           <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.textMuted }}>Vista global — acceso directo</div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {SECCIONES_GLOBAL.map(({ key, label, sub, icon, color }) => (
+            {SECCIONES_GLOBAL.map(({ key, label, sub, icon }) => (
               <button
                 key={key}
                 onClick={() => setBioterioActivo(key)}
@@ -807,13 +808,15 @@ function DocImprimible({ tituloPeriodo, datos, animales, camadas, pedidos = [], 
       {S('consumo_alimento') && (() => {
         if (!datosGlobales) return <Seccion title="Consumo de Alimento" icon="🌾" printBg="#fff8e1" printBorder="#f9a825"><p className="rpt-empty">Cargando datos...</p></Seccion>
         const { censoAlim, ingresosAlim } = datosGlobales
-        const filas = ['ratas', 'ratones'].map(bio => {
-          const censos = censoAlim.filter(c => c.bioterio_id === bio).sort((a, b) => a.fecha.localeCompare(b.fecha))
-          const ultimo = censos[censos.length - 1] ?? null
-          const ingresos = ingresosAlim.filter(i => i.bioterio_id === bio && ultimo && i.fecha >= ultimo.fecha)
-          const stockKg = ultimo ? +(ultimo.kg + ingresos.reduce((s, i) => s + (i.kg ?? 0), 0)).toFixed(2) : null
-          return { label: bio === 'ratas' ? 'Ratas' : 'Ratones', fechaCenso: ultimo?.fecha ?? null, stockKg }
-        })
+        // Los censos e ingresos de alimento son globales (sin bioterio_id) — una sola fila
+        const censosAl = [...censoAlim].sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)))
+        const ultimoAl = censosAl[censosAl.length - 1] ?? null
+        const ingresosAl = ultimoAl ? ingresosAlim.filter(i => i.fecha >= ultimoAl.fecha) : []
+        const filas = [{
+          label: 'Global (Ratas + Ratones)',
+          fechaCenso: ultimoAl?.fecha ?? null,
+          stockKg: ultimoAl ? +(ultimoAl.stock_kg + ingresosAl.reduce((s, i) => s + (i.kg ?? 0), 0)).toFixed(2) : null,
+        }]
         return (
           <Seccion title="Consumo de Alimento — Vista Global" icon="🌾" printBg="#fff8e1" printBorder="#f9a825">
             <table className="rpt-table">

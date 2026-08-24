@@ -14,6 +14,7 @@ import ConsumoAlimento from './pages/ConsumoAlimento'
 import ConsumoViruta from './pages/ConsumoViruta'
 import CapacidadGlobal from './pages/CapacidadGlobal'
 import GenealogiaGlobal from './pages/GenealogiaGlobal'
+import ReporteMensual from './pages/ReporteMensual'
 import Dashboard from './pages/Dashboard'
 import Animales from './pages/Animales'
 import Camadas from './pages/Camadas'
@@ -115,6 +116,9 @@ function AppLayout() {
 
   // Genealogía global → página especial sin sidebar
   if (bioterioActivo === 'genealogia_global') return <GenealogiaGlobal />
+
+  // Reporte mensual ejecutivo → página especial sin sidebar
+  if (bioterioActivo === 'reporte_mensual') return <ReporteMensual />
 
   function cerrarSidebar() { setSidebarAbierto(false) }
 
