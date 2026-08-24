@@ -5,7 +5,7 @@ import { formatFecha, calcularLatencia } from '../utils/calculos'
 import { getMinimosCriticos, MINIMOS_CRITICOS } from '../utils/motorDecisiones'
 import { buildPedigree, calcularFCoeficiente } from '../utils/genealogia'
 import { supabase } from '../lib/supabase'
-import { TrendingUp, Microscope, Dna, BarChart2, Archive, Skull, PackageCheck, Thermometer, FileWarning, Printer, Calendar, CalendarDays, ShoppingCart, ClipboardCheck, Layers, Leaf, GitBranch } from 'lucide-react'
+import { TrendingUp, Microscope, Dna, BarChart2, Archive, Skull, PackageCheck, Thermometer, FileWarning, Printer, Calendar, CalendarDays, ShoppingCart, ClipboardCheck, Layers, Leaf, GitBranch, Briefcase } from 'lucide-react'
 import iterateTitleLogoLight from '../assets/iterate+logo+sloganfondoclaro.png'
 import { useTheme } from '../context/ThemeContext'
 
@@ -45,7 +45,6 @@ const SECCIONES_GLOBAL = [
   { key: 'viruta_global',    label: 'Consumo de viruta / camas', sub: 'Calculado por jaulas activas',         icon: '🪵', color: 'rgba(139,92,246,0.6)' },
   { key: 'capacidad_global', label: 'Capacidad y predicción',    sub: 'Saturación · candidatos · simulador',  icon: '📊', color: 'rgba(255,61,87,0.6)'  },
   { key: 'genealogia_global',label: 'Genealogía y consanguinidad', sub: 'Árbol genealógico · coeficiente F', icon: '🧬', color: 'rgba(167,139,250,0.6)'},
-  { key: 'reporte_mensual',  label: 'Reporte mensual',            sub: 'Resumen ejecutivo para dirección · PDF', icon: '📄', color: 'rgba(0,230,118,0.6)' },
 ]
 
 function inicioSemana() {
@@ -250,7 +249,7 @@ export default function Reportes() {
         {/* Período */}
         <div className="rounded-2xl p-5 space-y-4" style={cardStyle}>
           <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: tema.textMuted }}>Período del informe</div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap items-center">
             {[{ val:'mensual', label: <><Calendar size={13} style={{ display:'inline', marginRight:4 }} />Por mes</> },{ val:'semanal', label: <><CalendarDays size={13} style={{ display:'inline', marginRight:4 }} />Por semana</> }].map(({ val, label }) => (
               <button key={val} onClick={() => setPeriodo(val)}
                 className="px-4 py-2 rounded-xl text-sm font-semibold"
@@ -259,6 +258,15 @@ export default function Reportes() {
                   : { background: 'rgba(30,51,82,0.3)', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }
                 }>{label}</button>
             ))}
+            <button
+              onClick={() => setBioterioActivo('reporte_mensual')}
+              title="Resumen ejecutivo mensual para dirección — animales, reproducción, egresos e insumos"
+              className="ml-auto flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all hover:brightness-110"
+              style={{ background: 'linear-gradient(135deg, rgba(206,147,216,0.16), rgba(64,196,255,0.10))', border: '1.5px solid rgba(206,147,216,0.45)', color: '#ce93d8', boxShadow: '0 0 18px rgba(206,147,216,0.15)' }}
+            >
+              <Briefcase size={15} /> Reporte directivo
+              <span className="text-xs font-mono opacity-70">PDF</span>
+            </button>
           </div>
 
           {periodo === 'mensual' ? (

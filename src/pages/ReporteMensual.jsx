@@ -10,7 +10,7 @@ import {
   stockEnFecha, promedioAnimalesEnIntervalo,
   resumenReproductivo, resumenEgresos, resumenInsumo,
 } from '../utils/reportemensual'
-import { Printer, RefreshCw, FileText } from 'lucide-react'
+import { Printer, RefreshCw, Briefcase } from 'lucide-react'
 import iterateTitleLogoLight from '../assets/iterate+logo+sloganfondoclaro.png'
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
@@ -230,7 +230,7 @@ export default function ReporteMensual() {
               title="Volver">←</button>
             <div className="w-1.5 h-7 rounded-full" style={{ background: tema.accent }} />
             <div>
-              <h1 className="text-xl font-bold flex items-center gap-2" style={{ color: tema.textPrimary }}><FileText size={18} /> Reporte Mensual</h1>
+              <h1 className="text-xl font-bold flex items-center gap-2" style={{ color: tema.textPrimary }}><Briefcase size={18} /> Reporte Directivo</h1>
               <p className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>
                 Resumen ejecutivo para dirección · {tituloPeriodo}
               </p>
@@ -399,7 +399,7 @@ function Encabezado({ tituloPeriodo, ahora }) {
           BIOTERIO · SISTEMA DE GESTIÓN DE COLONIA · INFORME PARA DIRECCIÓN
         </div>
         <div style={{ fontSize: '16pt', fontWeight: 900, letterSpacing: '-0.3pt', marginBottom: '2pt' }}>
-          REPORTE MENSUAL — {tituloPeriodo.toUpperCase()}
+          REPORTE DIRECTIVO — {tituloPeriodo.toUpperCase()}
         </div>
         <div style={{ fontSize: '7.5pt', color: '#555', fontFamily: 'monospace' }}>
           Período informado: 01 al fin de {tituloPeriodo.toLowerCase()} · Generado: {ahora}
@@ -701,7 +701,7 @@ function Pie({ notaMetodo, ahora, tituloPeriodo }) {
       <p className="rm-foot" style={{ marginTop: '10pt' }}>{notaMetodo}</p>
       <div style={{ borderTop: '0.5pt solid #bbb', marginTop: '10pt', paddingTop: '5pt', fontSize: '7pt', color: '#888', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span>ITeRatE · Sistema de Gestión de Bioterio</span>
-        <span>Reporte Mensual · {tituloPeriodo} · Documento de uso interno</span>
+        <span>Reporte Directivo · {tituloPeriodo} · Documento de uso interno</span>
         <span>{ahora}</span>
       </div>
     </>
