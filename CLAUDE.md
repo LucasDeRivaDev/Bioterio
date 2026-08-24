@@ -30,7 +30,8 @@ Sistema web de gestión de una colonia de ratones de laboratorio (*Mus musculus*
 | **Temperatura** | 2 tabs fijos (Ratas / Ratones), registro diario (actual/mín/máx), vista mensual, exportación imprimible |
 | **Planificación** | Índice de estabilidad 0-100, mínimos por bioterio, proyección 30/60/90/180d, candidatos a renovación, simulador de impacto |
 | **Pedidos** | Gestión de pedidos de producción con estrategia automática: parejas necesarias, fechas óptimas, reproductores sugeridos, índice de viabilidad 0-100, escenarios A/B, calendario del pedido |
-| **Reportes** | Impresión de datos de la colonia |
+| **Reportes** | Impresión de datos de la colonia + accesos directos Vista Global (alimento, viruta, capacidad, genealogía, reporte mensual) |
+| **Reporte Mensual** | Resumen ejecutivo mensual para dirección: animales al cierre por especie/cepa/sexo/categoría, actividad reproductiva, entregas/sacrificios, consumo de viruta y alimento. Documento A4 imprimible (window.print → PDF). Regla dura: indicador sin registros suficientes se muestra como "Sin datos suficientes" — nunca se estima |
 
 **Motor predictivo:** calcula automáticamente fechas de parto (gestación 23d ratas / 21d ratones), destete (21d), madurez sexual y genera tareas con prioridad.
 
@@ -74,12 +75,13 @@ Sistema web de gestión de una colonia de ratones de laboratorio (*Mus musculus*
 
 ```
 src/
-├── App.jsx                          — Router + layout responsive + rutas especiales (resumen_ratones, alimento_global, viruta_global)
+├── App.jsx                          — Router + layout responsive + rutas especiales (resumen_ratones, alimento_global, viruta_global, reporte_mensual)
 ├── context/
 │   ├── BiotheriumContext.jsx        — Estado global (animales, camadas, jaulas, sacrificios, entregas, temperaturas, extendidos, animalesExportados, camadasF1)
 │   ├── BioterioActivoContext.jsx    — Bioterio activo en localStorage (bioterioActivo, bio, config)
 │   └── ThemeContext.jsx             — Tema claro/oscuro. TEMA_OSCURO + TEMA_CLARO. Toggle persiste en localStorage ('appMosca_brillo'). Clase 'modo-claro' en <html>
 ├── utils/calculos.js                — Motor predictivo, scores reproductivos, confiabilidad de hembras
+├── utils/reportemensual.js          — Cálculos puros del Reporte Mensual (stockEnFecha, resumenReproductivo, resumenEgresos, resumenInsumo)
 ├── utils/constants.js               — Constantes biológicas (BIO_RATAS, BIO_RATONES, BIO, ESTADO_ANIMAL, TIPO_TAREA)
 ├── components/
 │   ├── Sidebar.jsx                  — Navegación (drawer en mobile, ficha biológica colapsable)
@@ -99,6 +101,7 @@ src/
     ├── Estadisticas.jsx             — Dashboard visual: 4 gráficos reproductivos + KPIs + filtros
     ├── Temperatura.jsx              — 2 tabs físicos (Bioterio de Ratas / Bioterio de Ratones), sin dependencia de bioterio activo
     ├── Reportes.jsx
+    ├── ReporteMensual.jsx            — Resumen ejecutivo mensual imprimible (clave global reporte_mensual, sin sidebar)
     ├── SelectorBioterio.jsx         — Pantalla de selección de bioterio (ratas + 3 subgrupos de ratones + accesos globales)
     ├── ResumenRatones.jsx           — Vista unificada de stock de las 3 colonias de ratones con desglose por categoría + jaulas
     └── ConsumoViruta.jsx            — Predicción adaptativa de consumo de viruta con censos + ingresos separados
@@ -273,6 +276,8 @@ extendidos
 - Ninguna reserva bloquea operaciones — solo muestra advertencias
 
 **Censos y consumo (viruta/alimento):**
+- ⚠️ Las tablas de insumos (`viruta_censos`, `viruta_compras`, `alimento_censos`, `alimento_ingresos`, `alimento_reposiciones`, `alimento_estimaciones`) son GLOBALES: NO tienen columna `bioterio_id` (a pesar de la regla general). Filtrarlas por `bioterio_id` (en query o en cliente) devuelve siempre vacío
+- `alimento_censos` usa columna `stock_kg` en DB (mapeada a `kg` por `censoAlimFromDB` en ConsumoAlimento.jsx). Sobre filas crudas de supabase hay que leer `stock_kg`, no `kg`
 - Censos = única fuente del aprendizaje adaptativo. Ingresos/compras suman al stock sin alterar historial
 - `stockActual = ultimoCenso + sum(ingresos donde fecha >= ultimoCenso.fecha)`
 - **Compra de viruta con conteo físico (`ConsumoViruta.jsx`):** `ModalCompra` pide, además de las bolsas ingresadas, un campo obligatorio "¿Cuántas bolsas hay disponibles ahora?". `registrarCompra(fecha, bolsas, stockDisponible)` inserta la compra en `viruta_compras` **y además** crea un censo en `viruta_censos` (misma fecha, `hora: horaActual()`, `bolsas: stockDisponible`, sin `cambioCama`). El conteo físico informado por el usuario siempre tiene prioridad sobre el cálculo teórico y pasa a ser la nueva base de `stockActual` y de todas las proyecciones futuras (mismo mecanismo que un censo manual).
@@ -310,6 +315,17 @@ extendidos
 ---
 
 ## Implementado recientemente
+
+### Agosto 2026
+- **Reporte Mensual ejecutivo (24/08):** nuevo módulo global (Reportes → Vista Global, clave `reporte_mensual`, página sin sidebar). Resumen mensual para dirección con selector mes/año (default: último mes completo):
+  - **Animales al cierre:** stock reconstruido a fecha T (`stockEnFecha` en `reportemensual.js`) — reproductores vivos (created_at/fecha_sacrificio/entregas) + camadas destetadas (base = total_destetados ?? total_crias, descontando sacrificios y entregas netas hasta T). Categorías por edad: crías <42d, jóvenes <70d ratones / <84d ratas. Sexo proporcional desde crias_machos/hembras, fallback jaula.machos/hembras, sino "sin sexo".
+  - **Actividad reproductiva:** partos/crías nacidas/destetes/crías destetadas del período + marcador cuando hay camadas sin registro de cantidad.
+  - **Entregas y sacrificios:** animales y nº de registros (entregas netas; devueltas se informan aparte).
+  - **Viruta y alimento:** stock físico al cierre (último censo ≤ fin + ingresos posteriores), ingresos del mes, consumo telescópico entre censos que acotan el período (prev.valor + Σ movs [prev, cur) − cur.valor), promedio mensual histórico (suma de consumos positivos ÷ meses span 30.44d), relación con colonia (bol./jaula/sem si intervalo ≥7d · g/an/día).
+  - **Regla dura:** indicador sin registros suficientes → null → UI muestra literalmente "Sin datos suficientes". Nunca estimar.
+  - Documento imprimible A4 (`window.print()`, CSS clases `rm-*` oculto en pantalla/visible en print) + deltas vs mes anterior bajo cada KPI.
+  - Lógica pura verificada con 25 tests (esbuild+node sobre reportemensual.js).
+  - **Fix latente incluido:** Reportes.jsx sección Consumo Alimento usaba `ultimo.kg` sobre filas crudas (columna real `stock_kg`) y filtraba `bioterio_id` en tablas globales sin esa columna → siempre mostraba "—".
 
 ### Abril 2026
 Perfil reproductivo por animal (4 scores + confiabilidad), sacrificio parcial de jaulas, `failure_flag`/`failure_type` en camadas, toggle `incluir_en_stock`, orden cronológico global, entrega de animales (/entregas + Devolver, columna `animal_id`), prevención consanguinidad directa, calidad de padres en Stock (MiniCalidad), página Estadísticas, RLS en sacrificios/entregas, identidad visual GenERats, promoción stock→reproductor, sistema multi-bioterio completo, módulo ciclo estral.
