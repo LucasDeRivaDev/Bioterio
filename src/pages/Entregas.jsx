@@ -28,7 +28,8 @@ export default function Entregas() {
           obs.includes(q) ||
           (madre?.codigo ?? '').toLowerCase().includes(q) ||
           (padre?.codigo ?? '').toLowerCase().includes(q) ||
-          (e.fecha ?? '').includes(q)
+          (e.fecha ?? '').includes(q) ||
+          (e.grupo_investigacion ?? '').toLowerCase().includes(q)
         )
       })
   }, [entregas, camadas, todosAnimales, busqueda])
@@ -144,6 +145,16 @@ export default function Entregas() {
                   )}
                   {e.observaciones && (
                     <span className="ml-2 text-xs" style={{ color: tema.textMuted }}>— {e.observaciones}</span>
+                  )}
+                  {e.grupo_investigacion && (
+                    <div className="mt-1">
+                      <span
+                        className="inline-block px-2 py-0.5 rounded-md text-xs font-semibold"
+                        style={{ background: 'rgba(14,163,131,0.10)', border: '1px solid rgba(14,163,131,0.3)', color: '#0ea383' }}
+                      >
+                        🔬 {e.grupo_investigacion}
+                      </span>
+                    </div>
                   )}
                 </div>
 

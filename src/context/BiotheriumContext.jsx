@@ -576,14 +576,14 @@ export function BiotheriumProvider({ children }) {
   }
 
   // Entrega de reproductor: pasa a estado 'retirado' y queda registrado en tabla entregas
-  async function entregarReproductor(animal, fecha, observaciones) {
+  async function entregarReproductor(animal, fecha, observaciones, grupoInvestigacion) {
     const actualizado = { ...animal, estado: 'retirado' }
     const esExportado = estado.animalesExportados.some((a) => a.id === animal.id)
     dispatch({ type: esExportado ? 'EDITAR_ANIMAL_EXPORTADO' : 'EDITAR_ANIMAL', payload: actualizado })
     const { error } = await supabase.from('animales').update({ estado: 'retirado' }).eq('id', animal.id)
     if (error) console.error('Error al actualizar estado de reproductor:', error)
 
-    const entrega = { id: generarId(), camada_id: null, animal_id: animal.id, cantidad: 1, fecha, observaciones: observaciones || null, bioterio_id: bioterioActivo }
+    const entrega = { id: generarId(), camada_id: null, animal_id: animal.id, cantidad: 1, fecha, observaciones: observaciones || null, grupo_investigacion: grupoInvestigacion || null, bioterio_id: bioterioActivo }
     dispatch({ type: 'AGREGAR_ENTREGA', payload: entrega })
     const { error: errE } = await supabase.from('entregas').insert(entrega)
     if (errE) {

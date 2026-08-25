@@ -66,3 +66,14 @@ export const PRIORIDAD = {
   HOY: 'hoy',
   PROXIMA: 'proxima',
 }
+
+export const GRUPOS_INVESTIGACION = [
+  'Neurobiología',
+  'Inmunología Ambiental',
+  'Fisiopatología Uterina',
+  'Fisiopatología Glandular',
+  'Fisiopatología Ambiental',
+  'Endocrinología y Carcinogénesis',
+  'Ecofisiopatología',
+  'Biomarcadores',
+]

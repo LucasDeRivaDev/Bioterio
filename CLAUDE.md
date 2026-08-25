@@ -24,7 +24,7 @@ Sistema web de gestión de una colonia de ratones de laboratorio (*Mus musculus*
 | **Calendario** | Vista mensual con eventos reproductivos coloreados + planificación de apareamientos futuros + sistema de notas y recordatorios personalizados |
 | **Stock** | Bloques visuales por jaula con display de sexo coloreado (♂ azul / ♀ violeta / mixto bicolor), edición/división/movimiento de animales, entrega y sacrificio en masa. Cada bloque muestra calidad de padres (Alta/Media/Baja) sin necesidad de abrir el modal |
 | **Sacrificios** | Selección múltiple de jaulas desde stock para registrar sacrificios en masa, con cantidad parcial por jaula |
-| **Entregas** | Historial de animales entregados a investigadores, con buscador, resumen numérico y botón "Devolver" |
+| **Entregas** | Historial de animales entregados a investigadores, con buscador, resumen numérico, filtro por grupo de investigación y botón "Devolver" |
 | **Rendimiento** | Ranking de machos por latencia de fertilización (menor = mejor) con scores y alertas de edad |
 | **Estadísticas** | Dashboard visual con 4 gráficos: partos vs fallas, calidad de madres, supervivencia de camadas, eficiencia de apareamiento. KPIs resumen + filtros por fecha y reproductor |
 | **Temperatura** | 2 tabs fijos (Ratas / Ratones), registro diario (actual/mín/máx), vista mensual, exportación imprimible |
@@ -134,7 +134,7 @@ sacrificios
 
 entregas
   id, camada_id, animal_id, cantidad, machos, hembras, fecha,
-  observaciones, devuelta (bool, default false), created_at
+  observaciones, devuelta (bool, default false), grupo_investigacion, created_at
   (camada_id es null cuando se entrega un reproductor)
   (animal_id guarda el id del reproductor entregado, para poder revertir la entrega)
 
@@ -256,6 +256,8 @@ extendidos
 
 **Entregas:**
 - Devolver con "mantener historial" marca la entrega `devuelta: true` — sigue visible en /entregas (badge ✓ Devuelta, sin botón Devolver) pero deja de descontar en todos los `stockCamada` (Stock, ConsumoViruta, ConsumoAlimento, ResumenRatones, Calendario, motorDecisiones)
+- Campo `grupo_investigacion` (text, nullable) identifica el grupo receptor: Neurobiología, Inmunología Ambiental, Fisiopatología Uterina, Fisiopatología Glandular, Fisiopatología Ambiental, Endocrinología y Carcinogénesis, Ecofisiopatología, Biomarcadores. Select en ModalEntrega, badge teal 🔬 en historial, filtro de búsqueda incluido
+- El campo es informativo de trazabilidad — no modifica lógica de stock ni de devoluciones
 
 **Temperatura:**
 - Queries directas con IDs fijos: ratas = `'ratas'`; ratones = `IN ['ratones', 'ratones_balbc', 'ratones_c57', 'ratones_hibridos']`
@@ -317,6 +319,7 @@ extendidos
 ## Implementado recientemente
 
 ### Agosto 2026
+- **Clasificación de entregas por grupo de investigación (25/08):** campo `grupo_investigacion` en entregas para identificar a qué grupo receptor pertenece cada entrega. 8 grupos fijos: Neurobiología, Inmunología Ambiental, Fisiopatología Uterina, Fisiopatología Glandular, Fisiopatología Ambiental, Endocrinología y Carcinogénesis, Ecofisiopatología, Biomarcadores. Select desplegable en ModalEntrega, badge teal con 🔬 en historial de /entregas, filtro de búsqueda incluido. Preparado para reportes futuros (entregas por grupo, animales por grupo, evolución mensual).
 - **Reporte Mensual ejecutivo (24/08):** nuevo módulo global (Reportes → Vista Global, clave `reporte_mensual`, página sin sidebar). Resumen mensual para dirección con selector mes/año (default: último mes completo):
   - **Animales al cierre:** stock reconstruido a fecha T (`stockEnFecha` en `reportemensual.js`) — reproductores vivos (created_at/fecha_sacrificio/entregas) + camadas destetadas (base = total_destetados ?? total_crias, descontando sacrificios y entregas netas hasta T). Categorías por edad: crías <42d, jóvenes <70d ratones / <84d ratas. Sexo proporcional desde crias_machos/hembras, fallback jaula.machos/hembras, sino "sin sexo".
   - **Actividad reproductiva:** partos/crías nacidas/destetes/crías destetadas del período + marcador cuando hay camadas sin registro de cantidad.
@@ -429,6 +432,12 @@ ALTER TABLE entregas ADD COLUMN IF NOT EXISTS devuelta boolean DEFAULT false;
 ```
 Necesario para que "Devolver al stock manteniendo historial" deje de descontar la entrega en stockCamada.
 
+**SQL pendiente para grupo de investigación (campo grupo_investigacion):**
+```sql
+ALTER TABLE entregas ADD COLUMN IF NOT EXISTS grupo_investigacion text;
+```
+Necesario para clasificar entregas por grupo de investigación receptor. Archivo: `supabase_migration_grupo_investigacion.sql`.
+
 **SQL pendiente para RLS de incidentes (sin esto NO se pueden crear incidentes):**
 ```sql
 ALTER TABLE incidentes ENABLE ROW LEVEL SECURITY;
@@ -478,6 +487,7 @@ CREATE POLICY "insert publico" ON contactos FOR INSERT TO anon WITH CHECK (true)
 - [x] ~~Migrar localStorage → Supabase~~ → completada (ver tabla arriba)
 - [ ] Notificaciones push o por email cuando hay tareas vencidas
 - [ ] Módulo de reportes con exportación real (PDF/Excel)
+- [ ] Reportes por grupo de investigación: entregas por grupo, animales entregados por grupo, especie, evolución mensual
 - [ ] Historial de cambios por animal/camada (auditoría)
 - [ ] Modo offline con sincronización posterior
 - [x] ~~Multi-colonia o multi-usuario con roles~~ → implementado como multi-bioterio (ratas + ratones con subgrupos)

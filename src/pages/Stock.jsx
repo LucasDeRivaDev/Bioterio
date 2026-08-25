@@ -7,6 +7,7 @@ import { TestTube2, FlaskConical, Microscope, UserPlus } from 'lucide-react'
 import Sacrificios from '../pages/Sacrificios'
 import Entregas from '../pages/Entregas'
 import { useTheme } from '../context/ThemeContext'
+import { GRUPOS_INVESTIGACION } from '../utils/constants'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -1462,6 +1463,7 @@ function ModalEntrega({ bloques, onConfirmar, onCerrar, animalesReservados = new
   const CAT = getCAT(tema)
   const [fecha,        setFecha]        = useState(hoy())
   const [observaciones, setObservaciones] = useState('')
+  const [grupoInvestigacion, setGrupoInvestigacion] = useState('')
   const [guardando,    setGuardando]    = useState(false)
   const [cantidades,   setCantidades]   = useState(() =>
     Object.fromEntries(bloques.map((b) => [b.id, b.total]))
@@ -1499,7 +1501,7 @@ function ModalEntrega({ bloques, onConfirmar, onCerrar, animalesReservados = new
   async function confirmar() {
     if (!cantOk) return
     setGuardando(true)
-    try { await onConfirmar(fecha, observaciones || null, cantidades) }
+    try { await onConfirmar(fecha, observaciones || null, cantidades, grupoInvestigacion || null) }
     finally { setGuardando(false) }
   }
 
@@ -1673,6 +1675,23 @@ function ModalEntrega({ bloques, onConfirmar, onCerrar, animalesReservados = new
           <input type="text" placeholder="Investigador, protocolo, destino..."
             value={observaciones} onChange={(e) => setObservaciones(e.target.value)}
             style={{ ...iStyle, fontFamily: 'monospace' }} />
+        </div>
+
+        {/* Grupo de investigación */}
+        <div>
+          <label className="text-xs uppercase tracking-widest font-semibold mb-1 block" style={{ color: tema.textMuted }}>
+            Grupo de investigación receptor <span className="normal-case font-normal opacity-60">(opcional)</span>
+          </label>
+          <select
+            value={grupoInvestigacion}
+            onChange={(e) => setGrupoInvestigacion(e.target.value)}
+            style={{ ...iStyle, fontFamily: 'monospace', cursor: 'pointer' }}
+          >
+            <option value="">Sin grupo asignado</option>
+            {GRUPOS_INVESTIGACION.map((g) => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
         </div>
 
         {/* Botones */}
@@ -2208,14 +2227,13 @@ export default function Stock() {
     salirModoSeleccion()
   }
 
-  async function ejecutarEntrega(fecha, observaciones, cantidades) {
+  async function ejecutarEntrega(fecha, observaciones, cantidades, grupoInvestigacion) {
     const bloquesSel = bloques.filter((b) => seleccionadas.has(b.id))
     for (const b of bloquesSel) {
       if (b.tipo === 'reproductor') {
-        await entregarReproductor(b.animal, fecha, observaciones)
+        await entregarReproductor(b.animal, fecha, observaciones, grupoInvestigacion)
       } else {
         const cant = parseInt(cantidades?.[b.id]) || b.total
-        // Calcular machos/hembras entregados proporcionalmente
         const totalJaula = b.jaula?.total || b.total
         const machosEntregados  = b.jaula?.machos  != null ? Math.round(cant * (b.jaula.machos  / totalJaula)) : null
         const hembraEntregadas  = b.jaula?.hembras != null ? cant - (machosEntregados ?? 0)                    : null
@@ -2226,6 +2244,7 @@ export default function Stock() {
           hembras: hembraEntregadas,
           fecha,
           observaciones: observaciones || null,
+          grupo_investigacion: grupoInvestigacion || null,
         })
         if (!b.virtual && b.jaula?.id) {
           const resto = b.jaula.total - cant
