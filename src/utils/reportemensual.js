@@ -28,6 +28,13 @@ export const ESPECIE_CORTO = {
 
 const CUTOFF_JOVENES = 42 // días — crías → jóvenes (todas las especies)
 
+function clasificarEdadEntrega(edadDias) {
+  if (edadDias == null) return 'adultos'
+  if (edadDias < CUTOFF_JOVENES) return 'crias'
+  if (edadDias < 70) return 'jovenes'
+  return 'adultos'
+}
+
 export const SIN_DATOS = null
 
 // ── Rango de mes ─────────────────────────────────────────────────────────────
@@ -303,3 +310,107 @@ export function resumenInsumo(censos, ingresos, rango) {
 
   return { stockCierre, fechaStockCierre: censoCierre?.fecha ?? null, ingresosPeriodo: totalIngresos, hayIngresos, consumo, medidaDesde, medidaHasta, promedioMensual, porSemana, diasMedidos }
 }
+
+// ── Clasificación de entregas por especie / sexo / edad / grupo ─────────────
+export function clasificarEntregas(bds) {
+  const entries = []
+  for (const [bioId, bd] of Object.entries(bds)) {
+    const { entregas = [], animales = [], camadas = [], jaulas = [] } = bd
+    const camadaMap = new Map(camadas.map(c => [c.id, c]))
+    const jaulaMap = new Map(jaulas.map(j => [j.camada_id, j]))
+    const animalMap = new Map(animales.map(a => [a.id, a]))
+    const esRatas = bioId === 'ratas'
+
+    for (const e of entregas) {
+      if (e.devuelta) continue
+      const cantidad = e.cantidad ?? 0
+      if (cantidad <= 0) continue
+
+      const esReproductor = !e.camada_id && e.animal_id
+      const esStock = !!e.camada_id
+
+      let sexo = null
+      let fechaNacimiento = null
+
+      if (esStock) {
+        const camada = camadaMap.get(e.camada_id)
+        if (!camada) continue
+        if (e.machos != null && e.hembras != null) {
+          sexo = e.machos > e.hembras ? 'macho' : e.hembras > e.machos ? 'hembra' : 'mixto'
+        } else if (camada.crias_machos != null && camada.crias_hembras != null) {
+          sexo = camada.crias_machos > camada.crias_hembras ? 'macho'
+            : camada.crias_hembras > camada.crias_machos ? 'hembra' : 'mixto'
+        } else {
+          const jaula = jaulaMap.get(e.camada_id)
+          if (jaula && (jaula.machos != null || jaula.hembras != null)) {
+            sexo = (jaula.machos ?? 0) > (jaula.hembras ?? 0) ? 'macho'
+              : (jaula.hembras ?? 0) > (jaula.machos ?? 0) ? 'hembra' : 'mixto'
+          }
+        }
+        fechaNacimiento = camada.fecha_nacimiento
+      } else if (esReproductor) {
+        const animal = animalMap.get(e.animal_id)
+        if (!animal) continue
+        sexo = animal.sexo
+        fechaNacimiento = animal.fecha_nacimiento
+      } else {
+        continue
+      }
+
+      const edadDias = (fechaNacimiento && e.fecha)
+        ? difDias(parseDate(fechaNacimiento), parseDate(String(e.fecha).slice(0, 10)))
+        : null
+      const categoria = clasificarEdadEntrega(edadDias)
+
+      entries.push({
+        especie: esRatas ? 'ratas' : bioId,
+        sexo: sexo || 'sin Sexo',
+        categoria,
+        grupo: e.grupo_investigacion || 'Sin grupo',
+        cantidad,
+      })
+    }
+  }
+
+  const detMap = new Map()
+  const grpMap = new Map()
+  const espMap = new Map()
+
+  for (const d of entries) {
+    const key = `${d.especie}|${d.sexo}|${d.categoria}|${d.grupo}`
+    if (detMap.has(key)) { detMap.get(key).cantidad += d.cantidad }
+    else { detMap.set(key, { ...d }) }
+
+    const gKey = d.grupo
+    if (grpMap.has(gKey)) { grpMap.get(gKey).total += d.cantidad; grpMap.get(gKey).registros++ }
+    else { grpMap.set(gKey, { grupo: gKey, total: d.cantidad, registros: 1 }) }
+
+    const eKey = d.especie
+    if (!espMap.has(eKey)) espMap.set(eKey, { machos: 0, hembras: 0, mixto: 0, sinSexo: 0, total: 0 })
+    const esp = espMap.get(eKey)
+    esp.total += d.cantidad
+    if (d.sexo === 'macho') esp.machos += d.cantidad
+    else if (d.sexo === 'hembra') esp.hembras += d.cantidad
+    else if (d.sexo === 'mixto') esp.mixto += d.cantidad
+    else esp.sinSexo += d.cantidad
+  }
+
+  const detalle = [...detMap.values()].sort((a, b) => {
+    const oe = { ratas: 0, ratones_balbc: 1, ratones_c57: 2, ratones_hibridos: 3 }
+    const os = { macho: 0, hembra: 1, mixto: 2, 'sin Sexo': 3 }
+    const oc = { crias: 0, jovenes: 1, adultos: 2 }
+    const dEsp = (oe[a.especie] ?? 9) - (oe[b.especie] ?? 9)
+    if (dEsp !== 0) return dEsp
+    const dSex = (os[a.sexo] ?? 9) - (os[b.sexo] ?? 9)
+    if (dSex !== 0) return dSex
+    return (oc[a.categoria] ?? 9) - (oc[b.categoria] ?? 9)
+  })
+
+  return {
+    detalle,
+    porGrupo: [...grpMap.values()].sort((a, b) => b.total - a.total),
+    porEspecie: [...espMap.entries()].map(([id, s]) => ({ id, ...s })).sort((a, b) => (oe2(a.id) - oe2(b.id))),
+  }
+}
+
+function oe2(id) { return { ratas: 0, ratones_balbc: 1, ratones_c57: 2, ratones_hibridos: 3 }[id] ?? 9 }

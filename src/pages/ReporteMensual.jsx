@@ -9,6 +9,7 @@ import {
   rangoMes, mesAnteriorDe,
   stockEnFecha, promedioAnimalesEnIntervalo,
   resumenReproductivo, resumenEgresos, resumenInsumo,
+  clasificarEntregas,
 } from '../utils/reportemensual'
 import { Printer, RefreshCw, Briefcase } from 'lucide-react'
 import iterateTitleLogoLight from '../assets/iterate+logo+sloganfondoclaro.png'
@@ -52,7 +53,7 @@ export default function ReporteMensual() {
           supabase.from('camadas').select('id,id_madre,id_padre,bioterio_id,fecha_nacimiento,fecha_destete,total_crias,crias_machos,crias_hembras,total_destetados,failure_flag,incluir_en_stock').eq('bioterio_id', id),
           supabase.from('jaulas').select('id,camada_id,total,machos,hembras').eq('bioterio_id', id),
           supabase.from('sacrificios').select('id,camada_id,cantidad,fecha,categoria').eq('bioterio_id', id),
-          supabase.from('entregas').select('id,camada_id,animal_id,cantidad,machos,hembras,fecha,devuelta').eq('bioterio_id', id),
+          supabase.from('entregas').select('id,camada_id,animal_id,cantidad,machos,hembras,fecha,devuelta,grupo_investigacion,bioterio').eq('bioterio_id', id),
         ]))),
         supabase.from('viruta_censos').select('fecha,bolsas').order('fecha', { ascending: true }),
         supabase.from('viruta_compras').select('fecha,bolsas').order('fecha', { ascending: true }),
@@ -180,6 +181,11 @@ export default function ReporteMensual() {
     return { valor: grDia / prom.animales, contexto: `${fInt(prom.animales)} animales prom.` }
   }, [alimento, bdsConCutoff])
 
+  const clasifEnt = useMemo(
+    () => (!datos ? null : clasificarEntregas(datos.bds)),
+    [datos]
+  )
+
   function delta(actual, anterior) {
     if (actual == null || anterior == null) return null
     const d = Math.round((actual - anterior) * 10) / 10
@@ -217,6 +223,11 @@ export default function ReporteMensual() {
         .rm-kpi-box .d { font-size: 6.5pt; color: #888; margin-top: 1pt; }
         .rm-empty { font-size: 8.5pt; color: #888; padding: 3pt 0 4pt; font-style: italic; }
         .rm-foot { font-size: 7pt; color: #777; margin-top: 3pt; }
+        .rm-subsect { margin-top: 6pt; padding-top: 4pt; border-top: 0.5pt solid #ddd; }
+        .rm-subsect-title { font-size: 8pt; font-weight: 700; color: #444; margin-bottom: 3pt; text-transform: uppercase; letter-spacing: 0.4pt; }
+        .rm-highlight { background: #f0fdf4; border-left: 3pt solid #16a34a; padding: 4pt 6pt; margin: 4pt 0; }
+        .rm-highlight-title { font-size: 7.5pt; font-weight: 700; color: #166534; margin-bottom: 2pt; }
+        .rm-kpi-grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 5pt; margin: 5pt 0 6pt; }
       `}</style>
 
       {/* Panel en pantalla */}
@@ -325,6 +336,7 @@ export default function ReporteMensual() {
             viruta={viruta} virutaAnt={virutaAnt}
             alimento={alimento} alimentoAnt={alimentoAnt}
             relViruta={relViruta} relAlimento={relAlimento}
+            clasifEnt={clasifEnt}
             delta={delta}
             notaMetodo={notaMetodo}
           />
@@ -345,6 +357,7 @@ function DocumentoImprimible({
   reproAct, egreAct,
   viruta, virutaAnt, alimento, alimentoAnt,
   relViruta, relAlimento,
+  clasifEnt,
   delta, notaMetodo,
 }) {
   const base = { fontFamily: "'Segoe UI', Arial, sans-serif", color: '#111', background: '#fff', fontSize: '9pt', lineHeight: 1.45 }
@@ -373,6 +386,13 @@ function DocumentoImprimible({
       <SeccionAnimales stockPorEspecie={stockPorEspecie} stockGlobalCierre={stockGlobalCierre} />
       <SeccionReproduccion rep={rep} repAnt={repAnt} reproAct={reproAct} delta={delta} hayPartosSinCrias={hayPartosSinCrias} hayDestetesSinCrias={hayDestetesSinCrias} />
       <SeccionEgresos egr={egr} egrAnt={egrAnt} egreAct={egreAct} delta={delta} />
+      {clasifEnt && clasifEnt.detalle.length > 0 && (
+        <>
+          <SeccionDetalleEntregas clasifEnt={clasifEnt} />
+          <SeccionResumenGrupo clasifEnt={clasifEnt} />
+          <SeccionResumenEspecie clasifEnt={clasifEnt} />
+        </>
+      )}
       <SeccionInsumo
         titulo="4. Consumo de viruta" icon="🪵" printBg="#f3e5f5" printBorder="#7b1fa2"
         unidad="bolsas" fmt={fInt} cortaRel="bol./jaula/sem"
@@ -627,6 +647,143 @@ function SeccionEgresos({ egr, egrAnt, egreAct, delta }) {
       </table>
       {egr.dev > 0 && <p className="rm-foot">* Excluye {egr.dev} entrega(s) devuelta(s) al stock durante el mes.</p>}
     </Seccion>
+  )
+}
+
+/* 3.1 · Detalle de animales entregados */
+function SeccionDetalleEntregas({ clasifEnt }) {
+  const { detalle } = clasifEnt
+  if (!detalle || detalle.length === 0) return null
+  const totalAnimales = detalle.reduce((s, d) => s + d.cantidad, 0)
+  return (
+    <div style={{ marginBottom: '8pt' }}>
+      <div className="rm-subsect">
+        <div className="rm-subsect-title">3.1 Detalle de animales entregados</div>
+      </div>
+      <div className="rm-highlight">
+        <div className="rm-highlight-title">Totales del período</div>
+        <span style={{ fontSize: '8.5pt' }}>{fInt(totalAnimales)} animales entregados en {detalle.length} combinación{detalle.length > 1 ? 'es' : ''}</span>
+      </div>
+      <table className="rm-table">
+        <thead>
+          <tr>
+            <th>Especie / Cepa</th>
+            <th>Sexo</th>
+            <th>Edad / Categoría</th>
+            <th>Grupo de investigación</th>
+            <th className="rm-num">Cantidad</th>
+          </tr>
+        </thead>
+        <tbody>
+          {detalle.map((d, i) => (
+            <tr key={i}>
+              <td>{ESPECIE_CORTO[d.especie] ?? d.especie}</td>
+              <td>{d.sexo === 'mixto' ? 'Mixto' : d.sexo === 'macho' ? '♂ Macho' : d.sexo === 'hembra' ? '♀ Hembra' : d.sexo}</td>
+              <td>{d.categoria === 'crias' ? 'Cría' : d.categoria === 'jovenes' ? 'Joven' : 'Adulto'}</td>
+              <td>{d.grupo}</td>
+              <td className="rm-num"><strong>{fInt(d.cantidad)}</strong></td>
+            </tr>
+          ))}
+          <tr style={{ fontWeight: 800, background: '#efefef' }}>
+            <td colSpan={4}>TOTAL</td>
+            <td className="rm-num">{fInt(totalAnimales)}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p className="rm-foot">* Los datos provienen exclusivamente de los registros reales de entregas del sistema. Sexo determinado por proporción de la camada o registro del reproductor. Categoría por edad al momento de la entrega: Cría (&lt;6 sem), Joven (6–10 sem), Adulto (&gt;10 sem).</p>
+    </div>
+  )
+}
+
+/* 3.2 · Resumen por grupo de investigación */
+function SeccionResumenGrupo({ clasifEnt }) {
+  const { porGrupo } = clasifEnt
+  if (!porGrupo || porGrupo.length === 0) return null
+  const totalAnimales = porGrupo.reduce((s, g) => s + g.total, 0)
+  const totalRegistros = porGrupo.reduce((s, g) => s + g.registros, 0)
+  return (
+    <div style={{ marginBottom: '8pt' }}>
+      <div className="rm-subsect">
+        <div className="rm-subsect-title">3.2 Resumen por grupo de investigación</div>
+      </div>
+      <div className="rm-highlight">
+        <div className="rm-highlight-title">Utilización de la colonia</div>
+        <span style={{ fontSize: '8.5pt' }}>{porGrupo.length} grupo{porGrupo.length > 1 ? 's' : ''} receptores · {fInt(totalAnimales)} animales en {fInt(totalRegistros)} entrega{totalRegistros > 1 ? 's' : ''}</span>
+      </div>
+      <table className="rm-table">
+        <thead>
+          <tr>
+            <th>Grupo de investigación</th>
+            <th className="rm-num">Animales recibidos</th>
+            <th className="rm-num">Entregas realizadas</th>
+          </tr>
+        </thead>
+        <tbody>
+          {porGrupo.map((g, i) => (
+            <tr key={i}>
+              <td>{g.grupo === 'Sin grupo' ? <em>Sin grupo asignado</em> : g.grupo}</td>
+              <td className="rm-num"><strong>{fInt(g.total)}</strong></td>
+              <td className="rm-num">{fInt(g.registros)}</td>
+            </tr>
+          ))}
+          <tr style={{ fontWeight: 800, background: '#efefef' }}>
+            <td>TOTAL</td>
+            <td className="rm-num">{fInt(totalAnimales)}</td>
+            <td className="rm-num">{fInt(totalRegistros)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+/* 3.3 · Resumen por especie / cepa */
+function SeccionResumenEspecie({ clasifEnt }) {
+  const { porEspecie } = clasifEnt
+  if (!porEspecie || porEspecie.length === 0) return null
+  const totalGeneral = porEspecie.reduce((s, e) => s + e.total, 0)
+
+  const resumenEspecie = (e) => {
+    const partes = []
+    if (e.machos > 0) partes.push(`♂ ${fInt(e.machos)}`)
+    if (e.hembras > 0) partes.push(`♀ ${fInt(e.hembras)}`)
+    if (e.mixto > 0) partes.push(`Mixto ${fInt(e.mixto)}`)
+    if (e.sinSexo > 0) partes.push(`s/sexo ${fInt(e.sinSexo)}`)
+    return partes.length > 0 ? partes.join(' · ') : '—'
+  }
+
+  return (
+    <div style={{ marginBottom: '8pt' }}>
+      <div className="rm-subsect">
+        <div className="rm-subsect-title">3.3 Resumen por especie / cepa</div>
+      </div>
+      <table className="rm-table">
+        <thead>
+          <tr>
+            <th>Especie / Cepa</th>
+            <th className="rm-num">Total entregados</th>
+            <th>Desglose por sexo y categoría</th>
+          </tr>
+        </thead>
+        <tbody>
+          {porEspecie.map((e, i) => (
+            <tr key={i}>
+              <td><strong>{ESPECIE_CORTO[e.id] ?? e.id}</strong></td>
+              <td className="rm-num"><strong>{fInt(e.total)}</strong></td>
+              <td style={{ fontSize: '8pt' }}>{resumenEspecie(e)}</td>
+            </tr>
+          ))}
+          <tr style={{ fontWeight: 800, background: '#efefef' }}>
+            <td>TOTAL GENERAL</td>
+            <td className="rm-num">{fInt(totalGeneral)}</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+      {porEspecie.some(e => e.mixto > 0) && (
+        <p className="rm-foot">* "Mixto": entregas donde la proporción macho/hembra fue igual o no se registró proporción exacta.</p>
+      )}
+    </div>
   )
 }
 
