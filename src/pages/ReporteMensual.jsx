@@ -53,7 +53,7 @@ export default function ReporteMensual() {
           supabase.from('camadas').select('id,id_madre,id_padre,bioterio_id,fecha_nacimiento,fecha_destete,total_crias,crias_machos,crias_hembras,total_destetados,failure_flag,incluir_en_stock').eq('bioterio_id', id),
           supabase.from('jaulas').select('id,camada_id,total,machos,hembras').eq('bioterio_id', id),
           supabase.from('sacrificios').select('id,camada_id,cantidad,fecha,categoria').eq('bioterio_id', id),
-          supabase.from('entregas').select('id,camada_id,animal_id,cantidad,machos,hembras,fecha,devuelta,grupo_investigacion,bioterio').eq('bioterio_id', id),
+          supabase.from('entregas').select('id,camada_id,animal_id,cantidad,machos,hembras,fecha,devuelta,grupo_investigacion').eq('bioterio_id', id),
         ]))),
         supabase.from('viruta_censos').select('fecha,bolsas').order('fecha', { ascending: true }),
         supabase.from('viruta_compras').select('fecha,bolsas').order('fecha', { ascending: true }),
@@ -739,18 +739,26 @@ function SeccionResumenGrupo({ clasifEnt }) {
 
 /* 3.3 · Resumen por especie / cepa */
 function SeccionResumenEspecie({ clasifEnt }) {
-  const { porEspecie } = clasifEnt
-  if (!porEspecie || porEspecie.length === 0) return null
-  const totalGeneral = porEspecie.reduce((s, e) => s + e.total, 0)
+  const { detalle } = clasifEnt
+  if (!detalle || detalle.length === 0) return null
 
-  const resumenEspecie = (e) => {
-    const partes = []
-    if (e.machos > 0) partes.push(`♂ ${fInt(e.machos)}`)
-    if (e.hembras > 0) partes.push(`♀ ${fInt(e.hembras)}`)
-    if (e.mixto > 0) partes.push(`Mixto ${fInt(e.mixto)}`)
-    if (e.sinSexo > 0) partes.push(`s/sexo ${fInt(e.sinSexo)}`)
-    return partes.length > 0 ? partes.join(' · ') : '—'
-  }
+  const ordenEsp = { ratas: 0, ratones_balbc: 1, ratones_c57: 2, ratones_hibridos: 3 }
+  const ordenSex = { macho: 0, hembra: 1, mixto: 2, 'sin Sexo': 3 }
+
+  const especies = [...new Set(detalle.map(d => d.especie))].sort((a, b) => (ordenEsp[a] ?? 9) - (ordenEsp[b] ?? 9))
+  const sexos = [...new Set(detalle.map(d => d.sexo))].sort((a, b) => (ordenSex[a] ?? 9) - (ordenSex[b] ?? 9))
+  const categorias = ['crias', 'jovenes', 'adultos']
+
+  const cell = (esp, sex, cat) => detalle
+    .filter(d => d.especie === esp && d.sexo === sex && d.categoria === cat)
+    .reduce((s, d) => s + d.cantidad, 0)
+
+  const totalEsp = (esp) => detalle.filter(d => d.especie === esp).reduce((s, d) => s + d.cantidad, 0)
+  const totalCat = (cat) => detalle.filter(d => d.categoria === cat).reduce((s, d) => s + d.cantidad, 0)
+  const totalGeneral = detalle.reduce((s, d) => s + d.cantidad, 0)
+
+  const labelSexo = (s) => s === 'macho' ? '♂ Macho' : s === 'hembra' ? '♀ Hembra' : s === 'mixto' ? 'Mixto' : 's/sexo'
+  const labelCat = (c) => c === 'crias' ? 'Crías' : c === 'jovenes' ? 'Jóvenes' : 'Adultos'
 
   return (
     <div style={{ marginBottom: '8pt' }}>
@@ -760,29 +768,63 @@ function SeccionResumenEspecie({ clasifEnt }) {
       <table className="rm-table">
         <thead>
           <tr>
-            <th>Especie / Cepa</th>
-            <th className="rm-num">Total entregados</th>
-            <th>Desglose por sexo y categoría</th>
+            <th rowSpan={2}>Especie / Cepa</th>
+            <th rowSpan={2}>Sexo</th>
+            <th className="rm-num" colSpan={3} style={{ textAlign: 'center', borderBottom: '0.5pt solid #999' }}>Edad / Categoría</th>
+            <th className="rm-num" rowSpan={2}>Total</th>
+          </tr>
+          <tr>
+            {categorias.map(c => (
+              <th key={c} className="rm-num">{labelCat(c)}</th>
+            ))}
           </tr>
         </thead>
         <tbody>
-          {porEspecie.map((e, i) => (
-            <tr key={i}>
-              <td><strong>{ESPECIE_CORTO[e.id] ?? e.id}</strong></td>
-              <td className="rm-num"><strong>{fInt(e.total)}</strong></td>
-              <td style={{ fontSize: '8pt' }}>{resumenEspecie(e)}</td>
-            </tr>
-          ))}
+          {especies.map(esp => {
+            const filas = sexos.map((sex, i) => {
+              const vals = categorias.map(c => cell(esp, sex, c))
+              const rowTotal = vals.reduce((s, v) => s + v, 0)
+              if (rowTotal === 0) return null
+              return (
+                <tr key={`${esp}-${sex}`}>
+                  {i === 0 && (
+                    <td rowSpan={sexos.filter(sx => categorias.some(c => cell(esp, sx, c) > 0)).length + 1}
+                      style={{ fontWeight: 700, verticalAlign: 'top', borderBottom: 'none' }}>
+                      {ESPECIE_CORTO[esp] ?? esp}
+                    </td>
+                  )}
+                  <td>{labelSexo(sex)}</td>
+                  {categorias.map(c => (
+                    <td key={c} className="rm-num">{cell(esp, sex, c) > 0 ? fInt(cell(esp, sex, c)) : '—'}</td>
+                  ))}
+                  <td className="rm-num"><strong>{rowTotal > 0 ? fInt(rowTotal) : '—'}</strong></td>
+                </tr>
+              )
+            }).filter(Boolean)
+            const sub = totalEsp(esp)
+            filas.push(
+              <tr key={`${esp}-sub`} style={{ fontWeight: 700 }}>
+                <td>Subtotal</td>
+                {categorias.map(c => (
+                  <td key={c} className="rm-num">{fInt(detalle.filter(d => d.especie === esp && d.categoria === c).reduce((s, d) => s + d.cantidad, 0))}</td>
+                ))}
+                <td className="rm-num">{fInt(sub)}</td>
+              </tr>
+            )
+            return filas
+          })}
           <tr style={{ fontWeight: 800, background: '#efefef' }}>
-            <td>TOTAL GENERAL</td>
+            <td colSpan={2}>TOTAL GENERAL</td>
+            {categorias.map(c => (
+              <td key={c} className="rm-num">{fInt(totalCat(c))}</td>
+            ))}
             <td className="rm-num">{fInt(totalGeneral)}</td>
-            <td></td>
           </tr>
         </tbody>
       </table>
-      {porEspecie.some(e => e.mixto > 0) && (
-        <p className="rm-foot">* "Mixto": entregas donde la proporción macho/hembra fue igual o no se registró proporción exacta.</p>
-      )}
+      <p className="rm-foot">
+        * Sexo determinado por proporción de la camada o registro del reproductor. Categoría por edad al momento de la entrega: Crías (&lt;6 sem), Jóvenes (6–10 sem), Adultos (&gt;10 sem).
+      </p>
     </div>
   )
 }

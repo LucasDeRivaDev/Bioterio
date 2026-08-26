@@ -382,8 +382,8 @@ export function clasificarEntregas(bds) {
     else { detMap.set(key, { ...d }) }
 
     const gKey = d.grupo
-    if (grpMap.has(gKey)) { grpMap.get(gKey).total += d.cantidad; grpMap.get(gKey).registros++ }
-    else { grpMap.set(gKey, { grupo: gKey, total: d.cantidad, registros: 1 }) }
+    if (grpMap.has(gKey)) { grpMap.get(gKey).total += d.cantidad }
+    else { grpMap.set(gKey, { grupo: gKey, total: d.cantidad }) }
 
     const eKey = d.especie
     if (!espMap.has(eKey)) espMap.set(eKey, { machos: 0, hembras: 0, mixto: 0, sinSexo: 0, total: 0 })
@@ -393,6 +393,10 @@ export function clasificarEntregas(bds) {
     else if (d.sexo === 'hembra') esp.hembras += d.cantidad
     else if (d.sexo === 'mixto') esp.mixto += d.cantidad
     else esp.sinSexo += d.cantidad
+  }
+
+  for (const [g, obj] of grpMap) {
+    obj.registros = entries.filter(d => d.grupo === g).length
   }
 
   const detalle = [...detMap.values()].sort((a, b) => {
