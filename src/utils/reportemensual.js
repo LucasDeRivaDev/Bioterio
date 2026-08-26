@@ -312,7 +312,7 @@ export function resumenInsumo(censos, ingresos, rango) {
 }
 
 // ── Clasificación de entregas por especie / sexo / edad / grupo ─────────────
-export function clasificarEntregas(bds) {
+export function clasificarEntregas(bds, rango) {
   const entries = []
   for (const [bioId, bd] of Object.entries(bds)) {
     const { entregas = [], animales = [], camadas = [], jaulas = [] } = bd
@@ -323,6 +323,7 @@ export function clasificarEntregas(bds) {
 
     for (const e of entregas) {
       if (e.devuelta) continue
+      if (!enRango(e.fecha, rango)) continue
       const cantidad = e.cantidad ?? 0
       if (cantidad <= 0) continue
 

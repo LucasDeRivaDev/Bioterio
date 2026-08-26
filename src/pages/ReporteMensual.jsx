@@ -182,8 +182,8 @@ export default function ReporteMensual() {
   }, [alimento, bdsConCutoff])
 
   const clasifEnt = useMemo(
-    () => (!datos ? null : clasificarEntregas(datos.bds)),
-    [datos]
+    () => (!datos ? null : clasificarEntregas(datos.bds, rango)),
+    [datos, rango]
   )
 
   function delta(actual, anterior) {
@@ -227,7 +227,6 @@ export default function ReporteMensual() {
         .rm-subsect-title { font-size: 8pt; font-weight: 700; color: #444; margin-bottom: 3pt; text-transform: uppercase; letter-spacing: 0.4pt; }
         .rm-highlight { background: #f0fdf4; border-left: 3pt solid #16a34a; padding: 4pt 6pt; margin: 4pt 0; }
         .rm-highlight-title { font-size: 7.5pt; font-weight: 700; color: #166534; margin-bottom: 2pt; }
-        .rm-kpi-grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 5pt; margin: 5pt 0 6pt; }
       `}</style>
 
       {/* Panel en pantalla */}
@@ -781,14 +780,14 @@ function SeccionResumenEspecie({ clasifEnt }) {
         </thead>
         <tbody>
           {especies.map(esp => {
-            const filas = sexos.map((sex, i) => {
+            const sexosConDatos = sexos.filter(sx => categorias.some(c => cell(esp, sx, c) > 0))
+            const filas = sexosConDatos.map((sex, i) => {
               const vals = categorias.map(c => cell(esp, sex, c))
               const rowTotal = vals.reduce((s, v) => s + v, 0)
-              if (rowTotal === 0) return null
               return (
                 <tr key={`${esp}-${sex}`}>
                   {i === 0 && (
-                    <td rowSpan={sexos.filter(sx => categorias.some(c => cell(esp, sx, c) > 0)).length + 1}
+                    <td rowSpan={sexosConDatos.length + 1}
                       style={{ fontWeight: 700, verticalAlign: 'top', borderBottom: 'none' }}>
                       {ESPECIE_CORTO[esp] ?? esp}
                     </td>
@@ -800,7 +799,7 @@ function SeccionResumenEspecie({ clasifEnt }) {
                   <td className="rm-num"><strong>{rowTotal > 0 ? fInt(rowTotal) : '—'}</strong></td>
                 </tr>
               )
-            }).filter(Boolean)
+            })
             const sub = totalEsp(esp)
             filas.push(
               <tr key={`${esp}-sub`} style={{ fontWeight: 700 }}>
