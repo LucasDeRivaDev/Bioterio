@@ -127,7 +127,19 @@ export function stockEnFecha(bd, T, cutoffAdultos) {
   }
 
   // Stock de camadas en T
-  const jaulaPorCamada = new Map(jaulas.map(j => [j.camada_id, j]))
+  // Agrega TODAS las jaulas reales por camada (una camada puede estar dividida en
+  // varias jaulas que comparten camada_id) sumando sus machos/hembras reales.
+  const jaulaPorCamada = new Map()
+  for (const j of jaulas) {
+    const prev = jaulaPorCamada.get(j.camada_id)
+    if (!prev) jaulaPorCamada.set(j.camada_id, { machos: j.machos ?? null, hembras: j.hembras ?? null })
+    else {
+      if (prev.machos == null && j.machos != null) prev.machos = 0
+      if (prev.hembras == null && j.hembras != null) prev.hembras = 0
+      if (j.machos != null) prev.machos = (prev.machos ?? 0) + j.machos
+      if (j.hembras != null) prev.hembras = (prev.hembras ?? 0) + j.hembras
+    }
+  }
   const stock = { crias: bucketVacio(), jovenes: bucketVacio(), adultos: bucketVacio() }
   let bloquesStock = 0
 
@@ -143,14 +155,13 @@ export function stockEnFecha(bd, T, cutoffAdultos) {
     const edad = c.fecha_nacimiento ? difDias(parseDate(c.fecha_nacimiento), parseDate(T)) : null
     const cat  = clasificarEdad(edad, cutoffAdultos)
 
-    // Fuente del reparto por sexo: proporción de la camada; si no registra,
-    // cae a los valores de la jaula real; si tampoco, queda sin sexo.
-    let refM = c.crias_machos ?? null
-    let refH = c.crias_hembras ?? null
-    if (refM == null && refH == null) {
-      const j = jaulaPorCamada.get(c.id)
-      if (j && (j.machos != null || j.hembras != null)) { refM = j.machos; refH = j.hembras }
-    }
+    // Fuente del reparto por sexo: prioriza el conteo REAL de la jaula (refleja
+    // entregas/sacrificios/divididas reales por sexo, igual a la sección Stock);
+    // si no hay jaula con sexo, cae a la proporción de crías nacidas de la camada.
+    const j = jaulaPorCamada.get(c.id)
+    let refM = null, refH = null
+    if (j && (j.machos != null || j.hembras != null)) { refM = j.machos; refH = j.hembras }
+    else { refM = c.crias_machos ?? null; refH = c.crias_hembras ?? null }
     acumularSexo(stock[cat], n, refM, refH)
     bloquesStock++
   }
@@ -315,9 +326,8 @@ export function resumenInsumo(censos, ingresos, rango) {
 export function clasificarEntregas(bds, rango) {
   const entries = []
   for (const [bioId, bd] of Object.entries(bds)) {
-    const { entregas = [], animales = [], camadas = [], jaulas = [] } = bd
+    const { entregas = [], animales = [], camadas = [] } = bd
     const camadaMap = new Map(camadas.map(c => [c.id, c]))
-    const jaulaMap = new Map(jaulas.map(j => [j.camada_id, j]))
     const animalMap = new Map(animales.map(a => [a.id, a]))
     const esRatas = bioId === 'ratas'
 
@@ -330,29 +340,15 @@ export function clasificarEntregas(bds, rango) {
       const esReproductor = !e.camada_id && e.animal_id
       const esStock = !!e.camada_id
 
-      let sexo = null
       let fechaNacimiento = null
 
       if (esStock) {
         const camada = camadaMap.get(e.camada_id)
         if (!camada) continue
-        if (e.machos != null && e.hembras != null) {
-          sexo = e.machos > e.hembras ? 'macho' : e.hembras > e.machos ? 'hembra' : 'mixto'
-        } else if (camada.crias_machos != null && camada.crias_hembras != null) {
-          sexo = camada.crias_machos > camada.crias_hembras ? 'macho'
-            : camada.crias_hembras > camada.crias_machos ? 'hembra' : 'mixto'
-        } else {
-          const jaula = jaulaMap.get(e.camada_id)
-          if (jaula && (jaula.machos != null || jaula.hembras != null)) {
-            sexo = (jaula.machos ?? 0) > (jaula.hembras ?? 0) ? 'macho'
-              : (jaula.hembras ?? 0) > (jaula.machos ?? 0) ? 'hembra' : 'mixto'
-          }
-        }
         fechaNacimiento = camada.fecha_nacimiento
       } else if (esReproductor) {
         const animal = animalMap.get(e.animal_id)
         if (!animal) continue
-        sexo = animal.sexo
         fechaNacimiento = animal.fecha_nacimiento
       } else {
         continue
@@ -362,14 +358,41 @@ export function clasificarEntregas(bds, rango) {
         ? difDias(parseDate(fechaNacimiento), parseDate(String(e.fecha).slice(0, 10)))
         : null
       const categoria = clasificarEdadEntrega(edadDias)
+      const base = { especie: esRatas ? 'ratas' : bioId, categoria, grupo: e.grupo_investigacion || 'Sin grupo' }
+      const pushEntrada = (sexo, cantidadSexo) =>
+        entries.push({ ...base, sexo: sexo || 'sin Sexo', cantidad: cantidadSexo })
 
-      entries.push({
-        especie: esRatas ? 'ratas' : bioId,
-        sexo: sexo || 'sin Sexo',
-        categoria,
-        grupo: e.grupo_investigacion || 'Sin grupo',
-        cantidad,
-      })
+      // Sexo REAL de lo entregado — nunca se inventa.
+      //  - Reproductor (animal individual): sexo conocido con certeza.
+      //  - Entrega de stock con machos/hembras registrados explícitamente: dato real.
+      //  - Entrega de stock sin sexo registrado: se muestra "sin Sexo".
+      //    OJO: antes se caía a la proporción de la camada/jaula y afirmaba
+      //    macho/hembra falso (ej.: entregas de hembras salían como "macho",
+      //    porque el fallback era la proporción de la camada completa). Cada
+      //    entrega registra SOLO la cantidad de animales, no su sexo, salvo que
+      //    la jaula tuviera sexo cargado. El sexo no debe deducirse del origen
+      //    (madre × padre) ni de la proporción de nacidos de la camada.
+      const m = e.machos != null ? Number(e.machos) : null
+      const h = e.hembras != null ? Number(e.hembras) : null
+
+      if (esReproductor) {
+        const animal = animalMap.get(e.animal_id)
+        pushEntrada(animal?.sexo ?? null, cantidad)
+        continue
+      }
+
+      // Entrega de stock con desglose explícito por sexo (real)
+      if (m != null && h != null) {
+        if (m > 0) pushEntrada('macho', m)
+        if (h > 0) pushEntrada('hembra', h)
+        continue
+      }
+
+      // Solo un campo presente → ese sexo; el resto de la cantidad sin sexo
+      let sexo = null
+      if (m != null && m > 0) sexo = 'macho'
+      else if (h != null && h > 0) sexo = 'hembra'
+      pushEntrada(sexo, cantidad)
     }
   }
 

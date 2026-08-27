@@ -689,7 +689,7 @@ function SeccionDetalleEntregas({ clasifEnt }) {
           </tr>
         </tbody>
       </table>
-      <p className="rm-foot">* Los datos provienen exclusivamente de los registros reales de entregas del sistema. Sexo determinado por proporción de la camada o registro del reproductor. Categoría por edad al momento de la entrega: Cría (&lt;6 sem), Joven (6–10 sem), Adulto (&gt;10 sem).</p>
+      <p className="rm-foot">* Los datos provienen exclusivamente de los registros reales de entregas del sistema. El sexo se informa solo cuando está registrado en la entrega (entrega de un reproductor individual o con machos/hembras cargados); en caso contrario figura "Sin sexo reg." — nunca se deduce de la camada ni de los progenitores. Categoría por edad al momento de la entrega: Cría (&lt;6 sem), Joven (6–10 sem), Adulto (&gt;10 sem).</p>
     </div>
   )
 }
@@ -822,7 +822,7 @@ function SeccionResumenEspecie({ clasifEnt }) {
         </tbody>
       </table>
       <p className="rm-foot">
-        * Sexo determinado por proporción de la camada o registro del reproductor. Categoría por edad al momento de la entrega: Crías (&lt;6 sem), Jóvenes (6–10 sem), Adultos (&gt;10 sem).
+        * El sexo se informa solo cuando está registrado en la entrega (reproductor individual o machos/hembras cargados); "-" o "s/sexo" indica que la entrega no registró sexo y no se deduce de la camada ni de los progenitores. Categoría por edad al momento de la entrega: Crías (&lt;6 sem), Jóvenes (6–10 sem), Adultos (&gt;10 sem).
       </p>
     </div>
   )

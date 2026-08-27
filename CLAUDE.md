@@ -258,6 +258,7 @@ extendidos
 - Devolver con "mantener historial" marca la entrega `devuelta: true` — sigue visible en /entregas (badge ✓ Devuelta, sin botón Devolver) pero deja de descontar en todos los `stockCamada` (Stock, ConsumoViruta, ConsumoAlimento, ResumenRatones, Calendario, motorDecisiones)
 - Campo `grupo_investigacion` (text, nullable) identifica el grupo receptor: Neurobiología, Inmunología Ambiental, Fisiopatología Uterina, Fisiopatología Glandular, Fisiopatología Ambiental, Endocrinología y Carcinogénesis, Ecofisiopatología, Biomarcadores. Select en ModalEntrega, badge teal 🔬 en historial, filtro de búsqueda incluido
 - El campo es informativo de trazabilidad — no modifica lógica de stock ni de devoluciones
+- **Sexo de las entregas en Reporte Mensual (`clasificarEntregas`):** cada entrega registra SOLO `cantidad` (el sexo `machos`/`hembras` solo se carga si la jaula tenía sexo). El reporte informa sexo únicamente cuando es un dato real — entrega de un reproductor individual (sexo del animal) o entrega de stock con `machos`/`hembras` explícitos → se divide en una entrada por sexo. Si la entrega no registra sexo → "sin Sexo"/"s/sexo", NUNCA se deduce de la proporción de la camada (`crias_machos`/`crias_hembras`) ni del origen `madre × padre` (progenitores). Lección: no inferir sexo de la entrega a partir de la camada — eso producía "X macho" falsos.
 
 **Temperatura:**
 - Queries directas con IDs fijos: ratas = `'ratas'`; ratones = `IN ['ratones', 'ratones_balbc', 'ratones_c57', 'ratones_hibridos']`
@@ -323,7 +324,7 @@ extendidos
 - **Reporte Mensual ejecutivo (24/08):** nuevo módulo global (Reportes → Vista Global, clave `reporte_mensual`, página sin sidebar). Resumen mensual para dirección con selector mes/año (default: último mes completo):
   - **Animales al cierre:** stock reconstruido a fecha T (`stockEnFecha` en `reportemensual.js`) — reproductores vivos (created_at/fecha_sacrificio/entregas) + camadas destetadas (base = total_destetados ?? total_crias, descontando sacrificios y entregas netas hasta T). Categorías por edad: crías <42d, jóvenes <70d ratones / <84d ratas. Sexo proporcional desde crias_machos/hembras, fallback jaula.machos/hembras, sino "sin sexo".
   - **Actividad reproductiva:** partos/crías nacidas/destetes/crías destetadas del período + marcador cuando hay camadas sin registro de cantidad.
-  - **Entregas y sacrificios:** animales y nº de registros (entregas netas; devueltas se informan aparte).
+  - **Entregas y sacrificios:** animales y nº de registros (entregas netas; devueltas se informan aparte). Sexo solo de registro real — reproductor individual o machos/hembras cargados; sin eso figura "sin Sexo" (nunca se deduce de la camada ni de los progenitores).
   - **Viruta y alimento:** stock físico al cierre (último censo ≤ fin + ingresos posteriores), ingresos del mes, consumo telescópico entre censos que acotan el período (prev.valor + Σ movs [prev, cur) − cur.valor), promedio mensual histórico (suma de consumos positivos ÷ meses span 30.44d), relación con colonia (bol./jaula/sem si intervalo ≥7d · g/an/día).
   - **Regla dura:** indicador sin registros suficientes → null → UI muestra literalmente "Sin datos suficientes". Nunca estimar.
   - Documento imprimible A4 (`window.print()`, CSS clases `rm-*` oculto en pantalla/visible en print) + deltas vs mes anterior bajo cada KPI.
