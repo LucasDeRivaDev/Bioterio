@@ -26,7 +26,7 @@ Sistema web de gestión de una colonia de ratones de laboratorio (*Mus musculus*
 | **Sacrificios** | Selección múltiple de jaulas desde stock para registrar sacrificios en masa, con cantidad parcial por jaula |
 | **Entregas** | Historial de animales entregados a investigadores, con buscador, resumen numérico, filtro por grupo de investigación y botón "Devolver" |
 | **Rendimiento** | Ranking de machos por latencia de fertilización (menor = mejor) con scores y alertas de edad |
-| **Estadísticas** | Dashboard visual con 4 gráficos: partos vs fallas, calidad de madres, supervivencia de camadas, eficiencia de apareamiento. KPIs resumen + filtros por fecha y reproductor. Indicador histórico \"Promedio de crías por camada\" por especie/cepa |
+| **Estadísticas** | Dashboard visual con 4 gráficos: partos vs fallas, calidad de madres, supervivencia de camadas, eficiencia de apareamiento. KPIs resumen + filtros por fecha y reproductor. Indicador histórico "Promedio de crías por camada" por especie/cepa |
 | **Temperatura** | 2 tabs fijos (Ratas / Ratones), registro diario (actual/mín/máx), vista mensual, exportación imprimible |
 | **Planificación** | Índice de estabilidad 0-100, mínimos por bioterio, proyección 30/60/90/180d, candidatos a renovación, simulador de impacto |
 | **Pedidos** | Gestión de pedidos de producción con estrategia automática: parejas necesarias, fechas óptimas, reproductores sugeridos, índice de viabilidad 0-100, escenarios A/B, calendario del pedido |
