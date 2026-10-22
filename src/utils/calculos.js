@@ -1258,3 +1258,38 @@ export function getEstadoCicloHembra(hembraId, camadasTodas) {
   if (ultimaCamada?.fecha_destete) return 'fin_ciclo'
   return 'ultimo_ciclo'
 }
+
+// ── Promedio de crías por camada (prolificidad histórica por especie/cepa) ───
+// Solo datos reales: promedio = Σ total_crias / camadas válidas.
+// Camada válida = parto con crías nacidas registradas (fecha_nacimiento + total_crias > 0,
+// sin failure_flag). Los partos fallidos/abortos NO entran como camada de 0.
+// `total_crias` es el número nacido en el parto: la mortalidad en lactancia
+// (total_destetados) y la reducción por manejo (crias_reducidas) se registran
+// aparte y no lo modifican.
+// Retorna { [bioterioId]: { camadas, totalCrias, promedio } } — promedio null si no hay camadas válidas.
+export const ESPECIES_PROLIFICIDAD = [
+  { id: 'ratas',            label: 'Rata Wistar' },
+  { id: 'ratones_balbc',    label: 'Ratón BALB/c' },
+  { id: 'ratones_c57',      label: 'Ratón C57BL/6' },
+  { id: 'ratones_hibridos', label: 'Ratones híbridos' },
+]
+
+export function esCamadaValidaProlificidad(c) {
+  return !!c.fecha_nacimiento && !c.failure_flag && Number(c.total_crias) > 0
+}
+
+export function calcularPromedioCriasPorCamada(camadas) {
+  const res = Object.fromEntries(
+    ESPECIES_PROLIFICIDAD.map(({ id }) => [id, { camadas: 0, totalCrias: 0, promedio: null }])
+  )
+  camadas.forEach((c) => {
+    const r = res[c.bioterio_id]
+    if (!r || !esCamadaValidaProlificidad(c)) return
+    r.camadas++
+    r.totalCrias += Number(c.total_crias)
+  })
+  Object.values(res).forEach((r) => {
+    if (r.camadas > 0) r.promedio = r.totalCrias / r.camadas
+  })
+  return res
+}

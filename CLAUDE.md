@@ -26,7 +26,7 @@ Sistema web de gestión de una colonia de ratones de laboratorio (*Mus musculus*
 | **Sacrificios** | Selección múltiple de jaulas desde stock para registrar sacrificios en masa, con cantidad parcial por jaula |
 | **Entregas** | Historial de animales entregados a investigadores, con buscador, resumen numérico, filtro por grupo de investigación y botón "Devolver" |
 | **Rendimiento** | Ranking de machos por latencia de fertilización (menor = mejor) con scores y alertas de edad |
-| **Estadísticas** | Dashboard visual con 4 gráficos: partos vs fallas, calidad de madres, supervivencia de camadas, eficiencia de apareamiento. KPIs resumen + filtros por fecha y reproductor |
+| **Estadísticas** | Dashboard visual con 4 gráficos: partos vs fallas, calidad de madres, supervivencia de camadas, eficiencia de apareamiento. KPIs resumen + filtros por fecha y reproductor. Indicador histórico \"Promedio de crías por camada\" por especie/cepa |
 | **Temperatura** | 2 tabs fijos (Ratas / Ratones), registro diario (actual/mín/máx), vista mensual, exportación imprimible |
 | **Planificación** | Índice de estabilidad 0-100, mínimos por bioterio, proyección 30/60/90/180d, candidatos a renovación, simulador de impacto |
 | **Pedidos** | Gestión de pedidos de producción con estrategia automática: parejas necesarias, fechas óptimas, reproductores sugeridos, índice de viabilidad 0-100, escenarios A/B, calendario del pedido |
@@ -240,6 +240,7 @@ extendidos
 - En Híbridos, Stock oculta tab "↑ Promover" y botón Promover en selección múltiple
 
 **Estadísticas:**
+- **Promedio de crías por camada:** `Σ total_crias / camadas válidas`. Válida = `fecha_nacimiento` + `total_crias > 0` + sin `failure_flag` (partos fallidos/abortos NO cuentan como camada de 0). Usa `total_crias` (nacidas en el parto): mortalidad en lactancia (`total_destetados`) y reducción (`crias_reducidas`) no lo alteran. Histórico completo de las 4 colonias (query Supabase), ignora los filtros de la página; el bioterio activo se toma del contexto para reflejar altas/ediciones al instante
 - Tasa de éxito = `efectivos / (efectivos + fallidos)` — excluye "en curso" del denominador
 - Madres con solo fallos (sin parto exitoso) → calidad "Baja", no "En proceso"
 - Conteo de animales activos en sidebar y Dashboard: `activo | en_apareamiento | en_cria`
@@ -318,6 +319,9 @@ extendidos
 ---
 
 ## Implementado recientemente
+
+### Octubre 2026
+- **Promedio de crías por camada (22/10):** nueva tarjeta en Estadísticas con la prolificidad histórica real por especie/cepa (Rata Wistar, Ratón BALB/c, Ratón C57BL/6, Ratones híbridos). Muestra camadas válidas, total de crías nacidas y promedio con 1 decimal; "Sin datos" si no hay camadas válidas. `calcularPromedioCriasPorCamada` + `ESPECIES_PROLIFICIDAD` en calculos.js.
 
 ### Agosto 2026
 - **Clasificación de entregas por grupo de investigación (25/08):** campo `grupo_investigacion` en entregas para identificar a qué grupo receptor pertenece cada entrega. 8 grupos fijos: Neurobiología, Inmunología Ambiental, Fisiopatología Uterina, Fisiopatología Glandular, Fisiopatología Ambiental, Endocrinología y Carcinogénesis, Ecofisiopatología, Biomarcadores. Select desplegable en ModalEntrega, badge teal con 🔬 en historial de /entregas, filtro de búsqueda incluido. Preparado para reportes futuros (entregas por grupo, animales por grupo, evolución mensual).

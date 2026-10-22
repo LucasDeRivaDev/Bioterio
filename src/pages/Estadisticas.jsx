@@ -1,7 +1,12 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 import { useBioterio } from '../context/BiotheriumContext'
-import { calcularLatencia, calcularEvaluacionMaterna, CATEGORIAS_MADRE } from '../utils/calculos'
+import { BIOTERIOS_CONFIG } from '../context/BioterioActivoContext'
+import {
+  calcularLatencia, calcularEvaluacionMaterna, CATEGORIAS_MADRE,
+  calcularPromedioCriasPorCamada, ESPECIES_PROLIFICIDAD,
+} from '../utils/calculos'
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer,
@@ -108,6 +113,43 @@ function SinDatos() {
   )
 }
 
+// ── Promedio de crías por camada (histórico, todas las especies) ─────────────
+function PromedioCriasCard({ resultado, cargando, error }) {
+  const { tema } = useTheme()
+  return (
+    <GraficoCard
+      titulo="Promedio de crías por camada"
+      subtitulo="Histórico de la colonia · crías nacidas en el parto (no se descuenta mortalidad en lactancia ni reducción) · excluye partos fallidos · no usa los filtros"
+      color={C.verde}
+    >
+      {error ? (
+        <div className="text-xs py-6 text-center" style={{ color: tema.red }}>No se pudo cargar el histórico: {error}</div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {ESPECIES_PROLIFICIDAD.map(({ id, label }) => {
+            const r = resultado?.[id]
+            const color = BIOTERIOS_CONFIG[id]?.color ?? C.azul
+            return (
+              <div key={id} className="rounded-xl px-4 py-3"
+                style={{ background: tema.bgMain, border: `1px solid ${color}28` }}>
+                <div className="text-xs font-semibold uppercase tracking-widest" style={{ color }}>{label}</div>
+                <div className="text-2xl font-mono font-bold mt-2" style={{ color: r?.promedio != null ? color : tema.textMuted }}>
+                  {cargando ? '…' : r?.promedio != null ? r.promedio.toFixed(1).replace('.', ',') : 'Sin datos'}
+                </div>
+                <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>crías / camada</div>
+                <div className="text-xs mt-2 space-y-0.5" style={{ color: tema.textSecondary }}>
+                  <div>Camadas válidas: <span className="font-mono font-bold">{cargando ? '…' : r?.camadas ?? 0}</span></div>
+                  <div>Crías nacidas: <span className="font-mono font-bold">{cargando ? '…' : r?.totalCrias ?? 0}</span></div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </GraficoCard>
+  )
+}
+
 // ── PÁGINA PRINCIPAL ──────────────────────────────────────────────────────────
 export default function Estadisticas() {
   const navigate = useNavigate()
@@ -138,6 +180,30 @@ export default function Estadisticas() {
     () => camadasF1.length > 0 ? [...camadas, ...camadasF1] : camadas,
     [camadas, camadasF1]
   )
+
+  // ── Promedio de crías por camada: histórico de las 4 colonias ──────────────
+  // Supabase trae todas las especies; el bioterio activo se toma del contexto
+  // (estado vivo) para que el indicador refleje al instante altas/ediciones de camadas.
+  const [camadasGlobal, setCamadasGlobal] = useState(null)
+  const [errorGlobal,   setErrorGlobal]   = useState(null)
+  useEffect(() => {
+    supabase
+      .from('camadas')
+      .select('id,bioterio_id,fecha_nacimiento,total_crias,failure_flag')
+      .in('bioterio_id', ESPECIES_PROLIFICIDAD.map((e) => e.id))
+      .then(({ data, error }) => {
+        if (error) setErrorGlobal(error.message)
+        else setCamadasGlobal(data ?? [])
+      })
+  }, [])
+  const promedioCrias = useMemo(() => {
+    if (!camadasGlobal) return null
+    const delActivo = camadas.map((c) => ({ ...c, bioterio_id: c.bioterio_id ?? bioterioActivo }))
+    return calcularPromedioCriasPorCamada([
+      ...camadasGlobal.filter((c) => c.bioterio_id !== bioterioActivo),
+      ...delActivo,
+    ])
+  }, [camadasGlobal, camadas, bioterioActivo])
 
   const hembras = animalesParaFiltros.filter((a) => a.sexo === 'hembra')
   const machos  = animalesParaFiltros.filter((a) => a.sexo === 'macho')
@@ -345,6 +411,9 @@ export default function Estadisticas() {
           sub="apareamientos 0–5 días"
         />
       </div>
+
+      {/* Promedio de crías por camada */}
+      <PromedioCriasCard resultado={promedioCrias} cargando={!promedioCrias && !errorGlobal} error={errorGlobal} />
 
       {/* Gráficos — 2×2 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
