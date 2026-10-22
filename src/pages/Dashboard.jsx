@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useBioterio } from '../context/BiotheriumContext'
-import { generarTareas, formatFecha, calcularRangoParto, difDias, parseDate, hoy, generarAlertasEstrales, generarAlertasMachos, generarIdentificadorCamada, esCamadaPreniada } from '../utils/calculos'
+import { generarTareas, formatFecha, calcularRangoParto, difDias, parseDate, hoy, sumarDias, generarAlertasEstrales, generarAlertasMachos, generarIdentificadorCamada, esCamadaPreniada } from '../utils/calculos'
 import { INTERVALO_RENOVACION_DIAS } from '../utils/constants'
 import { getPlanes, completarPlan as completarPlanDB, eliminarPlan, getNotas, actualizarNota, eliminarNota as eliminarNotaDB, dbReady } from '../utils/db'
 import { supabase } from '../lib/supabase'
@@ -224,7 +224,11 @@ function StatCard({ valor, label, icono, color }) {
 
 // ── Tareas descartadas ────────────────────────────────────────────────────────
 // Por bioterio y con expiración: una tarea descartada reaparece a los 30 días si sigue vigente.
-// Formato nuevo: { [tareaId]: 'YYYY-MM-DD' } en appMosca_tareas_descartadas_{bioterioId}
+// Se guardan en Supabase (tabla `tareas_descartadas`, una fila por bioterio+tarea) para que
+// descartar una alerta valga para todos los usuarios/dispositivos.
+// localStorage (`appMosca_tareas_descartadas_{bioterioId}`, formato { [tareaId]: 'YYYY-MM-DD' })
+// queda solo como respaldo: si la tabla no existe o falla la escritura, se guarda ahí y se
+// sube a Supabase en la próxima carga exitosa.
 
 const LS_KEY_DESCARTADAS = 'appMosca_tareas_descartadas'
 const DESCARTE_EXPIRA_DIAS = 30
@@ -260,19 +264,65 @@ function migrarDescartadasViejas() {
   } catch { /* JSON inválido en localStorage — ignorar */ }
 }
 
-function cargarDescartadas(bioterioId) {
-  migrarDescartadasViejas()
+function leerDescartadasLS(bioterioId) {
+  try { return JSON.parse(localStorage.getItem(keyDescartadas(bioterioId)) || '{}') } catch { return {} }
+}
+
+function guardarDescartadaLS(bioterioId, id, fecha) {
+  try {
+    const mapa = leerDescartadasLS(bioterioId)
+    mapa[id] = fecha
+    localStorage.setItem(keyDescartadas(bioterioId), JSON.stringify(mapa))
+  } catch { /* storage bloqueado — ignorar */ }
+}
+
+function filtrarVigentes(mapa) {
   const hoyDate = parseDate(hoy())
-  let mapa = {}
-  try { mapa = JSON.parse(localStorage.getItem(keyDescartadas(bioterioId)) || '{}') } catch { /* JSON inválido en localStorage — ignorar */ }
   const vigentes = {}
   Object.entries(mapa).forEach(([id, fecha]) => {
     if (difDias(parseDate(fecha), hoyDate) < DESCARTE_EXPIRA_DIAS) vigentes[id] = fecha
   })
-  if (Object.keys(vigentes).length !== Object.keys(mapa).length) {
-    localStorage.setItem(keyDescartadas(bioterioId), JSON.stringify(vigentes))
-  }
   return vigentes
+}
+
+async function cargarDescartadas(bioterioId) {
+  migrarDescartadasViejas()
+  const local = filtrarVigentes(leerDescartadasLS(bioterioId))
+  const desde = sumarDias(parseDate(hoy()), -(DESCARTE_EXPIRA_DIAS - 1)).toISOString().slice(0, 10)
+
+  const { data, error } = await supabase
+    .from('tareas_descartadas')
+    .select('tarea_id, fecha')
+    .eq('bioterio_id', bioterioId)
+    .gte('fecha', desde)
+  // Tabla aún no creada (SQL no ejecutado) o error de red → seguir con localStorage
+  if (error) {
+    console.warn('[dashboard] tareas_descartadas no disponible, usando localStorage:', error.message)
+    return local
+  }
+
+  const remoto = Object.fromEntries((data ?? []).map((r) => [r.tarea_id, r.fecha]))
+
+  // Limpieza de descartes ya expirados (best-effort, no bloquea la carga)
+  supabase.from('tareas_descartadas').delete().eq('bioterio_id', bioterioId).lt('fecha', desde)
+    .then(({ error: errDel }) => { if (errDel) console.warn('[dashboard] limpieza de descartadas:', errDel.message) })
+
+  // Subir lo que estaba solo en este navegador. Si ya existe en Supabase no se pisa.
+  const pendientes = Object.entries(local).filter(([id]) => !(id in remoto))
+  if (pendientes.length) {
+    const { error: errUp } = await supabase
+      .from('tareas_descartadas')
+      .upsert(
+        pendientes.map(([tarea_id, fecha]) => ({ bioterio_id: bioterioId, tarea_id, fecha })),
+        { onConflict: 'bioterio_id,tarea_id', ignoreDuplicates: true }
+      )
+    if (errUp) console.warn('[dashboard] no se pudieron subir descartadas locales:', errUp.message)
+    else { try { localStorage.removeItem(keyDescartadas(bioterioId)) } catch { /* ignorar */ } }
+  } else if (Object.keys(leerDescartadasLS(bioterioId)).length) {
+    try { localStorage.removeItem(keyDescartadas(bioterioId)) } catch { /* ignorar */ }
+  }
+
+  return { ...local, ...remoto }
 }
 
 export default function Dashboard() {
@@ -285,17 +335,21 @@ export default function Dashboard() {
   const [descartadas, setDescartadas] = useState({})
 
   useEffect(() => {
-    // Sync intencional: recargar las descartadas de localStorage al cambiar de bioterio
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (bioterioActivo) setDescartadas(cargarDescartadas(bioterioActivo))
+    if (!bioterioActivo) return
+    let cancelado = false
+    cargarDescartadas(bioterioActivo).then((mapa) => { if (!cancelado) setDescartadas(mapa) })
+    return () => { cancelado = true }
   }, [bioterioActivo])
 
-  function descartarTarea(id) {
-    setDescartadas((prev) => {
-      const nuevo = { ...prev, [id]: hoy() }
-      localStorage.setItem(keyDescartadas(bioterioActivo), JSON.stringify(nuevo))
-      return nuevo
-    })
+  async function descartarTarea(id) {
+    const fecha = hoy()
+    const bioId = bioterioActivo
+    setDescartadas((prev) => ({ ...prev, [id]: fecha }))
+    const { error } = await supabase
+      .from('tareas_descartadas')
+      .upsert({ bioterio_id: bioId, tarea_id: id, fecha }, { onConflict: 'bioterio_id,tarea_id' })
+    // Si Supabase falla, queda en localStorage y se sube en la próxima carga
+    if (error) guardarDescartadaLS(bioId, id, fecha)
   }
 
   const [mostrarRenovacion, setMostrarRenovacion] = useState(false)

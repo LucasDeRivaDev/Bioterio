@@ -251,7 +251,7 @@ extendidos
 - Conversiones de fechas ya calculadas con `parseDate` (T12:00) + `sumarDias` pueden usar `toISOString()` sin riesgo
 
 **Tareas del Dashboard:**
-- Descartadas: por bioterio en LS (`appMosca_tareas_descartadas_{bioId}`), formato `{ [tareaId]: fechaDescarte }`, expiran a los 30 días (la tarea reaparece si sigue vigente). La key vieja global se migra automáticamente
+- Descartadas: Supabase tabla `tareas_descartadas` (PK `bioterio_id + tarea_id`, `fecha` = día del descarte), compartidas entre usuarios/dispositivos. Expiran a los 30 días (la tarea reaparece si sigue vigente; filas expiradas se borran al cargar). localStorage `appMosca_tareas_descartadas_{bioId}` es solo respaldo: si la tabla no existe o falla la escritura se guarda ahí y se sube (upsert `ignoreDuplicates`) en la próxima carga exitosa. SQL: `supabase_migration_tareas_descartadas.sql`
 - IDs de edad de macho separados: `macho-edad-prox-*` (preventiva) y `macho-edad-limite-*` (crítica) — descartar una no oculta la otra
 - Preñez fantasma: tarea tipo `revision` (vencida) cuando hoy > partoMax + 3d sin `fecha_nacimiento` ni `failure_flag`
 
@@ -422,8 +422,9 @@ Migración hecha — las features que antes vivían en localStorage ya usan esta
 | Ingresos de alimento | `alimento_ingresos` | `ConsumoAlimento.jsx` |
 | Reposiciones de alimento | `alimento_reposiciones` | `ConsumoAlimento.jsx` |
 | Estimaciones de alimento | `alimento_estimaciones` | `ConsumoAlimento.jsx` |
+| Alertas/tareas descartadas del Dashboard | `tareas_descartadas` | `Dashboard.jsx` (sube lo que haya en LS en la próxima carga) |
 
-En localStorage solo quedan preferencias de UI (tema `appMosca_brillo`, ficha biológica, `bioterio_activo`, alertas descartadas).
+En localStorage solo quedan preferencias de UI (tema `appMosca_brillo`, ficha biológica, `bioterio_activo`).
 
 **SQL pendiente para pedidos (campo meta):**
 ```sql
