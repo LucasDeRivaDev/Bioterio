@@ -113,7 +113,7 @@ export default function Landing() {
   }, [])
 
   // Guarda la solicitud de demo en la tabla `contactos` de Supabase.
-  // SQL necesaria (ver CLAUDE.md — SQL pendiente):
+  // SQL necesaria (ya aplicada — ver supabase_setup.sql / CLAUDE.md):
   //   CREATE TABLE IF NOT EXISTS contactos (
   //     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   //     nombre text NOT NULL,

@@ -426,65 +426,8 @@ Migración hecha — las features que antes vivían en localStorage ya usan esta
 
 En localStorage solo quedan preferencias de UI (tema `appMosca_brillo`, ficha biológica, `bioterio_activo`).
 
-**SQL pendiente para pedidos (campo meta):**
-```sql
-ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS meta jsonb DEFAULT '{}';
-```
-Necesario para que funcionen los campos: modalidad, soloVirgenes, cantidadPorTanda, frecuenciaDias, tandasTotal.
-
-**SQL pendiente para devolución de entregas (campo devuelta):**
-```sql
-ALTER TABLE entregas ADD COLUMN IF NOT EXISTS devuelta boolean DEFAULT false;
-```
-Necesario para que "Devolver al stock manteniendo historial" deje de descontar la entrega en stockCamada.
-
-**SQL pendiente para grupo de investigación (campo grupo_investigacion):**
-```sql
-ALTER TABLE entregas ADD COLUMN IF NOT EXISTS grupo_investigacion text;
-```
-Necesario para clasificar entregas por grupo de investigación receptor. Archivo: `supabase_migration_grupo_investigacion.sql`.
-
-**SQL pendiente para RLS de incidentes (sin esto NO se pueden crear incidentes):**
-```sql
-ALTER TABLE incidentes ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Solo usuarios autenticados" ON incidentes;
-CREATE POLICY "Solo usuarios autenticados"
-  ON incidentes FOR ALL
-  USING (auth.role() = 'authenticated')
-  WITH CHECK (auth.role() = 'authenticated');
-```
-La tabla `incidentes` quedó con RLS habilitado pero sin política → SELECT devuelve `[]` sin error e INSERT/UPDATE/DELETE fallan con `42501`. Archivo: `supabase_migration_incidentes_rls.sql`.
-
-**SQL pendiente para tipo de `incidentes.animal_ids` (sin esto falla con crías en stock):**
-```sql
-ALTER TABLE incidentes
-  ALTER COLUMN animal_ids TYPE text[] USING animal_ids::text[];
-```
-`animal_ids` debe ser `text[]` porque guarda tanto UUIDs de reproductores como pseudo-ids `stock:<camada_id>:<sexo>` de grupos de crías. Con `uuid[]` falla: `invalid input syntax for type uuid`. La columna singular `animal_id` sigue siendo uuid (FK). Archivo: `supabase_migration_incidentes_animal_ids.sql`.
-
-**SQL pendiente para reducción de camada (campos en camadas):**
-```sql
-ALTER TABLE camadas
-  ADD COLUMN IF NOT EXISTS crias_reducidas integer,
-  ADD COLUMN IF NOT EXISTS reduccion_fecha date,
-  ADD COLUMN IF NOT EXISTS reduccion_motivo text,
-  ADD COLUMN IF NOT EXISTS reduccion_notas text;
-```
-Necesario para que la reducción de camada por manejo no se contabilice como mortalidad en los scores de supervivencia ni en la evaluación materna.
-
-**SQL pendiente para el formulario "Solicitar demo" de la landing (tabla contactos):**
-```sql
-CREATE TABLE IF NOT EXISTS contactos (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  nombre text NOT NULL,
-  institucion text,
-  email text NOT NULL,
-  mensaje text,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-ALTER TABLE contactos ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "insert publico" ON contactos FOR INSERT TO anon WITH CHECK (true);
-```
+**Migraciones SQL históricas: todas aplicadas (verificado en producción el 22/10/2026).**
+`pedidos.meta`, `entregas.devuelta`, `entregas.grupo_investigacion`, columnas de reducción en `camadas`, columnas extendidas de `incidentes`, `incidentes.animal_ids` como `text[]`, RLS + política de `incidentes`, tabla `contactos` con insert público y tabla `tareas_descartadas`. Los archivos `supabase_migration_*.sql` de la raíz quedan como registro de lo ejecutado.
 
 ---
 
