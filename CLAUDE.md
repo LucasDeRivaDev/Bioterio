@@ -272,8 +272,8 @@ extendidos
 - Badges y alertas de acción ("sacrificar", "reemplazar") solo en `estado ∈ ['activo', 'en_apareamiento', 'en_cria']`
 - Recordatorio de renovación en Supabase tabla `configuracion`, clave por bioterio `machos_reno_ts_{bioterioActivo}` (fallback de lectura a la clave global vieja `machos_reno_ts`). Botón ✓ lo reinicia
 
-**Planes de apareamiento (localStorage):**
-- Key: `appMosca_apareamientos_{bioterioActivo}`. Creados desde Stock o Calendario
+**Planes de apareamiento (Supabase `planes_apareamiento`, vía `db.js`):**
+- Cache en memoria por bioterio (`getPlanes(bioId)`), cargado por `inicializarDB`. Creados desde Stock o Calendario
 - `getAnimalesReservados` → reproductores reservados. `getJaulasReservadas` → jaulas de stock reservadas
 - `getReservadosParaHibridos(bioterioId)` → animales/jaulas de BAL/C o C57 con destino F1
 - Planes F1 en Calendario llevan `bioterioOrigen` en cada fuente y se muestran como `🧬 F1: X × Y`
@@ -285,17 +285,17 @@ extendidos
 - Censos = única fuente del aprendizaje adaptativo. Ingresos/compras suman al stock sin alterar historial
 - `stockActual = ultimoCenso + sum(ingresos donde fecha >= ultimoCenso.fecha)`
 - **Compra de viruta con conteo físico (`ConsumoViruta.jsx`):** `ModalCompra` pide, además de las bolsas ingresadas, un campo obligatorio "¿Cuántas bolsas hay disponibles ahora?". `registrarCompra(fecha, bolsas, stockDisponible)` inserta la compra en `viruta_compras` **y además** crea un censo en `viruta_censos` (misma fecha, `hora: horaActual()`, `bolsas: stockDisponible`, sin `cambioCama`). El conteo físico informado por el usuario siempre tiene prioridad sobre el cálculo teórico y pasa a ser la nueva base de `stockActual` y de todas las proyecciones futuras (mismo mecanismo que un censo manual).
-- LS keys viruta: `appMosca_viruta_censos` + `appMosca_viruta_compras`
+- Viruta vive en Supabase (`viruta_censos`/`viruta_compras`). Las LS keys viejas `appMosca_viruta_censos`/`appMosca_viruta_compras` solo se leen una vez para la migración automática y se borran
 - `cambioCama` embebido en cada censo: `{ tipo: 'si'|'no'|'parcial', bioteriosAfectados: string[] }`
 - Calibración ponderada por confirmaciones: ×1.5 (ambos confirmados) / ×1.0 (uno) / ×0.6 (ninguno)
 - `confianzaModelo`: 65% base → +30% proporcional a censos en días de cambio que están confirmados
 - `avisoRelleno` suprimido si `ultimoCenso.cambioCama.tipo === 'no'`
-- LS keys alimento: `appMosca_alimento_censos` + `appMosca_alimento_ingresos` + `appMosca_alimento_reposiciones`
+- Alimento vive en Supabase. Las LS keys viejas `appMosca_alimento_censos`/`_ingresos`/`_reposiciones` solo se leen una vez para la migración automática y se borran
 - **Reposición confirmada vs declarada:** `reposicionesEnPeriodo > 0` (confirmada standalone) toma prioridad total sobre `censoActual.rellenoKg` (declarado en censo). `fuenteRelleno: 'confirmado' | 'declarado' | 'ninguno'`. Pesos EWMA: confirmado → ×1.4; `bonusConfirmados = min(15, nConfirmados × 5)` puntos extra de confianza.
 - **Aprendizaje por categoría (alimento):** cada censo guarda `composicion: { lactantes, repro, crias, jovenes, adultos }` con `{ count, totalGDia }`. El `useMemo calibracion` computa un factor EWMA independiente por categoría. Solo se actualiza cuando la categoría tuvo animal-días > 0 entre los dos censos. Categorías nunca observadas mantienen el valor bibliográfico. `consumoAjustado` suma las contribuciones con sus factores individuales. La UI muestra tabla "Modelo adaptativo por categoría" con Bibliográfico → Adaptado → Confianza → Animal-días.
 
 **Notas del calendario:**
-- LS key: `appMosca_notas_{bioterioActivo}`. Estructura: `{ id, bioterioActivo, fecha, titulo, descripcion, completada, created_at }`
+- Supabase tabla `notas` (vía `db.js`, `getNotas(bioId)` lee del cache en memoria). Campos: `id, bioterio_id, fecha, titulo, descripcion, completada, created_at`
 - Dashboard muestra notas con `fecha <= hoy` y `completada: false`
 
 **ResumenRatones:**

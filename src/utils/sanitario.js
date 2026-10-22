@@ -1846,8 +1846,10 @@ export function getAnimalesProblematicosGenea(alertasGenea) {
 // SQL — Referencia para Supabase
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// ⚠️ NOTA IMPORTANTE: Las siguientes tablas aún usan localStorage y DEBEN
-//    migrarse a Supabase. Crear estas tablas antes de la migración:
+// Referencia histórica: la migración localStorage → Supabase ya está hecha
+// (notas/planes/reservas vía db.js; insumos en viruta_*/alimento_*).
+// Los nombres reales de las tablas de insumos son viruta_censos, viruta_compras,
+// alimento_censos, etc. — ver CLAUDE.md. SQL original:
 //
 // -- Notas / recordatorios del dashboard
 // CREATE TABLE IF NOT EXISTS notas (
