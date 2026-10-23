@@ -7,6 +7,7 @@ import { BioterioActivoProvider, useBioterioActivo } from './context/BioterioAct
 import { ThemeProvider, useTheme } from './context/ThemeContext'
 import Sidebar from './components/Sidebar'
 import { Loader2, Menu, Moon, Sun } from 'lucide-react'
+import Marca from './components/Marca'
 import SelectorBioterio from './pages/SelectorBioterio'
 import ResumenRatones from './pages/ResumenRatones'
 import ConsumoAlimento from './pages/ConsumoAlimento'
@@ -36,7 +37,7 @@ import Landing from './pages/Landing'
 function PantallaCarga() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ background: 'var(--canvas)' }}>
-      <img src="/apple-touch-icon.png" alt="" width="48" height="48" className="h-12 w-12 rounded-lg" />
+      <Marca pieza="completo" alto={150} />
       <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--ink-soft)' }} role="status">
         <Loader2 size={16} className="animate-spin" />
         Verificando acceso…
@@ -104,6 +105,11 @@ function AppLayout() {
         {/* Contenido principal */}
         <main className="flex-1 overflow-auto min-w-0 flex flex-col">
 
+          {/* Logo de marca en la esquina inferior derecha (solo escritorio) */}
+          <div className="no-print hidden md:block fixed bottom-4 right-4 z-10 pointer-events-none" style={{ opacity: 0.55 }}>
+            <Marca pieza="icono" alto={64} decorativa />
+          </div>
+
           {/* Topbar solo en mobile */}
           <TopbarMovil onMenu={() => setSidebarAbierto(true)} />
 
@@ -150,8 +156,8 @@ export function TopbarMovil({ onMenu, children }) {
       >
         <Menu size={20} />
       </button>
-      <img src="/apple-touch-icon.png" alt="" width="28" height="28" className="h-7 w-7 rounded" />
-      <span className="font-cond font-semibold text-base" style={{ color: tema.textPrimary }}>ITeRatE</span>
+      <Marca pieza="isotipo" alto={30} decorativa />
+      <Marca pieza="logotipo" alto={26} />
       {children}
     </div>
   )

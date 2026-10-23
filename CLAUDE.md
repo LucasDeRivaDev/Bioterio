@@ -121,6 +121,7 @@ src/
 - **Pantallas reescritas con el kit:** Landing, Login + `CrearPassword` (exportado de Login.jsx y usado también en App.jsx), SelectorBioterio (tarjetas por colonia con barra del color de la colonia + lista de vistas globales).
 - **Clases globales en index.css para páginas con estilos inline:** `.btn-primario` (fuerza tinta invertida sobre botones tintados; usar en la acción principal de cada pantalla/modal), `.chip` (pestañas/filtros de los helpers `btnTab`/`btnSubTab`).
 - **Etiquetas:** en pantalla, `uppercase` y `textTransform: 'uppercase'` inline se anulan (tipo oración, sin tracking), como en ICIVET. En impresión no se tocan.
+- **Marca:** los logos originales se mantienen en todos sus lugares (sidebar, barra mobile, logo de esquina, carga, login, selector, landing). `src/components/Marca.jsx` (`pieza`: `isotipo` antena sola · `icono` antena con circuitos · `logotipo` nombre + eslogan · `completo`) elige la versión oscura o clara según el tema. Los PNG de `src/assets/marca/` son versiones recortadas y con fondo transparente generadas con `node scripts/generar-marca.mjs` desde los originales de `src/assets/` (que siguen siendo la fuente y se usan tal cual en los PDF de Reportes). Si cambia un logo original, regenerar.
 - Respaldo previo al rediseño: tag `respaldo-pre-estetica-icivet`.
 
 ---

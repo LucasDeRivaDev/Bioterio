@@ -3,6 +3,7 @@ import { useBioterioActivo, BIOTERIOS_CONFIG } from '../context/BioterioActivoCo
 import { BarChart3, ChevronRight, Gauge, GitBranch, Layers, Wheat } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTheme } from '../context/ThemeContext'
+import Marca from '../components/Marca'
 import { supabase } from '../lib/supabase'
 import { hoy, parseDate, sumarDias } from '../utils/calculos'
 
@@ -71,17 +72,15 @@ export default function SelectorBioterio() {
   return (
     <div className="min-h-screen bg-canvas px-4 py-8 sm:px-6 lg:py-12">
       <div className="mx-auto w-full max-w-5xl">
-        <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
-            <img src="/apple-touch-icon.png" alt="" width="56" height="56" className="h-14 w-14 rounded-lg" />
-            <div>
-              <h1 className="font-cond text-3xl font-semibold text-ink">Seleccioná el bioterio</h1>
-              <p className="text-ink-soft">¿Con qué colonia vas a trabajar hoy?</p>
-            </div>
-          </div>
-          <button onClick={() => navigate('/inicio')} className="self-start text-sm text-ink-soft hover:text-ink sm:self-auto">
+        <div className="mb-2 flex justify-end">
+          <button onClick={() => navigate('/inicio')} className="text-sm text-ink-soft hover:text-ink">
             ← Ver página de inicio
           </button>
+        </div>
+        <header className="mb-8 flex flex-col items-center text-center">
+          <Marca pieza="completo" alto={170} />
+          <h1 className="mt-6 font-cond text-3xl font-semibold text-ink">Seleccioná el bioterio</h1>
+          <p className="text-ink-soft">¿Con qué colonia vas a trabajar hoy?</p>
         </header>
 
         {/* Colonias: el color de cada una es su identidad en toda la app */}
@@ -143,6 +142,10 @@ export default function SelectorBioterio() {
             ))}
           </ul>
         </section>
+
+        <footer className="mt-12 flex justify-center opacity-80">
+          <Marca pieza="logotipo" alto={56} />
+        </footer>
       </div>
     </div>
   )

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../context/ThemeContext'
 import { Aviso, Boton, Campo, Entrada } from '../components/ui'
+import Marca from '../components/Marca'
 import {
   Dna, BarChart2, Archive, Calendar, Skull, Printer, GraduationCap, Microscope, FlaskConical, Building2, Check, ArrowRight,
 } from 'lucide-react'
@@ -62,7 +63,7 @@ function CicloReproductivo() {
   return (
     <div className="rounded-xl border border-line bg-surface">
       <div className="flex items-center gap-3 border-b border-line-soft px-5 py-4">
-        <img src="/apple-touch-icon.png" alt="" width="32" height="32" className="h-8 w-8 rounded-md" />
+        <Marca pieza="isotipo" alto={36} decorativa />
         <div>
           <p className="font-cond text-lg font-semibold text-ink">Ciclo reproductivo</p>
           <p className="text-xs text-ink-soft">Cada paso genera sus tareas y alertas</p>
@@ -148,9 +149,9 @@ export default function Landing() {
       {/* ── NAVBAR ── */}
       <nav className="sticky top-0 z-40 border-b border-line bg-canvas/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-4 sm:px-6">
-          <a href="#" className="flex items-center gap-2.5 no-underline">
-            <img src="/apple-touch-icon.png" alt="" width="32" height="32" className="h-8 w-8 rounded-md" />
-            <span className="font-cond text-lg font-semibold text-ink">ITeRatE</span>
+          <a href="#" className="flex items-center gap-2 no-underline">
+            <Marca pieza="isotipo" alto={40} decorativa />
+            <Marca pieza="logotipo" alto={34} className="hidden sm:block" />
           </a>
           <div className="hidden items-center gap-1 md:flex">
             {[['#features', 'Funciones'], ['#como-funciona', '¿Cómo funciona?'], ['#pricing', 'Planes']].map(([href, label]) => (
@@ -192,7 +193,10 @@ export default function Landing() {
               ))}
             </dl>
           </div>
-          <CicloReproductivo />
+          {/* Logo de marca original */}
+          <div className="hidden justify-center lg:flex">
+            <Marca pieza="completo" alto={400} />
+          </div>
         </div>
       </section>
 
@@ -219,15 +223,20 @@ export default function Landing() {
 
       {/* ── CÓMO FUNCIONA ── */}
       <Seccion id="como-funciona" titulo="¿Cómo funciona?" descripcion="Simple desde el primer día.">
-        <ol className="grid gap-4 md:grid-cols-3">
-          {PASOS.map(([n, titulo, desc]) => (
-            <li key={n} className="rounded-lg border border-line bg-surface p-5">
-              <span className="font-cond text-3xl font-semibold text-ink-faint">{n}</span>
-              <h3 className="mt-3 text-base font-semibold text-ink">{titulo}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink-soft">{desc}</p>
-            </li>
-          ))}
-        </ol>
+        <div className="grid items-start gap-6 lg:grid-cols-2">
+          <ol className="space-y-4">
+            {PASOS.map(([n, titulo, desc]) => (
+              <li key={n} className="flex gap-4 rounded-lg border border-line bg-surface p-5">
+                <span className="font-cond text-3xl font-semibold leading-none text-ink-faint">{n}</span>
+                <span>
+                  <h3 className="text-base font-semibold text-ink">{titulo}</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-ink-soft">{desc}</p>
+                </span>
+              </li>
+            ))}
+          </ol>
+          <CicloReproductivo />
+        </div>
       </Seccion>
 
       {/* ── PARA QUIÉN ── */}
@@ -303,14 +312,10 @@ export default function Landing() {
       </Seccion>
 
       {/* ── FOOTER ── */}
-      <footer className="px-4 py-8 sm:px-6">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
-          <span className="flex items-center gap-2.5">
-            <img src="/apple-touch-icon.png" alt="" width="24" height="24" className="h-6 w-6 rounded" />
-            <span className="font-cond font-semibold text-ink">ITeRatE</span>
-            <span className="hidden text-sm text-ink-faint sm:inline">Intelligence Telemetry for Rats Evaluation</span>
-          </span>
-          <span className="text-sm text-ink-faint">© 2026 ITeRatE</span>
+      <footer className="border-t border-line px-4 py-10 sm:px-6">
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-4">
+          <Marca pieza="logotipo" alto={90} />
+          <span className="self-end text-sm text-ink-faint">© 2026 ITeRatE</span>
         </div>
       </footer>
     </div>

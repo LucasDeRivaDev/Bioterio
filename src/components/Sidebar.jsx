@@ -9,6 +9,7 @@ import {
   BookOpen, Sun, Moon,
 } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
+import Marca from './Marca'
 import { esCamadaPreniada, parseDate, hoy } from '../utils/calculos'
 
 const LINK_INICIO   = { to: '/inicio', label: 'Inicio',       icon: <Home size={16} /> }
@@ -229,12 +230,9 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
       aria-label="Navegación principal"
     >
       {/* Marca */}
-      <div className="flex items-center gap-3 px-5 pt-5 pb-4">
-        <img src="/apple-touch-icon.png" alt="" width="36" height="36" className="h-9 w-9 rounded-md" />
-        <div className="leading-tight min-w-0">
-          <p className="font-cond text-lg font-semibold" style={{ color: tema.textPrimary }}>ITeRatE</p>
-          <p className="text-xs truncate" style={{ color: tema.textSecondary }}>Gestión de colonias</p>
-        </div>
+      <div className="flex items-center gap-2.5 px-4 pt-5 pb-4">
+        <Marca pieza="isotipo" alto={44} decorativa />
+        <Marca pieza="logotipo" alto={42} />
       </div>
 
       {/* Bioterio activo: el color de la colonia es su identidad */}

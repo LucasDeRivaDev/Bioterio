@@ -2,16 +2,14 @@ import { useState, useEffect } from 'react'
 import { Eye, EyeOff, Lock } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { Aviso, Boton, Campo, Entrada, Panel } from '../components/ui'
+import Marca from '../components/Marca'
 
-// Marca: ícono + nombre, como en el resto del sistema.
-function Marca({ subtitulo }) {
+// Logo completo de la marca (antena + nombre + eslogan) sobre el formulario.
+function Encabezado({ subtitulo }) {
   return (
-    <div className="mb-6 flex items-center gap-4">
-      <img src="/apple-touch-icon.png" alt="" width="56" height="56" className="h-14 w-14 rounded-lg" />
-      <div>
-        <h1 className="font-cond text-3xl font-semibold text-ink">ITeRatE</h1>
-        <p className="text-ink-soft">{subtitulo}</p>
-      </div>
+    <div className="mb-6 flex flex-col items-center text-center">
+      <Marca pieza="completo" alto={190} />
+      <p className="mt-3 text-sm text-ink-soft">{subtitulo}</p>
     </div>
   )
 }
@@ -70,7 +68,7 @@ export function CrearPassword({ onCreada }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-canvas px-4 py-10">
       <div className="w-full max-w-sm">
-        <Marca subtitulo="Activá tu cuenta" />
+        <Encabezado subtitulo="Activá tu cuenta" />
         <Panel>
           <div className="border-b border-line-soft px-5 py-4">
             <h2 className="text-lg font-semibold text-ink">Crear contraseña</h2>
@@ -138,7 +136,7 @@ export default function Login() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-canvas px-4 py-10">
       <div className="w-full max-w-sm">
-        <Marca subtitulo="Gestión de colonias de laboratorio" />
+        <Encabezado subtitulo="Gestión de colonias de laboratorio" />
         <Panel>
           <div className="border-b border-line-soft px-5 py-4">
             <h2 className="text-lg font-semibold text-ink">Ingresar</h2>
