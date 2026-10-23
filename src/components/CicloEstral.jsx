@@ -486,7 +486,7 @@ export default function CicloEstral({ animal }) {
             <button
               onClick={guardar}
               disabled={guardando}
-              className="flex-1 py-2 rounded-lg text-xs font-bold"
+              className="btn-primario flex-1 py-2 rounded-lg text-xs font-bold"
               style={{
                 background: guardando ? 'rgba(206,147,216,0.05)' : 'rgba(206,147,216,0.12)',
                 border: '1px solid rgba(206,147,216,0.35)',

@@ -265,11 +265,6 @@ html.modo-claro [style*="; color: rgb(228, 233, 240)"],
 html.modo-claro [style^="color: rgba(228, 233, 240,"],
 html.modo-claro [style*="; color: rgba(228, 233, 240,"] { color: #496183 !important; }
 
-html.modo-claro [style^="color: rgb(232, 232, 227)"],
-html.modo-claro [style*="; color: rgb(232, 232, 227)"],
-html.modo-claro [style^="color: rgba(232, 232, 227,"],
-html.modo-claro [style*="; color: rgba(232, 232, 227,"] { color: var(--ink) !important; }
-
 html.modo-claro [style^="color: rgb(232, 244, 253)"],
 html.modo-claro [style*="; color: rgb(232, 244, 253)"],
 html.modo-claro [style^="color: rgba(232, 244, 253,"],
@@ -289,11 +284,6 @@ html.modo-claro [style^="color: rgb(237, 231, 246)"],
 html.modo-claro [style*="; color: rgb(237, 231, 246)"],
 html.modo-claro [style^="color: rgba(237, 231, 246,"],
 html.modo-claro [style*="; color: rgba(237, 231, 246,"] { color: #5d3894 !important; }
-
-html.modo-claro [style^="color: rgb(238, 238, 233)"],
-html.modo-claro [style*="; color: rgb(238, 238, 233)"],
-html.modo-claro [style^="color: rgba(238, 238, 233,"],
-html.modo-claro [style*="; color: rgba(238, 238, 233,"] { color: var(--ink) !important; }
 
 html.modo-claro [style^="color: rgb(238, 241, 245)"],
 html.modo-claro [style*="; color: rgb(238, 241, 245)"],
@@ -329,11 +319,6 @@ html.modo-claro [style^="color: rgb(244, 143, 177)"],
 html.modo-claro [style*="; color: rgb(244, 143, 177)"],
 html.modo-claro [style^="color: rgba(244, 143, 177,"],
 html.modo-claro [style*="; color: rgba(244, 143, 177,"] { color: #ba124b !important; }
-
-html.modo-claro [style^="color: rgb(244, 244, 239)"],
-html.modo-claro [style*="; color: rgb(244, 244, 239)"],
-html.modo-claro [style^="color: rgba(244, 244, 239,"],
-html.modo-claro [style*="; color: rgba(244, 244, 239,"] { color: var(--ink) !important; }
 
 html.modo-claro [style^="color: rgb(245, 127, 23)"],
 html.modo-claro [style*="; color: rgb(245, 127, 23)"],

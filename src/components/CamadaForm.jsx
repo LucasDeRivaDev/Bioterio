@@ -1004,7 +1004,7 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
         </button>
         <button
           type="submit"
-          className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+          className="btn-primario flex-1 py-2.5 rounded-xl text-sm font-bold"
           style={{
             background: 'rgba(0,230,118,0.15)',
             border: '1.5px solid rgba(0,230,118,0.4)',

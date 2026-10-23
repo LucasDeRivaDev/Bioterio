@@ -12,9 +12,10 @@ import {
   ResponsiveContainer, ReferenceLine,
 } from 'recharts'
 import {
-  ArrowLeft, RefreshCw, AlertTriangle, Settings, Users,
+  AlertTriangle, Settings, Users,
   Layers, TrendingUp, ChevronDown, ChevronUp, Check,
 } from 'lucide-react'
+import { BarraGlobal } from '../components/ui'
 import { useTheme } from '../context/ThemeContext'
 
 // ── Bioterios ─────────────────────────────────────────────────────────────────
@@ -307,28 +308,13 @@ export default function CapacidadGlobal() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: tema.bgMain }}>
 
-      {/* Header */}
-      <div className="flex items-center gap-4 px-6 py-4 shrink-0"
-        style={{ borderBottom: '1px solid rgba(0,230,118,0.15)', background: tema.bgCard }}>
-        <button onClick={limpiarBioterio}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-mono"
-          style={{ background: 'rgba(0,230,118,0.07)', border: '1px solid rgba(0,230,118,0.2)', color: tema.accent }}
-          onMouseEnter={e => e.currentTarget.style.background='rgba(0,230,118,0.14)'}
-          onMouseLeave={e => e.currentTarget.style.background='rgba(0,230,118,0.07)'}>
-          <ArrowLeft size={14} /> Volver
-        </button>
-        <div className="flex-1">
-          <h1 className="font-bold text-white text-base">Capacidad y predicción</h1>
-          <p className="text-xs font-mono" style={{ color: tema.textMuted }}>
-            Saturación estimada · sugerencias automáticas · simulador de sacrificios
-          </p>
-        </div>
-        <button onClick={cargar} disabled={cargando}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: tema.textMuted, cursor: cargando ? 'not-allowed' : 'pointer' }}>
-          <RefreshCw size={12} className={cargando ? 'animate-spin' : ''} /> Actualizar
-        </button>
-      </div>
+      <BarraGlobal
+        titulo="Capacidad y predicción"
+        subtitulo="Saturación estimada · sugerencias automáticas · simulador de sacrificios"
+        onVolver={limpiarBioterio}
+        onActualizar={cargar}
+        actualizando={cargando}
+      />
 
       {/* Tabs */}
       <div className="flex gap-1 px-4 py-3 shrink-0"

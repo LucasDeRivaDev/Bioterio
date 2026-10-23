@@ -8,7 +8,8 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
-import { ArrowLeft, RefreshCw, Plus, ClipboardList, TrendingDown, Info, Layers, AlertTriangle, ShoppingCart, Calendar, Clock, CheckCircle } from 'lucide-react'
+import { Plus, ClipboardList, TrendingDown, Info, Layers, AlertTriangle, ShoppingCart, Calendar, Clock, CheckCircle } from 'lucide-react'
+import { BarraGlobal } from '../components/ui'
 import { useTheme } from '../context/ThemeContext'
 
 const PESOS = {
@@ -760,28 +761,13 @@ export default function ConsumoViruta() {
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex items-center gap-4 px-6 py-4 shrink-0"
-        style={{ borderBottom: '1px solid rgba(167,139,250,0.18)', background: tema.bgCard }}>
-        <button onClick={limpiarBioterio}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-mono"
-          style={{ background: 'rgba(167,139,250,0.07)', border: '1px solid rgba(167,139,250,0.2)', color: '#a78bfa' }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.14)' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.07)' }}>
-          <ArrowLeft size={14} /> Volver al selector
-        </button>
-        <div className="flex-1">
-          <h1 className="font-bold text-white text-base">Consumo de viruta / camas</h1>
-          <p className="text-xs font-mono" style={{ color: tema.textMuted }}>
-            Ratas + Ratones · predicción adaptativa por tipo de jaula
-          </p>
-        </div>
-        <button onClick={cargarDatos} disabled={cargando}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: tema.textMuted, cursor: cargando ? 'not-allowed' : 'pointer' }}>
-          <RefreshCw size={12} className={cargando ? 'animate-spin' : ''} /> Actualizar
-        </button>
-      </div>
+      <BarraGlobal
+        titulo="Consumo de viruta / camas"
+        subtitulo="Ratas + Ratones · predicción adaptativa por tipo de jaula"
+        onVolver={limpiarBioterio}
+        onActualizar={cargarDatos}
+        actualizando={cargando}
+      />
 
       {/* Contenido */}
       <div className="flex-1 overflow-auto p-4 md:p-6 max-w-4xl mx-auto w-full space-y-5">
@@ -1244,7 +1230,7 @@ export default function ConsumoViruta() {
                 </div>
                 <div className="flex gap-2 shrink-0">
                   <button onClick={() => setModal(true)}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono font-semibold"
+                    className="btn-primario flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono font-semibold"
                     style={{ background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.35)', color: '#a78bfa' }}
                     onMouseEnter={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.2)' }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.12)' }}>
@@ -1794,7 +1780,7 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
               Cancelar
             </button>
             <button type="submit"
-              className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+              className="btn-primario flex-1 py-2.5 rounded-xl text-sm font-bold"
               style={{ background: 'rgba(167,139,250,0.14)', border: '1.5px solid rgba(167,139,250,0.45)', color: '#a78bfa' }}>
               Guardar censo
             </button>
@@ -1903,7 +1889,7 @@ function ModalConfirmarCambio({ censo, onConfirmar, onCerrar }) {
               Cancelar
             </button>
             <button type="button" onClick={confirmar} disabled={!tipo}
-              className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+              className="btn-primario flex-1 py-2.5 rounded-xl text-sm font-bold"
               style={{
                 background: tipo ? 'rgba(255,179,0,0.14)' : 'rgba(255,255,255,0.04)',
                 border: `1.5px solid ${tipo ? 'rgba(255,179,0,0.45)' : 'rgba(255,255,255,0.1)'}`,
@@ -2030,7 +2016,7 @@ function ModalCompra({ stockActual, onConfirmar, onCerrar }) {
               Cancelar
             </button>
             <button type="submit"
-              className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+              className="btn-primario flex-1 py-2.5 rounded-xl text-sm font-bold"
               style={{ background: 'rgba(0,230,118,0.12)', border: '1.5px solid rgba(0,230,118,0.4)', color: tema.accent }}>
               Registrar compra
             </button>

@@ -117,6 +117,10 @@ src/
 - **Shell:** Sidebar plano con `.nav-item` / `.nav-item.activo` (fondo raised + barra de tinta a la izquierda), bioterio activo con barra del color de la colonia, cambio de tema y salida en el pie. Botón de tema flotante solo en mobile y pantallas sin sidebar.
 - **Modo claro:** ya NO fuerza todo el texto a negro. `src/styles/modo-claro-colores.css` (generado por `node scripts/generar-modo-claro.mjs`) remapea cada color inline pensado para fondo oscuro a una variante legible sobre blanco, conservando su significado. **Si agregás colores hardcodeados nuevos, regenerá ese archivo.**
 - Radios de Tailwind ajustados (`rounded-xl` 10px, `rounded-2xl` 12px) y borde por defecto `var(--line)` en `index.html`.
+- **Kit `src/components/ui.jsx`** (portado de ICIVET, usa clases `bg-surface`, `text-ink`, `border-line`…): `Boton` (primario = tinta invertida), `Campo`, `Entrada`, `Aviso`, `Panel`, `BarraGlobal` (barra superior de las vistas globales sin sidebar). Usarlo en pantallas nuevas en lugar de estilos inline.
+- **Pantallas reescritas con el kit:** Landing, Login + `CrearPassword` (exportado de Login.jsx y usado también en App.jsx), SelectorBioterio (tarjetas por colonia con barra del color de la colonia + lista de vistas globales).
+- **Clases globales en index.css para páginas con estilos inline:** `.btn-primario` (fuerza tinta invertida sobre botones tintados; usar en la acción principal de cada pantalla/modal), `.chip` (pestañas/filtros de los helpers `btnTab`/`btnSubTab`).
+- **Etiquetas:** en pantalla, `uppercase` y `textTransform: 'uppercase'` inline se anulan (tipo oración, sin tracking), como en ICIVET. En impresión no se tocan.
 - Respaldo previo al rediseño: tag `respaldo-pre-estetica-icivet`.
 
 ---
@@ -333,7 +337,7 @@ extendidos
 ## Implementado recientemente
 
 ### Octubre 2026
-- **Rediseño estético estilo ICIVET (23/10):** tokens, IBM Plex, shell (Sidebar/Modal/Badge/topbar mobile), sin glows, modo claro con colores semánticos. Ver "Sistema visual".
+- **Rediseño estético estilo ICIVET (23/10):** tokens, IBM Plex, shell (Sidebar/Modal/Badge/topbar mobile), sin glows, modo claro con colores semánticos. Segunda pasada: Landing, Login, selector, barra de vistas globales, botones primarios, pestañas y etiquetas. Ver "Sistema visual".
 - **Promedio de crías por camada (22/10):** nueva tarjeta en Estadísticas con la prolificidad histórica real por especie/cepa (Rata Wistar, Ratón BALB/c, Ratón C57BL/6, Ratones híbridos). Muestra camadas válidas, total de crías nacidas y promedio con 1 decimal; "Sin datos" si no hay camadas válidas. `calcularPromedioCriasPorCamada` + `ESPECIES_PROLIFICIDAD` en calculos.js.
 
 ### Agosto 2026

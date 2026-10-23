@@ -105,7 +105,7 @@ export default function Animales() {
   const btnSubTab = (v, label, color) => (
     <button
       onClick={() => setSubVista(v === subVista ? null : v)}
-      className="px-4 py-2 rounded-2xl text-3xs font-bold transition-all"
+      className="chip"
       style={
         subVista === v
           ? { background: `${color}18`, border: `1px solid ${color}50`, color }
@@ -123,10 +123,10 @@ export default function Animales() {
           <h1 className="text-2xl font-bold text-white">Reproductores</h1>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {btnSubTab('emparejamientos', '🔄 Emparejamientos', '#00e676')}
+          {btnSubTab('emparejamientos', 'Emparejamientos', '#00e676')}
           <button
             onClick={() => setSubVista(null)}
-            className="px-4 py-2 rounded-2xl text-3xs font-bold"
+            className="chip"
             style={{ background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }}
           >
             ← Volver a Reproductores
@@ -425,7 +425,7 @@ return (
         </div>
         <button
           onClick={() => setModal('nuevo')}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
+          className="btn-primario flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
           style={{
             background: 'rgba(0,230,118,0.12)',
             border: '1.5px solid rgba(0,230,118,0.35)',
@@ -439,7 +439,7 @@ return (
 
       {/* ── TABS DE SUB-SECCIÓN ──────────────────────────────────────────── */}
       <div className="flex gap-2 flex-wrap">
-        {btnSubTab('emparejamientos', '🔄 Emparejamientos', '#00e676')}
+        {btnSubTab('emparejamientos', 'Emparejamientos', '#00e676')}
       </div>
 
       {/* ── SECCIÓN HÍBRIDOS: reproductores compartidos ── */}

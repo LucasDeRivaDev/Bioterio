@@ -127,7 +127,7 @@ function JaulasDistribucion({ camada, jaulas, agregarJaula, editarJaula, elimina
                 style={inputJaulaStyle}
               />
               <div className="flex gap-2">
-                <button onClick={() => guardarEdicion(j)} className="flex-1 py-1 rounded text-xs font-bold" style={{ background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.35)', color: tema.accent }}>
+                <button onClick={() => guardarEdicion(j)} className="btn-primario flex-1 py-1 rounded text-xs font-bold" style={{ background: 'rgba(0,230,118,0.15)', border: '1px solid rgba(0,230,118,0.35)', color: tema.accent }}>
                   Guardar
                 </button>
                 <button onClick={() => setEditando(null)} className="px-3 py-1 rounded text-xs" style={{ background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.2)', color: tema.textMuted }}>
@@ -726,7 +726,7 @@ export default function Camadas() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/animales')}
-            className="px-4 py-2 rounded-2xl text-xs font-bold transition-all hover:opacity-80"
+            className="chip hover:opacity-80"
             style={{ background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }}
           >
             ← Reproductores
@@ -738,7 +738,7 @@ export default function Camadas() {
         </div>
         <button
           onClick={() => setModal('nueva')}
-          className="px-4 py-2.5 rounded-xl text-sm font-bold"
+          className="btn-primario px-4 py-2.5 rounded-xl text-sm font-bold"
           style={{
             background: 'rgba(0,230,118,0.12)',
             border: '1.5px solid rgba(0,230,118,0.35)',

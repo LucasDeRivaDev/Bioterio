@@ -320,7 +320,7 @@ export default function Temperatura() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/')}
-            className="px-4 py-2 rounded-2xl text-xs font-bold transition-all hover:opacity-80"
+            className="chip hover:opacity-80"
             style={{ background: 'transparent', border: `1px solid rgba(30,51,82,0.6)`, color: tema.textMuted }}
           >
             ← Panel de hoy
@@ -397,7 +397,7 @@ export default function Temperatura() {
             </div>
             <button
               onClick={() => setFormAbierto(v => !v)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all shrink-0"
+              className="btn-primario flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all shrink-0"
               style={{
                 background: formAbierto ? `${cfg.color}10` : `${cfg.color}0d`,
                 border: `1px solid ${formAbierto ? cfg.color + '55' : cfg.color + '30'}`,
@@ -421,7 +421,7 @@ export default function Temperatura() {
               <button
                 onClick={guardar}
                 disabled={guardando}
-                className="px-5 py-2 rounded-xl text-sm font-bold transition-all"
+                className="btn-primario px-5 py-2 rounded-xl text-sm font-bold transition-all"
                 style={{
                   background: `${cfg.color}15`,
                   border: `1px solid ${cfg.color}45`,

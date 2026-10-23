@@ -63,7 +63,7 @@ export default function Entregas() {
       <div className="flex items-center gap-3">
         <button
           onClick={() => navigate('/stock')}
-          className="px-4 py-2 rounded-2xl text-xs font-bold transition-all hover:opacity-80"
+          className="chip hover:opacity-80"
           style={{ background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }}
         >
           ← Stock

@@ -292,7 +292,7 @@ export default function Rendimiento() {
 const btnSubTab = (v, label, color) => (
     <button
       onClick={() => setSubVista(v === subVista ? null : v)}
-      className="px-4 py-2 rounded-2xl text-xs font-bold transition-all"
+      className="chip"
       style={
         subVista === v
           ? { background: `${color}18`, border: `1px solid ${color}50`, color }
@@ -310,7 +310,7 @@ const btnSubTab = (v, label, color) => (
           <h1 className="text-xl font-bold text-white">Rendimiento reproductivo</h1>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {btnSubTab('estadisticas', '📈 Estadísticas', '#40c4ff')}
+          {btnSubTab('estadisticas', 'Estadísticas', '#40c4ff')}
           <button
             onClick={() => setSubVista(null)}
             className="px-4 py-2 rounded-2xl text-xs font-bold"
@@ -339,7 +339,7 @@ const btnSubTab = (v, label, color) => (
 
 {/* Toggle Activos / Histórico */}
         <div
-          className="flex rounded-2xl overflow-hidden text-3xs font-bold"
+          className="flex rounded-md overflow-hidden text-sm font-medium"
           style={{ border: '1px solid rgba(30,51,82,0.8)', background: tema.bgInput }}
         >
           <button
@@ -355,7 +355,7 @@ const btnSubTab = (v, label, color) => (
 
       {/* ── TABS DE SUB-SECCIÓN ──────────────────────────────────────────── */}
       <div className="flex gap-2 flex-wrap">
-        {btnSubTab('estadisticas', '📈 Estadísticas', '#40c4ff')}
+        {btnSubTab('estadisticas', 'Estadísticas', '#40c4ff')}
       </div>
 
       {/* Indicador de vista */}

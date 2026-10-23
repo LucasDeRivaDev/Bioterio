@@ -692,7 +692,7 @@ function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, 
                     )}
                     <div className="flex gap-2">
                       <button onClick={guardarNotaRepro}
-                        className="flex-1 py-1.5 rounded-lg text-xs font-bold"
+                        className="btn-primario flex-1 py-1.5 rounded-lg text-xs font-bold"
                         style={{ background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.3)', color: tema.accent }}>
                         ✓ Guardar nota
                       </button>
@@ -721,7 +721,7 @@ function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, 
                       <span className="text-xs" style={{ color: '#2a3a50' }}>Sin notas</span>
                     )}
                     <button onClick={() => setEditandoNota(true)}
-                      className="text-xs font-semibold transition-colors"
+                      className="btn-primario text-xs font-semibold transition-colors"
                       style={{ color: tema.blue }}>
                       ✏ {bloque.animal.notas ? 'Editar nota' : 'Agregar nota'}
                     </button>
@@ -780,7 +780,7 @@ function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, 
               <label className="text-xs uppercase tracking-widest font-semibold mb-1 block" style={{ color: tema.textMuted }}>Notas</label>
               <input type="text" placeholder="—" value={eNotas} onChange={(e) => setENotas(e.target.value)} style={iStyle} />
             </div>
-            <button onClick={guardarEdicion} className="w-full py-2 rounded-xl text-sm font-bold"
+            <button onClick={guardarEdicion} className="btn-primario w-full py-2 rounded-xl text-sm font-bold"
               style={{ background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.3)', color: tema.accent, cursor: 'pointer' }}>
               Guardar cambios
             </button>
@@ -830,11 +830,11 @@ function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, 
               {!partsOk && sumaParts < bloque.total && ' — faltan asignar'}
             </div>
             <button onClick={() => setParts((prev) => [...prev, { total: '0', machos: '', hembras: '' }])}
-              className="w-full py-1.5 rounded-lg text-xs font-semibold"
+              className="btn-primario w-full py-1.5 rounded-lg text-xs font-semibold"
               style={{ background: 'transparent', border: '1px dashed rgba(30,51,82,0.8)', color: tema.textMuted, cursor: 'pointer' }}>
               + Agregar jaula
             </button>
-            <button onClick={guardarDividir} disabled={!partsOk} className="w-full py-2 rounded-xl text-sm font-bold"
+            <button onClick={guardarDividir} disabled={!partsOk} className="btn-primario w-full py-2 rounded-xl text-sm font-bold"
               style={{ background: partsOk ? 'rgba(0,230,118,0.12)' : 'rgba(30,51,82,0.3)', border: `1px solid ${partsOk ? 'rgba(0,230,118,0.3)' : 'rgba(30,51,82,0.5)'}`, color: partsOk ? '#00e676' : '#4a5f7a', cursor: partsOk ? 'pointer' : 'not-allowed' }}>
               Confirmar división
             </button>
@@ -870,7 +870,7 @@ function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, 
                 <p className="text-xs mt-1" style={{ color: tema.red }}>No podés mover más de {bloque.total} animales</p>
               )}
             </div>
-            <button onClick={guardarMover} disabled={!moverOk} className="w-full py-2 rounded-xl text-sm font-bold"
+            <button onClick={guardarMover} disabled={!moverOk} className="btn-primario w-full py-2 rounded-xl text-sm font-bold"
               style={{ background: moverOk ? 'rgba(0,230,118,0.12)' : 'rgba(30,51,82,0.3)', border: `1px solid ${moverOk ? 'rgba(0,230,118,0.3)' : 'rgba(30,51,82,0.5)'}`, color: moverOk ? '#00e676' : '#4a5f7a', cursor: moverOk ? 'pointer' : 'not-allowed' }}>
               Confirmar movimiento
             </button>
@@ -2351,7 +2351,7 @@ export default function Stock() {
 const btnTab = (v, label) => (
     <button
       onClick={() => setVista(v)}
-      className="px-4 py-2 rounded-2xl text-3xs font-bold transition-all"
+      className="chip"
       style={
         vista === v && subVista === null
           ? { background: 'rgba(64,196,255,0.15)', border: '1px solid rgba(64,196,255,0.4)', color: tema.blue }
@@ -2365,7 +2365,7 @@ const btnTab = (v, label) => (
   const btnSubTab = (v, label, color) => (
     <button
       onClick={() => setSubVista(v === subVista ? null : v)}
-      className="px-4 py-2 rounded-2xl text-3xs font-bold transition-all"
+      className="chip"
       style={
         subVista === v
           ? { background: `${color}18`, border: `1px solid ${color}50`, color }
@@ -2383,11 +2383,11 @@ const btnTab = (v, label) => (
           <h1 className="text-xl font-bold text-white">Stock</h1>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {btnSubTab('entregas', '📦 Entregas', '#ffb300')}
-          {!esSubgrupoRatones && btnSubTab('sacrificios', '🗡 Sacrificios', '#ff6b80')}
+          {btnSubTab('entregas', 'Entregas', '#ffb300')}
+          {!esSubgrupoRatones && btnSubTab('sacrificios', 'Sacrificios', '#ff6b80')}
           <button
             onClick={() => setSubVista(null)}
-            className="px-4 py-2 rounded-2xl text-3xs font-bold"
+            className="chip"
             style={{ background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }}
           >
             ← Volver a Stock
@@ -2405,11 +2405,11 @@ if (subVista === 'sacrificios') {
           <h1 className="text-xl font-bold text-white">Stock</h1>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {btnSubTab('entregas', '📦 Entregas', '#ffb300')}
-          {!esSubgrupoRatones && btnSubTab('sacrificios', '🗡 Sacrificios', '#ff6b80')}
+          {btnSubTab('entregas', 'Entregas', '#ffb300')}
+          {!esSubgrupoRatones && btnSubTab('sacrificios', 'Sacrificios', '#ff6b80')}
           <button
             onClick={() => setSubVista(null)}
-            className="px-4 py-2 rounded-2xl text-3xs font-bold"
+            className="chip"
             style={{ background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }}
           >
             ← Volver a Stock
@@ -2430,8 +2430,8 @@ if (subVista === 'sacrificios') {
 
       {/* ── TABS DE SUB-SECCIÓN ──────────────────────────────────────────── */}
       <div className="flex gap-2 flex-wrap">
-        {btnSubTab('entregas', '📦 Entregas', '#ffb300')}
-        {!esSubgrupoRatones && btnSubTab('sacrificios', '🗡 Sacrificios', '#ff6b80')}
+        {btnSubTab('entregas', 'Entregas', '#ffb300')}
+        {!esSubgrupoRatones && btnSubTab('sacrificios', 'Sacrificios', '#ff6b80')}
       </div>
 
       {/* ── RESUMEN SUPERIOR ───────────────────────────────────────────────── */}
@@ -2463,8 +2463,8 @@ if (subVista === 'sacrificios') {
 
       {/* ── TOGGLE VISTA ──────────────────────────────────────────────────── */}
       <div className="flex gap-2 flex-wrap">
-        {btnTab('jaulas', '⬛ Vista por jaulas')}
-        {btnTab('resumen', '📊 Vista por categorías')}
+        {btnTab('jaulas', 'Vista por jaulas')}
+        {btnTab('resumen', 'Vista por categorías')}
         {vista === 'jaulas' && (
           <button
             onClick={() => modoSeleccion ? salirModoSeleccion() : setModoSeleccion(true)}

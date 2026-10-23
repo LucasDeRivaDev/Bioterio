@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useBioterioActivo } from '../context/BioterioActivoContext'
+import { BarraGlobal, Boton } from '../components/ui'
 import { useTheme } from '../context/ThemeContext'
 import { formatFecha } from '../utils/calculos'
 import { BIO_RATAS, BIO_RATONES } from '../utils/constants'
@@ -229,35 +230,20 @@ export default function ReporteMensual() {
         .rm-highlight-title { font-size: 7.5pt; font-weight: 700; color: #166534; margin-bottom: 2pt; }
       `}</style>
 
-      {/* Panel en pantalla */}
-      <div className="no-print p-6 space-y-6">
+      <BarraGlobal
+        titulo="Reporte directivo"
+        subtitulo={`Resumen ejecutivo para dirección · ${tituloPeriodo}`}
+        onVolver={limpiarBioterio}
+        onActualizar={cargar}
+        acciones={
+          <Boton variante="primario" tamano="sm" onClick={() => window.print()}>
+            <Printer size={15} /> Imprimir / PDF
+          </Boton>
+        }
+      />
 
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <button onClick={limpiarBioterio}
-              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: 'rgba(30,51,82,0.35)', border: '1px solid rgba(30,51,82,0.8)', color: tema.textPrimary }}
-              title="Volver">←</button>
-            <div>
-              <h1 className="text-xl font-bold flex items-center gap-2" style={{ color: tema.textPrimary }}><Briefcase size={18} /> Reporte Directivo</h1>
-              <p className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>
-                Resumen ejecutivo para dirección · {tituloPeriodo}
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={cargar}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
-              style={cardStyle}>
-              <RefreshCw size={14} /> Actualizar
-            </button>
-            <button onClick={() => window.print()}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold"
-              style={{ background: 'rgba(0,230,118,0.15)', border: '1.5px solid rgba(0,230,118,0.4)', color: tema.accent, boxShadow: 'none' }}>
-              <Printer size={15} /> Imprimir / PDF
-            </button>
-          </div>
-        </div>
+      {/* Panel en pantalla */}
+      <div className="no-print mx-auto max-w-6xl p-4 sm:p-6 space-y-6">
 
         {/* Período */}
         <div className="rounded-2xl p-5 flex flex-wrap items-end gap-4" style={cardStyle}>

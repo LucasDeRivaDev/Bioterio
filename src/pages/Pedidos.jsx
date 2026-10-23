@@ -1178,7 +1178,7 @@ function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
               Cancelar
             </button>
             <button type="submit" disabled={!esValido}
-              className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+              className="btn-primario flex-1 py-2.5 rounded-xl text-sm font-bold"
               style={{
                 background: esValido ? 'rgba(0,230,118,0.15)' : 'rgba(30,51,82,0.3)',
                 border: `1.5px solid ${esValido ? 'rgba(0,230,118,0.4)' : 'rgba(30,51,82,0.5)'}`,
@@ -1398,7 +1398,7 @@ export default function Pedidos() {
         </div>
         <button
           onClick={() => { setPedidoEditando(null); setModalFormAbierto(true) }}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold"
+          className="btn-primario flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold"
           style={{ background: 'rgba(0,230,118,0.12)', border: '1.5px solid rgba(0,230,118,0.35)', color: tema.accent, cursor: 'pointer' }}>
           + Nuevo pedido
         </button>

@@ -29,7 +29,7 @@ import Incidentes from './pages/Incidentes'
 import PlanificacionColonia from './pages/PlanificacionColonia'
 import Pedidos from './pages/Pedidos'
 import Auditoria from './pages/Auditoria'
-import Login from './pages/Login'
+import Login, { CrearPassword } from './pages/Login'
 import Landing from './pages/Landing'
 
 // ── Pantalla de carga mientras verifica la sesión ────────────────────────────
@@ -134,71 +134,6 @@ function AppLayout() {
   )
 }
 
-// ── Pantalla para crear contraseña (invitación) ─────────────────────────────
-function PantallaCrearPassword() {
-  const { actualizarPassword } = useAuth()
-  const [pass, setPass]         = useState('')
-  const [error, setError]       = useState('')
-  const [listo, setListo]       = useState(false)
-  const [cargando, setCargando] = useState(false)
-
-  async function guardar(e) {
-    e.preventDefault()
-    if (pass.length < 6) { setError('Mínimo 6 caracteres.'); return }
-    setCargando(true)
-    try {
-      await actualizarPassword(pass)
-      setListo(true)
-    } catch {
-      setError('No se pudo guardar. Intentá de nuevo.')
-    } finally {
-      setCargando(false)
-    }
-  }
-
-  return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#050810' }}>
-      <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.95)', border: '1px solid rgba(0,230,118,0.2)', boxShadow: 'none' }}>
-        <div className="px-8 py-7 text-center" style={{ borderBottom: '1px solid rgba(0,230,118,0.1)', background: 'rgba(0,230,118,0.03)' }}>
-          <div className="text-3xl mb-3">🔑</div>
-          <h1 className="text-xl font-bold" style={{ color: '#ffffff' }}>Crear contraseña</h1>
-          <p className="text-xs mt-1" style={{ color: '#8a9bb0' }}>Elegí una contraseña para tu cuenta</p>
-        </div>
-        {listo ? (
-          <div className="px-8 py-10 text-center space-y-3">
-            <div className="text-4xl">✅</div>
-            <div className="font-bold" style={{ color: '#ffffff' }}>¡Contraseña creada!</div>
-            <div className="text-sm" style={{ color: '#8a9bb0' }}>Ya podés usar el sistema normalmente.</div>
-          </div>
-        ) : (
-          <form onSubmit={guardar} className="px-8 py-7 space-y-4">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#8a9bb0' }}>Nueva contraseña</label>
-              <input
-                type="password"
-                value={pass}
-                onChange={(e) => { setPass(e.target.value); setError('') }}
-                placeholder="Mínimo 6 caracteres"
-                required
-                style={{ width: '100%', background: 'rgba(8,13,26,0.9)', border: '1px solid rgba(30,51,82,0.9)', color: '#c9d4e0', borderRadius: '12px', padding: '12px 16px', fontSize: '14px', outline: 'none' }}
-              />
-            </div>
-            {error && (
-              <div className="rounded-xl px-4 py-3 text-sm" style={{ background: 'rgba(255,61,87,0.1)', border: '1px solid rgba(255,61,87,0.25)', color: '#ff6b80' }}>
-                ⚠️ {error}
-              </div>
-            )}
-            <button type="submit" disabled={cargando} className="w-full py-3 rounded-xl text-sm font-bold"
-              style={{ background: 'rgba(0,230,118,0.15)', border: '1.5px solid rgba(0,230,118,0.4)', color: '#00e676', cursor: cargando ? 'not-allowed' : 'pointer' }}>
-              {cargando ? 'Guardando...' : 'Guardar contraseña'}
-            </button>
-          </form>
-        )}
-      </div>
-    </div>
-  )
-}
-
 // ── Topbar mobile (compartida con la demo) ──────────────────────────────────
 export function TopbarMovil({ onMenu, children }) {
   const { tema } = useTheme()
@@ -250,7 +185,7 @@ function RutaRaiz() {
 
   function renderContenido() {
     if (cargando) return <PantallaCarga />
-    if (necesitaPassword && sesion) return <PantallaCrearPassword />
+    if (necesitaPassword && sesion) return <CrearPassword />
     if (!sesion) {
       return (
         <Routes>

@@ -16,6 +16,7 @@ import {
   calcularConfianzaPedigree,
   generarExplicacionF,
 } from '../utils/genealogia'
+import { BarraGlobal } from '../components/ui'
 import { useTheme } from '../context/ThemeContext'
 
 const TODOS = ['ratas', 'ratones_balbc', 'ratones_c57', 'ratones_hibridos']
@@ -592,24 +593,13 @@ export default function GenealogiaGlobal() {
   const DIST_LABELS  = { nulo: 'Sin parentesco', bajo: 'Bajo (<6.25%)', leve: 'Leve (6.25–12.5%)', moderado: 'Moderado (12.5–25%)', alto: 'Alto (≥25%)' }
 
   return (
-    <div className="min-h-screen p-4 md:p-6 space-y-6" style={{ background: tema.bgMain }}>
-
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <div>
-            <h1 className="text-xl font-bold text-white">Genealogía y consanguinidad</h1>
-            <p className="text-xs font-mono" style={{ color: tema.textMuted }}>Análisis genético · todos los bioterios · pedigree global</p>
-          </div>
-        </div>
-        <button
-          onClick={() => setBioterioActivo(null)}
-          className="px-4 py-2 rounded-xl text-sm font-semibold transition-all"
-          style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)', color: '#a78bfa' }}
-        >
-          ← Volver al selector
-        </button>
-      </div>
+    <div className="min-h-screen" style={{ background: tema.bgMain }}>
+      <BarraGlobal
+        titulo="Genealogía y consanguinidad"
+        subtitulo="Análisis genético · todos los bioterios · pedigree global"
+        onVolver={() => setBioterioActivo(null)}
+      />
+      <div className="mx-auto max-w-6xl p-4 md:p-6 space-y-6">
 
       {/* KPIs globales */}
       {statsGlobal && (
@@ -918,6 +908,7 @@ export default function GenealogiaGlobal() {
         </div>
       </div>
 
+      </div>
     </div>
   )
 }

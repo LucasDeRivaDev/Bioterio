@@ -7,8 +7,9 @@ import {
 } from '../utils/calculos'
 import { BIO_RATONES } from '../utils/constants'
 import { generarId } from '../utils/storage'
-import { ArrowLeft, RefreshCw } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import { getPlanes, getNotas } from '../utils/db'
+import { BarraGlobal } from '../components/ui'
 import { useTheme } from '../context/ThemeContext'
 
 // ── Grupos de ratones ─────────────────────────────────────────────────────────
@@ -397,28 +398,13 @@ export default function ResumenRatones() {
       style={{ background: tema.bgMain }}
       onClick={() => setMenuAbierto(null)}
     >
-      {/* Header */}
-      <div className="flex items-center gap-4 px-6 py-4 shrink-0"
-        style={{ borderBottom: '1px solid rgba(64,196,255,0.15)', background: tema.bgCard }}>
-        <button onClick={limpiarBioterio}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-mono transition-colors"
-          style={{ background: 'rgba(64,196,255,0.07)', border: '1px solid rgba(64,196,255,0.2)', color: tema.blue }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(64,196,255,0.14)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(64,196,255,0.07)' }}
-        >
-          <ArrowLeft size={14} /> Volver al selector
-        </button>
-        <div className="flex-1">
-          <h1 className="font-bold text-white text-base">Resumen total de ratones</h1>
-          <p className="text-xs font-mono" style={{ color: tema.textMuted }}>Balb/C · C57 · Híbridos — Stock · Notificaciones · Sacrificios</p>
-        </div>
-        <button onClick={cargarDatos} disabled={cargando}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono transition-colors"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: tema.textMuted, cursor: cargando ? 'not-allowed' : 'pointer' }}
-        >
-          <RefreshCw size={12} className={cargando ? 'animate-spin' : ''} /> Actualizar
-        </button>
-      </div>
+      <BarraGlobal
+        titulo="Resumen total de ratones"
+        subtitulo="Balb/C · C57 · Híbridos — Stock · Notificaciones · Sacrificios"
+        onVolver={limpiarBioterio}
+        onActualizar={cargarDatos}
+        actualizando={cargando}
+      />
 
       {/* Contenido */}
       <div className="flex-1 overflow-auto p-6 space-y-6 max-w-4xl mx-auto w-full">

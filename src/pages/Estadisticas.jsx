@@ -321,7 +321,7 @@ export default function Estadisticas() {
         <div className="flex items-start gap-3">
           <button
             onClick={() => navigate('/rendimiento')}
-            className="px-4 py-2 rounded-2xl text-xs font-bold transition-all hover:opacity-80 mt-0.5"
+            className="chip hover:opacity-80 mt-0.5"
             style={{ background: 'transparent', border: '1px solid rgba(30,51,82,0.6)', color: tema.textMuted }}
           >
             ← Rendimiento

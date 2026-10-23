@@ -147,7 +147,7 @@ function TarjetaTarea({ tarea, onConfirmarSeparacion, onDescartar }) {
               <button
                 onClick={confirmar}
                 disabled={!fechaSep || guardando}
-                className="px-3 py-1 rounded-lg text-xs font-bold"
+                className="btn-primario px-3 py-1 rounded-lg text-xs font-bold"
                 style={{
                   background: est.accion,
                   border: `1px solid ${est.accionBorde}`,
@@ -169,7 +169,7 @@ function TarjetaTarea({ tarea, onConfirmarSeparacion, onDescartar }) {
           ) : (
             <button
               onClick={() => { setFechaSep(hoy()); setConfirmando(true) }}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+              className="btn-primario flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
               style={{
                 background: est.accion,
                 border: `1px solid ${est.accionBorde}`,

@@ -238,7 +238,7 @@ export default function Reportes() {
           </div>
           <button
             onClick={() => window.print()}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold"
+            className="btn-primario flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold"
             style={{ background: 'rgba(0,230,118,0.15)', border: '1.5px solid rgba(0,230,118,0.4)', color: tema.accent, boxShadow: 'none' }}
           >
             <Printer size={15} /> Imprimir / PDF

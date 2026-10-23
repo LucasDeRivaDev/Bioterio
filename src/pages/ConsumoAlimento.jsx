@@ -7,7 +7,8 @@ import { generarId } from '../utils/storage'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
-import { ArrowLeft, RefreshCw, Plus, TrendingUp, Wheat, ClipboardList, ShoppingBag } from 'lucide-react'
+import { Plus, TrendingUp, Wheat, ClipboardList, ShoppingBag } from 'lucide-react'
+import { BarraGlobal } from '../components/ui'
 import { useTheme } from '../context/ThemeContext'
 
 // ── Tasas de consumo por especie y categoría (g/día por animal) ───────────────
@@ -943,37 +944,13 @@ export default function ConsumoAlimento() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: tema.bgMain }}>
 
-      {/* Header */}
-      <div
-        className="flex items-center gap-4 px-6 py-4 shrink-0"
-        style={{ borderBottom: '1px solid rgba(255,179,0,0.15)', background: tema.bgCard }}
-      >
-        <button
-          onClick={limpiarBioterio}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-mono transition-colors"
-          style={{ background: 'rgba(255,179,0,0.07)', border: '1px solid rgba(255,179,0,0.2)', color: tema.amber }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,179,0,0.14)' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,179,0,0.07)' }}
-        >
-          <ArrowLeft size={14} />
-          Volver al selector
-        </button>
-        <div className="flex-1">
-          <h1 className="font-bold text-white text-base">Consumo global de alimento</h1>
-          <p className="text-xs font-mono" style={{ color: tema.textMuted }}>
-            Ratas + Ratones (Balb/C · C57 · Híbridos)
-          </p>
-        </div>
-        <button
-          onClick={cargarDatos}
-          disabled={cargando}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: tema.textMuted, cursor: cargando ? 'not-allowed' : 'pointer' }}
-        >
-          <RefreshCw size={12} className={cargando ? 'animate-spin' : ''} />
-          Actualizar
-        </button>
-      </div>
+      <BarraGlobal
+        titulo="Consumo global de alimento"
+        subtitulo="Ratas + Ratones (Balb/C · C57 · Híbridos)"
+        onVolver={limpiarBioterio}
+        onActualizar={cargarDatos}
+        actualizando={cargando}
+      />
 
       {/* Contenido */}
       <div className="flex-1 overflow-auto p-6 max-w-4xl mx-auto w-full space-y-6">
@@ -1668,7 +1645,7 @@ export default function ConsumoAlimento() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <button
                     onClick={() => setModalCenso(true)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono font-semibold"
+                    className="btn-primario flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono font-semibold"
                     style={{ background: 'rgba(167,139,250,0.1)', border: '1px solid rgba(167,139,250,0.3)', color: '#a78bfa' }}
                     onMouseEnter={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.18)' }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.1)' }}
@@ -2292,7 +2269,7 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCo
               Cancelar
             </button>
             <button type="submit" disabled={guardando}
-              className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+              className="btn-primario flex-1 py-2.5 rounded-xl text-sm font-bold"
               style={{ background: guardando ? 'rgba(167,139,250,0.05)' : 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.4)', color: '#a78bfa', cursor: guardando ? 'not-allowed' : 'pointer' }}>
               {guardando ? 'Guardando...' : 'Guardar censo'}
             </button>
@@ -2519,7 +2496,7 @@ function ModalReposicion({ fechaInicial, horaInicial, onConfirmar, onCerrar }) {
               Cancelar
             </button>
             <button type="submit" disabled={!kgNum}
-              className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+              className="btn-primario flex-1 py-2.5 rounded-xl text-sm font-bold"
               style={{
                 background: kgNum ? 'rgba(64,196,255,0.12)' : 'rgba(255,255,255,0.04)',
                 border: `1px solid ${kgNum ? 'rgba(64,196,255,0.4)' : 'rgba(255,255,255,0.1)'}`,
@@ -2607,7 +2584,7 @@ function ModalIngreso({ stockActualKg, onConfirmar, onCerrar }) {
             </button>
             <button
               type="submit"
-              className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+              className="btn-primario flex-1 py-2.5 rounded-xl text-sm font-bold"
               style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.4)', color: tema.accent }}
             >
               Guardar ingreso
@@ -2753,7 +2730,7 @@ function ModalEstimacionRapida({ stockEstimadoActual, onConfirmar, onCerrar }) {
               Cancelar
             </button>
             <button type="submit" disabled={!valido}
-              className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+              className="btn-primario flex-1 py-2.5 rounded-xl text-sm font-bold"
               style={{
                 background: valido ? 'rgba(64,196,255,0.12)' : 'rgba(255,255,255,0.04)',
                 border: `1px solid ${valido ? 'rgba(64,196,255,0.4)' : 'rgba(255,255,255,0.08)'}`,

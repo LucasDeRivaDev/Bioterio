@@ -298,6 +298,38 @@ main h1 {
   font-weight: 600;
   letter-spacing: -0.01em;
 }
-/* Etiquetas en mayúsculas: tracking moderado en lugar de muy espaciado */
-.tracking-widest { letter-spacing: 0.06em; }
-.tracking-wider { letter-spacing: 0.04em; }
+/* Etiquetas: como en ICIVET, en tipo oración y sin tracking espaciado.
+   Las páginas usan "uppercase tracking-widest" (o textTransform inline) para
+   títulos de sección, encabezados de tabla y labels; el texto fuente ya está
+   en tipo oración, así que alcanza con anular la transformación. */
+@media screen {
+  html .uppercase { text-transform: none; letter-spacing: 0; }
+  [style*="text-transform: uppercase"] { text-transform: none !important; letter-spacing: 0 !important; }
+  html .text-xs.uppercase:not(th):not(label) { font-size: 0.8125rem; }
+  th.uppercase { font-weight: 500; }
+}
+
+/* Acción primaria: tinta invertida, como en ICIVET. Se aplica sobre botones que
+   todavía tienen estilos inline tintados; la especificidad alta le gana a esos
+   estilos y al remapeo del modo claro. */
+html .btn-primario.btn-primario.btn-primario {
+  background: var(--ink) !important;
+  color: var(--canvas) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+html .btn-primario.btn-primario.btn-primario * { color: inherit !important; }
+html .btn-primario.btn-primario.btn-primario:disabled { opacity: 0.45; }
+
+/* Pestañas / filtros tipo chip (helpers btnTab / btnSubTab de las páginas) */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}

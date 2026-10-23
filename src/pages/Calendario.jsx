@@ -210,7 +210,7 @@ export default function Calendario() {
       <div className="flex items-center gap-3">
         <button
           onClick={() => navigate('/')}
-          className="px-4 py-2 rounded-2xl text-xs font-bold transition-all hover:opacity-80"
+          className="chip hover:opacity-80"
           style={{ background: 'transparent', border: `1px solid rgba(30,51,82,0.6)`, color: tema.textMuted }}
         >
           ← Panel de hoy
@@ -1143,7 +1143,7 @@ function ModalNota({ fecha, onGuardar, onCerrar }) {
           <button
             onClick={() => puedeGuardar && onGuardar({ titulo, descripcion })}
             disabled={!puedeGuardar}
-            className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all"
+            className="btn-primario flex-1 py-2.5 rounded-xl text-sm font-bold transition-all"
             style={{
               background: puedeGuardar ? 'rgba(251,191,36,0.14)' : 'rgba(255,255,255,0.04)',
               border:    `1.5px solid ${puedeGuardar ? 'rgba(251,191,36,0.45)' : 'rgba(255,255,255,0.08)'}`,

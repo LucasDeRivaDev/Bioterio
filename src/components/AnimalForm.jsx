@@ -267,7 +267,7 @@ export default function AnimalForm({ animal, onGuardar, onCancelar }) {
         </button>
         <button
           type="submit"
-          className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all"
+          className="btn-primario flex-1 py-2.5 rounded-xl text-sm font-bold transition-all"
           style={{
             background: 'rgba(0,230,118,0.15)',
             border: '1.5px solid rgba(0,230,118,0.4)',
