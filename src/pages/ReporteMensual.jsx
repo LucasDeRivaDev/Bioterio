@@ -238,7 +238,6 @@ export default function ReporteMensual() {
               className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
               style={{ background: 'rgba(30,51,82,0.35)', border: '1px solid rgba(30,51,82,0.8)', color: tema.textPrimary }}
               title="Volver">←</button>
-            <div className="w-1.5 h-7 rounded-full" style={{ background: tema.accent }} />
             <div>
               <h1 className="text-xl font-bold flex items-center gap-2" style={{ color: tema.textPrimary }}><Briefcase size={18} /> Reporte Directivo</h1>
               <p className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>
@@ -254,7 +253,7 @@ export default function ReporteMensual() {
             </button>
             <button onClick={() => window.print()}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold"
-              style={{ background: 'rgba(0,230,118,0.15)', border: '1.5px solid rgba(0,230,118,0.4)', color: tema.accent, boxShadow: '0 0 20px rgba(0,230,118,0.1)' }}>
+              style={{ background: 'rgba(0,230,118,0.15)', border: '1.5px solid rgba(0,230,118,0.4)', color: tema.accent, boxShadow: 'none' }}>
               <Printer size={15} /> Imprimir / PDF
             </button>
           </div>
@@ -414,13 +413,13 @@ function Encabezado({ tituloPeriodo, ahora }) {
   return (
     <div style={{ borderBottom: '2pt solid #111', paddingBottom: '10pt', marginBottom: '12pt', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12pt' }}>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: '7pt', color: '#666', fontFamily: 'monospace', marginBottom: '3pt', letterSpacing: '0.5pt' }}>
+        <div style={{ fontSize: '7pt', color: '#666', fontFamily: 'var(--font-cond)', marginBottom: '3pt', letterSpacing: '0.5pt' }}>
           BIOTERIO · SISTEMA DE GESTIÓN DE COLONIA · INFORME PARA DIRECCIÓN
         </div>
         <div style={{ fontSize: '16pt', fontWeight: 900, letterSpacing: '-0.3pt', marginBottom: '2pt' }}>
           REPORTE DIRECTIVO — {tituloPeriodo.toUpperCase()}
         </div>
-        <div style={{ fontSize: '7.5pt', color: '#555', fontFamily: 'monospace' }}>
+        <div style={{ fontSize: '7.5pt', color: '#555', fontFamily: 'var(--font-cond)' }}>
           Período informado: 01 al fin de {tituloPeriodo.toLowerCase()} · Generado: {ahora}
         </div>
       </div>

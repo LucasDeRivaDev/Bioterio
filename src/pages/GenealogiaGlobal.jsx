@@ -597,7 +597,6 @@ export default function GenealogiaGlobal() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-1.5 h-7 rounded-full" style={{ background: '#a78bfa', boxShadow: '0 0 8px rgba(167,139,250,0.5)' }} />
           <div>
             <h1 className="text-xl font-bold text-white">Genealogía y consanguinidad</h1>
             <p className="text-xs font-mono" style={{ color: tema.textMuted }}>Análisis genético · todos los bioterios · pedigree global</p>

@@ -68,14 +68,14 @@ export default function Login() {
     padding: '10px 16px',
     fontSize: '14px',
     outline: 'none',
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: 'var(--font-sans)',
   }
 
   // Si viene de invitación y ya tiene sesión activa → mostrar formulario de crear contraseña
   if (esInvitado && sesion) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4" style={{ background: tema.bgMain, backgroundImage: 'linear-gradient(rgba(0,230,118,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,230,118,0.03) 1px, transparent 1px)', backgroundSize: '40px 40px' }}>
-        <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: modoBrillo ? tema.bgCard : tema.bgCard, border: '1px solid rgba(0,230,118,0.2)', boxShadow: '0 0 60px rgba(0,230,118,0.06)' }}>
+        <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: modoBrillo ? tema.bgCard : tema.bgCard, border: '1px solid rgba(0,230,118,0.2)', boxShadow: 'none' }}>
           <div className="px-8 py-7 text-center" style={{ borderBottom: '1px solid rgba(0,230,118,0.1)', background: 'rgba(0,230,118,0.03)' }}>
             <div className="text-3xl mb-3">🔑</div>
             <h1 className="text-xl font-bold text-white">Crear contraseña</h1>
@@ -141,7 +141,7 @@ export default function Login() {
           style={{
             background: tema.bgCard,
             border: `1px solid ${tema.greenBorde}`,
-            boxShadow: '0 0 60px rgba(0,180,100,0.06), 0 32px 64px rgba(0,0,0,0.15)',
+            boxShadow: '0 32px 64px rgba(0,0,0,0.15)',
           }}
         >
           {/* Header */}
@@ -248,7 +248,7 @@ export default function Login() {
                       background: 'rgba(0,230,118,0.15)',
                       border: '1.5px solid rgba(0,230,118,0.4)',
                       color: tema.accent,
-                      boxShadow: '0 0 20px rgba(0,230,118,0.1)',
+                      boxShadow: 'none',
                       cursor: 'pointer',
                     }
               }

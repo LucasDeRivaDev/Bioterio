@@ -229,7 +229,6 @@ export default function Reportes() {
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-1.5 h-7 rounded-full" style={{ background: tema.accent, boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
             <div>
               <h1 className="text-xl font-bold text-white">Informes e Impresión</h1>
               <p className="text-xs font-mono mt-0.5" style={{ color: tema.textMuted }}>
@@ -240,7 +239,7 @@ export default function Reportes() {
           <button
             onClick={() => window.print()}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold"
-            style={{ background: 'rgba(0,230,118,0.15)', border: '1.5px solid rgba(0,230,118,0.4)', color: tema.accent, boxShadow: '0 0 20px rgba(0,230,118,0.1)' }}
+            style={{ background: 'rgba(0,230,118,0.15)', border: '1.5px solid rgba(0,230,118,0.4)', color: tema.accent, boxShadow: 'none' }}
           >
             <Printer size={15} /> Imprimir / PDF
           </button>
@@ -262,7 +261,7 @@ export default function Reportes() {
               onClick={() => setBioterioActivo('reporte_mensual')}
               title="Resumen ejecutivo mensual para dirección — animales, reproducción, egresos e insumos"
               className="ml-auto flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all hover:brightness-110"
-              style={{ background: 'linear-gradient(135deg, rgba(206,147,216,0.16), rgba(64,196,255,0.10))', border: '1.5px solid rgba(206,147,216,0.45)', color: '#ce93d8', boxShadow: '0 0 18px rgba(206,147,216,0.15)' }}
+              style={{ background: 'linear-gradient(135deg, rgba(206,147,216,0.16), rgba(64,196,255,0.10))', border: '1.5px solid rgba(206,147,216,0.45)', color: '#ce93d8', boxShadow: 'none' }}
             >
               <Briefcase size={15} /> Reporte directivo
               <span className="text-xs font-mono opacity-70">PDF</span>
@@ -422,14 +421,14 @@ function DocImprimible({ tituloPeriodo, datos, animales, camadas, pedidos = [], 
       {/* ── Encabezado del documento ── */}
       <div style={{ borderBottom: '2pt solid #111', paddingBottom: '10pt', marginBottom: '12pt', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12pt' }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: '7pt', color: '#666', fontFamily: 'monospace', marginBottom: '3pt', letterSpacing: '0.5pt' }}>
+          <div style={{ fontSize: '7pt', color: '#666', fontFamily: 'var(--font-cond)', marginBottom: '3pt', letterSpacing: '0.5pt' }}>
             BIOTERIO · SISTEMA DE GESTIÓN DE COLONIA
             {bioterioActivo && ` · ${(LABEL_BIOTERIO[bioterioActivo] ?? bioterioActivo).toUpperCase()}`}
           </div>
           <div style={{ fontSize: '15pt', fontWeight: 900, color: '#111', letterSpacing: '-0.3pt', marginBottom: '2pt' }}>
             INFORME DE COLONIA — {tituloPeriodo.toUpperCase()}
           </div>
-          <div style={{ fontSize: '7.5pt', color: '#555', fontFamily: 'monospace' }}>
+          <div style={{ fontSize: '7.5pt', color: '#555', fontFamily: 'var(--font-cond)' }}>
             Generado: {ahora} &nbsp;·&nbsp; Secciones: {secActivas.map(s => s.label).join(' · ')}
           </div>
         </div>

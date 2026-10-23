@@ -368,7 +368,7 @@ export default function CapacidadGlobal() {
           <>
             {/* ── Panel estado actual + config ── */}
             <div className="rounded-2xl overflow-hidden"
-              style={{ background: tema.bgCard, border: `1.5px solid ${bioTab.color}30`, boxShadow: `0 0 40px ${bioTab.color}06` }}>
+              style={{ background: tema.bgCard, border: `1.5px solid ${bioTab.color}30`, boxShadow: `none` }}>
 
               {/* Header */}
               <div className="px-6 py-3 flex items-center gap-3"
@@ -750,8 +750,8 @@ function GraficoProyeccion({ data, dataKey, label, color, maximo }) {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-            <XAxis dataKey="f" tick={{ fill: '#4a5f7a', fontSize: 9, fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
-            <YAxis domain={[0, yMax]} tick={{ fill: '#4a5f7a', fontSize: 9, fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
+            <XAxis dataKey="f" tick={{ fill: '#4a5f7a', fontSize: 9, fontFamily: 'var(--font-cond)' }} axisLine={false} tickLine={false} />
+            <YAxis domain={[0, yMax]} tick={{ fill: '#4a5f7a', fontSize: 9, fontFamily: 'var(--font-cond)' }} axisLine={false} tickLine={false} />
             <Tooltip
               contentStyle={{ background: '#0d1528', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px' }}
               labelStyle={{ color: tema.textPrimary }}

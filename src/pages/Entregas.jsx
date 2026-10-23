@@ -68,7 +68,6 @@ export default function Entregas() {
         >
           ← Stock
         </button>
-        <div className="w-1.5 h-7 rounded-full" style={{ background: '#ffb300', boxShadow: '0 0 8px rgba(255,179,0,0.5)' }} />
         <h1 className="text-xl font-bold text-white">Entregas</h1>
       </div>
 

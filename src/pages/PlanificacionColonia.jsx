@@ -70,7 +70,7 @@ function GaugeScore({ score, size = 90 }) {
       </svg>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <span style={{ fontSize: 22, fontWeight: 800, color: nivel.color, lineHeight: 1 }}>{score}</span>
-        <span style={{ fontSize: 9, color: tema.textMuted, fontFamily: 'monospace' }}>/ 100</span>
+        <span style={{ fontSize: 9, color: tema.textMuted, fontFamily: 'var(--font-cond)' }}>/ 100</span>
       </div>
     </div>
   )
@@ -81,7 +81,7 @@ function Chip({ children, color = '#00e676' }) {
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 4,
       padding: '2px 8px', borderRadius: 20,
-      fontSize: 11, fontWeight: 600, fontFamily: 'monospace',
+      fontSize: 11, fontWeight: 600, fontFamily: 'var(--font-cond)',
       background: `${color}18`, border: `1px solid ${color}40`, color,
     }}>{children}</span>
   )
@@ -117,7 +117,7 @@ function TarjetaHorizonte({ dias, data, config }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <div>
           <div style={{ fontSize: 20, fontWeight: 800, color, lineHeight: 1 }}>{dias}d</div>
-          <div style={{ fontSize: 10, color: tema.textMuted, fontFamily: 'monospace' }}>horizonte</div>
+          <div style={{ fontSize: 10, color: tema.textMuted, fontFamily: 'var(--font-cond)' }}>horizonte</div>
         </div>
         <span style={{ fontSize: 18 }}>{emoji}</span>
       </div>
@@ -136,17 +136,17 @@ function TarjetaHorizonte({ dias, data, config }) {
           </span>
         </div>
         {data.vencenMachos > 0 && (
-          <div style={{ fontSize: 10, color: tema.amber, fontFamily: 'monospace' }}>
+          <div style={{ fontSize: 10, color: tema.amber, fontFamily: 'var(--font-cond)' }}>
             ⚠ {data.vencenMachos} macho(s) alcanzan límite
           </div>
         )}
         {data.vencenHembras > 0 && (
-          <div style={{ fontSize: 10, color: tema.amber, fontFamily: 'monospace' }}>
+          <div style={{ fontSize: 10, color: tema.amber, fontFamily: 'var(--font-cond)' }}>
             ⚠ {data.vencenHembras} hembra(s) alcanzan límite
           </div>
         )}
         {data.partosEsperados > 0 && (
-          <div style={{ fontSize: 10, color: tema.accent, fontFamily: 'monospace' }}>
+          <div style={{ fontSize: 10, color: tema.accent, fontFamily: 'var(--font-cond)' }}>
             ✦ {data.partosEsperados} parto(s) esperado(s)
           </div>
         )}
@@ -193,7 +193,7 @@ function TarjetaCandidato({ candidato, index, onReservar, onLiberar, reservado, 
                 ? `${candidato.machos} macho(s)`
                 : `${candidato.hembras} hembra(s)`}
             </div>
-            <div style={{ fontSize: 10, color: tema.textMuted, fontFamily: 'monospace' }}>
+            <div style={{ fontSize: 10, color: tema.textMuted, fontFamily: 'var(--font-cond)' }}>
               {candidato.diasVida}d · {camada?.fecha_nacimiento ? formatFecha(camada.fecha_nacimiento) : '—'}
             </div>
           </div>
@@ -529,7 +529,7 @@ function SimuladorImpacto({ animales, stockReal, bioterioId, motorUnificado }) {
               const cambioHembras = esDespues && data.hembras !== resultado.antes.hembras
               return (
                 <div key={label} style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '10px 12px', border: `1px solid ${color}22` }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color, fontFamily: 'monospace', marginBottom: 6 }}>{label}</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color, fontFamily: 'var(--font-cond)', marginBottom: 6 }}>{label}</div>
                   <div style={{ fontSize: 12, color: cambioMachos ? '#ff6b80' : tema.textSecondary, fontWeight: cambioMachos ? 700 : 400 }}>
                     ♂ {data.machos} machos{cambioMachos ? ' ▼' : ''}
                   </div>
@@ -828,7 +828,7 @@ export default function PlanificacionColonia() {
               <div>
                 <div style={{ fontSize: 9, color: tema.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5, display: 'flex', justifyContent: 'space-between' }}>
                   <span>Estructural</span>
-                  <span style={{ color: '#a78bfa', fontFamily: 'monospace' }}>{indiceSostenibilidad.grupos.estructural.score}/{indiceSostenibilidad.grupos.estructural.max}</span>
+                  <span style={{ color: '#a78bfa', fontFamily: 'var(--font-cond)' }}>{indiceSostenibilidad.grupos.estructural.score}/{indiceSostenibilidad.grupos.estructural.max}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {indiceSostenibilidad.grupos.estructural.items.map(({ key, label, valor, max, color }) => {
@@ -840,7 +840,7 @@ export default function PlanificacionColonia() {
                         <span style={{ fontSize: 12, width: 14 }}>{ico}</span>
                         <span style={{ fontSize: 11, color: tema.textMuted, width: 72, flexShrink: 0 }}>{label}</span>
                         <div style={{ flex: 1 }}><BarraProgreso valor={valor} max={max} color={color} height={h} /></div>
-                        <span style={{ fontSize: 10, color, fontFamily: 'monospace', width: 36, textAlign: 'right', flexShrink: 0 }}>{valor}/{max}</span>
+                        <span style={{ fontSize: 10, color, fontFamily: 'var(--font-cond)', width: 36, textAlign: 'right', flexShrink: 0 }}>{valor}/{max}</span>
                       </div>
                     )
                   })}
@@ -850,7 +850,7 @@ export default function PlanificacionColonia() {
               <div style={{ borderTop: `1px solid ${tema.bgCardBorde}`, paddingTop: 6 }}>
                 <div style={{ fontSize: 9, color: tema.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5, display: 'flex', justifyContent: 'space-between' }}>
                   <span>Productivo</span>
-                  <span style={{ color: tema.accent, fontFamily: 'monospace' }}>{indiceSostenibilidad.grupos.productivo.score}/{indiceSostenibilidad.grupos.productivo.max}</span>
+                  <span style={{ color: tema.accent, fontFamily: 'var(--font-cond)' }}>{indiceSostenibilidad.grupos.productivo.score}/{indiceSostenibilidad.grupos.productivo.max}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {indiceSostenibilidad.grupos.productivo.items.map(({ key, label, valor, max, color }) => {
@@ -861,7 +861,7 @@ export default function PlanificacionColonia() {
                         <span style={{ fontSize: 12, width: 14 }}>{ico}</span>
                         <span style={{ fontSize: 11, color: tema.textMuted, width: 72, flexShrink: 0 }}>{label}</span>
                         <div style={{ flex: 1 }}><BarraProgreso valor={valor} max={max} color={color} height={4} /></div>
-                        <span style={{ fontSize: 10, color, fontFamily: 'monospace', width: 36, textAlign: 'right', flexShrink: 0 }}>{valor}/{max}</span>
+                        <span style={{ fontSize: 10, color, fontFamily: 'var(--font-cond)', width: 36, textAlign: 'right', flexShrink: 0 }}>{valor}/{max}</span>
                       </div>
                     )
                   })}
@@ -1038,7 +1038,7 @@ export default function PlanificacionColonia() {
                 : proyeccion.partosPendientes.slice(0, 5).map((p, i) => (
                   <div key={p.camadaId} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 8px', borderRadius: 7, marginBottom: 3, background: p.vencido ? 'rgba(255,61,87,0.06)' : 'rgba(0,230,118,0.04)' }}>
                     <span style={{ fontSize: 11, color: tema.textSecondary }}>#{i + 1}</span>
-                    <span style={{ fontSize: 11, color: p.vencido ? '#ff6b80' : '#00e676', fontFamily: 'monospace' }}>{p.vencido ? 'Vencido' : `${p.diasRestantes}d`}</span>
+                    <span style={{ fontSize: 11, color: p.vencido ? '#ff6b80' : '#00e676', fontFamily: 'var(--font-cond)' }}>{p.vencido ? 'Vencido' : `${p.diasRestantes}d`}</span>
                   </div>
                 ))
               }
@@ -1050,7 +1050,7 @@ export default function PlanificacionColonia() {
                 : proyeccion.destesPendientes.slice(0, 5).map((d, i) => (
                   <div key={d.camadaId} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 8px', borderRadius: 7, marginBottom: 3, background: d.vencido ? 'rgba(255,61,87,0.06)' : 'rgba(64,196,255,0.04)' }}>
                     <span style={{ fontSize: 11, color: tema.textSecondary }}>#{i + 1}{d.totalCrias > 0 ? ` · ${d.totalCrias}cr` : ''}</span>
-                    <span style={{ fontSize: 11, color: d.vencido ? '#ff6b80' : '#40c4ff', fontFamily: 'monospace' }}>{d.vencido ? 'Vencido' : `${d.diasRestantes}d`}</span>
+                    <span style={{ fontSize: 11, color: d.vencido ? '#ff6b80' : '#40c4ff', fontFamily: 'var(--font-cond)' }}>{d.vencido ? 'Vencido' : `${d.diasRestantes}d`}</span>
                   </div>
                 ))
               }
@@ -1130,7 +1130,7 @@ export default function PlanificacionColonia() {
           ].map(({ label, valor, jaulas: j, color, desc }) => (
             <div key={label} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '8px 10px', textAlign: 'center' }}>
               <div style={{ fontSize: 18, fontWeight: 800, color, lineHeight: 1 }}>{valor}</div>
-              {j != null && <div style={{ fontSize: 9, color: tema.amber, fontFamily: 'monospace' }}>{j} jaula{j !== 1 ? 's' : ''}</div>}
+              {j != null && <div style={{ fontSize: 9, color: tema.amber, fontFamily: 'var(--font-cond)' }}>{j} jaula{j !== 1 ? 's' : ''}</div>}
               <div style={{ fontSize: 10, color: tema.textMuted, marginTop: 2 }}>{label}</div>
               <div style={{ fontSize: 9, color: tema.textMuted, fontStyle: 'italic' }}>{desc}</div>
             </div>
@@ -1233,7 +1233,7 @@ export default function PlanificacionColonia() {
                         {sug.tipo === 'reproductor' && <Chip color="#a78bfa">Reproductor</Chip>}
                         {sug.esProtegido && <Chip color="#00e676">Candidato renovación</Chip>}
                       </div>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: colorTxt, fontFamily: 'monospace' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: colorTxt, fontFamily: 'var(--font-cond)' }}>
                         {sug.tipo === 'stock'
                           ? `${sug.total} animales · ${sug.diasVida}d`
                           : `${sug.codigo} · ${sug.diasVida}d`}

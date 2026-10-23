@@ -210,7 +210,6 @@ export default function Incidentes() {
           >
             ← Panel de hoy
           </button>
-          <div className="w-1.5 h-7 rounded-full" style={{ background: '#ff6b80', boxShadow: '0 0 8px rgba(255,107,128,0.5)' }} />
           <div>
             <h1 className="text-xl font-bold text-white">Vigilancia sanitaria</h1>
             <p className="text-xs mt-0.5 font-mono" style={{ color: tema.textMuted }}>
@@ -1225,8 +1224,8 @@ export default function Incidentes() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={mesesTend} barCategoryGap="30%">
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="label" tick={{ fill: '#4a5f7a', fontSize: 10, fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: '#4a5f7a', fontSize: 10, fontFamily: 'monospace' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <XAxis dataKey="label" tick={{ fill: '#4a5f7a', fontSize: 10, fontFamily: 'var(--font-cond)' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: '#4a5f7a', fontSize: 10, fontFamily: 'var(--font-cond)' }} axisLine={false} tickLine={false} allowDecimals={false} />
                   <Tooltip
                     contentStyle={{ background: '#0d1528', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px' }}
                     labelStyle={{ color: tema.textPrimary }}
@@ -1822,14 +1821,14 @@ function ModalIncidente({ inicial, animales, camadas, sacrificios, entregas, bio
   const inputBase = {
     background: tema.bgCard, border: '1px solid rgba(30,51,82,0.9)',
     color: tema.textPrimary, borderRadius: '10px', padding: '9px 12px',
-    fontSize: '13px', outline: 'none', width: '100%', fontFamily: 'monospace',
+    fontSize: '13px', outline: 'none', width: '100%', fontFamily: 'var(--font-cond)',
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-lg rounded-2xl overflow-hidden max-h-[90dvh] overflow-y-auto"
-        style={{ background: tema.bgCard, border: '1px solid rgba(255,107,128,0.3)', boxShadow: '0 0 60px rgba(255,107,128,0.1)' }}>
+        style={{ background: tema.bgCard, border: '1px solid rgba(255,107,128,0.3)', boxShadow: 'none' }}>
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(255,107,128,0.12)', background: 'rgba(255,107,128,0.04)' }}>
           <div className="font-bold text-white text-sm">
             {esEdicion ? '✎ Editar incidente' : '🩺 Registrar incidente'}

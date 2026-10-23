@@ -1009,7 +1009,7 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
             background: 'rgba(0,230,118,0.15)',
             border: '1.5px solid rgba(0,230,118,0.4)',
             color: tema.accent,
-            boxShadow: '0 0 16px rgba(0,230,118,0.1)',
+            boxShadow: 'none',
           }}
         >
           {camada ? 'Guardar cambios' : '+ Registrar camada'}

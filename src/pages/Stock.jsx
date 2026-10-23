@@ -273,7 +273,7 @@ function BloqueJaula({ bloque, camadas, onClick, onEliminar, modoSeleccion = fal
       style={{
         background: seleccionada ? 'rgba(255,61,87,0.08)' : tema.bgCard,
         border: seleccionada ? '2px solid rgba(255,61,87,0.7)' : `1px solid ${cfgEfectivo.borde}`,
-        boxShadow: seleccionada ? '0 0 16px rgba(255,61,87,0.15)' : `0 0 8px ${cfgEfectivo.bg}`,
+        boxShadow: 'none',
         opacity: esEnApareamiento ? 0.6 : (modoSeleccion && !esSeleccionable ? 0.35 : 1),
         position: 'relative',
         cursor: modoSeleccion && !esSeleccionable ? 'default' : 'pointer',
@@ -551,7 +551,7 @@ function JaulaModal({ bloque, jaulas, camadas, animales, onCerrar, editarJaula, 
   const iStyle = {
     background: tema.bgCard, border: '1px solid rgba(30,51,82,0.8)',
     color: '#e2e8f0', borderRadius: '0.5rem', padding: '0.4rem 0.6rem',
-    fontSize: '0.8125rem', fontFamily: 'monospace', width: '100%', outline: 'none',
+    fontSize: '0.8125rem', fontFamily: 'var(--font-cond)', width: '100%', outline: 'none',
   }
   const btnTab = (m, label) => (
     <button
@@ -1112,7 +1112,7 @@ function ModalPlanificarApareamiento({ bloquesMacho, bloquesHembra, onGuardar, o
   const iStyle = {
     background: tema.bgCard, border: '1px solid rgba(30,51,82,0.8)',
     color: '#e2e8f0', borderRadius: '0.5rem', padding: '0.4rem 0.6rem',
-    fontSize: '0.8125rem', fontFamily: 'monospace', width: '100%', outline: 'none',
+    fontSize: '0.8125rem', fontFamily: 'var(--font-cond)', width: '100%', outline: 'none',
   }
 
   function getNombre(b) {
@@ -1432,7 +1432,7 @@ function ModalSacrificio({ bloques, onConfirmar, onCerrar, animalesReservados = 
           </label>
           <input type="text" placeholder="Motivo, protocolo, observaciones..."
             value={notas} onChange={(e) => setNotas(e.target.value)}
-            style={{ ...iStyle, fontFamily: 'monospace' }} />
+            style={{ ...iStyle, fontFamily: 'var(--font-cond)' }} />
         </div>
 
         {/* Botones */}
@@ -1674,7 +1674,7 @@ function ModalEntrega({ bloques, onConfirmar, onCerrar, animalesReservados = new
           </label>
           <input type="text" placeholder="Investigador, protocolo, destino..."
             value={observaciones} onChange={(e) => setObservaciones(e.target.value)}
-            style={{ ...iStyle, fontFamily: 'monospace' }} />
+            style={{ ...iStyle, fontFamily: 'var(--font-cond)' }} />
         </div>
 
         {/* Grupo de investigación */}
@@ -1685,7 +1685,7 @@ function ModalEntrega({ bloques, onConfirmar, onCerrar, animalesReservados = new
           <select
             value={grupoInvestigacion}
             onChange={(e) => setGrupoInvestigacion(e.target.value)}
-            style={{ ...iStyle, fontFamily: 'monospace', cursor: 'pointer' }}
+            style={{ ...iStyle, fontFamily: 'var(--font-cond)', cursor: 'pointer' }}
           >
             <option value="">Sin grupo asignado</option>
             {GRUPOS_INVESTIGACION.map((g) => (
@@ -1764,7 +1764,7 @@ function ModalPromoverReproductor({ bloques, animales, onConfirmar, onCerrar }) 
   const iStyle = {
     background: tema.bgCard, border: '1px solid rgba(30,51,82,0.8)',
     color: '#e2e8f0', borderRadius: '0.5rem', padding: '0.4rem 0.6rem',
-    fontSize: '0.8125rem', fontFamily: 'monospace', width: '100%', outline: 'none',
+    fontSize: '0.8125rem', fontFamily: 'var(--font-cond)', width: '100%', outline: 'none',
   }
 
   async function confirmar() {
@@ -2380,7 +2380,6 @@ const btnTab = (v, label) => (
     return (
       <div className="p-4 md:p-6 space-y-5 min-0" style={{ background: tema.bgMain }}>
         <div className="flex items-center gap-3">
-          <div className="w-1.5 h-7 rounded-full" style={{ background: '#40c4ff', boxShadow: '0 0 8px rgba(64,196,255,0.5)' }} />
           <h1 className="text-xl font-bold text-white">Stock</h1>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -2403,7 +2402,6 @@ if (subVista === 'sacrificios') {
     return (
       <div className="p-4 md:p-6 space-y-5 min-0" style={{ background: tema.bgMain }}>
         <div className="flex items-center gap-3">
-          <div className="w-1.5 h-7 rounded-full" style={{ background: '#40c4ff', boxShadow: '0 0 8px rgba(64,196,255,0.5)' }} />
           <h1 className="text-xl font-bold text-white">Stock</h1>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -2427,7 +2425,6 @@ if (subVista === 'sacrificios') {
 
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="w-1.5 h-7 rounded-full" style={{ background: '#40c4ff', boxShadow: '0 0 8px rgba(64,196,255,0.5)' }} />
         <h1 className="text-xl font-bold text-white">Stock</h1>
       </div>
 
@@ -2641,7 +2638,7 @@ if (subVista === 'sacrificios') {
             style={{
               background: '#0d1528',
               border: '1px solid rgba(255,61,87,0.45)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.7), 0 0 24px rgba(255,61,87,0.1)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
               whiteSpace: 'nowrap',
             }}
           >

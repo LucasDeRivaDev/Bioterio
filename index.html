@@ -15,26 +15,49 @@
     <title>ITeRatE — Colony Management System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <script>
+      try {
+        if (localStorage.getItem('appMosca_brillo') === 'true') document.documentElement.classList.add('modo-claro')
+      } catch (e) {}
+    </script>
     <script>
       tailwind.config = {
         theme: {
           extend: {
             fontFamily: {
-              sans: ['Inter', 'system-ui', 'sans-serif'],
-              mono: ['JetBrains Mono', 'monospace'],
+              sans: ['IBM Plex Sans', 'system-ui', 'sans-serif'],
+              // Datos y etiquetas: condensada con números tabulares (ver index.css), no monospace
+              mono: ['IBM Plex Sans Condensed', 'IBM Plex Sans', 'system-ui', 'sans-serif'],
+              cond: ['IBM Plex Sans Condensed', 'IBM Plex Sans', 'system-ui', 'sans-serif'],
+              code: ['IBM Plex Mono', 'monospace'],
+            },
+            borderColor: {
+              DEFAULT: 'var(--line)',
+            },
+            borderRadius: {
+              xl: '0.625rem',
+              '2xl': '0.75rem',
+              '3xl': '1rem',
             },
             colors: {
               lab: {
-                950: '#050810',
-                900: '#080d1a',
-                800: '#0d1528',
+                950: 'var(--canvas)',
+                900: 'var(--surface)',
+                800: 'var(--raised)',
                 700: '#111d35',
                 600: '#172444',
                 500: '#1e2f55',
-                border: '#1e3352',
-                muted: '#4a5f7a',
+                border: 'var(--line)',
+                muted: 'var(--ink-faint)',
               },
+              canvas: 'var(--canvas)',
+              surface: 'var(--surface)',
+              raised: 'var(--raised)',
+              sunken: 'var(--sunken)',
+              line: 'var(--line)',
+              ink: { DEFAULT: 'var(--ink)', soft: 'var(--ink-soft)', faint: 'var(--ink-faint)' },
               neon: {
                 green: '#00e676',
                 greenDim: '#00c85a',
@@ -47,7 +70,7 @@
               rat: {
                 brown: '#a17850',
                 gray: '#8a9bb0',
-                light: '#c9d4e0',
+                light: 'var(--ink)',
               }
             }
           }

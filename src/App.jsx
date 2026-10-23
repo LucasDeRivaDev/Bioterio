@@ -6,8 +6,7 @@ import { BiotheriumProvider } from './context/BiotheriumContext'
 import { BioterioActivoProvider, useBioterioActivo } from './context/BioterioActivoContext'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
 import Sidebar from './components/Sidebar'
-import iterateNavLogo      from './assets/logoiterate.png'
-import iterateNavLogoLight from './assets/logoiteratefondoclaro.png'
+import { Loader2, Menu, Moon, Sun } from 'lucide-react'
 import SelectorBioterio from './pages/SelectorBioterio'
 import ResumenRatones from './pages/ResumenRatones'
 import ConsumoAlimento from './pages/ConsumoAlimento'
@@ -36,65 +35,21 @@ import Landing from './pages/Landing'
 // ── Pantalla de carga mientras verifica la sesión ────────────────────────────
 function PantallaCarga() {
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center gap-4"
-      style={{ background: '#050810' }}
-    >
-      <div
-        className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl"
-        style={{
-          background: 'rgba(0,230,118,0.1)',
-          border: '1px solid rgba(0,230,118,0.3)',
-          boxShadow: '0 0 20px rgba(0,230,118,0.15)',
-        }}
-      >
-        🧬
-      </div>
-      <div className="flex items-center gap-2">
-        <span
-          className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin"
-          style={{ borderColor: '#00e676', borderTopColor: 'transparent' }}
-        />
-        <span className="text-sm font-mono" style={{ color: '#4a5f7a' }}>Verificando acceso...</span>
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ background: 'var(--canvas)' }}>
+      <img src="/apple-touch-icon.png" alt="" width="48" height="48" className="h-12 w-12 rounded-lg" />
+      <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--ink-soft)' }} role="status">
+        <Loader2 size={16} className="animate-spin" />
+        Verificando acceso…
       </div>
     </div>
   )
 }
-
-// ── Pantalla de carga de datos ───────────────────────────────────────────────
-function PantallaCargaDatos() {
-  return (
-    <div
-      className="flex-1 flex flex-col items-center justify-center gap-4"
-      style={{ background: '#050810' }}
-    >
-      <span
-        className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin"
-        style={{ borderColor: '#00e676', borderTopColor: 'transparent' }}
-      />
-      <span className="text-sm font-mono" style={{ color: '#4a5f7a' }}>Cargando datos de la colonia...</span>
-    </div>
-  )
-}
-
-// ── CSS global inyectado para modo claro (overrides estructurales) ───────────
-export const CSS_MODO_CLARO = `
-  html.modo-claro body { background: #edf2f7 !important; color: #0d1e30 !important; }
-  html.modo-claro #root { background: #edf2f7 !important; }
-  html.modo-claro .text-white { color: #0d1e30 !important; }
-  html.modo-claro .text-rat-light { color: #0d1e30 !important; }
-  html.modo-claro .bg-lab-950 { background: #edf2f7 !important; }
-  html.modo-claro .bg-lab-900 { background: #e2eef8 !important; }
-  html.modo-claro .min-h-screen.flex.flex-col { background: #edf2f7 !important; }
-  html.modo-claro main.flex-1 { background: #edf2f7 !important; }
-  html.modo-claro .flex.min-h-screen { background: #edf2f7 !important; }
-`
 
 // ── Layout principal (solo si hay sesión) ────────────────────────────────────
 function AppLayout() {
   const { sesion, cerrarSesion } = useAuth()
   const { bioterioActivo } = useBioterioActivo()
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   const [sidebarAbierto, setSidebarAbierto] = useState(false)
 
   if (!sesion) return <Navigate to="/login" replace />
@@ -124,13 +79,14 @@ function AppLayout() {
 
   return (
     <BiotheriumProvider>
-      <div className="flex min-h-screen" style={{ background: tema.bgMain, backgroundImage: tema.bgMainGrad, backgroundSize: '40px 40px' }}>
+      <div className="flex min-h-screen" style={{ background: tema.bgMain }}>
+        <OcultarBotonBrilloEnEscritorio />
 
         {/* Overlay oscuro en mobile cuando el sidebar está abierto */}
         {sidebarAbierto && (
           <div
             className="fixed inset-0 z-30 md:hidden backdrop-blur-sm"
-            style={{ background: 'rgba(5,8,16,0.75)' }}
+            style={{ background: 'rgba(0,0,0,0.5)' }}
             onClick={cerrarSidebar}
           />
         )}
@@ -149,46 +105,7 @@ function AppLayout() {
         <main className="flex-1 overflow-auto min-w-0 flex flex-col">
 
           {/* Topbar solo en mobile */}
-          <div
-            className="sticky top-0 z-20 flex items-center gap-3 px-4 py-3 md:hidden shrink-0"
-            style={{ background: tema.bgTopbar, borderBottom: `1px solid ${tema.bgTopbarBorde}` }}
-          >
-            <button
-              onClick={() => setSidebarAbierto(true)}
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
-              style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)', color: '#00e676' }}
-            >
-              ☰
-            </button>
-            <span className="font-bold text-sm tracking-wide" style={{ color: tema.textPrimary }}>ITeRatE</span>
-            <div
-              className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono shrink-0"
-              style={{ background: 'rgba(0,230,118,0.07)', border: '1px solid rgba(0,230,118,0.2)', color: '#00e676' }}
-            >
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#00e676' }} />
-              ACTIVO
-            </div>
-          </div>
-
-          {/* Logo flotante — esquina inferior derecha, oculto en mobile */}
-          <div
-            className="hidden md:block"
-            style={{
-              position: 'fixed',
-              bottom: '20px',
-              right: '15px',
-              zIndex: 10,
-              opacity: 0.85,
-              pointerEvents: 'none',
-              mixBlendMode: modoBrillo ? 'multiply' : 'normal',
-            }}
-          >
-            <img
-              src={modoBrillo ? iterateNavLogoLight : iterateNavLogo}
-              alt="ITeRatE"
-              style={{ height: '99px', width: 'auto', display: 'block', filter: modoBrillo ? 'none' : 'drop-shadow(0 0 8px rgba(0,230,118,0.2))' }}
-            />
-          </div>
+          <TopbarMovil onMenu={() => setSidebarAbierto(true)} />
 
           {/* Rutas */}
           <div className="flex-1">
@@ -241,7 +158,7 @@ function PantallaCrearPassword() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#050810' }}>
-      <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.95)', border: '1px solid rgba(0,230,118,0.2)', boxShadow: '0 0 60px rgba(0,230,118,0.06)' }}>
+      <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: 'rgba(13,21,40,0.95)', border: '1px solid rgba(0,230,118,0.2)', boxShadow: 'none' }}>
         <div className="px-8 py-7 text-center" style={{ borderBottom: '1px solid rgba(0,230,118,0.1)', background: 'rgba(0,230,118,0.03)' }}>
           <div className="text-3xl mb-3">🔑</div>
           <h1 className="text-xl font-bold" style={{ color: '#ffffff' }}>Crear contraseña</h1>
@@ -282,44 +199,47 @@ function PantallaCrearPassword() {
   )
 }
 
-// ── Botón de brillo — fijo abajo a la derecha, fuera del div filtrado ───────
+// ── Topbar mobile (compartida con la demo) ──────────────────────────────────
+export function TopbarMovil({ onMenu, children }) {
+  const { tema } = useTheme()
+  return (
+    <div
+      className="sticky top-0 z-20 flex h-14 items-center gap-2 px-2 md:hidden shrink-0"
+      style={{ background: tema.bgTopbar, borderBottom: `1px solid ${tema.bgTopbarBorde}` }}
+    >
+      <button
+        onClick={onMenu}
+        aria-label="Abrir menú"
+        className="w-10 h-10 rounded-md flex items-center justify-center shrink-0"
+        style={{ color: tema.textSecondary }}
+      >
+        <Menu size={20} />
+      </button>
+      <img src="/apple-touch-icon.png" alt="" width="28" height="28" className="h-7 w-7 rounded" />
+      <span className="font-cond font-semibold text-base" style={{ color: tema.textPrimary }}>ITeRatE</span>
+      {children}
+    </div>
+  )
+}
+
+// En escritorio el cambio de tema vive en el sidebar; el botón flotante queda para mobile
+// y para las pantallas sin sidebar (landing, login, selector, vistas globales).
+export function OcultarBotonBrilloEnEscritorio() {
+  return <style>{'@media (min-width: 768px) { .boton-brillo-flotante { display: none !important; } }'}</style>
+}
+
+// ── Botón de tema flotante ──────────────────────────────────────────────────
 export function BotonBrillo() {
   const { modoBrillo, toggleBrillo } = useTheme()
   return (
     <button
       onClick={toggleBrillo}
-      title={modoBrillo ? 'Cambiar a modo oscuro' : 'Cambiar a modo luminoso'}
-      style={{
-        position: 'fixed',
-        bottom: '128px',
-        right: '20px',
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '7px',
-        padding: '8px 13px',
-        borderRadius: '20px',
-        border: modoBrillo
-          ? '1.5px solid rgba(30,100,200,0.45)'
-          : '1.5px solid rgba(0,230,118,0.3)',
-        background: modoBrillo
-          ? 'rgba(230,240,255,0.97)'
-          : 'rgba(8,13,26,0.97)',
-        backdropFilter: 'blur(12px)',
-        cursor: 'pointer',
-        fontSize: '13px',
-        fontWeight: 600,
-        fontFamily: 'Inter, sans-serif',
-        color: modoBrillo ? '#1a3a6a' : '#00e676',
-        boxShadow: modoBrillo
-          ? '0 2px 16px rgba(30,100,200,0.2), 0 4px 12px rgba(0,0,0,0.15)'
-          : '0 0 16px rgba(0,230,118,0.12), 0 4px 12px rgba(0,0,0,0.5)',
-        transition: 'all 0.25s ease',
-        letterSpacing: '0.3px',
-      }}
+      aria-label={modoBrillo ? 'Usar tema oscuro' : 'Usar tema claro'}
+      title={modoBrillo ? 'Usar tema oscuro' : 'Usar tema claro'}
+      className="boton-brillo-flotante no-print fixed bottom-5 right-5 z-[9999] w-10 h-10 rounded-full flex items-center justify-center"
+      style={{ background: 'var(--surface)', border: '1px solid var(--line)', color: 'var(--ink-soft)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
     >
-      <span style={{ fontSize: '15px', lineHeight: 1 }}>{modoBrillo ? '🌙' : '☀️'}</span>
-      <span>{modoBrillo ? 'Oscuro' : 'Claro'}</span>
+      {modoBrillo ? <Moon size={18} /> : <Sun size={18} />}
     </button>
   )
 }
@@ -327,7 +247,6 @@ export function BotonBrillo() {
 // ── Root del router con manejo de auth ──────────────────────────────────────
 function RutaRaiz() {
   const { sesion, cargando, necesitaPassword } = useAuth()
-  const { modoBrillo } = useTheme()
 
   function renderContenido() {
     if (cargando) return <PantallaCarga />
@@ -352,8 +271,6 @@ function RutaRaiz() {
 
   return (
     <>
-      {/* CSS global inyectado para modo claro */}
-      {modoBrillo && <style dangerouslySetInnerHTML={{ __html: CSS_MODO_CLARO }} />}
       {renderContenido()}
       <BotonBrillo />
     </>

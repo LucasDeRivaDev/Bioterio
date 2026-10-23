@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+import './styles/modo-claro-colores.css'
 import App from './App.jsx'
 import AppDemo from './AppDemo.jsx'
 

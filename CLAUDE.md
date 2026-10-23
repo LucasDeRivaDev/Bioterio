@@ -62,7 +62,7 @@ Sistema web de gestión de una colonia de ratones de laboratorio (*Mus musculus*
 ## Stack tecnológico
 
 - **Frontend:** React 19 + Vite (Rolldown bundler)
-- **Estilos:** Tailwind CSS (CDN)
+- **Estilos:** Tailwind CSS (CDN). Sistema visual compartido con ITeRatE ICIVET (ver "Sistema visual")
 - **Routing:** React Router v7
 - **Estado global:** useReducer + Context API
 - **Base de datos:** Supabase (PostgreSQL + Auth + RLS)
@@ -79,7 +79,7 @@ src/
 ├── context/
 │   ├── BiotheriumContext.jsx        — Estado global (animales, camadas, jaulas, sacrificios, entregas, temperaturas, extendidos, animalesExportados, camadasF1)
 │   ├── BioterioActivoContext.jsx    — Bioterio activo en localStorage (bioterioActivo, bio, config)
-│   └── ThemeContext.jsx             — Tema claro/oscuro. TEMA_OSCURO + TEMA_CLARO. Toggle persiste en localStorage ('appMosca_brillo'). Clase 'modo-claro' en <html>
+│   └── ThemeContext.jsx             — Tema claro/oscuro. TEMA_OSCURO + TEMA_CLARO (tokens ICIVET, valores hex porque las páginas les concatenan alfa). Toggle persiste en localStorage ('appMosca_brillo'). Clase 'modo-claro' + data-theme en <html>
 ├── utils/calculos.js                — Motor predictivo, scores reproductivos, confiabilidad de hembras
 ├── utils/reportemensual.js          — Cálculos puros del Reporte Mensual (stockEnFecha, resumenReproductivo, resumenEgresos, resumenInsumo)
 ├── utils/constants.js               — Constantes biológicas (BIO_RATAS, BIO_RATONES, BIO, ESTADO_ANIMAL, TIPO_TAREA)
@@ -106,6 +106,18 @@ src/
     ├── ResumenRatones.jsx           — Vista unificada de stock de las 3 colonias de ratones con desglose por categoría + jaulas
     └── ConsumoViruta.jsx            — Predicción adaptativa de consumo de viruta con censos + ingresos separados
 ```
+
+---
+
+## Sistema visual (desde 23/10/2026, mismo lenguaje que ITeRatE ICIVET)
+
+- **Paleta:** azul noche plano (`--canvas #080d1a`, `--surface #0d1528`, `--raised #111d35`, `--line #1e3352`), texto `#d6dee8 / #8a9bb0 / #5a6f8c`. Modo claro: `#eef1f5 / #fff / #d3dae4`, tinta `#0f1a2b`. Variables CSS en `src/index.css`; `tema.*` en ThemeContext espeja los mismos valores.
+- **Tipografía:** IBM Plex Sans (texto) + IBM Plex Sans Condensed (títulos y la clase `font-mono`, que se usa en datos/códigos: condensada con números tabulares, no monospace). IBM Plex Mono disponible como `font-code`.
+- **Sin efectos neón:** nada de glows (`boxShadow: '0 0 Npx …'`), grilla de fondo ni barras de color decorativas junto a los títulos. El color comunica estado (verde ok, ámbar atención, rojo crítico) o identidad de colonia (`config.color`).
+- **Shell:** Sidebar plano con `.nav-item` / `.nav-item.activo` (fondo raised + barra de tinta a la izquierda), bioterio activo con barra del color de la colonia, cambio de tema y salida en el pie. Botón de tema flotante solo en mobile y pantallas sin sidebar.
+- **Modo claro:** ya NO fuerza todo el texto a negro. `src/styles/modo-claro-colores.css` (generado por `node scripts/generar-modo-claro.mjs`) remapea cada color inline pensado para fondo oscuro a una variante legible sobre blanco, conservando su significado. **Si agregás colores hardcodeados nuevos, regenerá ese archivo.**
+- Radios de Tailwind ajustados (`rounded-xl` 10px, `rounded-2xl` 12px) y borde por defecto `var(--line)` en `index.html`.
+- Respaldo previo al rediseño: tag `respaldo-pre-estetica-icivet`.
 
 ---
 
@@ -321,6 +333,7 @@ extendidos
 ## Implementado recientemente
 
 ### Octubre 2026
+- **Rediseño estético estilo ICIVET (23/10):** tokens, IBM Plex, shell (Sidebar/Modal/Badge/topbar mobile), sin glows, modo claro con colores semánticos. Ver "Sistema visual".
 - **Promedio de crías por camada (22/10):** nueva tarjeta en Estadísticas con la prolificidad histórica real por especie/cepa (Rata Wistar, Ratón BALB/c, Ratón C57BL/6, Ratones híbridos). Muestra camadas válidas, total de crías nacidas y promedio con 1 decimal; "Sin datos" si no hay camadas válidas. `calcularPromedioCriasPorCamada` + `ESPECIES_PROLIFICIDAD` en calculos.js.
 
 ### Agosto 2026

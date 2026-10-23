@@ -1,8 +1,9 @@
 import { useEffect } from 'react'
+import { X } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 
 export default function Modal({ titulo, onCerrar, children, ancho = 'max-w-lg' }) {
-  const { tema, modoBrillo } = useTheme()
+  const { tema } = useTheme()
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onCerrar() }
     window.addEventListener('keydown', handler)
@@ -10,46 +11,31 @@ export default function Modal({ titulo, onCerrar, children, ancho = 'max-w-lg' }
   }, [onCerrar])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true" aria-label={typeof titulo === 'string' ? titulo : undefined}>
       {/* Overlay */}
+      <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={onCerrar} />
+      {/* Panel: hoja inferior en mobile, centrado en escritorio */}
       <div
-        className="absolute inset-0 backdrop-blur-sm"
-        style={{ background: 'rgba(0,0,0,0.55)' }}
-        onClick={onCerrar}
-      />
-      {/* Panel */}
-      <div
-        className={`relative w-full ${ancho} max-h-[90vh] flex flex-col rounded-2xl overflow-hidden`}
+        className={`relative w-full ${ancho} max-h-[92vh] flex flex-col rounded-t-xl sm:rounded-xl overflow-hidden`}
         style={{
-          background: modoBrillo ? '#FFFFFF' : '#0d1528',
-          border: modoBrillo ? `1px solid ${tema.bgCardBorde}` : '1px solid rgba(0,230,118,0.2)',
-          boxShadow: modoBrillo
-            ? '0 24px 48px rgba(0,0,0,0.25)'
-            : '0 0 40px rgba(0,230,118,0.08), 0 24px 48px rgba(0,0,0,0.6)',
+          background: tema.bgCard,
+          border: `1px solid ${tema.bgCardBorde}`,
+          boxShadow: '0 24px 48px rgba(0,0,0,0.35)',
         }}
       >
-        {/* Header */}
-        <div
-          className="flex items-center justify-between px-6 py-4"
-          style={{ borderBottom: `1px solid ${tema.accentBorde}`, background: tema.accentDim }}
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className="w-1.5 h-5 rounded-full"
-              style={{ background: tema.accent, boxShadow: modoBrillo ? 'none' : '0 0 8px rgba(0,230,118,0.6)' }}
-            />
-            <h2 className="text-base font-semibold tracking-wide" style={{ color: tema.textPrimary }}>{titulo}</h2>
-          </div>
+        <div className="flex items-start justify-between gap-4 px-5 py-4" style={{ borderBottom: `1px solid ${tema.lineSoft}` }}>
+          <h2 className="text-lg font-semibold" style={{ color: tema.textPrimary }}>{titulo}</h2>
           <button
             onClick={onCerrar}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-sm transition-all"
-            style={{ color: tema.textSecondary, background: 'rgba(138,155,176,0.08)', border: '1px solid rgba(138,155,176,0.15)' }}
+            aria-label="Cerrar"
+            title="Cerrar"
+            className="-mr-2 -mt-1 w-9 h-9 rounded-md flex items-center justify-center"
+            style={{ color: tema.textSecondary }}
           >
-            ✕
+            <X size={18} />
           </button>
         </div>
-        {/* Contenido */}
-        <div className="overflow-y-auto flex-1 px-6 py-5">{children}</div>
+        <div className="overflow-y-auto overscroll-contain flex-1 px-5 py-4">{children}</div>
       </div>
     </div>
   )

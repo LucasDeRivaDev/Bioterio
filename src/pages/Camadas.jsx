@@ -259,7 +259,7 @@ function LatenciaBit({ dias }) {
   return (
     <span
       className="font-mono font-bold text-sm"
-      style={{ color, textShadow: `0 0 8px ${color}55` }}
+      style={{ color, }}
     >
       {dias}d
     </span>
@@ -731,7 +731,6 @@ export default function Camadas() {
           >
             ← Reproductores
           </button>
-          <div className="w-1.5 h-7 rounded-full" style={{ background: tema.accent, boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
           <div>
             <h1 className="text-xl font-bold text-white">Emparejamientos</h1>
             <p className="text-xs font-mono" style={{ color: tema.textMuted }}>{camadas.length} registros</p>

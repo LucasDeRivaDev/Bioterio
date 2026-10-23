@@ -28,7 +28,7 @@ export default function PWAUpdatePrompt() {
         borderRadius: '0.75rem',
         border: '1px solid #00e676',
         background: '#0d1528',
-        boxShadow: '0 0 24px rgba(0,230,118,0.25)',
+        boxShadow: 'none',
         whiteSpace: 'nowrap',
       }}
     >

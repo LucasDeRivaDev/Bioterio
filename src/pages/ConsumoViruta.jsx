@@ -807,7 +807,7 @@ export default function ConsumoViruta() {
             <div className="rounded-2xl overflow-hidden" style={{
               background: tema.bgCard,
               border: `1.5px solid ${calibrado ? 'rgba(0,230,118,0.3)' : 'rgba(167,139,250,0.3)'}`,
-              boxShadow: `0 0 40px ${calibrado ? 'rgba(0,230,118,0.05)' : 'rgba(167,139,250,0.05)'}`,
+              boxShadow: `none`,
             }}>
               <div className="px-6 py-3 flex items-center gap-2"
                 style={{ borderBottom: `1px solid ${calibrado ? 'rgba(0,230,118,0.12)' : 'rgba(167,139,250,0.12)'}`, background: calibrado ? 'rgba(0,230,118,0.04)' : 'rgba(167,139,250,0.04)' }}>
@@ -1401,8 +1401,8 @@ export default function ConsumoViruta() {
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                        <XAxis dataKey="f" tick={{ fill: '#4a5f7a', fontSize: 10, fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fill: '#4a5f7a', fontSize: 10, fontFamily: 'monospace' }} axisLine={false} tickLine={false} width={30} />
+                        <XAxis dataKey="f" tick={{ fill: '#4a5f7a', fontSize: 10, fontFamily: 'var(--font-cond)' }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fill: '#4a5f7a', fontSize: 10, fontFamily: 'var(--font-cond)' }} axisLine={false} tickLine={false} width={30} />
                         <Tooltip contentStyle={{ background: '#0d1528', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px' }}
                           labelStyle={{ color: tema.textPrimary }} formatter={v => [`${v} bolsas`, 'Censo']} />
                         <Area type="monotone" dataKey="bolsas" stroke="#a78bfa" strokeWidth={2} fill="url(#virutaGrad)" dot={{ fill: '#a78bfa', r: 3 }} />
@@ -1422,8 +1422,8 @@ export default function ConsumoViruta() {
                       <ResponsiveContainer width="99%" height={190}>
                         <BarChart data={datosConsumo} barCategoryGap="30%">
                           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                          <XAxis dataKey="f" tick={{ fill: '#4a5f7a', fontSize: 10, fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
-                          <YAxis tick={{ fill: '#4a5f7a', fontSize: 10, fontFamily: 'monospace' }} axisLine={false} tickLine={false} width={30} />
+                          <XAxis dataKey="f" tick={{ fill: '#4a5f7a', fontSize: 10, fontFamily: 'var(--font-cond)' }} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fill: '#4a5f7a', fontSize: 10, fontFamily: 'var(--font-cond)' }} axisLine={false} tickLine={false} width={30} />
                           <Tooltip contentStyle={{ background: '#0d1528', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px' }}
                             labelStyle={{ color: tema.textPrimary }}
                             formatter={(v, n) => [`${v} bolsas`, n === 'real' ? 'Real consumido' : 'Estimado']} />
@@ -1647,7 +1647,7 @@ function ModalCenso({ esPrimero, onConfirmar, onCerrar }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-sm rounded-2xl overflow-hidden"
-        style={{ background: tema.bgCard, border: '1px solid rgba(167,139,250,0.3)', boxShadow: '0 0 60px rgba(167,139,250,0.12)' }}>
+        style={{ background: tema.bgCard, border: '1px solid rgba(167,139,250,0.3)', boxShadow: 'none' }}>
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(167,139,250,0.12)', background: 'rgba(167,139,250,0.05)' }}>
           <div className="font-bold text-white text-sm">📊 Registrar censo de viruta</div>
           <div className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>
@@ -1827,7 +1827,7 @@ function ModalConfirmarCambio({ censo, onConfirmar, onCerrar }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-sm rounded-2xl overflow-hidden"
-        style={{ background: tema.bgCard, border: '1px solid rgba(255,179,0,0.3)', boxShadow: '0 0 60px rgba(255,179,0,0.08)' }}>
+        style={{ background: tema.bgCard, border: '1px solid rgba(255,179,0,0.3)', boxShadow: 'none' }}>
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(255,179,0,0.12)', background: 'rgba(255,179,0,0.04)' }}>
           <div className="font-bold text-white text-sm">🔄 Confirmar cambio de cama</div>
           <div className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>
@@ -1957,7 +1957,7 @@ function ModalCompra({ stockActual, onConfirmar, onCerrar }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-sm rounded-2xl overflow-hidden"
-        style={{ background: tema.bgCard, border: '1px solid rgba(0,230,118,0.3)', boxShadow: '0 0 60px rgba(0,230,118,0.08)' }}>
+        style={{ background: tema.bgCard, border: '1px solid rgba(0,230,118,0.3)', boxShadow: 'none' }}>
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(0,230,118,0.12)', background: 'rgba(0,230,118,0.04)' }}>
           <div className="font-bold text-white text-sm">📦 Registrar compra / ingreso de viruta</div>
           <div className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>

@@ -6,25 +6,24 @@ import { useAuth } from '../context/AuthContext'
 import {
   Home, LayoutDashboard, Printer, Bug, Send, LogOut, ChevronUp, ChevronDown,
   Dna, Microscope, Archive, BarChart2, PackageCheck, Skull, TrendingUp, Target, ClipboardList, ScanSearch,
+  BookOpen, Sun, Moon,
 } from 'lucide-react'
-import iterateNavLogo      from '../assets/logoiterate.png'
-import iterateNavLogoLight from '../assets/logoiteratefondoclaro.png'
 import { useTheme } from '../context/ThemeContext'
 import { esCamadaPreniada, parseDate, hoy } from '../utils/calculos'
 
-const LINK_INICIO   = { to: '/inicio', label: 'Inicio',       icon: <Home size={15} /> }
-const LINK_DASHBOARD = { to: '/',      label: 'Panel de hoy', icon: <LayoutDashboard size={15} /> }
+const LINK_INICIO   = { to: '/inicio', label: 'Inicio',       icon: <Home size={16} /> }
+const LINK_DASHBOARD = { to: '/',      label: 'Panel de hoy', icon: <LayoutDashboard size={16} /> }
 
-const LINK_REPORTES       = { to: '/reportes',     label: 'Reportes e impresión', icon: <Printer size={15} /> }
-const LINK_PLANIFICACION  = { to: '/planificacion', label: 'Planificación',    icon: <Target size={15} /> }
-const LINK_PEDIDOS        = { to: '/pedidos',       label: 'Pedidos',           icon: <ClipboardList size={15} /> }
-const LINK_AUDITORIA      = { to: '/auditoria',     label: 'Auditoría',         icon: <ScanSearch size={15} /> }
+const LINK_REPORTES       = { to: '/reportes',     label: 'Reportes e impresión', icon: <Printer size={16} /> }
+const LINK_PLANIFICACION  = { to: '/planificacion', label: 'Planificación',    icon: <Target size={16} /> }
+const LINK_PEDIDOS        = { to: '/pedidos',       label: 'Pedidos',           icon: <ClipboardList size={16} /> }
+const LINK_AUDITORIA      = { to: '/auditoria',     label: 'Auditoría',         icon: <ScanSearch size={16} /> }
 
 const GRUPOS = [
   {
     to: '/animales',
     label: 'Reproductores',
-    icon: <Microscope size={15} />,
+    icon: <Microscope size={16} />,
     hijos: [
       { to: '/camadas', label: 'Emparejamientos', icon: <Dna size={13} /> },
     ],
@@ -32,7 +31,7 @@ const GRUPOS = [
   {
     to: '/stock',
     label: 'Stock',
-    icon: <Archive size={15} />,
+    icon: <Archive size={16} />,
     hijos: [
       { to: '/entregas',    label: 'Entregas',    icon: <PackageCheck size={13} /> },
       { to: '/sacrificios', label: 'Sacrificios', icon: <Skull size={13} /> },
@@ -41,7 +40,7 @@ const GRUPOS = [
   {
     to: '/rendimiento',
     label: 'Rendimiento',
-    icon: <BarChart2 size={15} />,
+    icon: <BarChart2 size={16} />,
     hijos: [
       { to: '/estadisticas', label: 'Estadísticas', icon: <TrendingUp size={13} /> },
     ],
@@ -57,67 +56,25 @@ function NavGrupo({ grupo, onCerrarMenu }) {
 
   return (
     <div>
-      {/* Fila principal con link + toggle */}
-      <div
-        className="flex items-center rounded-[10px] overflow-hidden"
-        style={estaActivo
-          ? { background: tema.greenDim, border: `1px solid ${tema.greenBorde}`, boxShadow: '0 0 12px rgba(0,180,100,0.1)' }
-          : { border: '1px solid transparent' }
-        }
-      >
-        <NavLink
-          to={grupo.to}
-          end
-          onClick={onCerrarMenu}
-          style={() => ({
-            display: 'flex', alignItems: 'center', gap: '10px',
-            flex: 1, padding: '8px 12px',
-            color: estaActivo ? tema.accent : tema.textSecondary,
-            fontSize: '13px', fontWeight: estaActivo ? 600 : 500,
-            textDecoration: 'none', background: 'transparent',
-          })}
-        >
-          <span style={{ width: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {grupo.icon}
-          </span>
+      <div className="flex items-center">
+        <NavLink to={grupo.to} end onClick={onCerrarMenu} className={({ isActive }) => `nav-item flex-1 ${isActive ? 'activo' : ''}`}>
+          <span className="w-5 flex items-center justify-center">{grupo.icon}</span>
           {grupo.label}
         </NavLink>
         <button
           onClick={() => setAbierto(!abierto)}
-          className="flex items-center justify-center w-8 h-8 shrink-0"
-          style={{ background: 'transparent', border: 'none', color: estaActivo ? tema.accent : tema.textMuted, cursor: 'pointer' }}
+          aria-label={abierto ? `Contraer ${grupo.label}` : `Expandir ${grupo.label}`}
+          className="flex items-center justify-center w-8 h-8 shrink-0 rounded-md"
+          style={{ color: tema.textMuted }}
         >
-          {abierto ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          {abierto ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
       </div>
 
-      {/* Sub-items */}
       {abierto && (
-        <div className="mt-1 ml-4 space-y-0.5" style={{ borderLeft: `1px solid ${tema.bgCardBorde}`, paddingLeft: '12px' }}>
+        <div className="mt-0.5 ml-[21px] pl-2 space-y-0.5" style={{ borderLeft: `1px solid ${tema.bgCardBorde}` }}>
           {grupo.hijos.map((hijo) => (
-            <NavLink
-              key={hijo.to}
-              to={hijo.to}
-              onClick={onCerrarMenu}
-              style={({ isActive }) =>
-                isActive
-                  ? {
-                      display: 'flex', alignItems: 'center', gap: '8px',
-                      padding: '6px 10px', borderRadius: '8px',
-                      background: tema.accentDim,
-                      color: tema.accent,
-                      border: `1px solid ${tema.accentBorde}`,
-                      fontSize: '12px', fontWeight: 600, textDecoration: 'none',
-                    }
-                  : {
-                      display: 'flex', alignItems: 'center', gap: '8px',
-                      padding: '6px 10px', borderRadius: '8px',
-                      color: tema.textMuted,
-                      border: '1px solid transparent',
-                      fontSize: '12px', fontWeight: 500, textDecoration: 'none',
-                    }
-              }
-            >
+            <NavLink key={hijo.to} to={hijo.to} onClick={onCerrarMenu} className={({ isActive }) => `nav-item nav-sub ${isActive ? 'activo' : ''}`}>
               {hijo.icon}
               {hijo.label}
             </NavLink>
@@ -126,6 +83,20 @@ function NavGrupo({ grupo, onCerrarMenu }) {
       )}
     </div>
   )
+}
+
+function NavItem({ item, onCerrarMenu }) {
+  return (
+    <NavLink to={item.to} end={item.to === '/'} onClick={onCerrarMenu} className={({ isActive }) => `nav-item ${isActive ? 'activo' : ''}`}>
+      <span className="w-5 flex items-center justify-center">{item.icon}</span>
+      {item.label}
+    </NavLink>
+  )
+}
+
+function Separador() {
+  const { tema } = useTheme()
+  return <div style={{ height: '1px', background: tema.lineSoft, margin: '8px 4px' }} />
 }
 
 const SECCIONES = [
@@ -158,63 +129,57 @@ function ReportarError() {
   }
 
   return (
-    <div className="mx-3 mb-3 rounded-xl overflow-hidden"
-      style={{ border: '1px solid rgba(255,61,87,0.25)', background: 'rgba(255,61,87,0.04)' }}
-    >
-      {/* Encabezado colapsable */}
+    <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${abierto ? tema.bgCardBorde : 'transparent'}` }}>
       <button
         onClick={() => setAbierto(!abierto)}
-        className="w-full px-4 py-3 flex items-center justify-between gap-2 transition-all"
-        style={{ background: 'rgba(255,61,87,0.08)', borderBottom: abierto ? '1px solid rgba(255,61,87,0.2)' : 'none', cursor: 'pointer' }}
+        className="nav-item w-full justify-between"
+        style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
       >
-        <div className="flex items-center gap-2">
-          <Bug size={14} style={{ color: '#ff6b80' }} />
-          <span className="text-xs font-semibold" style={{ color: '#ff6b80' }}>Reportar error</span>
-        </div>
-        <span style={{ color: '#ff6b80' }}>{abierto ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>
+        <span className="flex items-center gap-2.5">
+          <Bug size={16} />
+          Reportar un error
+        </span>
+        {abierto ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
       </button>
 
-      {/* Formulario */}
       {abierto && (
-        <div className="px-4 py-3 space-y-3">
-          <div>
-            <label className="text-xs font-semibold block mb-1" style={{ color: tema.textMuted }}>¿Dónde ocurrió?</label>
+        <div className="px-3 pb-3 pt-1 space-y-3">
+          <label className="block">
+            <span className="text-xs font-medium block mb-1" style={{ color: tema.textSecondary }}>¿Dónde ocurrió?</span>
             <select
               value={seccion}
               onChange={(e) => setSeccion(e.target.value)}
-              className="w-full px-2 py-1.5 rounded-lg text-xs focus:outline-none"
-              style={{ background: tema.bgInput, border: '1px solid rgba(255,61,87,0.25)', color: tema.textPrimary }}
+              className="w-full h-9 px-2 rounded-md text-sm focus:outline-none"
+              style={{ background: tema.bgInput, border: `1px solid ${tema.bgInputBorde}`, color: tema.textPrimary }}
             >
-              <option value="">— Seleccioná una sección —</option>
+              <option value="">Seleccioná una sección</option>
               {SECCIONES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
-          </div>
-          <div>
-            <label className="text-xs font-semibold block mb-1" style={{ color: tema.textMuted }}>Describí el error</label>
+          </label>
+          <label className="block">
+            <span className="text-xs font-medium block mb-1" style={{ color: tema.textSecondary }}>Describí el error</span>
             <textarea
               value={descripcion}
               onChange={(e) => setDesc(e.target.value)}
               placeholder="¿Qué pasó? ¿Qué esperabas que pasara?"
               rows={3}
-              className="w-full px-2 py-1.5 rounded-lg text-xs resize-none focus:outline-none"
-              style={{ background: tema.bgInput, border: '1px solid rgba(255,61,87,0.25)', color: tema.textPrimary }}
+              className="w-full px-2 py-1.5 rounded-md text-sm resize-none focus:outline-none"
+              style={{ background: tema.bgInput, border: `1px solid ${tema.bgInputBorde}`, color: tema.textPrimary }}
             />
-          </div>
+          </label>
           <button
             onClick={enviar}
             disabled={!descripcion.trim() || enviado}
-            className="w-full py-2 rounded-lg text-xs font-bold transition-all"
+            className="w-full h-9 rounded-md text-sm font-medium inline-flex items-center justify-center gap-2"
             style={{
-              background: enviado ? 'rgba(0,230,118,0.15)' : 'rgba(255,61,87,0.15)',
-              border: `1px solid ${enviado ? 'rgba(0,230,118,0.4)' : 'rgba(255,61,87,0.4)'}`,
-              color: enviado ? tema.accent : '#ff6b80',
-              cursor: !descripcion.trim() || enviado ? 'not-allowed' : 'pointer',
+              background: tema.textPrimary,
+              color: tema.bgMain,
               opacity: !descripcion.trim() ? 0.5 : 1,
             }}
           >
-            {enviado ? '✓ Abriendo...' : <><Send size={12} style={{ display: 'inline', marginRight: 4 }} /> Enviar reporte</>}
+            {enviado ? 'Abriendo correo…' : <><Send size={13} /> Enviar reporte</>}
           </button>
-          <p className="text-xs text-center" style={{ color: 'rgba(74,95,122,0.6)' }}>
+          <p className="text-xs" style={{ color: tema.textMuted }}>
             Se abre tu app de correo con el reporte listo para enviar.
           </p>
         </div>
@@ -226,7 +191,7 @@ function ReportarError() {
 export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
   const { animales, camadas, bio } = useBioterio()
   const { config, limpiarBioterio } = useBioterioActivo()
-  const { tema, modoBrillo } = useTheme()
+  const { tema, modoBrillo, toggleBrillo } = useTheme()
   const { sesion } = useAuth()
   const emailUsuario = sesion?.user?.email ?? ''
 
@@ -260,355 +225,116 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
   return (
     <aside
       className="w-64 h-full flex flex-col shrink-0"
-      style={{
-        background: tema.bgSidebar,
-        borderRight: `1px solid ${tema.bgSidebarBorde}`,
-      }}
+      style={{ background: tema.bgSidebar, borderRight: `1px solid ${tema.bgSidebarBorde}` }}
+      aria-label="Navegación principal"
     >
-      {/* Logo + bioterio activo */}
-      <div className="px-4 py-4" style={{ borderBottom: `1px solid ${tema.bgSidebarBorde}` }}>
-        <div className="flex items-center gap-3 mb-3">
-          <div style={modoBrillo ? {
-            display: 'inline-flex', flexShrink: 0,
-          } : {
-            background: tema.bgCard,
-            borderRadius: '10px',
-            border: `1.5px solid ${tema.greenBorde}`,
-            boxShadow: '0 0 40px rgba(0,230,118,0.12), 0 4px 20px rgba(0,0,0,0.2)',
-            padding: '5px 8px',
-            display: 'inline-flex',
-            flexShrink: 0,
-          }}>
-            <img
-              src={modoBrillo ? iterateNavLogoLight : iterateNavLogo}
-              alt="ITeRatE"
-              style={{ height: '48px', width: 'auto', display: 'block', filter: modoBrillo ? 'none' : 'contrast(2) brightness(1.1)', mixBlendMode: modoBrillo ? 'multiply' : 'screen' }}
-            />
-          </div>
-          <div>
-            <div className="font-bold text-sm tracking-wide" style={{ color: tema.textPrimary }}>ITeRatE</div>
-            <div className="text-xs font-mono" style={{ color: tema.green, opacity: 0.8 }}>v2.0</div>
-            <div className="text-xs font-mono" style={{ color: tema.green, opacity: 0.55 }}>ACTIVO</div>
-          </div>
+      {/* Marca */}
+      <div className="flex items-center gap-3 px-5 pt-5 pb-4">
+        <img src="/apple-touch-icon.png" alt="" width="36" height="36" className="h-9 w-9 rounded-md" />
+        <div className="leading-tight min-w-0">
+          <p className="font-cond text-lg font-semibold" style={{ color: tema.textPrimary }}>ITeRatE</p>
+          <p className="text-xs truncate" style={{ color: tema.textSecondary }}>Gestión de colonias</p>
         </div>
-        {/* Bioterio activo + botón cambiar */}
+      </div>
+
+      {/* Bioterio activo: el color de la colonia es su identidad */}
+      <div className="px-3 pb-3">
         <div
-          className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl"
-          style={{ background: `${config?.color ?? '#00e676'}10`, border: `1px solid ${config?.color ?? '#00e676'}30` }}
+          className="flex items-center gap-2.5 rounded-lg px-3 py-2.5"
+          style={{ background: tema.bgRaised, border: `1px solid ${tema.bgCardBorde}`, boxShadow: `inset 3px 0 0 ${config?.color ?? tema.accent}` }}
         >
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-base shrink-0">{config?.icon ?? '🐀'}</span>
-            <div className="min-w-0">
-              <div className="text-xs font-semibold truncate" style={{ color: modoBrillo ? tema.textPrimary : (config?.color ?? tema.accent) }}>
-                {config?.labelCorto ?? 'Ratas'}
-              </div>
-              <div className="text-xs font-mono italic truncate" style={{ color: 'rgba(138,155,176,0.5)', fontSize: '10px' }}>
-                {config?.nombreCientifico ?? '—'}
-              </div>
+          <span className="text-base shrink-0">{config?.icon ?? '🐀'}</span>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium truncate" style={{ color: tema.textPrimary }}>
+              {config?.labelCorto ?? 'Ratas'}
+            </div>
+            <div className="text-xs italic truncate" style={{ color: tema.textMuted }}>
+              {config?.nombreCientifico ?? '—'}
             </div>
           </div>
           <button
             onClick={limpiarBioterio}
-            className="shrink-0 px-2 py-1 rounded-lg text-xs font-semibold transition-all"
-            style={{ background: tema.greenDim, border: `1px solid ${tema.greenBorde}`, color: tema.textMuted, cursor: 'pointer' }}
+            className="shrink-0 h-7 px-2 rounded-md text-xs font-medium"
+            style={{ border: `1px solid ${tema.bgCardBorde}`, color: tema.textSecondary, background: tema.bgCard }}
           >
             Cambiar
           </button>
         </div>
-      </div>
 
-      {/* Stats rápidas */}
-      <div className="px-4 py-3 grid grid-cols-3 gap-1" style={{ borderBottom: `1px solid ${tema.bgCardBorde}` }}>
-        {[
-          { val: hembrasActivas, label: '♀', color: tema.purple },
-          { val: machosActivos,  label: '♂', color: tema.blue },
-          { val: prenadas,       label: '🫄', color: tema.amber },
-        ].map(({ val, label, color }) => (
-          <div
-            key={label}
-            className="rounded-lg py-2 text-center"
-            style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}
-          >
-            <div className="font-mono font-bold text-base" style={{ color }}>{val}</div>
-            <div className="text-xs mt-0.5" style={{ color: tema.textMuted }}>{label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Módulos navegación */}
-      <div className="px-4 pt-4 pb-1">
-        <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: tema.textMuted, opacity: 0.6 }}>
-          Módulos
+        {/* Stats rápidas */}
+        <div className="grid grid-cols-3 mt-2 rounded-lg overflow-hidden" style={{ border: `1px solid ${tema.bgCardBorde}` }}>
+          {[
+            { val: hembrasActivas, label: 'Hembras', color: tema.female },
+            { val: machosActivos,  label: 'Machos',  color: tema.male },
+            { val: prenadas,       label: 'Preñadas', color: tema.amber },
+          ].map(({ val, label, color }, i) => (
+            <div key={label} className="py-2 text-center" style={{ borderLeft: i ? `1px solid ${tema.bgCardBorde}` : 'none' }}>
+              <div className="font-cond font-semibold text-lg leading-none" style={{ color }}>{val}</div>
+              <div className="text-[11px] mt-1" style={{ color: tema.textMuted }}>{label}</div>
+            </div>
+          ))}
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 pb-3 space-y-1">
-        {[LINK_INICIO, null, LINK_DASHBOARD].map((item) =>
-          item === null
-            ? <div key="sep-top" style={{ height: "1px", background: tema.bgCardBorde, margin: "6px 4px" }} />
-            : (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === '/'}
-                onClick={onCerrarMenu}
-                style={({ isActive }) =>
-                  isActive
-                    ? {
-                        display: 'flex', alignItems: 'center', gap: '10px',
-                        padding: '8px 12px', borderRadius: '10px',
-                        background: tema.greenDim,
-                        color: '#00e676',
-                        border: '1px solid rgba(0,230,118,0.25)',
-                        boxShadow: '0 0 12px rgba(0,230,118,0.1)',
-                        fontSize: '13px', fontWeight: 600, textDecoration: 'none',
-                      }
-                    : {
-                        display: 'flex', alignItems: 'center', gap: '10px',
-                        padding: '8px 12px', borderRadius: '10px',
-                        color: tema.textSecondary,
-                        border: '1px solid transparent',
-                        fontSize: '13px', fontWeight: 500, textDecoration: 'none',
-                      }
-                }
-              >
-                <span style={{ width: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{item.icon}</span>
-                {item.label}
-              </NavLink>
-            )
-        )}
-
-        {/* Separador */}
-        <div style={{ height: "1px", background: tema.bgCardBorde, margin: "6px 4px" }} />
-
-        {/* Grupos con sub-secciones */}
+      <nav className="flex-1 overflow-y-auto px-3 pb-3 space-y-0.5" style={{ borderTop: `1px solid ${tema.lineSoft}`, paddingTop: '10px' }}>
+        <NavItem item={LINK_INICIO} onCerrarMenu={onCerrarMenu} />
+        <NavItem item={LINK_DASHBOARD} onCerrarMenu={onCerrarMenu} />
+        <Separador />
         {GRUPOS.map((grupo) => (
           <NavGrupo key={grupo.to} grupo={grupo} onCerrarMenu={onCerrarMenu} />
         ))}
+        <Separador />
+        <NavItem item={LINK_PLANIFICACION} onCerrarMenu={onCerrarMenu} />
+        <NavItem item={LINK_PEDIDOS} onCerrarMenu={onCerrarMenu} />
+        <NavItem item={LINK_AUDITORIA} onCerrarMenu={onCerrarMenu} />
+        <Separador />
+        <NavItem item={LINK_REPORTES} onCerrarMenu={onCerrarMenu} />
 
-        {/* Separador */}
-        <div style={{ height: "1px", background: tema.bgCardBorde, margin: "6px 4px" }} />
-
-        {/* Planificación */}
-        <NavLink
-          to={LINK_PLANIFICACION.to}
-          onClick={onCerrarMenu}
-          style={({ isActive }) =>
-            isActive
-              ? {
-                  display: 'flex', alignItems: 'center', gap: '10px',
-                  padding: '8px 12px', borderRadius: '10px',
-                  background: tema.greenDim,
-                  color: tema.accent,
-                  border: `1px solid ${tema.accentBorde}`,
-                  boxShadow: modoBrillo ? 'none' : '0 0 12px rgba(0,230,118,0.1)',
-                  fontSize: '13px', fontWeight: 600, textDecoration: 'none',
-                }
-              : {
-                  display: 'flex', alignItems: 'center', gap: '10px',
-                  padding: '8px 12px', borderRadius: '10px',
-                  color: tema.textSecondary,
-                  border: '1px solid transparent',
-                  fontSize: '13px', fontWeight: 500, textDecoration: 'none',
-                }
-          }
-        >
-          <span style={{ width: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {LINK_PLANIFICACION.icon}
-          </span>
-          {LINK_PLANIFICACION.label}
-        </NavLink>
-
-        {/* Pedidos */}
-        <NavLink
-          to={LINK_PEDIDOS.to}
-          onClick={onCerrarMenu}
-          style={({ isActive }) =>
-            isActive
-              ? {
-                  display: 'flex', alignItems: 'center', gap: '10px',
-                  padding: '8px 12px', borderRadius: '10px',
-                  background: tema.greenDim,
-                  color: tema.accent,
-                  border: `1px solid ${tema.accentBorde}`,
-                  boxShadow: modoBrillo ? 'none' : '0 0 12px rgba(0,230,118,0.1)',
-                  fontSize: '13px', fontWeight: 600, textDecoration: 'none',
-                }
-              : {
-                  display: 'flex', alignItems: 'center', gap: '10px',
-                  padding: '8px 12px', borderRadius: '10px',
-                  color: tema.textSecondary,
-                  border: '1px solid transparent',
-                  fontSize: '13px', fontWeight: 500, textDecoration: 'none',
-                }
-          }
-        >
-          <span style={{ width: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {LINK_PEDIDOS.icon}
-          </span>
-          {LINK_PEDIDOS.label}
-        </NavLink>
-
-        {/* Auditoría histórica */}
-        <NavLink
-          to={LINK_AUDITORIA.to}
-          onClick={onCerrarMenu}
-          style={({ isActive }) =>
-            isActive
-              ? {
-                  display: 'flex', alignItems: 'center', gap: '10px',
-                  padding: '8px 12px', borderRadius: '10px',
-                  background: tema.greenDim,
-                  color: tema.accent,
-                  border: `1px solid ${tema.accentBorde}`,
-                  boxShadow: modoBrillo ? 'none' : '0 0 12px rgba(0,230,118,0.1)',
-                  fontSize: '13px', fontWeight: 600, textDecoration: 'none',
-                }
-              : {
-                  display: 'flex', alignItems: 'center', gap: '10px',
-                  padding: '8px 12px', borderRadius: '10px',
-                  color: tema.textSecondary,
-                  border: '1px solid transparent',
-                  fontSize: '13px', fontWeight: 500, textDecoration: 'none',
-                }
-          }
-        >
-          <span style={{ width: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {LINK_AUDITORIA.icon}
-          </span>
-          {LINK_AUDITORIA.label}
-        </NavLink>
-
-        {/* Separador */}
-        <div style={{ height: "1px", background: tema.bgCardBorde, margin: "6px 4px" }} />
-
-        {/* Reportes al final */}
-        <NavLink
-          to={LINK_REPORTES.to}
-          onClick={onCerrarMenu}
-          style={({ isActive }) =>
-            isActive
-              ? {
-                  display: 'flex', alignItems: 'center', gap: '10px',
-                  padding: '8px 12px', borderRadius: '10px',
-                  background: tema.greenDim,
-                  color: tema.accent,
-                  border: `1px solid ${tema.accentBorde}`,
-                  boxShadow: modoBrillo ? 'none' : '0 0 12px rgba(0,230,118,0.1)',
-                  fontSize: '13px', fontWeight: 600, textDecoration: 'none',
-                }
-              : {
-                  display: 'flex', alignItems: 'center', gap: '10px',
-                  padding: '8px 12px', borderRadius: '10px',
-                  color: tema.textSecondary,
-                  border: '1px solid transparent',
-                  fontSize: '13px', fontWeight: 500, textDecoration: 'none',
-                }
-          }
-        >
-          <span style={{ width: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {LINK_REPORTES.icon}
-          </span>
-          {LINK_REPORTES.label}
-        </NavLink>
-      </nav>
-
-      {/* ── FICHA BIOLÓGICA DE LA ESPECIE ── */}
-      {config && bio && (
-        <div className="mx-3 mb-3 rounded-xl overflow-hidden"
-          style={{ border: '1px solid rgba(161,120,80,0.3)', background: 'rgba(161,120,80,0.05)' }}
-        >
-          {/* Header siempre visible con botón toggle */}
-          <button
-            onClick={toggleFicha}
-            className="w-full px-4 py-3 flex items-center gap-2 text-left"
-            style={{
-              background: 'rgba(161,120,80,0.1)',
-              borderBottom: fichaVisible ? '1px solid rgba(161,120,80,0.2)' : 'none',
-              cursor: 'pointer',
-              border: 'none',
-            }}
-          >
-            <span className="text-xl">{config.icon}</span>
-            <div className="flex-1 min-w-0">
-              <div className="font-bold text-sm" style={{ color: tema.textPrimary }}>{config.label}</div>
-              <div className="text-xs font-mono italic opacity-60 truncate" style={{ color: tema.textSecondary }}>{config.nombreCientifico}</div>
-            </div>
-            <ChevronDown
-              size={13}
-              style={{
-                color: tema.textMuted,
-                flexShrink: 0,
-                transition: 'transform 0.2s',
-                transform: fichaVisible ? 'rotate(180deg)' : 'rotate(0deg)',
-              }}
-            />
-          </button>
-
-          {/* Contenido colapsable */}
-          {fichaVisible && (
-            <>
-              <div className="px-4 py-3 space-y-2">
-                <div className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: tema.textMuted }}>
-                  Referencias biológicas
-                </div>
+        {/* Ficha biológica de la especie */}
+        {config && bio && (
+          <>
+            <Separador />
+            <button onClick={toggleFicha} className="nav-item w-full justify-between" style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
+              <span className="flex items-center gap-2.5 min-w-0">
+                <BookOpen size={16} />
+                <span className="truncate">Ficha biológica</span>
+              </span>
+              {fichaVisible ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+            {fichaVisible && (
+              <dl className="mx-1 mt-1 rounded-lg px-3 py-2.5 space-y-1.5" style={{ background: tema.bgRaised, border: `1px solid ${tema.bgCardBorde}` }}>
                 {datosBio.map(({ label, valor }) => (
                   <div key={label} className="flex items-start justify-between gap-2">
-                    <span className="text-xs leading-tight" style={{ color: tema.textMuted }}>{label}</span>
-                    <span className="text-xs font-mono font-semibold text-right" style={{ color: tema.textSecondary }}>{valor}</span>
+                    <dt className="text-xs leading-tight" style={{ color: tema.textMuted }}>{label}</dt>
+                    <dd className="text-xs font-medium text-right" style={{ color: tema.textPrimary }}>{valor}</dd>
                   </div>
                 ))}
-              </div>
+                {config.orden && config.orden !== '—' && (
+                  <div className="text-xs pt-1.5" style={{ borderTop: `1px solid ${tema.bgCardBorde}`, color: tema.textMuted }}>
+                    {config.orden}
+                  </div>
+                )}
+              </dl>
+            )}
+          </>
+        )}
+        <ReportarError />
+      </nav>
 
-              {config.orden && config.orden !== '—' && (
-                <div
-                  className="px-4 py-2 text-xs text-center font-mono"
-                  style={{ borderTop: `1px solid ${tema.bgCardBorde}`, color: tema.textMuted }}
-                >
-                  {config.orden}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Reportar error */}
-      <ReportarError />
-
-      {/* Usuario + Cerrar sesión */}
-      <div
-        className="mx-3 mb-3 rounded-xl px-4 py-3"
-        style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}` }}
-      >
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <div className="text-xs font-semibold uppercase tracking-widest mb-0.5" style={{ color: tema.textMuted }}>
-              Usuario
-            </div>
-            <div
-              className="text-xs font-mono truncate"
-              style={{ color: tema.textSecondary }}
-            >
-              {emailUsuario}
-            </div>
-          </div>
-          <button
-            onClick={onCerrarSesion}
-            title="Cerrar sesión"
-            className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all"
-            style={{
-              background: 'rgba(255,61,87,0.08)',
-              border: '1px solid rgba(255,61,87,0.2)',
-              color: '#ff6b80',
-              cursor: 'pointer',
-            }}
-          >
-            <LogOut size={14} />
+      {/* Usuario + tema + cerrar sesión */}
+      <div className="px-4 py-3" style={{ borderTop: `1px solid ${tema.lineSoft}` }}>
+        <p className="truncate text-sm font-medium" style={{ color: tema.textPrimary }}>{emailUsuario}</p>
+        <div className="mt-2 flex items-center gap-3">
+          <button onClick={toggleBrillo} className="inline-flex items-center gap-1.5 text-sm" style={{ color: tema.textSecondary }}>
+            {modoBrillo ? <Moon size={16} /> : <Sun size={16} />}
+            {modoBrillo ? 'Tema oscuro' : 'Tema claro'}
+          </button>
+          <button onClick={onCerrarSesion} className="ml-auto inline-flex items-center gap-1.5 text-sm" style={{ color: tema.textSecondary }}>
+            <LogOut size={16} />
+            Salir
           </button>
         </div>
       </div>
-
     </aside>
   )
 }

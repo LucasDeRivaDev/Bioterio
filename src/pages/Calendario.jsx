@@ -215,7 +215,6 @@ export default function Calendario() {
         >
           ← Panel de hoy
         </button>
-        <div className="w-1.5 h-7 rounded-full" style={{ background: tema.accent, boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
         <h1 className="text-xl font-bold text-white">Calendario</h1>
       </div>
 
@@ -223,7 +222,7 @@ export default function Calendario() {
       <div className="flex flex-wrap gap-3">
         {Object.entries(TIPOS).map(([tipo, cfg]) => (
           <div key={tipo} className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full" style={{ background: cfg.color, boxShadow: `0 0 4px ${cfg.color}` }} />
+            <div className="w-2 h-2 rounded-full" style={{ background: cfg.color, boxShadow: `none` }} />
             <span className="text-xs font-medium" style={{ color: tema.textMuted }}>{cfg.label}</span>
           </div>
         ))}
@@ -301,7 +300,7 @@ export default function Calendario() {
                           className="w-1.5 h-1.5 rounded-full"
                           style={{
                             background:  TIPOS[e.tipo]?.color ?? '#8a9bb0',
-                            boxShadow: `0 0 3px ${TIPOS[e.tipo]?.color ?? '#8a9bb0'}`,
+                            boxShadow: `none`,
                           }}
                         />
                       ))}
@@ -814,7 +813,7 @@ function ModalPlanificarApareamiento({
         style={{
           background: tema.bgCard,
           border:      '1.5px solid rgba(139,92,246,0.35)',
-          boxShadow:   '0 0 60px rgba(139,92,246,0.12)',
+          boxShadow:   'none',
           maxHeight:   '90vh',
         }}
       >
@@ -1066,7 +1065,7 @@ function ModalNota({ fecha, onGuardar, onCerrar }) {
         style={{
           background: tema.bgCard,
           border:     '1.5px solid rgba(251,191,36,0.3)',
-          boxShadow:  '0 0 60px rgba(251,191,36,0.08)',
+          boxShadow:  'none',
         }}
       >
         {/* Header */}

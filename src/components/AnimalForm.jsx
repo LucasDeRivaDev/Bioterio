@@ -115,7 +115,7 @@ export default function AnimalForm({ animal, onGuardar, onCancelar }) {
                       background: `${color}18`,
                       border: `1.5px solid ${color}55`,
                       color: color,
-                      boxShadow: `0 0 10px ${color}22`,
+                      boxShadow: `none`,
                     }
                   : {
                       background: tema.bgCard,
@@ -272,7 +272,7 @@ export default function AnimalForm({ animal, onGuardar, onCancelar }) {
             background: 'rgba(0,230,118,0.15)',
             border: '1.5px solid rgba(0,230,118,0.4)',
             color: tema.accent,
-            boxShadow: '0 0 16px rgba(0,230,118,0.1)',
+            boxShadow: 'none',
           }}
         >
           {animal ? 'Guardar cambios' : '+ Agregar animal'}

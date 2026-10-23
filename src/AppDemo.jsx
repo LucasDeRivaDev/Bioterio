@@ -5,7 +5,7 @@ import { BioterioActivoProvider, useBioterioActivo } from './context/BioterioAct
 import { BiotheriumDemoProvider } from './context/BiotheriumContextDemo'
 import { useBioterio } from './context/BiotheriumContextDemo'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
-import { CSS_MODO_CLARO, BotonBrillo } from './App'
+import { BotonBrillo, TopbarMovil, OcultarBotonBrilloEnEscritorio } from './App'
 import Sidebar from './components/Sidebar'
 import SelectorBioterio from './pages/SelectorBioterio'
 import Dashboard from './pages/Dashboard'
@@ -97,7 +97,8 @@ function DemoAppLayout() {
   function cerrarSidebar() { setSidebarAbierto(false) }
 
   return (
-    <div className="flex flex-col" style={{ minHeight: '100dvh', background: tema.bgMain, backgroundImage: tema.bgMainGrad, backgroundSize: '40px 40px' }}>
+    <div className="flex flex-col" style={{ minHeight: '100dvh', background: tema.bgMain }}>
+      <OcultarBotonBrilloEnEscritorio />
       {/* Banner siempre visible arriba */}
       <BannerDemo />
 
@@ -106,7 +107,7 @@ function DemoAppLayout() {
         {sidebarAbierto && (
           <div
             className="fixed inset-0 z-30 md:hidden backdrop-blur-sm"
-            style={{ background: 'rgba(5,8,16,0.75)' }}
+            style={{ background: 'rgba(0,0,0,0.5)' }}
             onClick={cerrarSidebar}
           />
         )}
@@ -124,26 +125,11 @@ function DemoAppLayout() {
         {/* Contenido */}
         <main className="flex-1 overflow-auto min-w-0 flex flex-col">
           {/* Topbar mobile */}
-          <div
-            className="sticky top-0 z-20 flex items-center gap-3 px-4 py-3 md:hidden shrink-0"
-            style={{ background: tema.bgTopbar, borderBottom: `1px solid ${tema.bgTopbarBorde}` }}
-          >
-            <button
-              onClick={() => setSidebarAbierto(true)}
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
-              style={{ background: tema.accentDim, border: `1px solid ${tema.accentBorde}`, color: tema.accent }}
-            >
-              ☰
-            </button>
-            <span className="font-bold text-sm tracking-wide" style={{ color: tema.textPrimary }}>ITeRatE</span>
-            <div
-              className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono shrink-0"
-              style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b' }}
-            >
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#f59e0b' }} />
-              DEMO
-            </div>
-          </div>
+          <TopbarMovil onMenu={() => setSidebarAbierto(true)}>
+            <span className="ml-auto mr-2 rounded-md border border-dashed px-2 py-0.5 text-xs" style={{ borderColor: tema.bgCardBorde, color: tema.textSecondary }}>
+              Demo
+            </span>
+          </TopbarMovil>
 
           {/* Rutas — idénticas al App original */}
           <div className="flex-1">
@@ -173,12 +159,9 @@ function DemoAppLayout() {
 // ── Wrapper que decide si mostrar selector o layout ───────────────────────────
 function DemoRoot() {
   const { bioterioActivo } = useBioterioActivo()
-  const { modoBrillo } = useTheme()
 
   return (
     <>
-      {/* CSS global inyectado para modo claro — igual que en el app real */}
-      {modoBrillo && <style dangerouslySetInnerHTML={{ __html: CSS_MODO_CLARO }} />}
       {!bioterioActivo ? (
         <SelectorBioterio />
       ) : (

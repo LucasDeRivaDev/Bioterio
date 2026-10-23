@@ -134,7 +134,6 @@ export default function Sacrificios() {
           >
             ← Stock
           </button>
-          <div className="w-1.5 h-7 rounded-full" style={{ background: '#ff6b80', boxShadow: '0 0 8px rgba(255,107,128,0.5)' }} />
           <div>
             <h1 className="text-xl font-bold text-white">Historial de sacrificios</h1>
             <p className="text-xs mt-0.5" style={{ color: tema.textMuted }}>

@@ -786,7 +786,7 @@ function AnalisisPedido({ pedido, analisis, onCambiarEstado, onReservarReproduct
     <div className="space-y-3">
 
       {/* ── Header: nombre + estado + viabilidad ──────────────────────────────── */}
-      <div className="rounded-2xl p-4" style={{ background: tema.bgCard, border: `1.5px solid ${nivel.borde}`, boxShadow: `0 0 24px ${nivel.bg}` }}>
+      <div className="rounded-2xl p-4" style={{ background: tema.bgCard, border: `1.5px solid ${nivel.borde}`, boxShadow: `none` }}>
         <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -989,7 +989,7 @@ function ModalFormPedido({ pedido, onGuardar, onCerrar, tema }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }}>
       <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl"
-        style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}`, boxShadow: '0 0 60px rgba(0,0,0,0.5)' }}>
+        style={{ background: tema.bgCard, border: `1px solid ${tema.bgCardBorde}`, boxShadow: 'none' }}>
         <div className="flex items-center justify-between px-6 py-4"
           style={{ borderBottom: `1px solid ${tema.bgCardBorde}`, background: 'rgba(0,230,118,0.03)' }}>
           <div>
@@ -1203,7 +1203,7 @@ function TarjetaPedido({ pedido, seleccionado, onSeleccionar, onEditar, onElimin
       style={{
         background: seleccionado ? 'rgba(0,230,118,0.06)' : tema.bgCard,
         border: `1.5px solid ${seleccionado ? 'rgba(0,230,118,0.3)' : tema.bgCardBorde}`,
-        boxShadow: seleccionado ? '0 0 16px rgba(0,230,118,0.08)' : 'none',
+        boxShadow: 'none',
       }}>
       <div className="flex items-start justify-between gap-2 mb-2">
         <span className="text-xs font-semibold" style={{ color: tema.textMuted }}>{labelBioterio(pedido.bioterioId)}</span>

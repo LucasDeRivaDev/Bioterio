@@ -23,7 +23,7 @@ function BarraLatencia({ valor, max }) {
       <div className="flex-1 h-1.5 rounded-full" style={{ background: 'rgba(30,51,82,0.8)' }}>
         <div
           className="h-1.5 rounded-full transition-all"
-          style={{ width: `${pct}%`, background: color, boxShadow: `0 0 6px ${color}66` }}
+          style={{ width: `${pct}%`, background: color, boxShadow: `none` }}
         />
       </div>
       <span className="font-mono text-sm font-bold w-10 text-right" style={{ color }}>{valor}d</span>
@@ -307,7 +307,6 @@ const btnSubTab = (v, label, color) => (
     return (
       <div className="p-6 space-y-6 min-0" style={{ background: tema.bgMain }}>
         <div className="flex items-center gap-3">
-          <div className="w-1.5 h-7 rounded-full" style={{ background: tema.accent, boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
           <h1 className="text-xl font-bold text-white">Rendimiento reproductivo</h1>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -330,7 +329,6 @@ const btnSubTab = (v, label, color) => (
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="w-1.5 h-7 rounded-full" style={{ background: tema.accent, boxShadow: '0 0 8px rgba(0,230,118,0.5)' }} />
           <div>
             <h1 className="text-xl font-bold text-white">Rendimiento reproductivo</h1>
             <p className="text-xs mt-0.5" style={{ color: tema.textMuted }}>

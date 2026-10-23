@@ -1000,7 +1000,7 @@ export default function ConsumoAlimento() {
               style={{
                 background: tema.bgCard,
                 border: `2px solid ${alertaStock?.border ?? 'rgba(0,230,118,0.4)'}`,
-                boxShadow: `0 0 40px ${alertaStock?.bg ?? 'rgba(0,230,118,0.06)'}`,
+                boxShadow: `none`,
               }}>
 
               {/* Cabecera */}
@@ -1237,7 +1237,7 @@ export default function ConsumoAlimento() {
             </div>
 
             {/* ── Tarjeta resumen global ── */}
-            <div className="rounded-2xl overflow-hidden" style={{ background: tema.bgCard, border: '1.5px solid rgba(255,179,0,0.3)', boxShadow: '0 0 30px rgba(255,179,0,0.06)' }}>
+            <div className="rounded-2xl overflow-hidden" style={{ background: tema.bgCard, border: '1.5px solid rgba(255,179,0,0.3)', boxShadow: 'none' }}>
               <div className="px-6 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(255,179,0,0.15)', background: 'rgba(255,179,0,0.05)' }}>
                 <Wheat size={20} style={{ color: tema.amber }} />
                 <div className="flex-1">
@@ -1862,15 +1862,15 @@ export default function ConsumoAlimento() {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={datosGrafico} barCategoryGap="30%">
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                      <XAxis dataKey="fecha" tick={{ fill: '#4a5f7a', fontSize: 11, fontFamily: 'monospace' }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: '#4a5f7a', fontSize: 11, fontFamily: 'monospace' }} axisLine={false} tickLine={false} unit=" kg" />
+                      <XAxis dataKey="fecha" tick={{ fill: '#4a5f7a', fontSize: 11, fontFamily: 'var(--font-cond)' }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: '#4a5f7a', fontSize: 11, fontFamily: 'var(--font-cond)' }} axisLine={false} tickLine={false} unit=" kg" />
                       <Tooltip
                         contentStyle={{ background: '#0d1528', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '12px' }}
                         labelStyle={{ color: tema.textPrimary }}
                         itemStyle={{ color: tema.textPrimary }}
                         formatter={(v, name) => [`${v} kg/día`, name === 'estimado' ? 'Estimado' : 'Real']}
                       />
-                      <Legend formatter={v => v === 'estimado' ? 'Estimado' : 'Real'} wrapperStyle={{ fontSize: 12, fontFamily: 'monospace', color: '#6a8099' }} />
+                      <Legend formatter={v => v === 'estimado' ? 'Estimado' : 'Real'} wrapperStyle={{ fontSize: 12, fontFamily: 'var(--font-cond)', color: '#6a8099' }} />
                       <Bar dataKey="estimado" fill="rgba(255,179,0,0.5)"  radius={[4,4,0,0]} />
                       <Bar dataKey="real"      fill="rgba(0,230,118,0.6)" radius={[4,4,0,0]} />
                     </BarChart>
@@ -2040,7 +2040,7 @@ function ModalCensoAlimento({ stockActualKg, rellenoAprendido, onConfirmar, onCo
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-md rounded-2xl overflow-hidden max-h-[92vh] overflow-y-auto"
-        style={{ background: tema.bgCard, border: '1px solid rgba(167,139,250,0.3)', boxShadow: '0 0 60px rgba(167,139,250,0.12)' }}>
+        style={{ background: tema.bgCard, border: '1px solid rgba(167,139,250,0.3)', boxShadow: 'none' }}>
 
         {/* Header */}
         <div className="px-6 py-5"
@@ -2354,7 +2354,7 @@ function ModalReposicion({ fechaInicial, horaInicial, onConfirmar, onCerrar }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}>
-      <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: tema.bgCard, border: '1px solid rgba(64,196,255,0.25)', boxShadow: '0 0 60px rgba(64,196,255,0.08)' }}>
+      <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: tema.bgCard, border: '1px solid rgba(64,196,255,0.25)', boxShadow: 'none' }}>
 
         {/* Header */}
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(64,196,255,0.12)', background: 'rgba(64,196,255,0.04)' }}>
@@ -2553,7 +2553,7 @@ function ModalIngreso({ stockActualKg, onConfirmar, onCerrar }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}>
-      <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: tema.bgCard, border: '1px solid rgba(0,230,118,0.25)', boxShadow: '0 0 60px rgba(0,230,118,0.08)' }}>
+      <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: tema.bgCard, border: '1px solid rgba(0,230,118,0.25)', boxShadow: 'none' }}>
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(0,230,118,0.12)', background: 'rgba(0,230,118,0.04)' }}>
           <div className="font-bold text-white text-sm">📦 Registrar ingreso de alimento</div>
           <div className="text-xs font-mono mt-1" style={{ color: tema.textMuted }}>
@@ -2656,7 +2656,7 @@ function ModalEstimacionRapida({ stockEstimadoActual, onConfirmar, onCerrar }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}>
       <div className="w-full max-w-sm rounded-2xl overflow-hidden"
-        style={{ background: tema.bgCard, border: '1px solid rgba(64,196,255,0.25)', boxShadow: '0 0 60px rgba(64,196,255,0.1)' }}>
+        style={{ background: tema.bgCard, border: '1px solid rgba(64,196,255,0.25)', boxShadow: 'none' }}>
 
         <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(64,196,255,0.12)', background: 'rgba(64,196,255,0.04)' }}>
           <div className="font-bold text-white text-sm">⚡ Ajuste de stock estimado</div>

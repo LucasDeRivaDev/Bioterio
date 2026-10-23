@@ -91,7 +91,7 @@ function TarjetaTarea({ tarea, onConfirmarSeparacion, onDescartar }) {
       style={{
         background: est.bg,
         border: `1px solid ${est.border}`,
-        boxShadow: `0 0 16px ${est.glow}`,
+        boxShadow: `none`,
       }}
     >
       {/* Fila principal: icono + texto + badge + ✕ */}
@@ -529,10 +529,6 @@ export default function Dashboard() {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="min-w-0">
           <div className="flex items-center gap-3 mb-1 flex-wrap">
-            <div
-              className="w-2 h-8 rounded-full shrink-0"
-              style={{ background: tema.accent, boxShadow: '0 0 10px rgba(0,230,118,0.6)' }}
-            />
             <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">Panel de hoy</h1>
             {/* Links independientes */}
             <Link to="/calendario"
@@ -555,17 +551,7 @@ export default function Dashboard() {
             </Link>
 
           </div>
-          <p className="text-sm ml-5 capitalize" style={{ color: tema.textMuted }}>{fechaHoy}</p>
-        </div>
-        <div
-          className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full text-xs font-mono shrink-0"
-          style={{ background: 'rgba(0,230,118,0.07)', border: '1px solid rgba(0,230,118,0.2)', color: tema.accent }}
-        >
-          <span
-            className="w-2 h-2 rounded-full pulse-soft"
-            style={{ background: tema.accent, boxShadow: '0 0 6px rgba(0,230,118,0.8)' }}
-          />
-          SISTEMA ACTIVO
+          <p className="text-sm capitalize" style={{ color: tema.textMuted }}>{fechaHoy}</p>
         </div>
       </div>
 

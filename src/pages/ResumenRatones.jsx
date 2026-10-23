@@ -442,7 +442,7 @@ export default function ResumenRatones() {
           <>
             {/* ── STOCK TOTAL ── */}
             <div className="rounded-2xl overflow-hidden"
-              style={{ background: tema.bgCard, border: '1.5px solid rgba(64,196,255,0.3)', boxShadow: '0 0 30px rgba(64,196,255,0.06)' }}>
+              style={{ background: tema.bgCard, border: '1.5px solid rgba(64,196,255,0.3)', boxShadow: 'none' }}>
               <div className="px-6 py-4 flex items-center gap-3"
                 style={{ borderBottom: '1px solid rgba(64,196,255,0.15)', background: 'rgba(64,196,255,0.05)' }}>
                 <span className="text-2xl">🐭</span>
