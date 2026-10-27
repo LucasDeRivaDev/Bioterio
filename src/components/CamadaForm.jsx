@@ -276,6 +276,15 @@ export default function CamadaForm({ camada, onGuardar, onCancelar }) {
         nuevos.total_destetados = `Los destetados (${form.total_destetados}) no pueden superar el total de crías nacidas (${form.total_crias}).`
       }
     }
+    // Destete nuevo con sexado: las crías entran a Stock en una jaula por sexo,
+    // así que machos + hembras tiene que coincidir exactamente con los destetados
+    const desteteNuevo = form.fecha_destete && !camada?.fecha_destete && form.incluir_en_stock !== false
+    if (desteteNuevo && form.total_destetados !== '' && form.crias_machos !== '' && form.crias_hembras !== '' && !nuevos.total_crias && !nuevos.total_destetados) {
+      const suma = Number(form.crias_machos) + Number(form.crias_hembras)
+      if (suma !== Number(form.total_destetados)) {
+        nuevos.total_destetados = `Machos (${form.crias_machos}) + hembras (${form.crias_hembras}) = ${suma} no coincide con los destetados (${form.total_destetados}). Corregí el sexado: cada sexo pasa a Stock en su propia jaula.`
+      }
+    }
 
     // Reducción de camada
     if (huboReduccion) {

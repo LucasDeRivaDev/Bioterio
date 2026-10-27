@@ -241,6 +241,7 @@ extendidos
 - **Bloque de jaula:** muestra calidad de padres (♀ Alta/Media/Baja · ♂ Alta/Media/Baja) sin abrir modal
 - **Bloques virtuales:** camadas con `fecha_destete` pero sin jaula en DB. Solo si `incluir_en_stock: true` y `bioterio_id === bioterioActivo`
 - **stockCamada:** descuenta sacrificios Y entregas de la misma `camada_id`
+- **Ingreso a Stock al destetar (`crearJaulasDestete` en BiotheriumContext):** al registrar el destete (en `editarCamada` o en `agregarCamada` si la camada se carga ya destetada) se crea **una jaula por sexo** según el sexado (`crias_machos` / `crias_hembras`): jaula de machos (`hembras: 0`) y jaula de hembras (`machos: 0`), nunca mixta. Si solo se cargó un sexo, el otro se deduce de `total_destetados ?? total_crias`. Sin sexado → una única jaula sin sexo. CamadaForm bloquea el guardado de un destete nuevo si machos + hembras ≠ destetados
 - **incluir_en_stock:** si `false`, no se crea jaula al destetar. Badge amarillo "Sin stock". Botones Agregar/Remover en detalle expandido
 - **Hembras en apareamiento:** bloque gris con opacidad 60%, no seleccionable. No cuenta en `totalJaulas` pero sí en `totalAnimales`
 - **Eliminar jaula individual (botón ✕):** abre `ModalEliminarJaula` en overlay, no confirmación inline. Solo visible fuera del modo selección y en bloques de stock. Estado `jaulaAEliminar` en `Stock`.
@@ -338,6 +339,7 @@ extendidos
 ## Implementado recientemente
 
 ### Octubre 2026
+- **Destete separado por sexo (27/10):** al confirmar el destete las crías entran a Stock en una jaula de machos y otra de hembras según el sexado, sin jaula mixta ni bloque "sin asignar". Ver "Comportamientos clave → Stock".
 - **Rediseño estético estilo ICIVET (23/10):** tokens, IBM Plex, shell (Sidebar/Modal/Badge/topbar mobile), sin glows, modo claro con colores semánticos. Segunda pasada: Landing, Login, selector, barra de vistas globales, botones primarios, pestañas y etiquetas. Ver "Sistema visual".
 - **Promedio de crías por camada (22/10):** nueva tarjeta en Estadísticas con la prolificidad histórica real por especie/cepa (Rata Wistar, Ratón BALB/c, Ratón C57BL/6, Ratones híbridos). Muestra camadas válidas, total de crías nacidas y promedio con 1 decimal; "Sin datos" si no hay camadas válidas. `calcularPromedioCriasPorCamada` + `ESPECIES_PROLIFICIDAD` en calculos.js.
 

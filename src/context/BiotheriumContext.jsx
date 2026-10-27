@@ -294,6 +294,25 @@ export function BiotheriumProvider({ children }) {
     }
   }
 
+  // Ingreso de crías a Stock al registrar el destete: una jaula por sexo según el
+  // sexado (nunca mixta). Si se conoce un solo sexo, el otro se deduce del total.
+  // Sin sexado → una única jaula sin sexo (no hay forma de separarlas).
+  async function crearJaulasDestete(datos) {
+    const totalDestete = datos.total_destetados ?? datos.total_crias ?? null
+    let machos  = datos.crias_machos  ?? null
+    let hembras = datos.crias_hembras ?? null
+    if (machos == null && hembras != null && totalDestete != null) machos  = Math.max(0, totalDestete - hembras)
+    if (hembras == null && machos != null && totalDestete != null) hembras = Math.max(0, totalDestete - machos)
+
+    if (machos == null || hembras == null) {
+      const total = totalDestete ?? 0
+      if (total > 0) await agregarJaula({ camada_id: datos.id, total, machos: null, hembras: null, notas: '' })
+      return
+    }
+    if (machos > 0)  await agregarJaula({ camada_id: datos.id, total: machos,  machos,     hembras: 0, notas: '' })
+    if (hembras > 0) await agregarJaula({ camada_id: datos.id, total: hembras, machos: 0,  hembras,    notas: '' })
+  }
+
   // ── CAMADAS ────────────────────────────────────────────────────────────────
 
   async function agregarCamada(datos) {
@@ -304,6 +323,10 @@ export function BiotheriumProvider({ children }) {
       console.error('Error al guardar camada:', error)
       dispatch({ type: 'ELIMINAR_CAMADA', payload: nueva.id })
       return
+    }
+    // Camada cargada ya destetada → las crías entran a Stock separadas por sexo
+    if (nueva.fecha_destete && nueva.incluir_en_stock !== false) {
+      await crearJaulasDestete(nueva)
     }
     // Setear el estado de la hembra según el progreso real de la camada creada
     // (si ya tiene separación/parto/destete registrados — ej: carga histórica)
@@ -391,23 +414,12 @@ export function BiotheriumProvider({ children }) {
       }
     }
 
-    // Auto-crear jaula cuando se registra el destete por primera vez Y stock activo
+    // Auto-crear jaulas (una por sexo) cuando se registra el destete por primera vez Y stock activo
     // O cuando se reactiva el stock en una camada que ya tiene destete
     const desteteNuevo = datos.fecha_destete && !antigua?.fecha_destete
     if ((desteteNuevo || stockActivado) && datos.incluir_en_stock !== false && datos.fecha_destete) {
       const jaulaExiste = estado.jaulas.some((j) => j.camada_id === datos.id)
-      if (!jaulaExiste) {
-        const total = datos.total_destetados ?? datos.total_crias ?? 0
-        if (total > 0) {
-          await agregarJaula({
-            camada_id: datos.id,
-            total,
-            machos: datos.crias_machos ?? null,
-            hembras: datos.crias_hembras ?? null,
-            notas: '',
-          })
-        }
-      }
+      if (!jaulaExiste) await crearJaulasDestete(datos)
     }
 
     // ── Reconciliar estado de la madre con el progreso real de la camada ───────
