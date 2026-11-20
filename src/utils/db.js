@@ -112,6 +112,17 @@ function planToDB(p, bioterioId) {
     hembra_edad:           p.hembra?.edad     ?? p.hembra_edad      ?? null,
     bioterio_origen_macho:  p.macho?.bioterioOrigen  ?? p.bioterio_origen_macho  ?? null,
     bioterio_origen_hembra: p.hembra?.bioterioOrigen ?? p.bioterio_origen_hembra ?? null,
+    // Segunda hembra (trío BALB/c). Solo se envía si existe, así los planes de
+    // pareja no dependen de la columna hembra2 (supabase_migration_trios.sql).
+    ...(p.hembra2 ? {
+      hembra2: {
+        bloqueId: p.hembra2.bloqueId ?? null,
+        tipo:     p.hembra2.tipo     ?? null,
+        codigo:   p.hembra2.codigo   ?? null,
+        total:    p.hembra2.total    ?? null,
+        edad:     p.hembra2.edad     ?? null,
+      },
+    } : {}),
     completado:            p.completado ?? false,
     created_at:            p.created_at ?? hoyLocal(),
   }
@@ -139,6 +150,7 @@ function dbAPlan(row) {
       edad:           row.hembra_edad,
       bioterioOrigen: row.bioterio_origen_hembra,
     },
+    hembra2:    row.hembra2 ?? null,
     completado: row.completado,
     created_at: row.created_at,
   }

@@ -116,12 +116,13 @@ export default function Calendario() {
       if (!f) return
       if (!m[f]) m[f] = []
       const esF1 = !!(p.macho?.bioterioOrigen || p.hembra?.bioterioOrigen)
+      const hembras = `${p.hembra?.codigo ?? '?'}${p.hembra2 ? ` + ${p.hembra2.codigo ?? '?'}` : ''}`
       m[f].push({
         id:     `plan-${p.id}`,
         tipo:   'plan_apareamiento',
         titulo: esF1
-          ? `🧬 F1: ${p.macho?.codigo ?? '?'} × ${p.hembra?.codigo ?? '?'}`
-          : `Apareamiento: ${p.macho?.codigo ?? '?'} × ${p.hembra?.codigo ?? '?'}`,
+          ? `🧬 F1: ${p.macho?.codigo ?? '?'} × ${hembras}`
+          : `${p.hembra2 ? 'Trío' : 'Apareamiento'}: ${p.macho?.codigo ?? '?'} × ${hembras}`,
         plan:   p,
       })
     })
@@ -157,12 +158,13 @@ export default function Calendario() {
     : []
 
   // Guardar nuevo plan desde el modal
-  async function handleGuardarPlan(machoPlan, hembraPlan, observaciones) {
+  async function handleGuardarPlan(machoPlan, hembraPlan, observaciones, hembra2Plan = null) {
     const plan = {
       fecha_planificada: fStr(diaSelec),
       observaciones:     observaciones || null,
       macho:             machoPlan,
       hembra:            hembraPlan,
+      hembra2:           hembra2Plan,
       completado:        false,
     }
     const guardado = await guardarPlan(plan, bioterioActivo)
@@ -562,6 +564,7 @@ export default function Calendario() {
           onGuardar={handleGuardarPlan}
           onCerrar={() => setModalPlan(false)}
           esHibridos={esHibridos}
+          permiteTrio={bioterioActivo === 'ratones_balbc'}
           datosHibridos={datosHibridos}
           cargandoHibridos={cargandoHibridos}
         />
@@ -605,7 +608,7 @@ function TabTipo({ valor, actual, color, onChange }) {
 function ModalPlanificarApareamiento({
   animales, camadas, jaulas, sacrificios, entregas, bio,
   fecha, onGuardar, onCerrar,
-  esHibridos = false, datosHibridos = null, cargandoHibridos = false,
+  esHibridos = false, permiteTrio = false, datosHibridos = null, cargandoHibridos = false,
 }) {
   const { tema } = useTheme()
   // Fuentes de animales según modo
@@ -627,6 +630,11 @@ function ModalPlanificarApareamiento({
   // Selección en columna Jaula de stock
   const [jaulaMachoSel,  setJaulaMachoSel]  = useState(null)
   const [jaulaHembraSel, setJaulaHembraSel] = useState(null)
+
+  // Segunda hembra opcional (trío reproductivo, solo BALB/c)
+  const [tipoHembra2,     setTipoHembra2]     = useState('reproductor')
+  const [hembra2Sel,      setHembra2Sel]      = useState(null)
+  const [jaulaHembra2Sel, setJaulaHembra2Sel] = useState(null)
 
   const [observaciones, setObservaciones] = useState('')
 
@@ -737,6 +745,7 @@ function ModalPlanificarApareamiento({
   // Limpiar selección de jaula al cambiar de tipo
   function cambiarTipoMacho(t)  { setTipoMacho(t);  setJaulaMachoSel(null) }
   function cambiarTipoHembra(t) { setTipoHembra(t); setJaulaHembraSel(null) }
+  function cambiarTipoHembra2(t) { setTipoHembra2(t); setJaulaHembra2Sel(null) }
 
   // Calcular los plan-items finales según lo seleccionado
   const fuenteMachoBase = tipoMacho === 'reproductor'
@@ -750,6 +759,15 @@ function ModalPlanificarApareamiento({
   // Agregar bioterioOrigen cuando estamos en modo Híbridos
   const fuenteMacho  = fuenteMachoBase  ? (esHibridos ? { ...fuenteMachoBase,  bioterioOrigen: 'ratones_balbc' } : fuenteMachoBase)  : null
   const fuenteHembra = fuenteHembraBase ? (esHibridos ? { ...fuenteHembraBase, bioterioOrigen: 'ratones_c57'  } : fuenteHembraBase) : null
+
+  // La segunda hembra no puede ser la misma fuente que la primera
+  const hembra2Valida = tipoHembra2 === 'reproductor'
+    ? (hembra2Sel && !(tipoHembra === 'reproductor' && hembraSel?.id === hembra2Sel.id) ? hembra2Sel : null)
+    : (jaulaHembra2Sel && !(tipoHembra === 'stock' && jaulaHembraSel?.id === jaulaHembra2Sel.id) ? jaulaHembra2Sel : null)
+  const fuenteHembra2 = !permiteTrio || esHibridos || !hembra2Valida ? null
+    : tipoHembra2 === 'reproductor'
+      ? { bloqueId: `r-${hembra2Valida.id}`, tipo: 'reproductor', codigo: hembra2Valida.codigo, total: 1, edad: diasDesde(hembra2Valida.fecha_nacimiento) }
+      : { bloqueId: hembra2Valida.id, tipo: 'stock', codigo: hembra2Valida.nombre, categoria: hembra2Valida.categoria, total: hembra2Valida.total, edad: hembra2Valida.edad }
 
   const puedeGuardar = Boolean(fuenteMacho && fuenteHembra)
 
@@ -800,6 +818,57 @@ function ModalPlanificarApareamiento({
           <span>{edadStr}</span>
         </div>
       </button>
+    )
+  }
+
+  // Lista de hembras (reproductoras o jaulas de stock). La usan la hembra
+  // principal y la segunda hembra del trío; esta excluye lo ya elegido arriba.
+  function listaHembras({ tipo, sel, setSel, jaulaSel, setJaulaSel, excluirReproductorId = null, excluirJaulaId = null }) {
+    const hembrasVisibles = hembras.filter((a) => a.id !== excluirReproductorId)
+    const jaulasVisibles  = (esHibridos ? bloquesHibridosHembras : bloquesParaHembras).filter((b) => b.id !== excluirJaulaId)
+    return (
+        <div className="space-y-1.5 max-h-52 overflow-y-auto">
+        {tipo === 'reproductor' ? (
+          hembrasVisibles.length === 0
+            ? <div className="text-xs font-mono py-3 text-center" style={{ color: '#3d5068' }}>Sin hembras activas</div>
+            : hembrasVisibles.map((a) => {
+              const marcada = sel?.id === a.id
+              const edad = formatEdadCorta(diasDesde(a.fecha_nacimiento))
+              return (
+                <button
+                  key={a.id}
+                  onClick={() => setSel(marcada ? null : a)}
+                  className="w-full text-left px-3 py-2.5 rounded-xl transition-all"
+                  style={{
+                    background: marcada ? 'rgba(206,147,216,0.14)' : 'rgba(255,255,255,0.02)',
+                    border:    `1.5px solid ${marcada ? 'rgba(206,147,216,0.5)' : 'rgba(30,51,82,0.5)'}`,
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0"
+                      style={{ borderColor: marcada ? '#ce93d8' : 'rgba(30,51,82,0.8)', background: marcada ? '#ce93d8' : 'transparent' }}>
+                      {marcada && <span style={{ color: '#050810', fontSize: '8px', fontWeight: 'bold' }}>✓</span>}
+                    </div>
+                    <span className="font-bold font-mono text-xs text-white">{a.codigo}</span>
+                  </div>
+                  <div className="text-xs font-mono mt-0.5 ml-5" style={{ color: tema.textMuted }}>{edad}</div>
+                </button>
+              )
+            })
+        ) : (
+          jaulasVisibles.length === 0
+            ? <div className="text-xs font-mono py-3 text-center" style={{ color: '#3d5068' }}>Sin jaulas con hembras</div>
+            : jaulasVisibles.map((b) => (
+              <BloqueStockItem
+                key={b.id}
+                bloque={b}
+                seleccionado={jaulaSel?.id === b.id}
+                color="#ce93d8"
+                onSelect={setJaulaSel}
+              />
+            ))
+        )}
+      </div>
     )
   }
 
@@ -917,49 +986,29 @@ function ModalPlanificarApareamiento({
                 <TabTipo valor="stock"       actual={tipoHembra} color="#ce93d8" onChange={cambiarTipoHembra} />
               </div>
 
-              {/* Lista según tipo */}
-              <div className="space-y-1.5 max-h-52 overflow-y-auto">
-                {tipoHembra === 'reproductor' ? (
-                  hembras.length === 0
-                    ? <div className="text-xs font-mono py-3 text-center" style={{ color: '#3d5068' }}>Sin hembras activas</div>
-                    : hembras.map((a) => {
-                      const sel  = hembraSel?.id === a.id
-                      const edad = formatEdadCorta(diasDesde(a.fecha_nacimiento))
-                      return (
-                        <button
-                          key={a.id}
-                          onClick={() => setHembraSel(sel ? null : a)}
-                          className="w-full text-left px-3 py-2.5 rounded-xl transition-all"
-                          style={{
-                            background: sel ? 'rgba(206,147,216,0.14)' : 'rgba(255,255,255,0.02)',
-                            border:    `1.5px solid ${sel ? 'rgba(206,147,216,0.5)' : 'rgba(30,51,82,0.5)'}`,
-                          }}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className="w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0"
-                              style={{ borderColor: sel ? '#ce93d8' : 'rgba(30,51,82,0.8)', background: sel ? '#ce93d8' : 'transparent' }}>
-                              {sel && <span style={{ color: '#050810', fontSize: '8px', fontWeight: 'bold' }}>✓</span>}
-                            </div>
-                            <span className="font-bold font-mono text-xs text-white">{a.codigo}</span>
-                          </div>
-                          <div className="text-xs font-mono mt-0.5 ml-5" style={{ color: tema.textMuted }}>{edad}</div>
-                        </button>
-                      )
-                    })
-                ) : (
-                  (esHibridos ? bloquesHibridosHembras : bloquesParaHembras).length === 0
-                    ? <div className="text-xs font-mono py-3 text-center" style={{ color: '#3d5068' }}>Sin jaulas con hembras</div>
-                    : (esHibridos ? bloquesHibridosHembras : bloquesParaHembras).map((b) => (
-                      <BloqueStockItem
-                        key={b.id}
-                        bloque={b}
-                        seleccionado={jaulaHembraSel?.id === b.id}
-                        color="#ce93d8"
-                        onSelect={setJaulaHembraSel}
-                      />
-                    ))
-                )}
-              </div>
+              {listaHembras({
+                tipo: tipoHembra, sel: hembraSel, setSel: setHembraSel,
+                jaulaSel: jaulaHembraSel, setJaulaSel: setJaulaHembraSel,
+              })}
+
+              {/* Segunda hembra (trío reproductivo, solo BALB/c) */}
+              {permiteTrio && !esHibridos && (
+                <div className="pt-3 space-y-3" style={{ borderTop: '1px dashed rgba(206,147,216,0.3)' }}>
+                  <div className="text-xs font-bold uppercase tracking-widest" style={{ color: tema.purple }}>
+                    ♀ Segunda hembra <span className="normal-case font-normal" style={{ color: tema.textMuted }}>· trío (opcional)</span>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <TabTipo valor="reproductor" actual={tipoHembra2} color="#ce93d8" onChange={cambiarTipoHembra2} />
+                    <TabTipo valor="stock"       actual={tipoHembra2} color="#ce93d8" onChange={cambiarTipoHembra2} />
+                  </div>
+                  {listaHembras({
+                    tipo: tipoHembra2, sel: hembra2Sel, setSel: setHembra2Sel,
+                    jaulaSel: jaulaHembra2Sel, setJaulaSel: setJaulaHembra2Sel,
+                    excluirReproductorId: tipoHembra === 'reproductor' ? hembraSel?.id : null,
+                    excluirJaulaId:       tipoHembra === 'stock'       ? jaulaHembraSel?.id : null,
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
@@ -972,6 +1021,9 @@ function ModalPlanificarApareamiento({
               <span style={{ color: tema.blue }}>♂ {getNombreFuente(fuenteMacho)}</span>
               <span style={{ color: tema.textMuted }}>×</span>
               <span style={{ color: tema.purple }}>♀ {getNombreFuente(fuenteHembra)}</span>
+              {fuenteHembra2 && (
+                <span style={{ color: tema.purple }}>+ ♀ {getNombreFuente(fuenteHembra2)}</span>
+              )}
               {fuenteMacho?.tipo === 'stock' && (
                 <span className="px-1.5 py-0.5 rounded font-semibold" style={{ background: 'rgba(64,196,255,0.12)', color: tema.blue, fontSize: '10px' }}>
                   {fuenteMacho.total} animales
@@ -980,6 +1032,11 @@ function ModalPlanificarApareamiento({
               {fuenteHembra?.tipo === 'stock' && (
                 <span className="px-1.5 py-0.5 rounded font-semibold" style={{ background: 'rgba(206,147,216,0.12)', color: tema.purple, fontSize: '10px' }}>
                   {fuenteHembra.total} animales
+                </span>
+              )}
+              {fuenteHembra2?.tipo === 'stock' && (
+                <span className="px-1.5 py-0.5 rounded font-semibold" style={{ background: 'rgba(206,147,216,0.12)', color: tema.purple, fontSize: '10px' }}>
+                  {fuenteHembra2.total} animales
                 </span>
               )}
             </div>
@@ -1016,7 +1073,7 @@ function ModalPlanificarApareamiento({
             Cancelar
           </button>
           <button
-            onClick={() => puedeGuardar && onGuardar(fuenteMacho, fuenteHembra, observaciones)}
+            onClick={() => puedeGuardar && onGuardar(fuenteMacho, fuenteHembra, observaciones, fuenteHembra2)}
             disabled={!puedeGuardar}
             className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all"
             style={{
@@ -1026,7 +1083,7 @@ function ModalPlanificarApareamiento({
               cursor:     puedeGuardar ? 'pointer' : 'not-allowed',
             }}
           >
-            {esHibridos ? '🧬 Guardar cruce F1' : '🔗 Guardar planificación'}
+            {esHibridos ? '🧬 Guardar cruce F1' : fuenteHembra2 ? '🔗 Guardar trío' : '🔗 Guardar planificación'}
           </button>
         </div>
       </div>

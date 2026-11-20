@@ -753,6 +753,16 @@ export default function Dashboard() {
                         {plan.hembra.total > 0 && (
                           <span style={{ color: tema.textMuted }}> ({plan.hembra.total} disp.)</span>
                         )}
+                        {plan.hembra2 && (
+                          <>
+                            {' '}+{' '}
+                            <span className="font-mono" style={{ color: tema.purple }}>{plan.hembra2.codigo}</span>
+                            {plan.hembra2.total > 0 && (
+                              <span style={{ color: tema.textMuted }}> ({plan.hembra2.total} disp.)</span>
+                            )}
+                            <span style={{ color: tema.textMuted }}> · trío</span>
+                          </>
+                        )}
                       </div>
                       {plan.observaciones && (
                         <div className="text-xs" style={{ color: tema.textMuted }}>{plan.observaciones}</div>
@@ -790,6 +800,9 @@ export default function Dashboard() {
                     <span className="font-mono" style={{ color: tema.blue }}>{plan.macho.codigo}</span>
                     {' '}×{' '}
                     <span className="font-mono" style={{ color: tema.purple }}>{plan.hembra.codigo}</span>
+                    {plan.hembra2 && (
+                      <> + <span className="font-mono" style={{ color: tema.purple }}>{plan.hembra2.codigo}</span></>
+                    )}
                     {plan.observaciones && <span> · {plan.observaciones}</span>}
                   </div>
                 </div>

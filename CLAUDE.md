@@ -295,6 +295,7 @@ extendidos
 - `getAnimalesReservados` → reproductores reservados. `getJaulasReservadas` → jaulas de stock reservadas
 - `getReservadosParaHibridos(bioterioId)` → animales/jaulas de BAL/C o C57 con destino F1
 - Planes F1 en Calendario llevan `bioterioOrigen` en cada fuente y se muestran como `🧬 F1: X × Y`
+- **Tríos (solo BALB/c):** el plan puede llevar `hembra2` (`{ bloqueId, tipo, codigo, total, edad }`, columna jsonb). `planToDB` solo envía `hembra2` cuando existe, así los planes de pareja no dependen de la columna. La segunda hembra no puede ser la misma reproductora/jaula que la primera. Se muestra como `Trío: M × H1 + H2` en Calendario y `H1 + H2 · trío` en Dashboard. Desde Stock (selección múltiple) sigue siendo solo 1♂ + 1♀
 - Ninguna reserva bloquea operaciones — solo muestra advertencias
 
 **Censos y consumo (viruta/alimento):**
@@ -337,6 +338,9 @@ extendidos
 ---
 
 ## Implementado recientemente
+
+### Noviembre 2026
+- **Tríos reproductivos BALB/c (20/11):** en Calendario → "Planificar apareamiento", con el bioterio `ratones_balbc` activo aparece una sección "♀ Segunda hembra · trío (opcional)" debajo de la hembra principal (mismas pestañas Reproductor / Jaula de stock). El resto de las cepas sigue con 1♂ + 1♀. Requiere `supabase_migration_trios.sql` (columna `hembra2 jsonb`). Ver "Comportamientos clave → Planes de apareamiento".
 
 ### Octubre 2026
 - **Destete separado por sexo (27/10):** al confirmar el destete las crías entran a Stock en una jaula de machos y otra de hembras según el sexado, sin jaula mixta ni bloque "sin asignar". Ver "Comportamientos clave → Stock".
@@ -459,4 +463,10 @@ En localStorage solo quedan preferencias de UI (tema `appMosca_brillo`, ficha bi
 - [ ] Reportes por grupo de investigación: entregas por grupo, animales entregados por grupo, especie, evolución mensual
 - [ ] Historial de cambios por animal/camada (auditoría)
 - [ ] Modo offline con sincronización posterior
+
+## Preguntas abiertas (a confirmar con Lucas)
+
+- **Tríos BALB/c (20/11/2026):** ¿la segunda hembra es opcional (se puede seguir planificando pareja en BALB/c) o en BALB/c siempre debe ser trío? Hoy: opcional.
+- **Tríos BALB/c:** ¿el trío también tiene que poder planificarse desde Stock (selección múltiple) y registrarse como apareamiento real en Camadas (hoy `camadas` tiene un solo `id_madre`)? Hoy: solo en la planificación del Calendario.
+- **Tríos BALB/c:** ¿aplica también a los cruces F1 en Híbridos (♂ BALB/c × 2 ♀ C57)? Hoy: no.
 - [x] ~~Multi-colonia o multi-usuario con roles~~ → implementado como multi-bioterio (ratas + ratones con subgrupos)
