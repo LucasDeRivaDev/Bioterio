@@ -1,4 +1,4 @@
-# 🐀 Bioterio — Sistema de Gestión de Colonia
+# 🐀 ITeRatE Bioterio ISAL — Sistema de Gestión de Colonia
 
 App web para la gestión de colonias de ratones de laboratorio (*Mus musculus*).
 Permite registrar animales, camadas, seguimiento de preñeces y análisis de rendimiento reproductivo.

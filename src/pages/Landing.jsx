@@ -137,7 +137,7 @@ export default function Landing() {
 
   useEffect(() => {
     const prev = document.title
-    document.title = 'ITeRatE — Sistema de Gestión de Bioterio'
+    document.title = 'ITeRatE Bioterio ISAL — Sistema de Gestión de Colonia'
     return () => { document.title = prev }
   }, [])
 

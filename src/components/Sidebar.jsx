@@ -115,9 +115,9 @@ function ReportarError() {
 
   function enviar() {
     if (!descripcion.trim()) return
-    const asunto = encodeURIComponent(`[ITeRatE] Error en: ${seccion || 'sin especificar'}`)
+    const asunto = encodeURIComponent(`[ITeRatE Bioterio ISAL] Error en: ${seccion || 'sin especificar'}`)
     const cuerpo = encodeURIComponent(
-      `Sección: ${seccion || 'sin especificar'}\n\nDescripción:\n${descripcion.trim()}\n\n---\nEnviado desde ITeRatE`
+      `Sección: ${seccion || 'sin especificar'}\n\nDescripción:\n${descripcion.trim()}\n\n---\nEnviado desde ITeRatE Bioterio ISAL`
     )
     window.location.href = `mailto:LucasDeRiviaDev@gmail.com?subject=${asunto}&body=${cuerpo}`
     setEnviado(true)
