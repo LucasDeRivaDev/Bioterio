@@ -119,10 +119,10 @@ src/
 - **Modo claro:** ya NO fuerza todo el texto a negro. `src/styles/modo-claro-colores.css` (generado por `node scripts/generar-modo-claro.mjs`) remapea cada color inline pensado para fondo oscuro a una variante legible sobre blanco, conservando su significado. **Si agregás colores hardcodeados nuevos, regenerá ese archivo.**
 - Radios de Tailwind ajustados (`rounded-xl` 10px, `rounded-2xl` 12px) y borde por defecto `var(--line)` en `index.html`.
 - **Kit `src/components/ui.jsx`** (portado de ICIVET, usa clases `bg-surface`, `text-ink`, `border-line`…): `Boton` (primario = tinta invertida), `Campo`, `Entrada`, `Aviso`, `Panel`, `BarraGlobal` (barra superior de las vistas globales sin sidebar). Usarlo en pantallas nuevas en lugar de estilos inline.
-- **Pantallas reescritas con el kit:** Landing, Login + `CrearPassword` (exportado de Login.jsx y usado también en App.jsx), SelectorBioterio (tarjetas por colonia con barra del color de la colonia + lista de vistas globales).
+- **Pantallas reescritas con el kit:** Login + `CrearPassword` (exportado de Login.jsx y usado también en App.jsx), SelectorBioterio (tarjetas por colonia con barra del color de la colonia + lista de vistas globales).
 - **Clases globales en index.css para páginas con estilos inline:** `.btn-primario` (fuerza tinta invertida sobre botones tintados; usar en la acción principal de cada pantalla/modal), `.chip` (pestañas/filtros de los helpers `btnTab`/`btnSubTab`).
 - **Etiquetas:** en pantalla, `uppercase` y `textTransform: 'uppercase'` inline se anulan (tipo oración, sin tracking), como en ICIVET. En impresión no se tocan.
-- **Marca:** los logos originales se mantienen en todos sus lugares (sidebar, barra mobile, logo de esquina, carga, login, selector, landing). `src/components/Marca.jsx` (`pieza`: `isotipo` antena sola · `icono` antena con circuitos · `logotipo` nombre + eslogan · `completo`) elige la versión oscura o clara según el tema. Los PNG de `src/assets/marca/` son versiones recortadas y con fondo transparente generadas con `node scripts/generar-marca.mjs` desde los originales de `src/assets/` (que siguen siendo la fuente y se usan tal cual en los PDF de Reportes). Si cambia un logo original, regenerar.
+- **Marca:** los logos originales se mantienen en todos sus lugares (sidebar, barra mobile, logo de esquina, carga, ingreso, selector). `src/components/Marca.jsx` (`pieza`: `isotipo` antena sola · `icono` antena con circuitos · `logotipo` nombre + eslogan · `completo`) elige la versión oscura o clara según el tema. Los PNG de `src/assets/marca/` son versiones recortadas y con fondo transparente generadas con `node scripts/generar-marca.mjs` desde los originales de `src/assets/` (que siguen siendo la fuente y se usan tal cual en los PDF de Reportes). Si cambia un logo original, regenerar.
 - Respaldo previo al rediseño: tag `respaldo-pre-estetica-icivet`.
 
 ---
@@ -165,7 +165,7 @@ configuracion
 
 contactos
   id (uuid), nombre, institucion, email, mensaje, created_at
-  (formulario "Solicitar demo" de la landing — INSERT público vía RLS)
+  (era el formulario "Solicitar demo" de la landing, eliminada el 23/11/2026; la tabla queda solo como registro)
 
 notas / planes_apareamiento / reservas
   (migradas desde localStorage — acceso vía src/utils/db.js)
@@ -350,6 +350,7 @@ extendidos
 ## Implementado recientemente
 
 ### Noviembre 2026
+- **Sin landing, ingreso estilo ICIVET (23/11):** se eliminó la landing por completo (`Landing.jsx`, ruta `/inicio`, link "Inicio" del sidebar y "Ver página de inicio" del selector). Sin sesión, cualquier ruta lleva a `/login`: intro → ingreso, como en ITeRatE ICIVET. `Login.jsx` copia la composición del ingreso de ICIVET: ícono de la marca + "Bioterio ISAL", franja con las 4 colonias (borde superior con el color de cada una) y panel "Ingresar" con email y contraseña (Supabase Auth). `CrearPassword` usa el mismo marco.
 - **Intro de apertura (splash) (23/11):** la misma de ITeRatE ICIVET (pedido de Lucas), adaptada a ISAL: leyenda "Bioterio · ISAL". HTML + CSS + script en `index.html` (aparece antes de que cargue la app); `main.jsx` avisa `app:ready` después del primer render. Unos 10 s en cada apertura y recarga, un toque la saltea, tope 13 s; con "reducir movimiento", logo quieto 1,5 s sin sonido; no se imprime. Sonido sintetizado con Web Audio (sin archivos), activado por defecto; silenciarlo se recuerda en el dispositivo (`localStorage isal.splash.sound = 'off'`). Imágenes `public/brand/isotipo.webp` y `logotipo.webp` (precacheadas: `webp` en `globPatterns`). `z-index: 10000` para quedar sobre el botón de tema y el aviso de actualización (9999). Si se cambia la intro en ICIVET, copiar el bloque `#splash` (estilos, HTML y script) y volver a aplicar estos cambios.
 - **Informe Directivo (23/11):** reemplaza al Reporte Mensual (`ReporteMensual.jsx` → `InformeDirectivo.jsx`, misma clave `reporte_mensual`, botón "Informe directivo" en Reportes). Ver "Comportamientos clave → Informe Directivo".
 - **Tríos reproductivos BALB/c (20/11):** en Calendario → "Planificar apareamiento", con el bioterio `ratones_balbc` activo aparece una sección "♀ Segunda hembra · trío (opcional)" debajo de la hembra principal (mismas pestañas Reproductor / Jaula de stock). El resto de las cepas sigue con 1♂ + 1♀. Requiere `supabase_migration_trios.sql` (columna `hembra2 jsonb`). Ver "Comportamientos clave → Planes de apareamiento".

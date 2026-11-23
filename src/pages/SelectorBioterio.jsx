@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom'
 import { useBioterioActivo, BIOTERIOS_CONFIG } from '../context/BioterioActivoContext'
 import { BarChart3, ChevronRight, Gauge, GitBranch, Layers, Wheat } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -56,7 +55,6 @@ function EstadoSanitario({ estado }) {
 export default function SelectorBioterio() {
   const { setBioterioActivo } = useBioterioActivo()
   const { tema } = useTheme()
-  const navigate = useNavigate()
   const [incidentesSalud, setIncidentesSalud] = useState([])
 
   useEffect(() => {
@@ -72,11 +70,6 @@ export default function SelectorBioterio() {
   return (
     <div className="min-h-screen bg-canvas px-4 py-8 sm:px-6 lg:py-12">
       <div className="mx-auto w-full max-w-5xl">
-        <div className="mb-2 flex justify-end">
-          <button onClick={() => navigate('/inicio')} className="text-sm text-ink-soft hover:text-ink">
-            ← Ver página de inicio
-          </button>
-        </div>
         <header className="mb-8 flex flex-col items-center text-center">
           <Marca pieza="completo" alto={170} />
           <h1 className="mt-6 font-cond text-3xl font-semibold text-ink">Seleccioná el bioterio</h1>

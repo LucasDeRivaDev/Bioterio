@@ -4,7 +4,7 @@ import { useBioterio } from '../context/BiotheriumContext'
 import { useBioterioActivo } from '../context/BioterioActivoContext'
 import { useAuth } from '../context/AuthContext'
 import {
-  Home, LayoutDashboard, Printer, Bug, Send, LogOut, ChevronUp, ChevronDown,
+  LayoutDashboard, Printer, Bug, Send, LogOut, ChevronUp, ChevronDown,
   Dna, Microscope, Archive, BarChart2, PackageCheck, Skull, TrendingUp, Target, ClipboardList, ScanSearch,
   BookOpen, Sun, Moon,
 } from 'lucide-react'
@@ -12,7 +12,6 @@ import { useTheme } from '../context/ThemeContext'
 import Marca from './Marca'
 import { esCamadaPreniada, parseDate, hoy } from '../utils/calculos'
 
-const LINK_INICIO   = { to: '/inicio', label: 'Inicio',       icon: <Home size={16} /> }
 const LINK_DASHBOARD = { to: '/',      label: 'Panel de hoy', icon: <LayoutDashboard size={16} /> }
 
 const LINK_REPORTES       = { to: '/reportes',     label: 'Reportes e impresión', icon: <Printer size={16} /> }
@@ -275,7 +274,6 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 pb-3 space-y-0.5" style={{ borderTop: `1px solid ${tema.lineSoft}`, paddingTop: '10px' }}>
-        <NavItem item={LINK_INICIO} onCerrarMenu={onCerrarMenu} />
         <NavItem item={LINK_DASHBOARD} onCerrarMenu={onCerrarMenu} />
         <Separador />
         {GRUPOS.map((grupo) => (

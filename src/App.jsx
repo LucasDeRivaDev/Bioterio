@@ -31,7 +31,6 @@ import PlanificacionColonia from './pages/PlanificacionColonia'
 import Pedidos from './pages/Pedidos'
 import Auditoria from './pages/Auditoria'
 import Login, { CrearPassword } from './pages/Login'
-import Landing from './pages/Landing'
 
 // ── Pantalla de carga mientras verifica la sesión ────────────────────────────
 function PantallaCarga() {
@@ -164,7 +163,7 @@ export function TopbarMovil({ onMenu, children }) {
 }
 
 // En escritorio el cambio de tema vive en el sidebar; el botón flotante queda para mobile
-// y para las pantallas sin sidebar (landing, login, selector, vistas globales).
+// y para las pantallas sin sidebar (ingreso, selector, vistas globales).
 export function OcultarBotonBrilloEnEscritorio() {
   return <style>{'@media (min-width: 768px) { .boton-brillo-flotante { display: none !important; } }'}</style>
 }
@@ -195,16 +194,14 @@ function RutaRaiz() {
     if (!sesion) {
       return (
         <Routes>
-          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       )
     }
     return (
       <Routes>
         <Route path="/login"  element={<Navigate to="/" replace />} />
-        <Route path="/inicio" element={<Landing />} />
         <Route path="/*"      element={<AppLayout />} />
       </Routes>
     )
