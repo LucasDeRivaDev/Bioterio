@@ -259,11 +259,11 @@ export default function Reportes() {
             ))}
             <button
               onClick={() => setBioterioActivo('reporte_mensual')}
-              title="Resumen ejecutivo mensual para dirección — animales, reproducción, egresos e insumos"
+              title="Informe periódico para la Dirección: apareamientos, camadas, incidentes, temperaturas, entregas y sacrificios"
               className="ml-auto flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all hover:brightness-110"
               style={{ background: 'linear-gradient(135deg, rgba(206,147,216,0.16), rgba(64,196,255,0.10))', border: '1.5px solid rgba(206,147,216,0.45)', color: '#ce93d8', boxShadow: 'none' }}
             >
-              <Briefcase size={15} /> Reporte directivo
+              <Briefcase size={15} /> Informe directivo
               <span className="text-xs font-mono opacity-70">PDF</span>
             </button>
           </div>
@@ -953,7 +953,7 @@ function DocImprimible({ tituloPeriodo, datos, animales, camadas, pedidos = [], 
 
       {/* Footer */}
       <div style={{ borderTop: '0.5pt solid #bbb', marginTop: '16pt', paddingTop: '5pt', fontSize: '7pt', color: '#888', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span>ITeRatE · Sistema de Gestión de Bioterio</span>
+        <span>ITeRatE Bioterio ISAL · Sistema de Gestión de Colonia</span>
         <span>Documento de uso interno · {bioterioActivo ? LABEL_BIOTERIO[bioterioActivo] ?? bioterioActivo : 'Colonia'}</span>
         <span>{ahora}</span>
       </div>
