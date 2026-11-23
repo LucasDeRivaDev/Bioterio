@@ -1,4 +1,4 @@
-# AppMosca — Bioterio 🧬
+# ITeRatE Bioterio ISAL 🧬
 
 ## Protocolo de trabajo
 
@@ -31,7 +31,7 @@ Sistema web de gestión de una colonia de ratones de laboratorio (*Mus musculus*
 | **Planificación** | Índice de estabilidad 0-100, mínimos por bioterio, proyección 30/60/90/180d, candidatos a renovación, simulador de impacto |
 | **Pedidos** | Gestión de pedidos de producción con estrategia automática: parejas necesarias, fechas óptimas, reproductores sugeridos, índice de viabilidad 0-100, escenarios A/B, calendario del pedido |
 | **Reportes** | Impresión de datos de la colonia + accesos directos Vista Global (alimento, viruta, capacidad, genealogía, reporte mensual) |
-| **Reporte Mensual** | Resumen ejecutivo mensual para dirección: animales al cierre por especie/cepa/sexo/categoría, actividad reproductiva, entregas/sacrificios, consumo de viruta y alimento. Documento A4 imprimible (window.print → PDF). Regla dura: indicador sin registros suficientes se muestra como "Sin datos suficientes" — nunca se estima |
+| **Informe Directivo** | Reporte periódico para la Dirección del instituto. Período = mes completo o rango personalizado (ej. 14 al 14). Recopila solo lo ocurrido en el período: apareamientos, camadas (partos y destetes), incidentes, temperaturas, pedidos y entregas por grupo de investigación, sacrificios. Anexo opcional: animales al cierre y viruta/alimento. Vista previa en hoja A4 + "Generar PDF" (window.print → Guardar como PDF) |
 
 **Motor predictivo:** calcula automáticamente fechas de parto (gestación 23d ratas / 21d ratones), destete (21d), madurez sexual y genera tareas con prioridad.
 
@@ -81,7 +81,8 @@ src/
 │   ├── BioterioActivoContext.jsx    — Bioterio activo en localStorage (bioterioActivo, bio, config)
 │   └── ThemeContext.jsx             — Tema claro/oscuro. TEMA_OSCURO + TEMA_CLARO (tokens ICIVET, valores hex porque las páginas les concatenan alfa). Toggle persiste en localStorage ('appMosca_brillo'). Clase 'modo-claro' + data-theme en <html>
 ├── utils/calculos.js                — Motor predictivo, scores reproductivos, confiabilidad de hembras
-├── utils/reportemensual.js          — Cálculos puros del Reporte Mensual (stockEnFecha, resumenReproductivo, resumenEgresos, resumenInsumo)
+├── utils/informeDirectivo.js        — Recopilación pura del Informe Directivo por período (detalleApareamientos, detalleCamadas, detalleIncidentes, resumenTemperaturas, detalleEntregas, detallePedidos, detalleSacrificios)
+├── utils/reportemensual.js          — Cálculos base (rangoMes, enRango, stockEnFecha, resumenInsumo, clasificarEntregas) usados por el Informe Directivo
 ├── utils/constants.js               — Constantes biológicas (BIO_RATAS, BIO_RATONES, BIO, ESTADO_ANIMAL, TIPO_TAREA)
 ├── components/
 │   ├── Sidebar.jsx                  — Navegación (drawer en mobile, ficha biológica colapsable)
@@ -101,7 +102,7 @@ src/
     ├── Estadisticas.jsx             — Dashboard visual: 4 gráficos reproductivos + KPIs + filtros
     ├── Temperatura.jsx              — 2 tabs físicos (Bioterio de Ratas / Bioterio de Ratones), sin dependencia de bioterio activo
     ├── Reportes.jsx
-    ├── ReporteMensual.jsx            — Resumen ejecutivo mensual imprimible (clave global reporte_mensual, sin sidebar)
+    ├── InformeDirectivo.jsx          — Informe periódico para la Dirección (clave global reporte_mensual, sin sidebar)
     ├── SelectorBioterio.jsx         — Pantalla de selección de bioterio (ratas + 3 subgrupos de ratones + accesos globales)
     ├── ResumenRatones.jsx           — Vista unificada de stock de las 3 colonias de ratones con desglose por categoría + jaulas
     └── ConsumoViruta.jsx            — Predicción adaptativa de consumo de viruta con censos + ingresos separados
@@ -277,7 +278,16 @@ extendidos
 - Devolver con "mantener historial" marca la entrega `devuelta: true` — sigue visible en /entregas (badge ✓ Devuelta, sin botón Devolver) pero deja de descontar en todos los `stockCamada` (Stock, ConsumoViruta, ConsumoAlimento, ResumenRatones, Calendario, motorDecisiones)
 - Campo `grupo_investigacion` (text, nullable) identifica el grupo receptor: Neurobiología, Inmunología Ambiental, Fisiopatología Uterina, Fisiopatología Glandular, Fisiopatología Ambiental, Endocrinología y Carcinogénesis, Ecofisiopatología, Biomarcadores. Select en ModalEntrega, badge teal 🔬 en historial, filtro de búsqueda incluido
 - El campo es informativo de trazabilidad — no modifica lógica de stock ni de devoluciones
-- **Sexo de las entregas en Reporte Mensual (`clasificarEntregas`):** cada entrega registra SOLO `cantidad` (el sexo `machos`/`hembras` solo se carga si la jaula tenía sexo). El reporte informa sexo únicamente cuando es un dato real — entrega de un reproductor individual (sexo del animal) o entrega de stock con `machos`/`hembras` explícitos → se divide en una entrada por sexo. Si la entrega no registra sexo → "sin Sexo"/"s/sexo", NUNCA se deduce de la proporción de la camada (`crias_machos`/`crias_hembras`) ni del origen `madre × padre` (progenitores). Lección: no inferir sexo de la entrega a partir de la camada — eso producía "X macho" falsos.
+- **Sexo de las entregas en el Informe Directivo (antes `clasificarEntregas` del Reporte Mensual):** cada entrega registra SOLO `cantidad` (el sexo `machos`/`hembras` solo se carga si la jaula tenía sexo). El reporte informa sexo únicamente cuando es un dato real — entrega de un reproductor individual (sexo del animal) o entrega de stock con `machos`/`hembras` explícitos → se divide en una entrada por sexo. Si la entrega no registra sexo → "sin Sexo"/"s/sexo", NUNCA se deduce de la proporción de la camada (`crias_machos`/`crias_hembras`) ni del origen `madre × padre` (progenitores). Lección: no inferir sexo de la entrega a partir de la camada — eso producía "X macho" falsos.
+
+**Informe Directivo (`InformeDirectivo.jsx` + `utils/informeDirectivo.js`):**
+- Período: "Mes completo" (mes + año, por defecto el último mes completo) o "Rango personalizado" (desde/hasta inclusive; inicio > fin bloquea). Al cambiar el período se vuelve a consultar; una respuesta vieja que llega tarde se descarta.
+- Cada evento cuenta una sola vez y por su propia fecha: apareamiento = `fecha_copula`, parto = `fecha_nacimiento`, destete = `fecha_destete`, entrega = `fecha`, sacrificio = `fecha`, incidente = `fecha`, temperatura = `date`, pedido = `fecha_entrega`. Camadas con `failure_flag` no son partos (sí aparecen en apareamientos con estado "Fallo: …").
+- Entregas: una fila por registro (especie, cepa, origen stock/reproductor, sexo, edad y categoría al día de la entrega, grupo). Devueltas no se cuentan (se informa cuántas). Sexo solo si está registrado. Categoría: cría <42d, joven hasta `STOCK_ADULTOS_DIAS` de la especie (70 ratones / 84 ratas), adulto después.
+- Sacrificios: el sacrificio de un reproductor ya vive en `sacrificios` (`categoria: 'reproductor'`, `animal_id`); `animales.fecha_sacrificio` es el mismo evento y no se suma.
+- Temperaturas: dos salas (ratas = `'ratas'`; ratones = `'ratones'` + ids viejos de subgrupos). Por día: promedio de lecturas y extremos entre lecturas y mín./máx.; día fuera de rango si sale de 20–24 °C.
+- Incidentes, temperaturas y pedidos se consultan acotados al período; animales/camadas/jaulas/sacrificios/entregas se traen completos (hacen falta edades, códigos de padres de otras colonias y el stock al cierre del anexo).
+- Documento: hoja A4 visible en pantalla como vista previa; al imprimir solo se ve la hoja (clases `id-*`). "Generar PDF" cambia `document.title` a `Informe directivo AAAA-MM-DD a AAAA-MM-DD` para que el archivo salga con ese nombre.
 
 **Temperatura:**
 - Queries directas con IDs fijos: ratas = `'ratas'`; ratones = `IN ['ratones', 'ratones_balbc', 'ratones_c57', 'ratones_hibridos']`
@@ -340,6 +350,8 @@ extendidos
 ## Implementado recientemente
 
 ### Noviembre 2026
+- **Intro de apertura (splash) (23/11):** la misma de ITeRatE ICIVET (pedido de Lucas), adaptada a ISAL: leyenda "Bioterio · ISAL". HTML + CSS + script en `index.html` (aparece antes de que cargue la app); `main.jsx` avisa `app:ready` después del primer render. Unos 10 s en cada apertura y recarga, un toque la saltea, tope 13 s; con "reducir movimiento", logo quieto 1,5 s sin sonido; no se imprime. Sonido sintetizado con Web Audio (sin archivos), activado por defecto; silenciarlo se recuerda en el dispositivo (`localStorage isal.splash.sound = 'off'`). Imágenes `public/brand/isotipo.webp` y `logotipo.webp` (precacheadas: `webp` en `globPatterns`). `z-index: 10000` para quedar sobre el botón de tema y el aviso de actualización (9999). Si se cambia la intro en ICIVET, copiar el bloque `#splash` (estilos, HTML y script) y volver a aplicar estos cambios.
+- **Informe Directivo (23/11):** reemplaza al Reporte Mensual (`ReporteMensual.jsx` → `InformeDirectivo.jsx`, misma clave `reporte_mensual`, botón "Informe directivo" en Reportes). Ver "Comportamientos clave → Informe Directivo".
 - **Tríos reproductivos BALB/c (20/11):** en Calendario → "Planificar apareamiento", con el bioterio `ratones_balbc` activo aparece una sección "♀ Segunda hembra · trío (opcional)" debajo de la hembra principal (mismas pestañas Reproductor / Jaula de stock). El resto de las cepas sigue con 1♂ + 1♀. Requiere `supabase_migration_trios.sql` (columna `hembra2 jsonb`). Ver "Comportamientos clave → Planes de apareamiento".
 
 ### Octubre 2026
@@ -465,6 +477,12 @@ En localStorage solo quedan preferencias de UI (tema `appMosca_brillo`, ficha bi
 - [ ] Modo offline con sincronización posterior
 
 ## Preguntas abiertas (a confirmar con Lucas)
+
+- **Informe Directivo (23/11/2026):** ¿el anexo (animales al cierre + viruta/alimento) va por defecto? Hoy: apagado, se activa con una casilla.
+- **Informe Directivo:** ¿hace falta un PDF que se descargue directo (con una librería) o alcanza "Generar PDF" → diálogo de impresión → Guardar como PDF? Hoy: diálogo de impresión, con el nombre de archivo ya puesto.
+- **Informe Directivo:** ¿nombre completo del instituto y de la persona responsable para el encabezado y la firma? Hoy: "Informe para la Dirección del Instituto" y líneas de firma sin nombre.
+- **Informe Directivo:** el rango de temperatura de referencia es 20–24 °C (el mismo de `sanitario.js`). ¿Es el que usa ISAL?
+- **Intro:** ¿qué significa ISAL, para escribirlo completo en la leyenda de la intro (ICIVET dice "ICIVET Litoral")? Hoy: "Bioterio · ISAL".
 
 - **Tríos BALB/c (20/11/2026):** ¿la segunda hembra es opcional (se puede seguir planificando pareja en BALB/c) o en BALB/c siempre debe ser trío? Hoy: opcional.
 - **Tríos BALB/c:** ¿el trío también tiene que poder planificarse desde Stock (selección múltiple) y registrarse como apareamiento real en Camadas (hoy `camadas` tiene un solo `id_madre`)? Hoy: solo en la planificación del Calendario.

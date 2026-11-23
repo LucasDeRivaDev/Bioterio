@@ -12,3 +12,9 @@ createRoot(document.getElementById('root')).render(
     {isDemoMode ? <AppDemo /> : <App />}
   </StrictMode>,
 )
+
+// La intro (splash) de index.html se va cuando la primera pantalla ya se pintó.
+requestAnimationFrame(() => {
+  window.__appReady = true
+  window.dispatchEvent(new Event('app:ready'))
+})
