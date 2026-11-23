@@ -8,6 +8,7 @@ import {
   Dna, Microscope, Archive, BarChart2, PackageCheck, Skull, TrendingUp, Target, ClipboardList, ScanSearch,
   BookOpen, Sun, Moon,
 } from 'lucide-react'
+import InstalarApp from './InstalarApp'
 import { useTheme } from '../context/ThemeContext'
 import Marca from './Marca'
 import { esCamadaPreniada, parseDate, hoy } from '../utils/calculos'
@@ -315,6 +316,7 @@ export default function Sidebar({ onCerrarSesion, onCerrarMenu }) {
           </>
         )}
         <ReportarError />
+        <InstalarApp variante="menu" />
       </nav>
 
       {/* Usuario + tema + cerrar sesión */}

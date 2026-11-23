@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { BIOTERIOS_CONFIG } from '../context/BioterioActivoContext'
 import { Aviso, Boton, Campo, Entrada } from '../components/ui'
 import Marca from '../components/Marca'
+import InstalarApp from '../components/InstalarApp'
 
 // Pantalla de ingreso con la composición de ITeRatE ICIVET: después de la intro
 // (index.html) se llega directo acá, sin landing. Encabezado con el ícono de la
@@ -49,6 +50,7 @@ function Pantalla({ children }) {
         <Encabezado />
         <FranjaColonias />
         <div className="mt-8 rounded-xl border border-line bg-surface">{children}</div>
+        <InstalarApp />
         <p className="mt-5 text-center text-sm text-ink-faint">¿No podés ingresar? Contactá al administrador.</p>
       </div>
     </div>

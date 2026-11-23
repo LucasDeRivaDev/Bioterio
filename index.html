@@ -4,19 +4,27 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" sizes="512x512" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#080d1a" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="ITeRatE" />
-    <meta name="description" content="Sistema de gestión de colonias de ratones de laboratorio" />
+    <meta name="apple-mobile-web-app-title" content="Bioterio ISAL" />
+    <meta name="description" content="ITeRatE Bioterio ISAL: gestión de las colonias de ratas y ratones de laboratorio" />
     <title>ITeRatE Bioterio ISAL — Colony Management System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <script>
+      // Aviso de instalación de la app (Chrome/Edge/Android): puede llegar antes de
+      // que cargue React, así que se guarda acá y lo usa components/InstalarApp.jsx.
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault()
+        window.__avisoInstalar = e
+        window.dispatchEvent(new Event('app:instalable'))
+      })
+    </script>
     <script>
       try {
         if (localStorage.getItem('appMosca_brillo') === 'true') document.documentElement.classList.add('modo-claro')

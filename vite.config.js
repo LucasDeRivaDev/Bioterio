@@ -9,9 +9,10 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'favicon.png', 'apple-touch-icon.png'],
       manifest: {
-        name: 'ITeRatE Bioterio ISAL — Colony Management System',
-        short_name: 'ITeRatE',
-        description: 'Sistema de gestión de colonias de ratones de laboratorio (Mus musculus)',
+        id: '/',
+        name: 'ITeRatE · Bioterio ISAL',
+        short_name: 'Bioterio ISAL',
+        description: 'Gestión de las colonias de ratas y ratones de laboratorio del Bioterio ISAL',
         theme_color: '#080d1a',
         background_color: '#050810',
         display: 'standalone',
