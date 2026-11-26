@@ -149,6 +149,13 @@
       #splash .sp-eq rect:nth-child(4) { animation-duration: 0.8s; animation-delay: -0.2s; }
       #splash .sp-tip { position: absolute; top: calc(100% + 8px); right: 0; padding: 4px 9px; border-radius: 6px; background: rgba(10, 18, 36, 0.92); border: 1px solid rgba(138, 155, 176, 0.25); color: #d6dee8; font: 500 12px 'IBM Plex Sans Condensed', system-ui, sans-serif; white-space: nowrap; opacity: 0; transform: translateY(-3px); transition: opacity 0.15s ease, transform 0.15s ease; pointer-events: none; }
       #splash .sp-sound:hover .sp-tip, #splash .sp-sound:focus-visible .sp-tip { opacity: 1; transform: none; }
+      /* Botón "Omitir": arriba a la izquierda, espejo del de sonido. */
+      #splash .sp-skip { position: absolute; top: calc(18px + env(safe-area-inset-top, 0px)); left: max(18px, env(safe-area-inset-left, 0px)); height: 40px; padding: 0 16px 0 18px; display: inline-flex; align-items: center; gap: 6px; border-radius: 20px; border: 1px solid rgba(0, 240, 208, 0.3); background: rgba(10, 18, 36, 0.55); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); color: #cfeee8; font: 500 13px 'IBM Plex Sans Condensed', system-ui, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; opacity: 0; animation: sp-fade 0.5s ease 0.6s forwards; transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease, transform 0.15s ease; -webkit-tap-highlight-color: transparent; }
+      #splash .sp-skip svg { width: 16px; height: 16px; }
+      #splash .sp-skip:hover { border-color: var(--brand); background: rgba(0, 240, 208, 0.1); color: #fff; }
+      #splash .sp-skip:active { transform: scale(0.95); }
+      #splash .sp-skip:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+      #splash.quick .sp-skip { display: none; }
       @keyframes sp-pulse { from { transform: scale(1); opacity: 0.7; } to { transform: scale(1.75); opacity: 0; } }
       @keyframes sp-eq { from { transform: scaleY(0.25); } to { transform: scaleY(1); } }
       @keyframes sp-draw { to { stroke-dashoffset: 0; } }
@@ -248,6 +255,7 @@
         <svg class="sp-ico-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z" /><path d="m22 9-6 6M16 9l6 6" /></svg>
         <span class="sp-tip"></span>
       </button>
+      <button type="button" class="sp-skip" aria-label="Omitir la intro">Omitir<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 5 7 7-7 7" /><path d="m13 5 7 7-7 7" /></svg></button>
     </div>
     <script>
       // The splash plays on every open and reload (como en ITeRatE ICIVET; pedido de Lucas, 23/11/2026):
@@ -488,6 +496,15 @@
           // Tapped before the app is ready: it leaves as soon as it is.
           if (ready) leave()
           else skip = true
+        })
+        // Botón "Omitir" (pedido de Lucas, 26/11/2026): salta la intro siempre,
+        // aunque ese toque sea el que habilitó el sonido.
+        var skipBtn = el.querySelector('.sp-skip')
+        if (skipBtn) skipBtn.addEventListener('click', function (e) {
+          e.stopPropagation()
+          if (sound) sound.tookTap()
+          if (ready) leave()
+          else { skip = true; skipBtn.disabled = true }
         })
         setTimeout(leave, 13000)
       })()
